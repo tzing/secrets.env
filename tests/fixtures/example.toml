@@ -1,0 +1,7 @@
+[core]
+url = "https://example.com/"
+auth = "token"
+
+[secrets]
+VAR1 = {path = "kv/default", key = "example"}
+VAR2 = "kv/default#example"
