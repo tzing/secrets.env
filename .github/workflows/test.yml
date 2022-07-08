@@ -1,0 +1,122 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - trunk
+  pull_request: {}
+
+env:
+  # python version for the jobs that does not need to run on all versions
+  PYTHON_VERSION: 3.9
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version:
+          # - '3.7'
+          # - '3.8'
+          - "3.9"
+          # - '3.10'
+
+    services:
+      vault:
+        image: vault:latest
+        env:
+          VAULT_LOCAL_CONFIG: '{"disable_mlock": true, "backend": {"file": {"path": "/vault/file"}}}'
+          VAULT_DEV_ROOT_TOKEN_ID: "!ntegr@t!0n-test"
+        ports:
+          - 8200:8200
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Get vault
+        run: |
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install vault
+
+      - name: Setup secrets
+        env:
+          VAULT_ADDR: http://localhost:8200
+          VAULT_TOKEN: "!ntegr@t!0n-test"
+        run: |
+          vault secrets enable -path kv1 -version=1 kv
+          vault secrets enable -path kv2 -version=2 kv
+
+          vault kv put kv1/test - << EoS
+            {
+              "foo": "hello",
+              "bar": {
+                "baz": "world"
+              }
+            }
+          EoS
+
+          vault kv put kv2/test - << EoS
+            {
+              "foo": "hello, world",
+              "bar": {
+                "baz": "hello, vault"
+              },
+              "test.key": "value-1",
+              "test": {
+                "key": "value-2",
+                "key.2": "value-3"
+              },
+              "": {
+                "n/a": "value-4",
+                "\"special key\"": "value-5"
+              }
+            }
+          EoS
+
+      - name: Install dependencies
+        run: |
+          python -m pip install poetry
+          poetry install --no-root -E toml -E yaml
+
+      - name: Run pytest
+        run: |
+          poetry run python -m pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install poetry
+          poetry install --no-root
+
+      - name: Linting
+        run: |
+          poetry run flake8

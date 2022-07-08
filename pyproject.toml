@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "vault2env"
+version = "0.1.0"
+description = "Put secrets from Vault to environment variables"
+authors = ["tzing <tzingshih@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+hvac = "^0.11.2"
+requests = "^2.28.1"
+colorama = "^0.4.5"
+tomli = {version = "^2.0.1", python = "<3.11", optional = true}
+PyYAML = {version = "^6.0", optional = true}
+keyring = "^23.6.0"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+flake8-black = "^0.3.3"
+flake8-isort = "^4.1.1"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+flake8-pytest-style = "^1.6.0"
+responses = "^0.21.0"
+
+[tool.poetry.extras]
+toml = ["tomli"]
+yaml = ["PyYAML"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "--cov=vault2env --cov-report=term-missing"
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if typing.TYPE_CHECKING",
+]
