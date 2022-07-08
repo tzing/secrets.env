@@ -34,7 +34,7 @@ __has_lib_yaml = yaml is not None
 
 class ConfigFileSpec(typing.NamedTuple):
     filename: str
-    format: typing.Literal["json", "yaml", "toml", "pyproject.toml"]
+    format: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
     path: Optional[Path] = None
 
