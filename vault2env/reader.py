@@ -135,7 +135,7 @@ class KVReader:
             return None
 
         logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
-        secret_path = path.removeprefix(mount_point)
+        secret_path = removeprefix(path, mount_point)
 
         # there's separated API endpoints for different versioned KV engine,
         # but they shares a same function signature
@@ -310,3 +310,10 @@ def get_value(data: dict, key: str) -> Optional[str]:
         return None
 
     return data
+
+
+def removeprefix(s: str, prefix: str) -> str:
+    """Remove the prefix if it exists"""
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return s
