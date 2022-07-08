@@ -1,3 +1,5 @@
+> **This is an incomplete project.** Code is pushed to Github as a backup.
+
 # vault2env 🔓
 
 Put the secrets from [Vault] to the environment variable.
@@ -5,7 +7,10 @@ Put the secrets from [Vault] to the environment variable.
 [Vault]: https://www.vaultproject.io/
 
 <!-- TODO Install -->
-<!-- TODO Usage -->
+
+## Usage
+
+This project is still under development. It currently don't have an entrypoint.
 
 ## Configure
 
