@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import keyring
-from colorama import Fore
+
+from vault2env.color import Fore
 
 if typing.TYPE_CHECKING:
     import hvac
