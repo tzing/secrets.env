@@ -1,21 +1,25 @@
-from cleo.events.console_command_event import ConsoleCommandEvent
+import typing
+
 from cleo.events.console_events import COMMAND
-from cleo.events.event_dispatcher import EventDispatcher
-from poetry.console.application import Application
-from poetry.console.commands.env_command import EnvCommand
+from poetry.console.commands.run import RunCommand
+from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
+
+if typing.TYPE_CHECKING:
+    from cleo.events.console_command_event import ConsoleCommandEvent
+    from cleo.events.event_dispatcher import EventDispatcher
+    from poetry.console.application import Application
 
 
 class Vault2EnvPlugin(ApplicationPlugin):
-    def activate(self, application: Application):
-        application.event_dispatcher.add_listener(COMMAND, self.load_dotenv)
+    def activate(self, application: "Application") -> None:
+        application.event_dispatcher.add_listener(COMMAND, self.load_secret)
 
-    def load_dotenv(
+    def load_secret(
         self,
-        event: ConsoleCommandEvent,
+        event: "ConsoleCommandEvent",
         event_name: str,
-        dispatcher: EventDispatcher,
+        dispatcher: "EventDispatcher",
     ) -> None:
-        command = event.command
-        if not isinstance(command, EnvCommand):
+        if not isinstance(event.command, (RunCommand, ShellCommand)):
             return
