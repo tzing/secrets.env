@@ -8,9 +8,8 @@ import typing
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from colorama import Fore
-
 import vault2env.auth
+from vault2env.color import Fore
 
 
 def _import_any(*module):
