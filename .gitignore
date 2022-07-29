@@ -130,3 +130,6 @@ cython_debug/
 
 # PyCharm
 .idea/
+
+# Vault2Env config
+.vault2env.*
