@@ -28,34 +28,42 @@ class Vault2EnvPlugin(ApplicationPlugin):
         if not isinstance(event.command, (RunCommand, ShellCommand)):
             return
 
+        # set output format
+        formatter = event.io.output.formatter
+        formatter.set_style("debug", Style("white"))
+        formatter.set_style("warning", Style("yellow", options=["bold"]))
+
         # send internal message to cleo
+        # see docstring in Handler for details
         handler = Handler(event.io)
         handler.setFormatter(Formatter())
 
         logger = logging.getLogger("vault2env")
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.NOTSET)
         logger.propagate = False
         logger.addHandler(handler)
 
-        event.io.output.formatter.set_style(
-            "warning", Style("yellow", options=["bold"])
-        )
-
 
 class Handler(logging.Handler):
-    """Custom handler that use cleo's IO to show message"""
+    """Custom handler that use cleo's IO to show message.
+
+    Vault2env uses logging module internally for showing messages to users.
+    By default, cleo hides the logs unless `-vv` (VERY_VERBOSE) is set, it made
+    it harder to show warnings or errors.
+
+    This class receives all logs from vault2env and (re)assign the verbosity
+    level. Besides, it colored the output using our custom Formatter, powered
+    with cleo's formatter.
+    """
 
     def __init__(self, io: "IO") -> None:
-        # receive all records, let cleo filer it
-        super().__init__(logging.DEBUG)
+        super().__init__(logging.NOTSET)
         self.io = io
 
     def emit(self, record: logging.LogRecord) -> None:
         # get verbosity base on log level
         verbosity = Verbosity.NORMAL
-        if record.levelno <= logging.DEBUG:
-            verbosity = Verbosity.DEBUG
-        elif record.levelno <= logging.INFO:
+        if record.levelno <= logging.INFO:
             verbosity = Verbosity.VERBOSE
 
         # format message
@@ -69,12 +77,13 @@ class Handler(logging.Handler):
 
 
 class Formatter(logging.Formatter):
-    """Custom formatter that translate internal expression into cleo's format."""
+    """Custom formatter that translates internal expression into cleo's format."""
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
 
         # tag translate
+        # uses builtin tags for aligning the appearance with poetry and other plugins
         msg = msg.replace("<em>", "<info>").replace("</em>", "</info>")
         msg = msg.replace("<data>", "<comment>").replace("</data>", "</comment>")
 
@@ -83,5 +92,7 @@ class Formatter(logging.Formatter):
             msg = f"<error>{msg}</error>"
         elif record.levelno >= logging.WARNING:
             msg = f"<warning>{msg}</warning>"
+        elif record.levelno <= logging.DEBUG:
+            msg = f"<debug>{msg}</debug>"
 
         return msg
