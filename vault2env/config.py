@@ -102,7 +102,7 @@ def load_config() -> Optional[ConfigSpec]:
         logger.debug("Config file not found.")
         return None
 
-    logger.info("Read config from %s%s%s", Fore.YELLOW, spec.path, Fore.RESET)
+    logger.info("Read config from <data>%s</data>", spec.path)
 
     # read it
     if spec.format == "toml":
