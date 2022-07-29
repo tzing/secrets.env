@@ -7,8 +7,6 @@ from typing import Any, Dict, Optional
 
 import keyring
 
-from vault2env.color import Fore
-
 if typing.TYPE_CHECKING:
     import hvac
 
@@ -99,12 +97,9 @@ class OktaAuth(Auth):
 
     def apply(self, client: "hvac.Client"):
         logger.info(
-            "Login to %sOkta%s with user %s%s%s. Waiting for 2FA proceeded...",
-            Fore.CYAN,
-            Fore.RESET,
-            Fore.YELLOW,
+            "Login to <em>Okta</em> with user <data>%s</data>. "
+            "Waiting for 2FA proceeded...",
             self.username,
-            Fore.RESET,
         )
 
         # Okta 2FA got triggerred within this api call
