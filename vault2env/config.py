@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import vault2env.auth
-from vault2env.color import Fore
 
 
 def _import_any(*module):
@@ -102,7 +101,7 @@ def load_config() -> Optional[ConfigSpec]:
         logger.debug("Config file not found.")
         return None
 
-    logger.info("Read config from %s%s%s", Fore.YELLOW, spec.path, Fore.RESET)
+    logger.info("Read config from <data>%s</data>", spec.path)
 
     # read it
     if spec.format == "toml":
