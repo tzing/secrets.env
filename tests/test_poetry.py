@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 import cleo.io.outputs.section_output
 import cleo.io.outputs.stream_output
 import pytest
+from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
 import vault2env.poetry as vault_poetry
@@ -16,7 +17,7 @@ class TestHandler:
         self.buffer = io.StringIO()
         self.output = cleo.io.outputs.stream_output.StreamOutput(self.buffer)
         self.handler = vault_poetry.Handler(self.output)
-        self.handler.setLevel(logging.DEBUG)
+        self.handler.setLevel(logging.NOTSET)
 
     @pytest.mark.parametrize(
         ("log_level", "verbosity", "has_output"),
@@ -63,7 +64,7 @@ class TestHandler:
         with patch.object(
             self.handler, "format", side_effect=RuntimeError("Test error")
         ):
-            self.handler.emit(record)
+            self.handler.handle(record)
 
 
 class TestFormatter:
@@ -106,3 +107,92 @@ class TestFormatter:
             self.format(logging.ERROR)
             == "<error>test <info>emphasized</info> msg with <comment>data</comment></error>"
         )
+
+
+class TestHandlerWithFormatter:
+    def setup_method(self):
+        self.buffer = io.StringIO()
+
+    def get_handler(self, decorated) -> logging.Handler:
+        stream = cleo.io.outputs.stream_output.StreamOutput(
+            self.buffer, Verbosity.DEBUG, decorated=decorated
+        )
+
+        stream.formatter.set_style("debug", Style("white"))
+
+        handler = vault_poetry.Handler(stream)
+        handler.setLevel(logging.NOTSET)
+        handler.setFormatter(vault_poetry.Formatter())
+
+        return handler
+
+    # plain styles
+    BLUE = "\033[34m"
+    GREEN = "\033[32m"
+    WHITE = "\033[97m"
+    DEFAULT = "\033[39m"
+
+    # bold styles
+    BDEFAULT = "\033[39;22m"
+    BRED = "\033[31;1m"
+
+    @pytest.mark.parametrize(
+        ("log_level", "output"),
+        [
+            # builtin styles
+            (
+                logging.INFO,
+                f"test {BLUE}emphasized{DEFAULT} msg with {GREEN}data{DEFAULT}.\n",
+            ),
+            (
+                logging.ERROR,
+                f"{BRED}test {BDEFAULT}{BLUE}emphasized{DEFAULT}{BRED} msg with "
+                f"{BDEFAULT}{GREEN}data{DEFAULT}{BRED}.{BDEFAULT}\n",
+            ),
+            # debug and warning are customized styles
+            (
+                logging.DEBUG,
+                f"{WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}{WHITE} msg with "
+                f"{DEFAULT}{GREEN}data{DEFAULT}{WHITE}.{DEFAULT}\n",
+            ),
+        ],
+    )
+    def test_color(self, log_level: int, output: str):
+        # send log
+        record = logging.makeLogRecord(
+            {
+                "name": "test",
+                "levelno": log_level,
+                "levelname": logging.getLevelName(log_level),
+                "msg": "test <em>emphasized</em> msg with <data>data</data>.",
+                "created": time.time(),
+            }
+        )
+
+        self.get_handler(True).handle(record)
+
+        # check output
+        # compare in bytes for error message readability
+        self.buffer.seek(0)
+        assert self.buffer.read().encode() == output.encode()
+
+    @pytest.mark.parametrize(
+        ("log_level"), [logging.DEBUG, logging.INFO, logging.ERROR]
+    )
+    def test_no_color(self, log_level: int):
+        # send log
+        record = logging.makeLogRecord(
+            {
+                "name": "test",
+                "levelno": log_level,
+                "levelname": logging.getLevelName(log_level),
+                "msg": "test <em>emphasized</em> msg with <data>data</data>.",
+                "created": time.time(),
+            }
+        )
+
+        self.get_handler(False).handle(record)
+
+        # check output
+        self.buffer.seek(0)
+        assert self.buffer.read() == "test emphasized msg with data.\n"
