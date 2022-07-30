@@ -12,6 +12,22 @@ from cleo.io.outputs.output import Verbosity
 import vault2env.poetry as vault_poetry
 
 
+class TestVault2EnvPlugin:
+    def setup_method(self):
+        self.plugin = vault_poetry.Vault2EnvPlugin()
+
+    def test_setup_output(self):
+        # NOTE: text coloring test are in TestTextColoring
+        buffer = io.StringIO()
+        output = cleo.io.outputs.stream_output.StreamOutput(buffer, decorated=False)
+
+        self.plugin.setup_output(output)
+        logging.getLogger("vault2env.test").error("test message")
+
+        buffer.seek(0)
+        assert buffer.read() == "test message\n"
+
+
 class TestHandler:
     def setup_method(self):
         self.buffer = io.StringIO()
@@ -109,7 +125,7 @@ class TestFormatter:
         )
 
 
-class TestHandlerWithFormatter:
+class TestTextColoring:
     def setup_method(self):
         self.buffer = io.StringIO()
 

@@ -11,8 +11,10 @@ from poetry.plugins.application_plugin import ApplicationPlugin
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
     from cleo.events.event_dispatcher import EventDispatcher
-    from cleo.io.io import IO as CleoIO
+    from cleo.io.outputs.output import Output
     from poetry.console.application import Application
+
+logger = logging.getLogger(__name__)
 
 
 class Vault2EnvPlugin(ApplicationPlugin):
@@ -28,33 +30,36 @@ class Vault2EnvPlugin(ApplicationPlugin):
         if not isinstance(event.command, (RunCommand, ShellCommand)):
             return
 
+        self.setup_output(event.io.output)
+        logger.debug("Start vault2env poetry plugin")
+
+    def setup_output(self, output: "Output") -> None:
+        """Forwards internal messages to cleo.
+
+        Vault2env internally uses logging module for showing messages to users.
+        But cleo hides the logs, unless `-vv` (VERY_VERBOSE) is set, this made
+        it harder to show warnings or errors.
+
+        So it forwards all internal logs from vault2env to cleo. (Re)assign the
+        verbosity level in the Handler and colored the output using the custom
+        Formatter, powered with cleo's formatter."""
         # set output format
-        formatter = event.io.output.formatter
-        formatter.set_style("debug", Style("white"))
-        formatter.set_style("warning", Style("yellow", options=["bold"]))
+        output.formatter.set_style("debug", Style("white"))
+        output.formatter.set_style("warning", Style("yellow", options=["bold"]))
 
         # send internal message to cleo
         # see docstring in Handler for details
-        handler = Handler(event.io)
+        handler = Handler(output)
         handler.setFormatter(Formatter())
 
-        logger = logging.getLogger("vault2env")
-        logger.setLevel(logging.NOTSET)
-        logger.propagate = False
-        logger.addHandler(handler)
+        root_logger = logging.getLogger("vault2env")
+        root_logger.setLevel(logging.NOTSET)
+        root_logger.propagate = False
+        root_logger.addHandler(handler)
 
 
 class Handler(logging.Handler):
-    """Custom handler that use cleo's IO to show message.
-
-    Vault2env uses logging module internally for showing messages to users.
-    By default, cleo hides the logs unless `-vv` (VERY_VERBOSE) is set, it made
-    it harder to show warnings or errors.
-
-    This class receives all logs from vault2env and (re)assign the verbosity
-    level. Besides, it colored the output using our custom Formatter, powered
-    with cleo's formatter.
-    """
+    """Send the logs to cleo's IO module."""
 
     VERBOSITY = {
         logging.DEBUG: Verbosity.DEBUG,
@@ -64,9 +69,9 @@ class Handler(logging.Handler):
         logging.CRITICAL: Verbosity.QUIET,
     }
 
-    def __init__(self, io: "CleoIO") -> None:
+    def __init__(self, output: "Output") -> None:
         super().__init__(logging.NOTSET)
-        self.io = io
+        self.output = output
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -76,11 +81,11 @@ class Handler(logging.Handler):
             return
 
         verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
-        self.io.write_line(msg, verbosity=verbosity)
+        self.output.write_line(msg, verbosity=verbosity)
 
 
 class Formatter(logging.Formatter):
-    """Custom formatter that translates internal expression into cleo's format."""
+    """Translates internal expression into cleo's format."""
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
