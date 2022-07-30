@@ -39,7 +39,7 @@ class Vault2EnvPlugin(ApplicationPlugin):
         config = vault2env.load_config()
         if not config:
             # skip logging. already show error in `load_config`
-            return {}
+            return
 
         reader = vault2env.KVReader(config.url, config.auth)
         secrets = reader.get_values(config.secret_specs.values())
