@@ -99,7 +99,7 @@ class Formatter(logging.Formatter):
 
         # tag translate
         # uses builtin tags for aligning the appearance with poetry and other plugins
-        msg = msg.replace("<em>", "<info>").replace("</em>", "</info>")
+        msg = msg.replace("<mark>", "<info>").replace("</mark>", "</info>")
         msg = msg.replace("<data>", "<comment>").replace("</data>", "</comment>")
 
         # add color

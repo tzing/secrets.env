@@ -93,7 +93,7 @@ class TestFormatter:
                 "name": "test",
                 "levelno": level,
                 "levelname": logging.getLevelName(level),
-                "msg": "test <em>emphasized</em> msg with <data>data</data>",
+                "msg": "test <mark>emphasized</mark> msg with <data>data</data>",
                 "created": time.time(),
             }
         )
@@ -180,7 +180,7 @@ class TestTextColoring:
                 "name": "test",
                 "levelno": log_level,
                 "levelname": logging.getLevelName(log_level),
-                "msg": "test <em>emphasized</em> msg with <data>data</data>.",
+                "msg": "test <mark>emphasized</mark> msg with <data>data</data>.",
                 "created": time.time(),
             }
         )
@@ -202,7 +202,7 @@ class TestTextColoring:
                 "name": "test",
                 "levelno": log_level,
                 "levelname": logging.getLevelName(log_level),
-                "msg": "test <em>emphasized</em> msg with <data>data</data>.",
+                "msg": "test <mark>emphasized</mark> msg with <data>data</data>.",
                 "created": time.time(),
             }
         )
