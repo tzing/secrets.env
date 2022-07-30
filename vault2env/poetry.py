@@ -1,4 +1,5 @@
 import logging
+import os
 import typing
 
 from cleo.events.console_events import COMMAND
@@ -8,7 +9,7 @@ from poetry.console.commands.run import RunCommand
 from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
-import vault2env.config
+import vault2env
 
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
@@ -33,12 +34,35 @@ class Vault2EnvPlugin(ApplicationPlugin):
             return
 
         self.setup_output(event.io.output)
-        logger.debug("Start vault2env poetry plugin")
+        logger.debug("Start vault2env poetry plugin.")
 
-        config = vault2env.config.load_config()
+        config = vault2env.load_config()
         if not config:
-            # already log the errors in load_config
+            # skip logging. already show error in `load_config`
             return {}
+
+        reader = vault2env.KVReader(config.url, config.auth)
+        secrets = reader.get_values(config.secret_specs.values())
+
+        cnt_loaded = 0
+        for name, spec in config.secret_specs.items():
+            value = secrets.get(spec)
+            if not value:
+                # skip logging. already show warning in `get_value`
+                continue
+
+            logger.debug("Load <info>%s</info>", name)
+            os.environ[name] = value
+            cnt_loaded += 1
+
+        if cnt_loaded == len(config.secret_specs):
+            logger.info("<info>%d</info> secrets loaded", len(secrets))
+        else:
+            logger.warning(
+                "<error>%d</error> / <comment>%d</comment> secrets loaded",
+                cnt_loaded,
+                len(config.secret_specs),
+            )
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
