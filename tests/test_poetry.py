@@ -3,18 +3,29 @@ import logging
 import time
 from unittest.mock import Mock, patch
 
+import cleo.commands.command
+import cleo.events.console_command_event
+import cleo.events.event_dispatcher
 import cleo.io.outputs.section_output
 import cleo.io.outputs.stream_output
+import poetry.console.commands.run
 import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
+import vault2env
 import vault2env.poetry as vault_poetry
+from vault2env.config import ConfigSpec, SecretResource
 
 
 class TestVault2EnvPlugin:
     def setup_method(self):
         self.plugin = vault_poetry.Vault2EnvPlugin()
+
+        self.event = Mock(spec=cleo.events.console_command_event.ConsoleCommandEvent)
+        self.event.command = Mock(spec=poetry.console.commands.run.RunCommand)
+
+        self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
 
     def teardown_method(self):
         logger = logging.getLogger("vault2env")
@@ -22,6 +33,59 @@ class TestVault2EnvPlugin:
         logger.propagate = True
         for h in list(logger.handlers):
             logger.removeHandler(h)
+
+    @pytest.fixture()
+    def no_setup_output(self):
+        with patch.object(self.plugin, "setup_output"):
+            yield
+
+    @pytest.fixture()
+    def patch_load_config(self):
+        with patch(
+            "vault2env.load_config",
+            return_value=ConfigSpec(
+                url="https://example.com/",
+                auth=vault2env.TokenAuth("ex@mp1e"),
+                secret_specs={
+                    "VAR1": SecretResource("key1", "example"),
+                    "VAR2": SecretResource("key2", "example"),
+                },
+            ),
+        ):
+            yield
+
+    def test_load_secret(self, no_setup_output: Mock, patch_load_config: Mock):
+        with patch(
+            "vault2env.KVReader.get_values",
+            return_value={
+                SecretResource("key1", "example"): "foo",
+                SecretResource("key2", "example"): "bar",
+            },
+        ):
+            self.plugin.load_secret(self.event, "test", self.dispatcher)
+
+    def test_load_secret_partial(self, no_setup_output: Mock, patch_load_config: Mock):
+        with patch(
+            "vault2env.KVReader.get_values",
+            return_value={
+                # no key2
+                SecretResource("key1", "example"): "foo",
+            },
+        ):
+            self.plugin.load_secret(self.event, "test", self.dispatcher)
+
+    def test_load_secret_no_config(self):
+        with patch("vault2env.load_config", return_value=None):
+            self.plugin.load_secret(self.event, "test", self.dispatcher)
+
+    def test_load_secret_not_related_command(self):
+        # command is not `run` or `shell`
+        self.event.command = Mock(spec=cleo.commands.command.Command)
+
+        with patch.object(
+            self.plugin, "setup_output", side_effect=RuntimeError("should not raised")
+        ):
+            self.plugin.load_secret(self.event, "test", self.dispatcher)
 
     def test_setup_output(self):
         # NOTE: text coloring test are in TestTextColoring
