@@ -11,7 +11,7 @@ from poetry.plugins.application_plugin import ApplicationPlugin
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
     from cleo.events.event_dispatcher import EventDispatcher
-    from cleo.io.io import IO
+    from cleo.io.io import IO as CleoIO
     from poetry.console.application import Application
 
 
@@ -56,23 +56,26 @@ class Handler(logging.Handler):
     with cleo's formatter.
     """
 
-    def __init__(self, io: "IO") -> None:
+    VERBOSITY = {
+        logging.DEBUG: Verbosity.DEBUG,
+        logging.INFO: Verbosity.VERBOSE,
+        logging.WARNING: Verbosity.NORMAL,
+        logging.ERROR: Verbosity.QUIET,
+        logging.CRITICAL: Verbosity.QUIET,
+    }
+
+    def __init__(self, io: "CleoIO") -> None:
         super().__init__(logging.NOTSET)
         self.io = io
 
     def emit(self, record: logging.LogRecord) -> None:
-        # get verbosity base on log level
-        verbosity = Verbosity.NORMAL
-        if record.levelno <= logging.INFO:
-            verbosity = Verbosity.VERBOSE
-
-        # format message
         try:
             msg = self.format(record)
         except Exception:
             self.handleError(record)
+            return
 
-        # send
+        verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
         self.io.write_line(msg, verbosity=verbosity)
 
 
