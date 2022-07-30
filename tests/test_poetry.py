@@ -35,12 +35,12 @@ class TestVault2EnvPlugin:
             logger.removeHandler(h)
 
     @pytest.fixture()
-    def _setup_output(self):
-        with patch.object(self.plugin, "setup_output"):
-            yield
+    def patch_setup_output(self):
+        with patch.object(self.plugin, "setup_output") as mock:
+            yield mock
 
     @pytest.fixture()
-    def _load_config(self):
+    def _patch_load_config(self):
         with patch(
             "vault2env.load_config",
             return_value=ConfigSpec(
@@ -54,7 +54,9 @@ class TestVault2EnvPlugin:
         ):
             yield
 
-    def test_load_secret(self, _setup_output: Mock, _load_config: Mock):
+    @pytest.mark.usefixtures("patch_setup_output")
+    @pytest.mark.usefixtures("_patch_load_config")
+    def test_load_secret(self):
         with patch(
             "vault2env.KVReader.get_values",
             return_value={
@@ -64,7 +66,9 @@ class TestVault2EnvPlugin:
         ):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
 
-    def test_load_secret_partial(self, _setup_output: Mock, _load_config: Mock):
+    @pytest.mark.usefixtures("patch_setup_output")
+    @pytest.mark.usefixtures("_patch_load_config")
+    def test_load_secret_partial(self):
         with patch(
             "vault2env.KVReader.get_values",
             return_value={
@@ -78,14 +82,14 @@ class TestVault2EnvPlugin:
         with patch("vault2env.load_config", return_value=None):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
 
-    def test_load_secret_not_related_command(self):
+    def test_load_secret_not_related_command(self, patch_setup_output: Mock):
         # command is not `run` or `shell`
         self.event.command = Mock(spec=cleo.commands.command.Command)
 
-        with patch.object(
-            self.plugin, "setup_output", side_effect=RuntimeError("should not raised")
-        ):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
+        # if it does not exit in the beginning, then it triggerred errors at
+        # setup_output
+        patch_setup_output.side_effect = RuntimeError("should not raised")
+        self.plugin.load_secret(self.event, "test", self.dispatcher)
 
     def test_setup_output(self):
         # NOTE: text coloring test are in TestTextColoring
