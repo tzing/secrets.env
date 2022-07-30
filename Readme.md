@@ -1,16 +1,55 @@
-> **This is an incomplete project.** Code is pushed to Github as a backup.
-
 # vault2env 🔓
 
 Put the secrets from [Vault] to the environment variable.
 
 [Vault]: https://www.vaultproject.io/
 
-<!-- TODO Install -->
 
 ## Usage
 
-This project is still under development. It currently don't have an entrypoint.
+> **NOTE**
+>
+> Standard CLI usage is not implemented yet.
+> Currently this app could only be used as a poetry plugin. And plugin is a poetry **1.2.0** feature, which is still in beta testing.
+
+Get it from this repository:
+
+```bash
+# add as poetry global plugin
+poetry self add 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
+
+# add to project venv
+poetry add -D 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
+```
+
+Folowing extras avaliable:
+
+* `yaml`: supporting YAML config
+* `toml`: supporting TOML config, includes using `pyproject.toml`
+
+If none of them are selected, this app only supports the config in JSON format.
+
+### With poetry
+
+You can use this package as a [poetry plugin](https://python-poetry.org/docs/master/plugins/), then this app will pull the secrets from vault on poetry command `run` and `shell`.
+
+```bash
+# 1. add plugin
+poetry self add 'git+https://github.com/tzing/vault2env.git@trunk' -E yaml
+
+# 2. setup config
+#    read configuration section below for details
+export VAULT_ADDR='https://example.com'
+export VAULT_METHOD='token'
+export VAULT_TOKEN='example-token'
+
+echo 'secrets:'                       > .vault2env.yaml
+echo '  FOO=secrets/default#example'  > .vault2env.yaml
+
+# 3. run
+poetry run sh -c 'echo $FOO'
+```
+
 
 ## Configure
 
@@ -110,7 +149,7 @@ Here's required argument(s), their accepted source, and corresponding keys:
 ##### `token`
 
 | key   | config file | env var        | keyring        |
-|-------|:-----------:|:---------------|:--------------:|
+|-------|:-----------:|:---------------|:---------------|
 | token |             | `VAULT_TOKEN`  | `token/:token` |
 
 ##### `okta`

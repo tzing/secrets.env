@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vault2env"
-version = "0.1.0"
+version = "0.2.0"
 description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
@@ -21,10 +21,14 @@ pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 flake8-pytest-style = "^1.6.0"
 responses = "^0.21.0"
+poetry = "^1.2.0b1"
 
 [tool.poetry.extras]
 toml = ["tomli"]
 yaml = ["PyYAML"]
+
+[tool.poetry.plugins."poetry.application.plugin"]
+poetry-vault2env-plugin = "vault2env.poetry:Vault2EnvPlugin"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
