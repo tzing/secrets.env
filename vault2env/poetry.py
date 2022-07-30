@@ -8,6 +8,8 @@ from poetry.console.commands.run import RunCommand
 from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
+import vault2env.config
+
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
     from cleo.events.event_dispatcher import EventDispatcher
@@ -32,6 +34,11 @@ class Vault2EnvPlugin(ApplicationPlugin):
 
         self.setup_output(event.io.output)
         logger.debug("Start vault2env poetry plugin")
+
+        config = vault2env.config.load_config()
+        if not config:
+            # already log the errors in load_config
+            return {}
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
