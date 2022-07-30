@@ -141,7 +141,7 @@ class TestLoadConfig:
     ):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
-            "vault2env.config.load_json_file", return_value=None
+            "vault2env.config.load_json_file", return_value=["array data"]
         ):
             assert config.load_config() is None
         assert "Configuration file is malformed." in caplog.text
@@ -153,11 +153,11 @@ class TestLoadConfig:
 
     def test_config_empty(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
-        with caplog.at_level(logging.WARNING), patch(
+        with caplog.at_level(logging.DEBUG), patch(
             "vault2env.config.load_json_file", return_value={}
         ):
             assert config.load_config() is None
-        assert "Required configure section not found." in caplog.text
+        assert "Configure section not found." in caplog.text
 
     def test_parse_error(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")

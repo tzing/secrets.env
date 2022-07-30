@@ -115,7 +115,7 @@ def load_config() -> Optional[ConfigSpec]:
     else:
         raise RuntimeError(f"Unexpected format: {spec.format}")
 
-    if not isinstance(data, dict):
+    if data and not isinstance(data, dict):
         logger.warning("Configuration file is malformed. Data not loaded.")
         return None
 
@@ -123,7 +123,7 @@ def load_config() -> Optional[ConfigSpec]:
         data = data.get("tool", {}).get("vault2env", {})
 
     if not data:
-        logger.warning("Required configure section not found. Data not loaded.")
+        logger.debug("Configure section not found. Data not loaded.")
         return None
 
     # parse
