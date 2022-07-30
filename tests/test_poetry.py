@@ -35,12 +35,12 @@ class TestVault2EnvPlugin:
             logger.removeHandler(h)
 
     @pytest.fixture()
-    def no_setup_output(self):
+    def _setup_output(self):
         with patch.object(self.plugin, "setup_output"):
             yield
 
     @pytest.fixture()
-    def patch_load_config(self):
+    def _load_config(self):
         with patch(
             "vault2env.load_config",
             return_value=ConfigSpec(
@@ -54,7 +54,7 @@ class TestVault2EnvPlugin:
         ):
             yield
 
-    def test_load_secret(self, no_setup_output: Mock, patch_load_config: Mock):
+    def test_load_secret(self, _setup_output: Mock, _load_config: Mock):
         with patch(
             "vault2env.KVReader.get_values",
             return_value={
@@ -64,7 +64,7 @@ class TestVault2EnvPlugin:
         ):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
 
-    def test_load_secret_partial(self, no_setup_output: Mock, patch_load_config: Mock):
+    def test_load_secret_partial(self, _setup_output: Mock, _load_config: Mock):
         with patch(
             "vault2env.KVReader.get_values",
             return_value={
