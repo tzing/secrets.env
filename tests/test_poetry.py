@@ -114,21 +114,21 @@ class TestFormatter:
         )
 
     def test_debug(self):
-        assert (
-            self.format(logging.DEBUG)
-            == "<debug>test <info>emphasized</info> msg with <comment>data</comment></debug>"
+        assert self.format(logging.DEBUG) == (
+            "<debug>test <info>emphasized</info> msg with <comment>data"
+            "</comment></debug>"
         )
 
     def test_warning(self):
-        assert (
-            self.format(logging.WARNING)
-            == "<warning>test <info>emphasized</info> msg with <comment>data</comment></warning>"
+        assert self.format(logging.WARNING) == (
+            "<warning>test <info>emphasized</info> msg with <comment>data"
+            "</comment></warning>"
         )
 
     def test_error(self):
-        assert (
-            self.format(logging.ERROR)
-            == "<error>test <info>emphasized</info> msg with <comment>data</comment></error>"
+        assert self.format(logging.ERROR) == (
+            "<error>test <info>emphasized</info> msg with <comment>data"
+            "</comment></error>"
         )
 
 
