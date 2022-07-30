@@ -16,6 +16,13 @@ class TestVault2EnvPlugin:
     def setup_method(self):
         self.plugin = vault_poetry.Vault2EnvPlugin()
 
+    def teardown_method(self):
+        logger = logging.getLogger("vault2env")
+        logger.setLevel(logging.NOTSET)
+        logger.propagate = True
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+
     def test_setup_output(self):
         # NOTE: text coloring test are in TestTextColoring
         buffer = io.StringIO()
