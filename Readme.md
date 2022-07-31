@@ -65,8 +65,8 @@ This app searches for the file that matches following names in the current worki
 4. `.vault2env.json`
 5. `pyproject.toml`[^1]
 
-[^1]: TOML format is only supportted when either [tomllib](https://docs.python.org/3.11/library/tomllib.html) or [tomli](https://pypi.org/project/tomli/) is installed.
-[^2]: YAML format is only supportted when [PyYAML](https://pypi.org/project/PyYAML/) is installed.
+[^1]: TOML format is only supported when either [tomllib](https://docs.python.org/3.11/library/tomllib.html) or [tomli](https://pypi.org/project/tomli/) is installed.
+[^2]: YAML format is only supported when [PyYAML](https://pypi.org/project/PyYAML/) is installed.
 
 An example config in YAML format:
 
@@ -101,7 +101,7 @@ secrets:
   VAR2: "kv/default#example.to.value"
 ```
 
-> For most supportted file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./tests/fixtures/example-pyproject.toml) format- each section must placed under `tool.vault2env` section, for aligning the community practice.
+> For most supported file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./tests/fixtures/example-pyproject.toml) format- each section must placed under `tool.vault2env` section, for aligning the community practice.
 > Visit [test fixtrue folder](./tests/fixtures/) to read the equivalent expression in each format.
 
 ### Authentication
@@ -144,7 +144,7 @@ keyring get python-vault2env token/:token
 keyring set python-vault2env okta/test@example.com
 ```
 
-#### Supportted methods
+#### Supported methods
 
 Here's required argument(s), their accepted source, and corresponding keys:
 
@@ -152,11 +152,11 @@ Here's required argument(s), their accepted source, and corresponding keys:
 
 | key   | config file | env var        | keyring        |
 |-------|:-----------:|:---------------|:---------------|
-| token |             | `VAULT_TOKEN`  | `token/:token` |
+| token | ⛔️          | `VAULT_TOKEN`  | `token/:token` |
 
 ##### `okta`
 
 | key      | config file | env var          | keyring               |
 |----------|:-----------:|:-----------------|:----------------------|
 | username | `username`  | `VAULT_USERNAME` | `okta/:username`      |
-| password |             | `VAULT_PASSWORD` | `okta/YOUR_USER_NAME` |
+| password | ⛔️          | `VAULT_PASSWORD` | `okta/YOUR_USER_NAME` |
