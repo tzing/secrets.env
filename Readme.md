@@ -1,8 +1,10 @@
 # vault2env 🔓
 
-Put the secrets from [Vault] to the environment variable.
+Put secrets from [Vault](https://www.vaultproject.io/) to environment variables.
 
-[Vault]: https://www.vaultproject.io/
+Security is important, but don't want it to be a stumbling block. We love vault, but the practice of getting secrets for local development could be dangerous. Some of us build them into a `.env` file and source it, which brings the risk of credential leaking.
+
+This tool is built to *plug in* secrets into development without landing data on disk. Furthermore, we can safely commit the config file into CVS, for easily reproducing the environment, and reduce the risk of uploading the secrets to the server.
 
 
 ## Usage
@@ -19,7 +21,7 @@ Get it from this repository:
 poetry self add 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
 
 # add to project venv
-poetry add -D 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
+poetry add --dev 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
 ```
 
 Folowing extras avaliable:
@@ -34,7 +36,7 @@ If none of them are selected, this app only supports the config in JSON format.
 You can use this package as a [poetry plugin](https://python-poetry.org/docs/master/plugins/), then this app will pull the secrets from vault on poetry command `run` and `shell`.
 
 ```bash
-# 1. add plugin
+# 1. install plugin
 poetry self add 'git+https://github.com/tzing/vault2env.git@trunk' -E yaml
 
 # 2. setup config
