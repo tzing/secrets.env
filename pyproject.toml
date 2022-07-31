@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "vault2env"
 version = "0.3.0"
-description = "Put secrets from Vault to environment variables"
+description = "Put secrets from Hashicorp Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
