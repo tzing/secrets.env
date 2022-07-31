@@ -65,11 +65,20 @@ def find_config() -> Optional[ConfigFileSpec]:
     while cnt_hit_root < 2:
         # look up for candidates
         for spec in ORDERED_CONFIG_FILE_SPECS:
-            if not spec.enable:
-                continue
             candidate = wd / spec.filename
-            if candidate.is_file():
-                return ConfigFileSpec(*spec[:3], candidate)
+            if not candidate.is_file():
+                continue
+
+            if not spec.enable and not has_warned_lang_support_issue(spec.lang):
+                logger.info(
+                    "Found file <comment>%s</comment> but <info>%s</info> "
+                    "is not supported: dependency not satisfied",
+                    candidate.name,
+                    spec.lang,
+                )
+                continue
+
+            return ConfigFileSpec(*spec[:3], candidate)
 
         # go to parent directory
         parent = wd.parent
