@@ -298,7 +298,7 @@ class TestBuildAuth:
 
     def test_type_error(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth(1234) is None
-        assert "Config malformed: auth." in caplog.text
+        assert "Config malformed: <data>auth</data>." in caplog.text
 
     @patch.dict("os.environ", {"VAULT_METHOD": "token", "VAULT_TOKEN": "ex@mp1e"})
     def test_from_env(self):
@@ -306,8 +306,15 @@ class TestBuildAuth:
 
     def test_missing_method(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth({}) is None
-        assert "Missing required config: method." in caplog.text
+        assert "Missing required config: <data>auth method</data>." in caplog.text
 
     def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth({"method": "invalid-method"}) is None
-        assert "Unknown auth method: invalid-method" in caplog.text
+        assert "Unknown auth method: <data>invalid-method</data>" in caplog.text
+
+
+def test_has_warned_lang_support_issue():
+    assert config.has_warned_lang_support_issue("TEST") is False
+    assert config.has_warned_lang_support_issue("TEST") is True
+    assert config.has_warned_lang_support_issue("TEST") is True
+    assert config.has_warned_lang_support_issue("TEST2") is False

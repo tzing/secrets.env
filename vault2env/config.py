@@ -6,7 +6,7 @@ import os
 import re
 import typing
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import vault2env.auth
 
@@ -32,9 +32,15 @@ __has_lib_yaml = yaml is not None
 
 class ConfigFileSpec(typing.NamedTuple):
     filename: str
-    format: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
+    spec: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
     path: Optional[Path] = None
+
+    @property
+    def lang(self) -> str:
+        if self.spec == "pyproject.toml":
+            return "TOML"
+        return self.spec.upper()
 
 
 ORDERED_CONFIG_FILE_SPECS = (
@@ -59,11 +65,20 @@ def find_config() -> Optional[ConfigFileSpec]:
     while cnt_hit_root < 2:
         # look up for candidates
         for spec in ORDERED_CONFIG_FILE_SPECS:
-            if not spec.enable:
-                continue
             candidate = wd / spec.filename
-            if candidate.is_file():
-                return ConfigFileSpec(*spec[:3], candidate)
+            if not candidate.is_file():
+                continue
+
+            if not spec.enable and not has_warned_lang_support_issue(spec.lang):
+                logger.info(
+                    "Found file <data>%s</data> but <mark>%s</mark> is not "
+                    "supported (dependency not satisfied)",
+                    candidate.name,
+                    spec.lang,
+                )
+                continue
+
+            return ConfigFileSpec(*spec[:3], candidate)
 
         # go to parent directory
         parent = wd.parent
@@ -73,6 +88,16 @@ def find_config() -> Optional[ConfigFileSpec]:
         wd = parent
 
     return None
+
+
+def has_warned_lang_support_issue(format_: str) -> None:
+    """Cache if the language supportting issue is reported."""
+    warned_formats = has_warned_lang_support_issue.__dict__.setdefault(
+        "warned_formats", set()
+    )
+    is_warned = format_ in warned_formats
+    warned_formats.add(format_)
+    return is_warned
 
 
 class SecretResource(typing.NamedTuple):
@@ -96,30 +121,28 @@ def load_config() -> Optional[ConfigSpec]:
     selected based on the order above.
     """
     # find config file
-    spec = find_config()
-    if not spec:
+    file_metadata = find_config()
+    if not file_metadata:
         logger.debug("Config file not found.")
         return None
 
-    logger.info("Read config from <data>%s</data>", spec.path)
+    logger.info("Read config from <data>%s</data>", file_metadata.path)
 
     # read it
-    if spec.format == "toml":
-        data = load_toml_file(spec.path)
-    elif spec.format == "pyproject.toml":
-        data = load_toml_file(spec.path)
-    elif spec.format == "yaml":
-        data = load_yaml_file(spec.path)
-    elif spec.format == "json":
-        data = load_json_file(spec.path)
+    if file_metadata.lang == "TOML":
+        data = load_toml_file(file_metadata.path)
+    elif file_metadata.lang == "YAML":
+        data = load_yaml_file(file_metadata.path)
+    elif file_metadata.lang == "JSON":
+        data = load_json_file(file_metadata.path)
     else:
-        raise RuntimeError(f"Unexpected format: {spec.format}")
+        raise RuntimeError(f"Unexpected format: {file_metadata.spec}")
 
     if data and not isinstance(data, dict):
         logger.warning("Configuration file is malformed. Data not loaded.")
         return None
 
-    if spec.format == "pyproject.toml":
+    if file_metadata.spec == "pyproject.toml":
         data = data.get("tool", {}).get("vault2env", {})
 
     if not data:
@@ -127,12 +150,11 @@ def load_config() -> Optional[ConfigSpec]:
         return None
 
     # parse
-    spec, ok = extract(data)
+    config, ok = extract(data)
     if not ok:
-        logger.warning("Failed to parse config.")
         return None
 
-    return spec
+    return config
 
 
 def load_toml_file(path: Path) -> Optional[dict]:
@@ -194,11 +216,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
             preview = preview[: __max_len - 3] + "..."
 
         logger.error(
-            "Config malformed: %s. Expected %s type, got '%s' (%s type)",
-            name,
-            expect,
-            preview,
-            type(obj).__name__,
+            f"Config malformed: <data>{name}</data>. "
+            f"Expected <mark>{expect}</mark> type, "
+            f"got '<data>{preview}</data>' (<mark>{type(obj).__name__}</mark> type)."
         )
 
         ok = False
@@ -217,8 +237,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
         url = assert_type("core.url", "str", url)
     else:
         logger.error(
-            "Missing required config: url. Neither the value 'core.url' in "
-            "the config file nor the environment variable 'VAULT_ADDR' found."
+            "Missing required config: <data>url</data>. Neither the value "
+            "'<mark>core.url</mark>' in the config file nor the environment "
+            "variable '<mark>VAULT_ADDR</mark>' is found."
         )
         ok = False
 
@@ -233,16 +254,17 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     if data_secrets:
         data_secrets = assert_type("secrets", "dict", data_secrets)
     else:
-        logger.warning("'secrets' section is empty. No data would be loaded.")
+        logger.warning(
+            "'<mark>secrets</mark>' section is empty. No data would be loaded."
+        )
         data_secrets = {}
 
     secrets = {}
-    pattern_var_name = re.compile(r"[A-Z_][A-Z0-9_]*")
     for name, spec in data_secrets.items():
-        if not pattern_var_name.fullmatch(name):
+        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
             logger.warning(
-                "Secret invalid: %s. Not a valid variable name format. "
-                "Skipping this variable.",
+                "Target environment variable '<data>%s</data>' is not a "
+                "valid name. Skipping this variable.",
                 name,
             )
             continue
@@ -264,7 +286,8 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
     elif not isinstance(data, dict):
         # type error
         logger.error(
-            "Config malformed: auth. Expected dict type, got %s type",
+            "Config malformed: <data>auth</data>. Expected <mark>dict</mark> "
+            "type, got <mark>%s</mark> type",
             type(data).__name__,
         )
         return None
@@ -279,8 +302,9 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
     # 'method' still not found - return with error
     if not method:
         logger.error(
-            "Missing required config: method. Neither the value 'core.auth.method'"
-            " in the config file nor the environment variable 'VAULT_METHOD' found."
+            "Missing required config: <data>auth method</data>. Neither the value "
+            "'<mark>core.auth.method</mark>' in the config file nor the environment "
+            "variable '<mark>VAULT_METHOD</mark>' is found."
         )
         return None
 
@@ -290,50 +314,50 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
     elif method == "okta":
         return vault2env.auth.OktaAuth.load(data)
 
-    logger.error("Unknown auth method: %s", method)
+    logger.error("Unknown auth method: <data>%s</data>", method)
     return None
 
 
-def extract_resource_spec(name: str, spec) -> Optional[SecretResource]:
+def extract_resource_spec(
+    name: str, spec: Union[str, dict]
+) -> Optional[SecretResource]:
+    """Convert the resource spec in the config file into the SecretResource
+    object. Allows both string input and dict input.
+    """
     if isinstance(spec, str):
-        resource = extract_path(spec)
-        if resource:
-            return resource
-        else:
-            logger.warning(
-                "Secret invalid: %s. Failed to resolve the resource '%s'. "
-                "Skipping this variable.",
-                name,
-                spec,
-            )
+        # string input: path#key
+        idx = spec.find("#")
+        if idx > 0:
+            path = spec[:idx]
+            key = spec[idx + 1 :]
+            return SecretResource(path, key)
+
+        logger.warning(
+            "Target secret '<data>%s</data>' is invalid. Failed to resolve "
+            "resource '<data>%s</data>'. Skipping this variable.",
+            name,
+            spec,
+        )
 
     elif isinstance(spec, dict):
+        # dict input
         path = spec.get("path")
         key = spec.get("key")
         if isinstance(path, str) and isinstance(key, str):
             return SecretResource(path, key)
-        else:
-            logger.warning(
-                "Secret invalid: %s. Missing resource spec 'path' or 'key'. "
-                "Skipping this variable.",
-                name,
-            )
+
+        logger.warning(
+            "Target secret '<data>%s</data>' is invalid. Missing resource spec "
+            "'<mark>path</mark>' or '<mark>key</mark>'. Skipping this variable.",
+            name,
+        )
 
     else:
+
         logger.warning(
-            "Secret invalid: %s. Not a valid resource spec. Skipping this variable.",
+            "Target secret '<data>%s</data>' is invalid. Not a valid resource spec. "
+            "Skipping this variable.",
             name,
         )
 
     return None
-
-
-def extract_path(s: str) -> Optional[SecretResource]:
-    """Extract secret path and key."""
-    idx = s.find("#")
-    if idx < 0:
-        return None
-
-    path = s[:idx]
-    key = s[idx + 1 :]
-    return SecretResource(path, key)
