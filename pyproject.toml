@@ -8,7 +8,6 @@ readme = "Readme.md"
 homepage = "https://github.com/tzing/vault2env"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Environment :: Console",
     "Framework :: Poetry",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
