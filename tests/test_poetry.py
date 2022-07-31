@@ -113,6 +113,10 @@ class TestHandler:
     @pytest.mark.parametrize(
         ("log_level", "verbosity", "has_output"),
         [
+            (logging.DEBUG, Verbosity.NORMAL, False),
+            (logging.DEBUG, Verbosity.VERBOSE, False),
+            (logging.DEBUG, Verbosity.VERY_VERBOSE, True),
+            (logging.DEBUG, Verbosity.DEBUG, True),
             (logging.INFO, Verbosity.NORMAL, False),
             (logging.INFO, Verbosity.VERBOSE, True),
             (logging.WARNING, Verbosity.QUIET, False),
@@ -121,10 +125,6 @@ class TestHandler:
             (logging.ERROR, Verbosity.QUIET, True),
             (logging.ERROR, Verbosity.NORMAL, True),
             (logging.ERROR, Verbosity.VERBOSE, True),
-            (logging.DEBUG, Verbosity.NORMAL, False),
-            (logging.DEBUG, Verbosity.VERBOSE, False),
-            (logging.DEBUG, Verbosity.VERY_VERBOSE, False),
-            (logging.DEBUG, Verbosity.DEBUG, True),
         ],
     )
     def test_verbosity(self, log_level: int, verbosity: Verbosity, has_output: bool):
@@ -183,8 +183,8 @@ class TestFormatter:
 
     def test_debug(self):
         assert self.format(logging.DEBUG) == (
-            "<debug>test <info>emphasized</info> msg with <comment>data"
-            "</comment></debug>"
+            "[vault2env] <debug>test <info>emphasized</info> msg with <comment>"
+            "data</comment></debug>"
         )
 
     def test_warning(self):
@@ -205,13 +205,14 @@ class TestTextColoring:
         self.buffer = io.StringIO()
 
     def get_handler(self, decorated) -> logging.Handler:
-        stream = cleo.io.outputs.stream_output.StreamOutput(
+        output = cleo.io.outputs.stream_output.StreamOutput(
             self.buffer, Verbosity.DEBUG, decorated=decorated
         )
 
-        stream.formatter.set_style("debug", Style("white"))
+        output.formatter.set_style("debug", Style("white"))
+        output.formatter.set_style("warning", Style("yellow"))
 
-        handler = vault_poetry.Handler(stream)
+        handler = vault_poetry.Handler(output)
         handler.setLevel(logging.NOTSET)
         handler.setFormatter(vault_poetry.Formatter())
 
@@ -220,6 +221,7 @@ class TestTextColoring:
     # plain styles
     BLUE = "\033[34m"
     GREEN = "\033[32m"
+    YELLOW = "\033[33m"
     WHITE = "\033[97m"
     DEFAULT = "\033[39m"
 
@@ -230,21 +232,24 @@ class TestTextColoring:
     @pytest.mark.parametrize(
         ("log_level", "output"),
         [
-            # builtin styles
+            (
+                logging.DEBUG,
+                f"[vault2env] {WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"{WHITE} msg with {DEFAULT}{GREEN}data{DEFAULT}{WHITE}.{DEFAULT}\n",
+            ),
             (
                 logging.INFO,
                 f"test {BLUE}emphasized{DEFAULT} msg with {GREEN}data{DEFAULT}.\n",
             ),
             (
+                logging.WARNING,
+                f"{YELLOW}test {DEFAULT}{BLUE}emphasized{DEFAULT}{YELLOW} msg "
+                f"with {DEFAULT}{GREEN}data{DEFAULT}{YELLOW}.{DEFAULT}\n",
+            ),
+            (
                 logging.ERROR,
                 f"{BRED}test {BDEFAULT}{BLUE}emphasized{DEFAULT}{BRED} msg with "
                 f"{BDEFAULT}{GREEN}data{DEFAULT}{BRED}.{BDEFAULT}\n",
-            ),
-            # debug and warning are customized styles
-            (
-                logging.DEBUG,
-                f"{WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}{WHITE} msg with "
-                f"{DEFAULT}{GREEN}data{DEFAULT}{WHITE}.{DEFAULT}\n",
             ),
         ],
     )
@@ -285,5 +290,6 @@ class TestTextColoring:
         self.get_handler(False).handle(record)
 
         # check output
+        # `debug` message has extra prefix
         self.buffer.seek(0)
-        assert self.buffer.read() == "test emphasized msg with data.\n"
+        assert self.buffer.read().endswith("test emphasized msg with data.\n")
