@@ -32,7 +32,7 @@ __has_lib_yaml = yaml is not None
 
 class ConfigFileSpec(typing.NamedTuple):
     filename: str
-    format: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
+    spec: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
     path: Optional[Path] = None
 
@@ -104,22 +104,22 @@ def load_config() -> Optional[ConfigSpec]:
     logger.info("Read config from <data>%s</data>", spec.path)
 
     # read it
-    if spec.format == "toml":
+    if spec.spec == "toml":
         data = load_toml_file(spec.path)
-    elif spec.format == "pyproject.toml":
+    elif spec.spec == "pyproject.toml":
         data = load_toml_file(spec.path)
-    elif spec.format == "yaml":
+    elif spec.spec == "yaml":
         data = load_yaml_file(spec.path)
-    elif spec.format == "json":
+    elif spec.spec == "json":
         data = load_json_file(spec.path)
     else:
-        raise RuntimeError(f"Unexpected format: {spec.format}")
+        raise RuntimeError(f"Unexpected format: {spec.spec}")
 
     if data and not isinstance(data, dict):
         logger.warning("Configuration file is malformed. Data not loaded.")
         return None
 
-    if spec.format == "pyproject.toml":
+    if spec.spec == "pyproject.toml":
         data = data.get("tool", {}).get("vault2env", {})
 
     if not data:
