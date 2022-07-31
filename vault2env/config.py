@@ -81,6 +81,16 @@ def find_config() -> Optional[ConfigFileSpec]:
     return None
 
 
+def has_warned_lang_support_issue(format_: str) -> None:
+    """Cache if the language supportting issue is reported."""
+    warned_formats = has_warned_lang_support_issue.__dict__.setdefault(
+        "warned_formats", set()
+    )
+    is_warned = format_ in warned_formats
+    warned_formats.add(format_)
+    return is_warned
+
+
 class SecretResource(typing.NamedTuple):
     path: str
     key: str

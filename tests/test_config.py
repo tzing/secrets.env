@@ -311,3 +311,9 @@ class TestBuildAuth:
     def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth({"method": "invalid-method"}) is None
         assert "Unknown auth method: invalid-method" in caplog.text
+
+
+def test_has_warned_lang_support_issue():
+    assert config.has_warned_lang_support_issue("TEST") is False
+    assert config.has_warned_lang_support_issue("TEST") is True
+    assert config.has_warned_lang_support_issue("TEST") is True
