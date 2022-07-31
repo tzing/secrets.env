@@ -121,28 +121,28 @@ def load_config() -> Optional[ConfigSpec]:
     selected based on the order above.
     """
     # find config file
-    spec = find_config()
-    if not spec:
+    file_metadata = find_config()
+    if not file_metadata:
         logger.debug("Config file not found.")
         return None
 
-    logger.info("Read config from <data>%s</data>", spec.path)
+    logger.info("Read config from <data>%s</data>", file_metadata.path)
 
     # read it
-    if spec.lang == "TOML":
-        data = load_toml_file(spec.path)
-    elif spec.lang == "YAML":
-        data = load_yaml_file(spec.path)
-    elif spec.lang == "JSON":
-        data = load_json_file(spec.path)
+    if file_metadata.lang == "TOML":
+        data = load_toml_file(file_metadata.path)
+    elif file_metadata.lang == "YAML":
+        data = load_yaml_file(file_metadata.path)
+    elif file_metadata.lang == "JSON":
+        data = load_json_file(file_metadata.path)
     else:
-        raise RuntimeError(f"Unexpected format: {spec.spec}")
+        raise RuntimeError(f"Unexpected format: {file_metadata.spec}")
 
     if data and not isinstance(data, dict):
         logger.warning("Configuration file is malformed. Data not loaded.")
         return None
 
-    if spec.spec == "pyproject.toml":
+    if file_metadata.spec == "pyproject.toml":
         data = data.get("tool", {}).get("vault2env", {})
 
     if not data:
@@ -150,12 +150,12 @@ def load_config() -> Optional[ConfigSpec]:
         return None
 
     # parse
-    spec, ok = extract(data)
+    config, ok = extract(data)
     if not ok:
         logger.warning("Failed to parse config.")
         return None
 
-    return spec
+    return config
 
 
 def load_toml_file(path: Path) -> Optional[dict]:
