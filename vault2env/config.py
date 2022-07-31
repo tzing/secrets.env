@@ -302,7 +302,7 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
     # 'method' still not found - return with error
     if not method:
         logger.error(
-            "Missing required config: <data>auth method<data>. Neither the value "
+            "Missing required config: <data>auth method</data>. Neither the value "
             "'<mark>core.auth.method</mark>' in the config file nor the environment "
             "variable '<mark>VAULT_METHOD</mark>' is found."
         )
