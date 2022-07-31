@@ -6,7 +6,6 @@ authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
 homepage = "https://github.com/tzing/vault2env"
-repository = "git@github.com:tzing/vault2env.git"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -22,6 +21,9 @@ classifiers = [
     "Topic :: Utilities",
     "Typing :: Typed",
 ]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/tzing/vault2env/issues"
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -47,6 +49,9 @@ yaml = ["PyYAML"]
 
 [tool.poetry.plugins."poetry.application.plugin"]
 poetry-vault2env-plugin = "vault2env.poetry:Vault2EnvPlugin"
+
+[tool.poetry_bumpversion.file."vault2env/__init__.py"]
+# no content
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
