@@ -36,6 +36,12 @@ class ConfigFileSpec(typing.NamedTuple):
     enable: bool
     path: Optional[Path] = None
 
+    @property
+    def lang(self) -> str:
+        if self.spec == "pyproject.toml":
+            return "TOML"
+        return self.spec.upper()
+
 
 ORDERED_CONFIG_FILE_SPECS = (
     ConfigFileSpec(".vault2env.toml", "toml", __has_lib_toml),
@@ -104,13 +110,11 @@ def load_config() -> Optional[ConfigSpec]:
     logger.info("Read config from <data>%s</data>", spec.path)
 
     # read it
-    if spec.spec == "toml":
+    if spec.lang == "TOML":
         data = load_toml_file(spec.path)
-    elif spec.spec == "pyproject.toml":
-        data = load_toml_file(spec.path)
-    elif spec.spec == "yaml":
+    elif spec.lang == "YAML":
         data = load_yaml_file(spec.path)
-    elif spec.spec == "json":
+    elif spec.lang == "JSON":
         data = load_json_file(spec.path)
     else:
         raise RuntimeError(f"Unexpected format: {spec.spec}")
