@@ -76,7 +76,7 @@ class Vault2EnvPlugin(ApplicationPlugin):
         Formatter, powered with cleo's formatter."""
         # set output format
         output.formatter.set_style("debug", Style("white"))
-        output.formatter.set_style("warning", Style("yellow", options=["bold"]))
+        output.formatter.set_style("warning", Style("yellow"))
 
         # send internal message to cleo
         # see docstring in Handler for details
@@ -93,7 +93,7 @@ class Handler(logging.Handler):
     """Send the logs to cleo's IO module."""
 
     VERBOSITY = {
-        logging.DEBUG: Verbosity.DEBUG,
+        logging.DEBUG: Verbosity.VERY_VERBOSE,
         logging.INFO: Verbosity.VERBOSE,
         logging.WARNING: Verbosity.NORMAL,
         logging.ERROR: Verbosity.QUIET,
@@ -127,11 +127,11 @@ class Formatter(logging.Formatter):
         msg = msg.replace("<data>", "<comment>").replace("</data>", "</comment>")
 
         # add color
-        if record.levelno >= logging.ERROR:
+        if record.levelno == logging.ERROR:
             msg = f"<error>{msg}</error>"
-        elif record.levelno >= logging.WARNING:
+        elif record.levelno == logging.WARNING:
             msg = f"<warning>{msg}</warning>"
-        elif record.levelno <= logging.DEBUG:
-            msg = f"<debug>{msg}</debug>"
+        elif record.levelno == logging.DEBUG:
+            msg = f"[vault2env] <debug>{msg}</debug>"
 
         return msg

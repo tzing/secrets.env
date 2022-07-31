@@ -7,7 +7,7 @@ Put the secrets from [Vault] to the environment variable.
 
 ## Usage
 
-> **NOTE**
+> **Note**
 >
 > Standard CLI usage is not implemented yet.
 > Currently this app could only be used as a poetry plugin. And plugin is a poetry **1.2.0** feature, which is still in beta testing.
