@@ -2,6 +2,10 @@
 
 Put the secrets from [Vault] to the environment variable.
 
+Security is important, but don't want it to be the stumbling block. We love vault, but the practice of getting the secrets for local development could be dangerous. Some of us use tools like [consul template](https://github.com/hashicorp/consul-template) to render a `.env` and source it, which brings the risk of credential leaking.
+
+This tool is built to *plug in* the secrets into the develop environment without landing the secrets on the disk. Furthermore, we can safely commit the config file into the CVS and let it become a part of IaC.
+
 [Vault]: https://www.vaultproject.io/
 
 
@@ -19,7 +23,7 @@ Get it from this repository:
 poetry self add 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
 
 # add to project venv
-poetry add -D 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
+poetry add --dev 'git+https://github.com/tzing/vault2env.git@trunk' -E toml
 ```
 
 Folowing extras avaliable:
