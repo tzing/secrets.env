@@ -102,6 +102,7 @@ jobs:
         with:
           filename: coverage.xml
           badge: true
+          format: markdown
           output: both
 
       - name: Add coverage PR comment
