@@ -1,5 +1,7 @@
 # vault2env 🔓
 
+![test result](https://github.com/tzing/vault2env/actions/workflows/test.yml/badge.svg)
+
 Put secrets from [Vault](https://www.vaultproject.io/) to environment variables.
 
 Security is important, but don't want it to be a stumbling block. We love vault, but the practice of getting secrets for local development could be dangerous. Some of us build them into a `.env` file and source it, which brings the risk of credential leaking.
