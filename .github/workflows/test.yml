@@ -94,7 +94,15 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run python -m pytest --cov-report xml:coverage.xml
+          poetry run python -m pytest --cov-report xml
+
+      # Package name in the report is set to `.` by coverage.py. This make the
+      # coverage report tool only shows the total coverage. Change it back to
+      # real package name for showing detailed data.
+      - name: Fix report XML
+        if: matrix.python-version == env.MAIN_PYTHON_VERSION
+        run: |
+          sed -iE 's/<package name="."/<package name="vault2env"/' coverage.xml
 
       - name: Code coverage summary report
         if: matrix.python-version == env.MAIN_PYTHON_VERSION
