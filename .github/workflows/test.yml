@@ -94,7 +94,12 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run python -m pytest
+          poetry run python -m pytest --cov-report xml:coverage.xml
+
+      - name: Code coverage summary report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
 
   lint:
     runs-on: ubuntu-latest
