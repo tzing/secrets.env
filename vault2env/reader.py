@@ -313,7 +313,7 @@ def get_value_from_secret(data: dict, key: str) -> Optional[str]:
 
 
 def removeprefix(s: str, prefix: str) -> str:
-    """Remove the prefix if it exists"""
+    """Remove prefix if it exists."""
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s
