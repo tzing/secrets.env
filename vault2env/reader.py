@@ -75,7 +75,7 @@ class KVReader:
         See also
         --------
         consul-template implementation
-            https://github.com/hashicorp/consul-template/blob/9b0db8d7e76ee01ecde4db53fbd5c11f7eb9a6a8/dependency/vault_common.go#L294-L357
+            https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
         """
         try:
             resp = self.client.adapter.get(
@@ -104,7 +104,7 @@ class KVReader:
         assert isinstance(resp, requests.Response)
         if resp.status_code == HTTPStatus.NOT_FOUND:
             # 404 is expected on an older version of vault, default to version 1
-            # https://github.com/hashicorp/consul-template/blob/9b0db8d7e76ee01ecde4db53fbd5c11f7eb9a6a8/dependency/vault_common.go#L310-L311
+            # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
             return "", 1
         elif resp.status_code == HTTPStatus.FORBIDDEN:
             logger.error("The used token has no access to path %s", path)
