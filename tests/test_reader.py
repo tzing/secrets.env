@@ -221,7 +221,7 @@ def test_split_key():
     assert reader.split_key("""aa.\\'bb."cc"\\'.dd""") == ["aa", "'bb", "cc'", "dd"]
 
 
-def test_get_value(caplog: pytest.LogCaptureFixture):
+def test_get_value_from_secret():
     data = {
         "foo": {
             "bar": "value-1",
@@ -232,21 +232,11 @@ def test_get_value(caplog: pytest.LogCaptureFixture):
         "qax": "value-3",
     }
 
-    assert reader.get_value(data, "foo.bar") == "value-1"
-    assert reader.get_value(data, "foo.baz.test") == "value-2"
-    assert reader.get_value(data, "qax") == "value-3"
+    assert reader.get_value_from_secret(data, "foo.bar") == "value-1"
+    assert reader.get_value_from_secret(data, "foo.baz.test") == "value-2"
+    assert reader.get_value_from_secret(data, "qax") == "value-3"
 
-    assert reader.get_value(data, "no-this-key") is None
-
-    caplog.clear()
-    with caplog.at_level(logging.WARNING):
-        assert reader.get_value(data, "foo.baz") is None
-    assert "Key foo.baz is not pointing to a value" in caplog.text
-
-    caplog.clear()
-    with caplog.at_level(logging.WARNING):
-        assert reader.get_value(data, "qax.extra") is None
-    assert "Key qax.extra not exists" in caplog.text
+    assert reader.get_value_from_secret(data, "no-this-key") is None
 
     with pytest.raises(TypeError):
-        reader.get_value(data, 1234)
+        reader.get_value_from_secret(data, 1234)

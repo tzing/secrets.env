@@ -193,7 +193,7 @@ class KVReader:
         if not secret_set:
             return None
 
-        value = get_value(secret_set, key)
+        value = get_value_from_secret(secret_set, key)
         logger.debug(
             "Query for %s#%s %s.",
             path,
@@ -233,7 +233,9 @@ class KVReader:
                 outputs[secret_path, secret_key] = None
 
             # get value
-            outputs[secret_path, secret_key] = get_value(secret_set, secret_key)
+            outputs[secret_path, secret_key] = get_value_from_secret(
+                secret_set, secret_key
+            )
 
         logger.debug(
             "Query for %d values, %d succeed.",
@@ -294,19 +296,17 @@ def split_key(key: str) -> List[str]:
     return output
 
 
-def get_value(data: dict, key: str) -> Optional[str]:
+def get_value_from_secret(data: dict, key: str) -> Optional[str]:
     """Traverse the data dict to get the value along with the given key."""
     if not isinstance(key, str):
         raise TypeError("Expect str for key, got {}", type(key).__name__)
 
     for k in split_key(key):
         if not isinstance(data, dict):
-            logger.warning("Key %s not exists", key)
             return None
         data = data.get(k)
 
     if not isinstance(data, str):
-        logger.warning("Key %s is not pointing to a value", key)
         return None
 
     return data
