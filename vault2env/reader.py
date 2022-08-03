@@ -1,10 +1,13 @@
 import logging
+import re
 from http import HTTPStatus
 from typing import Dict, List, Optional, Tuple
 
 import hvac
 import hvac.exceptions
 import requests
+import requests.exceptions
+import urllib3.exceptions
 
 from vault2env.auth import Auth
 from vault2env.exception import AuthenticationError, TypeError, UnsupportedError
@@ -81,8 +84,12 @@ class KVReader:
             resp = self.client.adapter.get(
                 f"/v1/sys/internal/ui/mounts/{path}", raise_exception=False
             )
-        except requests.ConnectionError:
-            logger.error("Connection error during checking engine metadata")
+        except requests.RequestException as e:
+            reason = _reason_request_error(e)
+            if not reason:
+                raise
+
+            logger.error("Error occurred during checking metadata %s: %s", path, reason)
             return None, None
 
         if isinstance(resp, dict):
@@ -110,7 +117,7 @@ class KVReader:
             logger.error("The used token has no access to path %s", path)
             return None, None
 
-        logger.error("Error occurs during checking engine metadata for %s", path)
+        logger.error("Error occurred during checking metadata for %s", path)
         logger.debug("Raw response: %s", resp.text)
         return None, None
 
@@ -148,8 +155,11 @@ class KVReader:
 
         try:
             resp = query_func(secret_path, mount_point)
-        except requests.ConnectionError:
-            logger.error("Connection error on query secret %s", path)
+        except requests.RequestException as e:
+            reason = _reason_request_error(e)
+            if not reason:
+                raise
+            logger.error("Error occurred during query secret %s: %s", path, reason)
             return None
         except hvac.exceptions.InvalidPath:
             logger.error("Secret not found: %s", path)
@@ -317,3 +327,22 @@ def _remove_prefix(s: str, prefix: str) -> str:
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s
+
+
+def _reason_request_error(e: requests.ConnectionError) -> Optional[str]:
+    """Convert the error type into plain text. We don't want this error message
+    too verbose."""
+    logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
+
+    if isinstance(e, requests.exceptions.ProxyError):
+        return "proxy error"
+    elif isinstance(e, requests.exceptions.SSLError):
+        return "SSL error"
+    elif isinstance(e, requests.Timeout):
+        return "connect timeout"
+    elif isinstance(e, requests.ConnectionError):
+        ei = e.args[0]
+        if isinstance(ei, OSError):
+            return "OS error"
+
+    return None

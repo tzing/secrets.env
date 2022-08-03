@@ -4,6 +4,7 @@ from unittest.mock import patch
 import hvac
 import pytest
 import requests
+import requests.exceptions
 import responses
 
 import vault2env.auth
@@ -90,7 +91,7 @@ class TestReader:
         with responses.RequestsMock() as rsps:
             rsps.get(
                 "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                body=requests.ConnectionError("test connection error"),
+                body=requests.ConnectTimeout("test connection error"),
             )
             assert self.reader.get_engine_and_version("test") == (None, None)
 
@@ -159,7 +160,7 @@ class TestReader:
         # for get secret
         request_mock.get(
             patch_url,
-            body=requests.ConnectionError("test connection error"),
+            body=requests.ConnectTimeout("test connection error"),
         )
 
         # test
@@ -277,3 +278,28 @@ def test_get_value_from_secret():
 
     with pytest.raises(TypeError):
         reader._get_value_from_secret(data, 1234)
+
+
+def test_reason_request_error():
+    # proxy
+    error = requests.exceptions.ProxyError("mocked")
+    assert reader._reason_request_error(error) == "proxy error"
+
+    # ssl
+    error = requests.exceptions.SSLError("mocked")
+    assert reader._reason_request_error(error) == "SSL error"
+
+    # timeout
+    error = requests.exceptions.ReadTimeout("mocked")
+    assert reader._reason_request_error(error) == "connect timeout"
+    error = requests.exceptions.ConnectTimeout("mocked")
+    assert reader._reason_request_error(error) == "connect timeout"
+
+    # os error
+    error = OSError("mocked")
+    error = requests.ConnectionError(error)
+    assert reader._reason_request_error(error) == "OS error"
+
+    # not captured
+    error = requests.ConnectionError("mocked")
+    assert reader._reason_request_error(error) is None
