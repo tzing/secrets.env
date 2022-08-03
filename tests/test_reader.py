@@ -194,11 +194,11 @@ class TestReader:
             self.reader.get_secrets("secret/test")
 
     @pytest.mark.usefixtures("_set_authenticated")
-    def test_get_secrets_server_error(self):
-        with responses.RequestsMock() as rsps, patch.object(
+    def test_get_secrets_server_error(self, request_mock: responses.RequestsMock):
+        with patch.object(
             self.reader, "get_engine_and_version", return_value=("secret/", 2)
         ):
-            rsps.get(
+            request_mock.get(
                 "http://127.0.0.1:8200/v1/secret/data/test",
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 json={"msg": "mock error"},
