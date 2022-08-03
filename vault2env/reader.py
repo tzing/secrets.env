@@ -135,7 +135,7 @@ class KVReader:
             return None
 
         logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
-        secret_path = removeprefix(path, mount_point)
+        secret_path = _remove_prefix(path, mount_point)
 
         # there's separated API endpoints for different versioned KV engine,
         # but they shares a same function signature
@@ -193,7 +193,7 @@ class KVReader:
         if not secret_set:
             return None
 
-        value = get_value_from_secret(secret_set, key)
+        value = _get_value_from_secret(secret_set, key)
         logger.debug(
             "Query for %s#%s %s.",
             path,
@@ -233,7 +233,7 @@ class KVReader:
                 outputs[secret_path, secret_key] = None
 
             # get value
-            outputs[secret_path, secret_key] = get_value_from_secret(
+            outputs[secret_path, secret_key] = _get_value_from_secret(
                 secret_set, secret_key
             )
 
@@ -296,7 +296,7 @@ def split_key(key: str) -> List[str]:
     return output
 
 
-def get_value_from_secret(data: dict, key: str) -> Optional[str]:
+def _get_value_from_secret(data: dict, key: str) -> Optional[str]:
     """Traverse the data dict to get the value along with the given key."""
     if not isinstance(key, str):
         raise TypeError("Expect str for key, got {}", type(key).__name__)
@@ -312,7 +312,7 @@ def get_value_from_secret(data: dict, key: str) -> Optional[str]:
     return data
 
 
-def removeprefix(s: str, prefix: str) -> str:
+def _remove_prefix(s: str, prefix: str) -> str:
     """Remove prefix if it exists."""
     if s.startswith(prefix):
         return s[len(prefix) :]

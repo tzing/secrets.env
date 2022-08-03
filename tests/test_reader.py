@@ -269,11 +269,11 @@ def test_get_value_from_secret():
         "qax": "value-3",
     }
 
-    assert reader.get_value_from_secret(data, "foo.bar") == "value-1"
-    assert reader.get_value_from_secret(data, "foo.baz.test") == "value-2"
-    assert reader.get_value_from_secret(data, "qax") == "value-3"
+    assert reader._get_value_from_secret(data, "foo.bar") == "value-1"
+    assert reader._get_value_from_secret(data, "foo.baz.test") == "value-2"
+    assert reader._get_value_from_secret(data, "qax") == "value-3"
 
-    assert reader.get_value_from_secret(data, "no-this-key") is None
+    assert reader._get_value_from_secret(data, "no-this-key") is None
 
     with pytest.raises(TypeError):
-        reader.get_value_from_secret(data, 1234)
+        reader._get_value_from_secret(data, 1234)
