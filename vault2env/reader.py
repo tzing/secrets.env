@@ -81,8 +81,8 @@ class KVReader:
             resp = self.client.adapter.get(
                 f"/v1/sys/internal/ui/mounts/{path}", raise_exception=False
             )
-        except requests.RequestException:
-            logger.exception("Error occurs during checking engine metadata")
+        except requests.ConnectionError:
+            logger.error("Connection error during checking engine metadata")
             return None, None
 
         if isinstance(resp, dict):
@@ -148,8 +148,8 @@ class KVReader:
 
         try:
             resp = query_func(secret_path, mount_point)
-        except requests.RequestException:
-            logger.exception("Error occurs during query secret %s", path)
+        except requests.ConnectionError:
+            logger.error("Connection error on query secret %s", path)
             return None
         except hvac.exceptions.InvalidPath:
             logger.error("Secret not found: %s", path)

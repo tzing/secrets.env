@@ -1,4 +1,3 @@
-import logging
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -10,6 +9,12 @@ import responses
 import vault2env.auth
 from vault2env import reader
 from vault2env.exception import AuthenticationError, UnsupportedError
+
+
+@pytest.fixture()
+def request_mock():
+    with responses.RequestsMock() as rsps:
+        yield rsps
 
 
 class TestReader:
@@ -81,13 +86,21 @@ class TestReader:
             )
             assert self.reader.get_engine_and_version("test") == (None, None)
 
-        # request error
+        # connection error
         with responses.RequestsMock() as rsps:
             rsps.get(
                 "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
                 body=requests.ConnectionError("test connection error"),
             )
             assert self.reader.get_engine_and_version("test") == (None, None)
+
+        # request error
+        with responses.RequestsMock() as rsps, pytest.raises(requests.RequestException):
+            rsps.get(
+                "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
+                body=requests.HTTPError("test request error"),
+            )
+            self.reader.get_engine_and_version("test")
 
     def test_get_secrets(self):
         assert self.reader.get_secrets("kv1/test") == {
@@ -130,33 +143,57 @@ class TestReader:
         # secret not found
         assert self.reader.get_secrets("kv1/no-this-secret") is None
 
-    def test_get_secrets_requesterror_kv1(self):
-        with responses.RequestsMock() as rsps, patch.object(
-            self.reader, "get_engine_and_version", return_value=("secret/", 1)
+    @pytest.mark.parametrize(
+        ("kv", "patch_url"),
+        [
+            (1, "http://127.0.0.1:8200/v1/secret/test"),
+            (2, "http://127.0.0.1:8200/v1/secret/data/test"),
+        ],
+    )
+    def test_get_secrets_connection_error(
+        self, request_mock: responses.RequestsMock, kv: int, patch_url: str
+    ):
+        # for client.is_authenticated
+        request_mock.get("http://127.0.0.1:8200/v1/auth/token/lookup-self")
+
+        # for get secret
+        request_mock.get(
+            patch_url,
+            body=requests.ConnectionError("test connection error"),
+        )
+
+        # test
+        with patch.object(
+            self.reader, "get_engine_and_version", return_value=("secret/", kv)
         ):
-            rsps.get(
-                "http://127.0.0.1:8200/v1/auth/token/lookup-self"
-            )  # for client.is_authenticated
-            rsps.get(
-                "http://127.0.0.1:8200/v1/secret/test",
-                body=requests.ConnectionError("test connection error"),
-            )  # for get secret
             assert self.reader.get_secrets("secret/test") is None
 
-    def test_get_secrets_requesterror_kv2(self):
-        with responses.RequestsMock() as rsps, patch.object(
-            self.reader, "get_engine_and_version", return_value=("secret/", 2)
-        ):
-            rsps.get(
-                "http://127.0.0.1:8200/v1/auth/token/lookup-self"
-            )  # for client.is_authenticated
-            rsps.get(
-                "http://127.0.0.1:8200/v1/secret/data/test",
-                body=requests.ConnectionError("test connection error"),
-            )  # for get secret
-            assert self.reader.get_secrets("secret/test") is None
+    @pytest.mark.parametrize(
+        ("kv", "patch_url"),
+        [
+            (1, "http://127.0.0.1:8200/v1/secret/test"),
+            (2, "http://127.0.0.1:8200/v1/secret/data/test"),
+        ],
+    )
+    def test_get_secrets_request_error(
+        self, request_mock: responses.RequestsMock, kv: int, patch_url: str
+    ):
+        # for client.is_authenticated
+        request_mock.get("http://127.0.0.1:8200/v1/auth/token/lookup-self")
 
-    def test_get_secrets_servererror(self):
+        # for get secret
+        request_mock.get(
+            patch_url,
+            body=requests.HTTPError("test http error"),
+        )
+
+        # test
+        with patch.object(
+            self.reader, "get_engine_and_version", return_value=("secret/", kv)
+        ), pytest.raises(requests.RequestException):
+            self.reader.get_secrets("secret/test")
+
+    def test_get_secrets_server_error(self):
         with responses.RequestsMock() as rsps, patch.object(
             self.reader, "get_engine_and_version", return_value=("secret/", 2)
         ):
