@@ -119,7 +119,7 @@ class KVReader:
         logger.debug("Raw response: %s", resp.text)
         return None, None
 
-    def get_secrets(self, path: str) -> Optional[dict]:
+    def get_secret(self, path: str) -> Optional[dict]:
         """Query for a secret set.
 
         Parameters
@@ -197,7 +197,7 @@ class KVReader:
         if not isinstance(key, str):
             raise TypeError("Expect str for key, got {}", type(key).__name__)
 
-        secret_set = self.get_secrets(path)
+        secret_set = self.get_secret(path)
         if not secret_set:
             return None
 
@@ -233,7 +233,7 @@ class KVReader:
             # get secret set
             secret_set = cache.get(secret_path)
             if secret_set is None:
-                secret_set = self.get_secrets(secret_path)
+                secret_set = self.get_secret(secret_path)
                 cache[secret_path] = secret_set
 
             # handle secret set not exists or empty

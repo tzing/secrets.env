@@ -64,12 +64,12 @@ class TestReader:
 
         # NOTE test for errors are in `TestReaderGetEngineAndVersion` class below
 
-    def test_get_secrets(self):
-        assert self.reader.get_secrets("kv1/test") == {
+    def test_get_secret(self):
+        assert self.reader.get_secret("kv1/test") == {
             "foo": "hello",
             "bar": {"baz": "world"},
         }
-        assert self.reader.get_secrets("kv2/test") == {
+        assert self.reader.get_secret("kv2/test") == {
             "foo": "hello, world",
             "bar": {
                 "baz": "hello, vault",
@@ -85,25 +85,25 @@ class TestReader:
             },
         }
 
-    def test_get_secrets_errors(self):
+    def test_get_secret_errors(self):
         # input error
         with pytest.raises(TypeError):
-            self.reader.get_secrets(1234)
+            self.reader.get_secret(1234)
 
         # internal error
         with patch.object(
             self.reader, "get_engine_and_version", return_value=(None, None)
         ):
-            assert self.reader.get_secrets("test") is None
+            assert self.reader.get_secret("test") is None
 
         # unknown version
         with pytest.raises(UnsupportedError), patch.object(
             self.reader, "get_engine_and_version", return_value=("test/", 3)
         ):
-            assert self.reader.get_secrets("test") is None
+            assert self.reader.get_secret("test") is None
 
         # secret not found
-        assert self.reader.get_secrets("kv1/no-this-secret") is None
+        assert self.reader.get_secret("kv1/no-this-secret") is None
 
     @pytest.mark.parametrize(
         ("kv", "patch_url"),
@@ -113,7 +113,7 @@ class TestReader:
         ],
     )
     @pytest.mark.usefixtures("_set_authenticated")
-    def test_get_secrets_connection_error(
+    def test_get_secret_connection_error(
         self, request_mock: responses.RequestsMock, kv: int, patch_url: str
     ):
         request_mock.get(
@@ -125,7 +125,7 @@ class TestReader:
         with patch.object(
             self.reader, "get_engine_and_version", return_value=("secret/", kv)
         ):
-            assert self.reader.get_secrets("secret/test") is None
+            assert self.reader.get_secret("secret/test") is None
 
     @pytest.mark.parametrize(
         ("kv", "patch_url"),
@@ -135,7 +135,7 @@ class TestReader:
         ],
     )
     @pytest.mark.usefixtures("_set_authenticated")
-    def test_get_secrets_request_error(
+    def test_get_secret_request_error(
         self, request_mock: responses.RequestsMock, kv: int, patch_url: str
     ):
         request_mock.get(
@@ -147,10 +147,10 @@ class TestReader:
         with patch.object(
             self.reader, "get_engine_and_version", return_value=("secret/", kv)
         ), pytest.raises(requests.RequestException):
-            self.reader.get_secrets("secret/test")
+            self.reader.get_secret("secret/test")
 
     @pytest.mark.usefixtures("_set_authenticated")
-    def test_get_secrets_server_error(self, request_mock: responses.RequestsMock):
+    def test_get_secret_server_error(self, request_mock: responses.RequestsMock):
         with patch.object(
             self.reader, "get_engine_and_version", return_value=("secret/", 2)
         ):
@@ -159,7 +159,7 @@ class TestReader:
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 json={"msg": "mock error"},
             )
-            assert self.reader.get_secrets("secret/test") is None
+            assert self.reader.get_secret("secret/test") is None
 
     def test_get_value(self):
         assert self.reader.get_value("kv1/test", "foo") == "hello"
