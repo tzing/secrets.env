@@ -101,12 +101,13 @@ class TestReader:
             assert self.reader.get_engine_and_version("test") == (None, None)
 
         # request error
-        with responses.RequestsMock() as rsps, pytest.raises(requests.RequestException):
+        with responses.RequestsMock() as rsps:
             rsps.get(
                 "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
                 body=requests.HTTPError("test request error"),
             )
-            self.reader.get_engine_and_version("test")
+            with pytest.raises(requests.RequestException):
+                self.reader.get_engine_and_version("test")
 
     def test_get_secrets(self):
         assert self.reader.get_secrets("kv1/test") == {
