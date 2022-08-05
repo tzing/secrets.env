@@ -1,11 +1,10 @@
 name: Publish
 
 on:
-  pull_request: {} # FIXME remove
-
-  push:
-    tags:
-      - v0.*.*
+  workflow_run:
+    workflows: ["Tests"]
+    types:
+      - completed
 
 env:
   # python version for the jobs that does not need to run on all versions
@@ -14,6 +13,9 @@ env:
 jobs:
   publish:
     name: Release package to PyPI
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
     runs-on: ubuntu-latest
 
     steps:
@@ -34,14 +36,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install poetry
-
-      #FIXME move
-      - name: Wait for tests to succeed
-        uses: fountainhead/action-wait-for-check@v1.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: Run tests
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Check version
         run: |
