@@ -6,7 +6,7 @@ __all__ = [
     "load_config",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from vault2env.auth import OktaAuth, TokenAuth
 from vault2env.config import find_config, load_config
