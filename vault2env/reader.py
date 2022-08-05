@@ -1,5 +1,4 @@
 import logging
-import re
 from http import HTTPStatus
 from typing import Dict, List, Optional, Tuple
 
@@ -7,7 +6,6 @@ import hvac
 import hvac.exceptions
 import requests
 import requests.exceptions
-import urllib3.exceptions
 
 from vault2env.auth import Auth
 from vault2env.exception import AuthenticationError, TypeError, UnsupportedError
