@@ -43,7 +43,7 @@ class TestReader:
         assert isinstance(self.reader.client, hvac.Client)  # from cache
 
     @patch("hvac.Client")
-    def test_client_auth_error(self, client_):
+    def test_client_auth_error(self, client_: Mock):
         """failed cases; use token, mocked connection"""
         client = client_.return_value
         client.is_authenticated.return_value = False
