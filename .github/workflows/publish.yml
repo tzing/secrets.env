@@ -2,7 +2,8 @@ name: Publish
 
 on:
   workflow_run:
-    workflows: ["Tests"]
+    workflows:
+      - Tests
     types:
       - completed
 
@@ -14,7 +15,8 @@ jobs:
   publish:
     name: Release package to PyPI
 
-    if: startsWith(github.ref, 'refs/tags/v')
+    #TODO
+    if: github.event.workflow_run.conclusion == 'success' #&& startsWith(github.ref, 'refs/tags/v')
 
     runs-on: ubuntu-latest
 
