@@ -13,6 +13,7 @@ env:
 
 jobs:
   publish:
+    name: Publish package to PyPI
     runs-on: ubuntu-latest
 
     steps:
@@ -53,6 +54,6 @@ jobs:
         run: |
           poetry build
 
-      # - name: Release to PyPI
+      # - name: Release
       #   run: |
       #     poetry publish -u __token__

@@ -14,6 +14,7 @@ env:
 
 jobs:
   test:
+    name: Run tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -114,6 +115,7 @@ jobs:
           path: code-coverage-results.md
 
   lint:
+    name: Run linter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
