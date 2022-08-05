@@ -329,7 +329,7 @@ def _remove_prefix(s: str, prefix: str) -> str:
     return s
 
 
-def _reason_request_error(e: requests.ConnectionError) -> Optional[str]:
+def _reason_request_error(e: requests.RequestException) -> Optional[str]:
     """Convert the error type into plain text. We don't want this error message
     too verbose."""
     logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
