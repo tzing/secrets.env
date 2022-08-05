@@ -13,7 +13,7 @@ env:
 
 jobs:
   publish:
-    name: Publish package to PyPI
+    name: Release package to PyPI
     runs-on: ubuntu-latest
 
     steps:
@@ -37,12 +37,11 @@ jobs:
 
       #FIXME move
       - name: Wait for tests to succeed
-        uses: lewagon/wait-on-check-action@v1.1.2
+        uses: fountainhead/action-wait-for-check@v1.0.0
         with:
-          ref: ${{ github.ref }}
-          check-name: Run pytest
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 20
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: test
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Check version
         run: |
