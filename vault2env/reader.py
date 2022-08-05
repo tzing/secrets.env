@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import hvac
 import hvac.exceptions
 import requests
+import requests.exceptions
 
 from vault2env.auth import Auth
 from vault2env.exception import AuthenticationError, TypeError, UnsupportedError
@@ -75,14 +76,18 @@ class KVReader:
         See also
         --------
         consul-template implementation
-            https://github.com/hashicorp/consul-template/blob/9b0db8d7e76ee01ecde4db53fbd5c11f7eb9a6a8/dependency/vault_common.go#L294-L357
+            https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
         """
         try:
             resp = self.client.adapter.get(
                 f"/v1/sys/internal/ui/mounts/{path}", raise_exception=False
             )
-        except requests.RequestException:
-            logger.exception("Error occurs during checking engine metadata")
+        except requests.RequestException as e:
+            reason = _reason_request_error(e)
+            if not reason:
+                raise
+
+            logger.error("Error occurred during checking metadata %s: %s", path, reason)
             return None, None
 
         if isinstance(resp, dict):
@@ -104,17 +109,17 @@ class KVReader:
         assert isinstance(resp, requests.Response)
         if resp.status_code == HTTPStatus.NOT_FOUND:
             # 404 is expected on an older version of vault, default to version 1
-            # https://github.com/hashicorp/consul-template/blob/9b0db8d7e76ee01ecde4db53fbd5c11f7eb9a6a8/dependency/vault_common.go#L310-L311
+            # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
             return "", 1
         elif resp.status_code == HTTPStatus.FORBIDDEN:
             logger.error("The used token has no access to path %s", path)
             return None, None
 
-        logger.error("Error occurs during checking engine metadata for %s", path)
+        logger.error("Error occurred during checking metadata for %s", path)
         logger.debug("Raw response: %s", resp.text)
         return None, None
 
-    def get_secrets(self, path: str) -> Optional[dict]:
+    def get_secret(self, path: str) -> Optional[dict]:
         """Query for a secret set.
 
         Parameters
@@ -135,7 +140,7 @@ class KVReader:
             return None
 
         logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
-        secret_path = removeprefix(path, mount_point)
+        secret_path = _remove_prefix(path, mount_point)
 
         # there's separated API endpoints for different versioned KV engine,
         # but they shares a same function signature
@@ -148,8 +153,11 @@ class KVReader:
 
         try:
             resp = query_func(secret_path, mount_point)
-        except requests.RequestException:
-            logger.exception("Error occurs during query secret %s", path)
+        except requests.RequestException as e:
+            reason = _reason_request_error(e)
+            if not reason:
+                raise
+            logger.error("Error occurred during query secret %s: %s", path, reason)
             return None
         except hvac.exceptions.InvalidPath:
             logger.error("Secret not found: %s", path)
@@ -189,11 +197,11 @@ class KVReader:
         if not isinstance(key, str):
             raise TypeError("Expect str for key, got {}", type(key).__name__)
 
-        secret_set = self.get_secrets(path)
+        secret_set = self.get_secret(path)
         if not secret_set:
             return None
 
-        value = get_value(secret_set, key)
+        value = _get_value_from_secret(secret_set, key)
         logger.debug(
             "Query for %s#%s %s.",
             path,
@@ -225,7 +233,7 @@ class KVReader:
             # get secret set
             secret_set = cache.get(secret_path)
             if secret_set is None:
-                secret_set = self.get_secrets(secret_path)
+                secret_set = self.get_secret(secret_path)
                 cache[secret_path] = secret_set
 
             # handle secret set not exists or empty
@@ -233,7 +241,9 @@ class KVReader:
                 outputs[secret_path, secret_key] = None
 
             # get value
-            outputs[secret_path, secret_key] = get_value(secret_set, secret_key)
+            outputs[secret_path, secret_key] = _get_value_from_secret(
+                secret_set, secret_key
+            )
 
         logger.debug(
             "Query for %d values, %d succeed.",
@@ -294,26 +304,43 @@ def split_key(key: str) -> List[str]:
     return output
 
 
-def get_value(data: dict, key: str) -> Optional[str]:
+def _get_value_from_secret(data: dict, key: str) -> Optional[str]:
     """Traverse the data dict to get the value along with the given key."""
     if not isinstance(key, str):
         raise TypeError("Expect str for key, got {}", type(key).__name__)
 
     for k in split_key(key):
         if not isinstance(data, dict):
-            logger.warning("Key %s not exists", key)
             return None
         data = data.get(k)
 
     if not isinstance(data, str):
-        logger.warning("Key %s is not pointing to a value", key)
         return None
 
     return data
 
 
-def removeprefix(s: str, prefix: str) -> str:
-    """Remove the prefix if it exists"""
+def _remove_prefix(s: str, prefix: str) -> str:
+    """Remove prefix if it exists."""
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s
+
+
+def _reason_request_error(e: requests.RequestException) -> Optional[str]:
+    """Convert the error type into plain text. We don't want this error message
+    too verbose."""
+    logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
+
+    if isinstance(e, requests.exceptions.ProxyError):
+        return "proxy error"
+    elif isinstance(e, requests.exceptions.SSLError):
+        return "SSL error"
+    elif isinstance(e, requests.Timeout):
+        return "connect timeout"
+    elif isinstance(e, requests.ConnectionError):
+        ei = e.args[0]
+        if isinstance(ei, OSError):
+            return "OS error"
+
+    return None
