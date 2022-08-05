@@ -59,55 +59,65 @@ class TestReader:
         # engine not exists, but things are fine
         assert self.reader.get_engine_and_version("null/test") == (None, None)
 
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_get_engine_and_version_errors(self):
-        # unknown version
-        with responses.RequestsMock() as rsps:
-            rsps.get(
-                "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                json={
+    @pytest.mark.parametrize(
+        ("status_code", "body", "mount_point", "version"),
+        [
+            # not a ported version
+            (
+                HTTPStatus.OK,
+                {
                     "data": {
                         "path": "mock/",
                         "type": "kv",
                         "options": {"version": "99"},
                     }
                 },
-            )
-            assert self.reader.get_engine_and_version("test") == (None, None)
-
-        # legacy
-        with responses.RequestsMock() as rsps:
-            rsps.get(
+                None,
+                None,
+            ),
+            # legacy vault
+            (HTTPStatus.NOT_FOUND, {}, "", 1),
+            # query fail
+            (HTTPStatus.BAD_REQUEST, {"msg": "test error"}, None, None),
+            # connection error
+            (None, requests.ConnectTimeout("test connection error"), None, None),
+        ],
+    )
+    @pytest.mark.usefixtures("_set_authenticated")
+    def test_get_engine_and_version_errors(
+        self,
+        request_mock: responses.RequestsMock,
+        status_code: int,
+        body: dict,
+        mount_point: str,
+        version: int,
+    ):
+        if isinstance(body, dict):
+            request_mock.get(
                 "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                status=HTTPStatus.NOT_FOUND,
+                status=status_code,
+                json=body,
             )
-            assert self.reader.get_engine_and_version("test") == ("", 1)
-
-        # query fail
-        with responses.RequestsMock() as rsps:
-            rsps.get(
+        else:
+            request_mock.get(
                 "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                status=HTTPStatus.BAD_REQUEST,
-                json={"msg": "test error"},
+                status=status_code,
+                body=body,
             )
-            assert self.reader.get_engine_and_version("test") == (None, None)
 
-        # connection error
-        with responses.RequestsMock() as rsps:
-            rsps.get(
-                "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                body=requests.ConnectTimeout("test connection error"),
-            )
-            assert self.reader.get_engine_and_version("test") == (None, None)
+        assert self.reader.get_engine_and_version("test") == (mount_point, version)
 
-        # request error
-        with responses.RequestsMock() as rsps:
-            rsps.get(
-                "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
-                body=requests.HTTPError("test request error"),
-            )
-            with pytest.raises(requests.RequestException):
-                self.reader.get_engine_and_version("test")
+    @pytest.mark.usefixtures("_set_authenticated")
+    def test_get_engine_and_version_errors_no_capture(
+        self, request_mock: responses.RequestsMock
+    ):
+        # this function only catch some error. e.g. connection error
+        request_mock.get(
+            "http://127.0.0.1:8200/v1/sys/internal/ui/mounts/test",
+            body=requests.HTTPError("test request error"),
+        )
+        with pytest.raises(requests.RequestException):
+            self.reader.get_engine_and_version("test")
 
     def test_get_secrets(self):
         assert self.reader.get_secrets("kv1/test") == {
