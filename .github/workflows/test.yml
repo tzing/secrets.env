@@ -5,8 +5,8 @@ on:
     branches:
       - trunk
     tags:
-      - "v*"
-  pull_request: {}
+      - v*
+  pull_request:
 
 env:
   # python version for the jobs that does not need to run on all versions
@@ -19,11 +19,11 @@ jobs:
 
     strategy:
       matrix:
-        python-version: #FIXME
-          # - "3.7"
-          # - "3.8"
+        python-version:
+          - "3.7"
+          - "3.8"
           - "3.9"
-          # - "3.10"
+          - "3.10"
 
     services:
       vault:
