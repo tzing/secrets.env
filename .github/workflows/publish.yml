@@ -50,7 +50,7 @@ jobs:
 
       - name: Check version
         run: |
-          export PACKAGE_VERSION="$(poetry version)"
+          export PACKAGE_VERSION="$(poetry version --short)"
           export TAG_VERSION="${GITHUB_REF_NAME:1}"
 
           echo "package version: $PACKAGE_VERSION"
