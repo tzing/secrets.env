@@ -44,8 +44,8 @@ poetry = "^1.2.0b1"
 toml = ["tomli"]
 yaml = ["PyYAML"]
 
-# [tool.poetry.plugins."poetry.application.plugin"]
-# poetry-vault2env-plugin = "vault2env.poetry:Vault2EnvPlugin"
+[tool.poetry.plugins."poetry.application.plugin"]
+poetry-secrets-env-plugin = "secrets_env.poetry:SecretsEnvPlugin"
 
 [tool.poetry_bumpversion.file."secrets_env/__init__.py"]
 # no content
