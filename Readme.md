@@ -73,10 +73,10 @@ This app searches for the file that matches following names in the current worki
 An example config in YAML format:
 
 ```yaml
-# `core` configured the connection info to the vault.
-# This is an *optional* section- though the values under section are required,
-# you could provide them using environment variable.
-core:
+# `source` configured the connection info to vault.
+# This is an *optional* section- values under section are required, but you can
+# provide them using environment variable.
+source:
   # Address to vault
   # Could be replaced using `VAULT_ADDR` environment variable
   url: https://example.com/
@@ -118,7 +118,7 @@ Vault2env adapts several auth methods. You must specify the auth method by eithe
 ---
 # standard layout
 # arguments could be included in `auth:`
-core:
+source:
   auth:
     method: okta
     username: user@example.com
@@ -126,7 +126,7 @@ core:
 ---
 # alternative layout
 # arguments must be avaliable in other source
-core:
+source:
   auth: token
 ```
 

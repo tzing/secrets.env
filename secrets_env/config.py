@@ -224,27 +224,27 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
         ok = False
         return default_value
 
-    # 'core' section - address and auth
-    data_core = data.get("core", {})
-    data_core = assert_type("core", "dict", data_core)
+    # 'source' section - address and auth
+    data_source = data.get("source", {})
+    data_source = assert_type("source", "dict", data_source)
 
     # url
-    url = data_core.get("url", None)
+    url = data_source.get("url", None)
     if not url:
         url = os.getenv("VAULT_ADDR")
 
     if url:
-        url = assert_type("core.url", "str", url)
+        url = assert_type("source.url", "str", url)
     else:
         logger.error(
             "Missing required config: <data>url</data>. Neither the value "
-            "'<mark>core.url</mark>' in the config file nor the environment "
+            "'<mark>source.url</mark>' in the config file nor the environment "
             "variable '<mark>VAULT_ADDR</mark>' is found."
         )
         ok = False
 
     # auth method
-    data_auth = data_core.get("auth", {})
+    data_auth = data_source.get("auth", {})
     auth = build_auth(data_auth)
     if not auth:
         ok = False
@@ -303,7 +303,7 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
     if not method:
         logger.error(
             "Missing required config: <data>auth method</data>. Neither the value "
-            "'<mark>core.auth.method</mark>' in the config file nor the environment "
+            "'<mark>source.auth.method</mark>' in the config file nor the environment "
             "variable '<mark>VAULT_METHOD</mark>' is found."
         )
         return None
