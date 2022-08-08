@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-KEYRING_SYSTEM_NAME = "python-vault2env"
+KEYRING_SYSTEM_NAME = "secrets.env"
 
 
 class Auth(abc.ABC):

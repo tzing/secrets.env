@@ -134,7 +134,7 @@ source:
 
 Arguments could be provided by various source: config file, environment variable and system keyring service.
 
-We're using [keyring] package, which reads and saves the values from OSX [Keychain], KDE [KWallet], etc. For reading/saving value into keyring, use its [command line utility] with the system name `python-vault2env`:
+We're using [keyring] package, which reads and saves the values from OSX [Keychain], KDE [KWallet], etc. For reading/saving value into keyring, use its [command line utility] with the system name `secrets.env`:
 
 [keyring]: https://keyring.readthedocs.io/en/latest/
 [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
@@ -142,8 +142,8 @@ We're using [keyring] package, which reads and saves the values from OSX [Keycha
 [command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
 
 ```bash
-keyring get python-vault2env token/:token
-keyring set python-vault2env okta/test@example.com
+keyring get secrets.env token/:token
+keyring set secrets.env okta/test@example.com
 ```
 
 #### Supported methods
