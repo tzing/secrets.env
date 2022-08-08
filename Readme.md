@@ -103,8 +103,8 @@ secrets:
   VAR2: "kv/default#example.to.value"
 ```
 
-> For most supported file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./tests/fixtures/example-pyproject.toml) format- each section must placed under `tool.vault2env` section, for aligning the community practice.
-> Visit [test fixtrue folder](./tests/fixtures/) to read the equivalent expression in each format.
+> For most supported file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./example/pyproject.toml) format- each section must placed under `tool.secrets-env` section, for aligning the community practice.
+> Visit [example folder](./example/) to read the equivalent expression in each format.
 
 ### Authentication
 
