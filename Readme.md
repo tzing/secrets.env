@@ -2,9 +2,9 @@
 
 ![test result](https://github.com/tzing/vault2env/actions/workflows/test.yml/badge.svg)
 
-Put secrets from [Vault](https://www.vaultproject.io/) to environment variables.
+Put secrets into environment variables like a `.env` loader. Without not landing data on disk. Currently supports HashiCorp [Vault](https://www.vaultproject.io/) KV engine.
 
-Security is important, but don't want it to be a stumbling block. We love vault, but the practice of getting secrets for local development could be dangerous. Some of us build them into a `.env` file and source it, which brings the risk of credential leaking.
+Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be dangerous- some of us put the sensitive data into a shell script and source it, which brings the risk of credential leaking.
 
 This tool is built to *plug in* secrets into development without landing data on disk. Furthermore, we can safely commit the config file into CVS, for easily reproducing the environment, and reduce the risk of uploading the secrets to the server.
 
@@ -153,12 +153,12 @@ Here's required argument(s), their accepted source, and corresponding keys:
 ##### `token`
 
 | key   | config file | env var        | keyring        |
-|-------|:-----------:|:---------------|:---------------|
+|-------|:------------|:---------------|:---------------|
 | token | ⛔️          | `VAULT_TOKEN`  | `token/:token` |
 
 ##### `okta`
 
 | key      | config file | env var          | keyring               |
-|----------|:-----------:|:-----------------|:----------------------|
+|----------|:------------|:-----------------|:----------------------|
 | username | `username`  | `VAULT_USERNAME` | `okta/:username`      |
 | password | ⛔️          | `VAULT_PASSWORD` | `okta/YOUR_USER_NAME` |
