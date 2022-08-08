@@ -5,7 +5,7 @@ description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
-homepage = "https://github.com/tzing/vault2env"
+homepage = "https://github.com/tzing/secrets.env"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/tzing/vault2env/issues"
+"Bug Tracker" = "https://github.com/tzing/secrets.env/issues"
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -58,7 +58,7 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=vault2env --cov-report=term-missing"
+addopts = "--cov=secrets_env --cov-report=term-missing"
 
 [tool.coverage.report]
 exclude_lines = [
