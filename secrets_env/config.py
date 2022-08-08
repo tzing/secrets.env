@@ -44,10 +44,10 @@ class ConfigFileSpec(typing.NamedTuple):
 
 
 ORDERED_CONFIG_FILE_SPECS = (
-    ConfigFileSpec(".vault2env.toml", "toml", __has_lib_toml),
-    ConfigFileSpec(".vault2env.yaml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".vault2env.yml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".vault2env.json", "json", True),
+    ConfigFileSpec(".secrets-env.toml", "toml", __has_lib_toml),
+    ConfigFileSpec(".secrets-env.yaml", "yaml", __has_lib_yaml),
+    ConfigFileSpec(".secrets-env.yml", "yaml", __has_lib_yaml),
+    ConfigFileSpec(".secrets-env.json", "json", True),
     ConfigFileSpec("pyproject.toml", "pyproject.toml", __has_lib_toml),
 )
 
@@ -143,7 +143,7 @@ def load_config() -> Optional[ConfigSpec]:
         return None
 
     if file_metadata.spec == "pyproject.toml":
-        data = data.get("tool", {}).get("vault2env", {})
+        data = data.get("tool", {}).get("secrets-env", {})
 
     if not data:
         logger.debug("Configure section not found. Data not loaded.")

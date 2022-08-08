@@ -47,8 +47,8 @@ export VAULT_ADDR='https://example.com'
 export VAULT_METHOD='token'
 export VAULT_TOKEN='example-token'
 
-echo 'secrets:'                       > .vault2env.yaml
-echo '  FOO=secrets/default#example'  > .vault2env.yaml
+echo 'secrets:'                       > .secrets-env.yaml
+echo '  FOO=secrets/default#example'  > .secrets-env.yaml
 
 # 3. run
 poetry run sh -c 'echo $FOO'
@@ -61,10 +61,10 @@ poetry run sh -c 'echo $FOO'
 
 This app searches for the file that matches following names in the current working directory and parent folders, and load the config from it. When there are more than one exists, the first one would be selected according to the order here:
 
-1. `.vault2env.toml`[^1]
-2. `.vault2env.yaml`[^2]
-3. `.vault2env.yml`[^2]
-4. `.vault2env.json`
+1. `.secrets-env.toml`[^1]
+2. `.secrets-env.yaml`[^2]
+3. `.secrets-env.yml`[^2]
+4. `.secrets-env.json`
 5. `pyproject.toml`[^1]
 
 [^1]: TOML format is only supported when either [tomllib](https://docs.python.org/3.11/library/tomllib.html) or [tomli](https://pypi.org/project/tomli/) is installed.
@@ -112,7 +112,7 @@ Vault enforce authentication during requests, so we must provide the identity in
 
 #### Method
 
-Vault2env adapts several auth methods. You must specify the auth method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
+Secrts.env adapts several auth methods. You must specify the auth method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
 
 ```yaml
 ---
