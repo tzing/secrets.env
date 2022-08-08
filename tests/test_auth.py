@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import hvac
 import pytest
 
-from vault2env import auth
+from secrets_env import auth
 
 
 class TestAuth:

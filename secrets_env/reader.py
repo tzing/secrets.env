@@ -7,8 +7,8 @@ import hvac.exceptions
 import requests
 import requests.exceptions
 
-from vault2env.auth import Auth
-from vault2env.exception import AuthenticationError, TypeError, UnsupportedError
+from secrets_env.auth import Auth
+from secrets_env.exception import AuthenticationError, TypeError, UnsupportedError
 
 logger = logging.getLogger(__name__)
 

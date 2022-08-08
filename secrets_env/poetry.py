@@ -9,7 +9,7 @@ from poetry.console.commands.run import RunCommand
 from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
-import vault2env
+import secrets_env
 
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
@@ -36,12 +36,12 @@ class Vault2EnvPlugin(ApplicationPlugin):
         self.setup_output(event.io.output)
         logger.debug("Start vault2env poetry plugin.")
 
-        config = vault2env.load_config()
+        config = secrets_env.load_config()
         if not config:
             # skip logging. already show error in `load_config`
             return
 
-        reader = vault2env.KVReader(config.url, config.auth)
+        reader = secrets_env.KVReader(config.url, config.auth)
         secrets = reader.get_values(config.secret_specs.values())
 
         cnt_loaded = 0
@@ -59,7 +59,7 @@ class Vault2EnvPlugin(ApplicationPlugin):
             logger.info("<info>%d</info> secrets loaded", len(secrets))
         else:
             logger.warning(
-                "<error>%d</error> / <comment>%d</comment> secrets loaded",
+                "<error>%d</error> / %d secrets loaded",
                 cnt_loaded,
                 len(config.secret_specs),
             )

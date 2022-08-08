@@ -8,7 +8,7 @@ import typing
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
-import vault2env.auth
+import secrets_env.auth
 
 
 def _import_any(*module):
@@ -107,7 +107,7 @@ class SecretResource(typing.NamedTuple):
 
 class ConfigSpec(typing.NamedTuple):
     url: str
-    auth: vault2env.auth.Auth
+    auth: secrets_env.auth.Auth
     secret_specs: Dict[str, SecretResource]
 
 
@@ -276,7 +276,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
 
 
-def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
+def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
     """Factory for building Auth object."""
     # get method from 'auth'
     if isinstance(data, str):
@@ -310,9 +310,9 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
 
     # build auth object based on auth
     if method == "token":
-        return vault2env.auth.TokenAuth.load(data)
+        return secrets_env.auth.TokenAuth.load(data)
     elif method == "okta":
-        return vault2env.auth.OktaAuth.load(data)
+        return secrets_env.auth.OktaAuth.load(data)
 
     logger.error("Unknown auth method: <data>%s</data>", method)
     return None

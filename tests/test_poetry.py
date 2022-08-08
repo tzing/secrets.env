@@ -13,9 +13,9 @@ import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import vault2env
-import vault2env.poetry as vault_poetry
-from vault2env.config import ConfigSpec, SecretResource
+import secrets_env
+import secrets_env.poetry as vault_poetry
+from secrets_env.config import ConfigSpec, SecretResource
 
 
 class TestVault2EnvPlugin:
@@ -45,7 +45,7 @@ class TestVault2EnvPlugin:
             "vault2env.load_config",
             return_value=ConfigSpec(
                 url="https://example.com/",
-                auth=vault2env.TokenAuth("ex@mp1e"),
+                auth=secrets_env.TokenAuth("ex@mp1e"),
                 secret_specs={
                     "VAR1": SecretResource("key1", "example"),
                     "VAR2": SecretResource("key2", "example"),

@@ -7,9 +7,9 @@ import requests
 import requests.exceptions
 import responses
 
-import vault2env.auth
-from vault2env import reader
-from vault2env.exception import AuthenticationError, UnsupportedError
+import secrets_env.auth
+from secrets_env import reader
+from secrets_env.exception import AuthenticationError, UnsupportedError
 
 
 @pytest.fixture()
@@ -28,7 +28,7 @@ class TestReader:
     def setup_method(self):
         # connect to real vault for integration test
         # see .github/workflows/test.yml for test data
-        auth = vault2env.auth.TokenAuth("!ntegr@t!0n-test")
+        auth = secrets_env.auth.TokenAuth("!ntegr@t!0n-test")
         self.reader = reader.KVReader("http://127.0.0.1:8200", auth)
 
     def test___init__(self):
@@ -49,7 +49,7 @@ class TestReader:
         client.is_authenticated.return_value = False
 
         r = reader.KVReader(
-            "http://example.com:8200", vault2env.auth.TokenAuth("invalid")
+            "http://example.com:8200", secrets_env.auth.TokenAuth("invalid")
         )
         with pytest.raises(AuthenticationError):
             r.client
@@ -130,7 +130,7 @@ class TestReader:
 
 class TestReaderGetEngineAndVersion:
     def setup_method(self):
-        auth = Mock(spec=vault2env.auth.Auth)
+        auth = Mock(spec=secrets_env.auth.Auth)
         auth.method = "mocked"
 
         self.reader = reader.KVReader("https://example.com", auth)
@@ -196,7 +196,7 @@ class TestReaderGetEngineAndVersion:
 
 class TestReaderGetSecret:
     def setup_method(self):
-        auth = Mock(spec=vault2env.auth.Auth)
+        auth = Mock(spec=secrets_env.auth.Auth)
         auth.method = "mocked"
 
         self.reader = reader.KVReader("https://example.com", auth)

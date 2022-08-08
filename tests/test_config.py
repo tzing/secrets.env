@@ -5,9 +5,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-import vault2env.auth
-from vault2env import config
-from vault2env.config import ConfigFileSpec, ConfigSpec, SecretResource
+import secrets_env.auth
+from secrets_env import config
+from secrets_env.config import ConfigFileSpec, ConfigSpec, SecretResource
 
 
 def test_import_any():
@@ -116,7 +116,7 @@ class TestLoadConfig:
         with patch("vault2env.config.find_config", return_value=spec):
             assert config.load_config() == ConfigSpec(
                 url="https://example.com/",
-                auth=vault2env.auth.TokenAuth("ex@mp1e"),
+                auth=secrets_env.auth.TokenAuth("ex@mp1e"),
                 secret_specs={
                     "VAR1": SecretResource("kv/default", "example"),
                     "VAR2": SecretResource("kv/default", "example"),
@@ -197,7 +197,7 @@ class TestExtract:
         ) == (
             ConfigSpec(
                 "https://example.com/",
-                vault2env.auth.TokenAuth("ex@mp1e"),
+                secrets_env.auth.TokenAuth("ex@mp1e"),
                 {
                     "VAR1": SecretResource("example", "val1"),
                     "VAR2": SecretResource("example", "val2"),
@@ -228,7 +228,7 @@ class TestExtract:
         ) == (
             ConfigSpec(
                 "https://example.com/",
-                vault2env.auth.TokenAuth("ex@mp1e"),
+                secrets_env.auth.TokenAuth("ex@mp1e"),
                 {
                     "VAR1": SecretResource("example", "val1"),
                     "VAR2": SecretResource("example", "val2"),
@@ -282,7 +282,7 @@ class TestBuildAuth:
     def test_success(self):
         # token
         with patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"}):
-            assert config.build_auth({"method": "token"}) == vault2env.auth.TokenAuth(
+            assert config.build_auth({"method": "token"}) == secrets_env.auth.TokenAuth(
                 "ex@mp1e"
             )
 
@@ -290,11 +290,11 @@ class TestBuildAuth:
         with patch.dict("os.environ", {"VAULT_PASSWORD": "P@ssw0rd"}):
             assert config.build_auth(
                 {"method": "okta", "username": "test@example.com"}
-            ) == vault2env.auth.OktaAuth("test@example.com", "P@ssw0rd")
+            ) == secrets_env.auth.OktaAuth("test@example.com", "P@ssw0rd")
 
     def test_shortcut(self):
         with patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"}):
-            assert config.build_auth("token") == vault2env.auth.TokenAuth("ex@mp1e")
+            assert config.build_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_type_error(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth(1234) is None
@@ -302,7 +302,7 @@ class TestBuildAuth:
 
     @patch.dict("os.environ", {"VAULT_METHOD": "token", "VAULT_TOKEN": "ex@mp1e"})
     def test_from_env(self):
-        assert config.build_auth({}) == vault2env.auth.TokenAuth("ex@mp1e")
+        assert config.build_auth({}) == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_missing_method(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth({}) is None
