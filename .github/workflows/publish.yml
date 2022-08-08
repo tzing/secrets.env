@@ -1,6 +1,7 @@
 name: Publish
 
 on:
+  # TODO still not understand how to trigger publish after test
   push:
     tags:
       - v*
