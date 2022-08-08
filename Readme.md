@@ -1,8 +1,8 @@
-# vault2env 🔓
+# secrets.env 🔓
 
 ![test result](https://github.com/tzing/vault2env/actions/workflows/test.yml/badge.svg)
 
-Put secrets into environment variables like a `.env` loader. Without not landing data on disk. Currently supports HashiCorp [Vault](https://www.vaultproject.io/) KV engine.
+Put secrets to environment variables like a `.env` loader. Without not landing data on disk. Currently supports HashiCorp [Vault](https://www.vaultproject.io/) KV engine.
 
 Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be dangerous- some of us put the sensitive data into a shell script and source it, which brings the risk of credential leaking.
 

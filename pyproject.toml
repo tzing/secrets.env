@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "vault2env"
+name = "secrets.env"
 version = "0.4.0"
-description = "Put secrets from Hashicorp Vault to environment variables"
+description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
@@ -44,10 +44,10 @@ poetry = "^1.2.0b1"
 toml = ["tomli"]
 yaml = ["PyYAML"]
 
-[tool.poetry.plugins."poetry.application.plugin"]
-poetry-vault2env-plugin = "vault2env.poetry:Vault2EnvPlugin"
+# [tool.poetry.plugins."poetry.application.plugin"]
+# poetry-vault2env-plugin = "vault2env.poetry:Vault2EnvPlugin"
 
-[tool.poetry_bumpversion.file."vault2env/__init__.py"]
+[tool.poetry_bumpversion.file."secrets_env/__init__.py"]
 # no content
 
 [build-system]
