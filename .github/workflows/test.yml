@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - trunk
-  pull_request: {}
+  pull_request:
 
 env:
   # python version for the jobs that does not need to run on all versions
@@ -12,6 +12,7 @@ env:
 
 jobs:
   test:
+    name: Run tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -112,6 +113,7 @@ jobs:
           path: code-coverage-results.md
 
   lint:
+    name: Run linter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
