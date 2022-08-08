@@ -54,13 +54,13 @@ ORDERED_CONFIG_FILE_SPECS = (
 logger = logging.getLogger(__name__)
 
 
-def find_config() -> Optional[ConfigFileSpec]:
+def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
     """Find configuration file.
 
     It looks up for the file(s) that matches the name defined in ``CONFIG_FILE_SPECS``
     in current directory and parent directories.
     """
-    wd = Path.cwd().absolute()
+    wd = directory or Path.cwd().absolute()
     cnt_hit_root = 0  # counter for only search in root directory once
     while cnt_hit_root < 2:
         # look up for candidates

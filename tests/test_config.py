@@ -16,70 +16,58 @@ def test_import_any():
     assert config._import_any("module-not-exists") is None
 
 
+@pytest.fixture()
+def example_config_dir():
+    this_file = Path(__file__).resolve()
+    this_repo = this_file.parent.parent
+    return this_repo / "example"
+
+
 class TestFindConfig:
     @pytest.mark.parametrize(
-        ("spec_name", "format_"),
+        "filename",
         [
-            (".vault2env.json", "json"),
-            (".vault2env.yaml", "yaml"),
-            (".vault2env.yml", "yaml"),
-            (".vault2env.toml", "toml"),
-            ("pyproject.toml", "pyproject.toml"),
+            ".secrets-env.json",
+            ".secrets-env.yaml",
+            ".secrets-env.yml",
+            ".secrets-env.toml",
+            "pyproject.toml",
         ],
     )
-    def test_success(
-        self,
-        tmpdir: str,
-        spec_name: str,
-        format_: str,
-    ):
+    def test_success(self, tmpdir: Path, filename: str):
         # create fake config file
-        mock_config = Path(tmpdir) / spec_name
-        mock_config.touch()
+        tmpdir = Path(tmpdir)
+        (tmpdir / filename).touch()
+        (tmpdir / ".garbage").touch()
 
         # run test
-        os.chdir(tmpdir)
-        assert config.find_config() == ConfigFileSpec(
-            spec_name,
-            format_,
-            True,
-            mock_config,
-        )
+        out = config.find_config(tmpdir)
+        assert out.filename == filename
+        assert out.path == (tmpdir / filename).absolute()
 
-    def test_exists_multiple(self, tmpdir: str):
-        tmpdir = Path(tmpdir)
-        (tmpdir / ".vault2env.json").touch()
-        (tmpdir / ".vault2env.yaml").touch()
-        (tmpdir / ".vault2env.toml").touch()
-
-        os.chdir(tmpdir)
-        assert config.find_config() == ConfigFileSpec(
-            ".vault2env.toml",
+    def test_exists_multiple(self, example_config_dir: Path):
+        # we must have TOML installed in testing env
+        assert config.find_config(example_config_dir) == ConfigFileSpec(
+            ".secrets-env.toml",
             "toml",
             True,
-            tmpdir / ".vault2env.toml",
+            example_config_dir / ".secrets-env.toml",
         )
 
-    def test_config_not_enabled(self, tmpdir: str):
-        tmpdir = Path(tmpdir)
-        (tmpdir / ".vault2env.json").touch()
-        (tmpdir / ".vault2env.yaml").touch()
-        (tmpdir / ".vault2env.toml").touch()
-
-        os.chdir(tmpdir)
+    def test_config_not_enabled(self, example_config_dir: Path):
         with patch(
-            "vault2env.config.ORDERED_CONFIG_FILE_SPECS",
+            "secrets_env.config.ORDERED_CONFIG_FILE_SPECS",
             [
-                ConfigFileSpec(".vault2env.toml", "toml", False),
-                ConfigFileSpec(".vault2env.yaml", "yaml", False),
-                ConfigFileSpec(".vault2env.json", "json", True),
+                ConfigFileSpec(".secrets-env.toml", "toml", False),
+                ConfigFileSpec(".secrets-env.yaml", "yaml", False),
+                ConfigFileSpec(".secrets-env.json", "json", True),
             ],
         ):
-            assert config.find_config() == ConfigFileSpec(
-                ".vault2env.json",
+            assert config.find_config(example_config_dir) == ConfigFileSpec(
+                ".secrets-env.json",
                 "json",
                 True,
-                tmpdir / ".vault2env.json",
+                example_config_dir / ".secrets-env.json",
             )
 
     def test_no_config(self, tmpdir: str):
@@ -89,31 +77,26 @@ class TestFindConfig:
 
 class TestLoadConfig:
     @pytest.mark.parametrize(
-        ("fixture_name", "format_"),
+        ("filename", "format_"),
         [
-            ("example.json", "json"),
-            ("example.yaml", "yaml"),
-            ("example.toml", "toml"),
-            ("example-pyproject.toml", "pyproject.toml"),
+            (".secrets-env.json", "json"),
+            (".secrets-env.yaml", "yaml"),
+            (".secrets-env.toml", "toml"),
+            ("pyproject.toml", "pyproject.toml"),
         ],
     )
     @patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"})
-    def test_success(
-        self,
-        fixture_name: str,
-        format_: str,
-    ):
+    def test_success(self, example_config_dir: Path, filename: str, format_: str):
         # create config spec
-        test_dir = Path(__file__).resolve().absolute().parent
         spec = ConfigFileSpec(
             "mock",
             format_,
             True,
-            test_dir / "fixtures" / fixture_name,
+            example_config_dir / filename,
         )
 
         # run
-        with patch("vault2env.config.find_config", return_value=spec):
+        with patch("secrets_env.config.find_config", return_value=spec):
             assert config.load_config() == ConfigSpec(
                 url="https://example.com/",
                 auth=secrets_env.auth.TokenAuth("ex@mp1e"),
@@ -125,7 +108,7 @@ class TestLoadConfig:
 
     @pytest.fixture()
     def find_config(self):
-        with patch("vault2env.config.find_config") as mock:
+        with patch("secrets_env.config.find_config") as mock:
             yield mock
 
     def test_config_not_found(
@@ -141,7 +124,7 @@ class TestLoadConfig:
     ):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
-            "vault2env.config.load_json_file", return_value=["array data"]
+            "secrets_env.config.load_json_file", return_value=["array data"]
         ):
             assert config.load_config() is None
         assert "Configuration file is malformed." in caplog.text
@@ -154,7 +137,7 @@ class TestLoadConfig:
     def test_config_empty(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
         with caplog.at_level(logging.DEBUG), patch(
-            "vault2env.config.load_json_file", return_value={}
+            "secrets_env.config.load_json_file", return_value={}
         ):
             assert config.load_config() is None
         assert "Configure section not found." in caplog.text
@@ -162,7 +145,7 @@ class TestLoadConfig:
     def test_parse_error(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
         find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
-            "vault2env.config.load_json_file", return_value={"foo": "bar"}
+            "secrets_env.config.load_json_file", return_value={"foo": "bar"}
         ):
             assert config.load_config() is None
 
@@ -180,9 +163,9 @@ class TestLoadConfig:
 class TestExtract:
     @patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"})
     def test_success_from_config(self):
-        assert config.extract(
+        out, ok = config.extract(
             {
-                "core": {
+                "source": {
                     "url": "https://example.com/",
                     "auth": {
                         "method": "token",
@@ -194,17 +177,16 @@ class TestExtract:
                     "3VAR": "example#val3",  # name invalid
                 },
             }
-        ) == (
-            ConfigSpec(
-                "https://example.com/",
-                secrets_env.auth.TokenAuth("ex@mp1e"),
-                {
-                    "VAR1": SecretResource("example", "val1"),
-                    "VAR2": SecretResource("example", "val2"),
-                },
-            ),
-            True,
         )
+
+        assert ok is True
+        assert isinstance(out, ConfigSpec)
+        assert out.url == "https://example.com/"
+        assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
+        assert out.secret_specs == {
+            "VAR1": SecretResource("example", "val1"),
+            "VAR2": SecretResource("example", "val2"),
+        }
 
     @patch.dict(
         "os.environ",
@@ -238,10 +220,10 @@ class TestExtract:
         )
 
     def test_error(self):
-        # missing core data
+        # missing source data
         spec, ok = config.extract(
             {
-                "core": "not-a-dict",
+                "source": "not-a-dict",
                 "secrets": {
                     "VAR": "test#v1",
                 },
@@ -257,7 +239,7 @@ class TestExtract:
         # missing secret data
         spec, ok = config.extract(
             {
-                "core": {
+                "source": {
                     "url": "https://example.com",
                 }
             }
@@ -268,7 +250,7 @@ class TestExtract:
         # secret section invalid
         spec, ok = config.extract(
             {
-                "core": {
+                "source": {
                     "url": "https://example.com",
                 },
                 "secrets": "dummy" * 50,
