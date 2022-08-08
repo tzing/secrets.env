@@ -13,14 +13,14 @@ import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import vault2env
-import vault2env.poetry as vault_poetry
-from vault2env.config import ConfigSpec, SecretResource
+import secrets_env
+import secrets_env.poetry as plugin
+from secrets_env.config import ConfigSpec, SecretResource
 
 
-class TestVault2EnvPlugin:
+class TestSecretsEnvPlugin:
     def setup_method(self):
-        self.plugin = vault_poetry.Vault2EnvPlugin()
+        self.plugin = plugin.SecretsEnvPlugin()
 
         self.event = Mock(spec=cleo.events.console_command_event.ConsoleCommandEvent)
         self.event.command = Mock(spec=poetry.console.commands.run.RunCommand)
@@ -28,7 +28,7 @@ class TestVault2EnvPlugin:
         self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
 
     def teardown_method(self):
-        logger = logging.getLogger("vault2env")
+        logger = logging.getLogger("secrets_env")
         logger.setLevel(logging.NOTSET)
         logger.propagate = True
         for h in list(logger.handlers):
@@ -42,10 +42,10 @@ class TestVault2EnvPlugin:
     @pytest.fixture()
     def _patch_load_config(self):
         with patch(
-            "vault2env.load_config",
+            "secrets_env.load_config",
             return_value=ConfigSpec(
                 url="https://example.com/",
-                auth=vault2env.TokenAuth("ex@mp1e"),
+                auth=secrets_env.TokenAuth("ex@mp1e"),
                 secret_specs={
                     "VAR1": SecretResource("key1", "example"),
                     "VAR2": SecretResource("key2", "example"),
@@ -58,7 +58,7 @@ class TestVault2EnvPlugin:
     @pytest.mark.usefixtures("_patch_load_config")
     def test_load_secret(self):
         with patch(
-            "vault2env.KVReader.get_values",
+            "secrets_env.KVReader.get_values",
             return_value={
                 SecretResource("key1", "example"): "foo",
                 SecretResource("key2", "example"): "bar",
@@ -70,7 +70,7 @@ class TestVault2EnvPlugin:
     @pytest.mark.usefixtures("_patch_load_config")
     def test_load_secret_partial(self):
         with patch(
-            "vault2env.KVReader.get_values",
+            "secrets_env.KVReader.get_values",
             return_value={
                 # no key2
                 SecretResource("key1", "example"): "foo",
@@ -79,7 +79,7 @@ class TestVault2EnvPlugin:
             self.plugin.load_secret(self.event, "test", self.dispatcher)
 
     def test_load_secret_no_config(self):
-        with patch("vault2env.load_config", return_value=None):
+        with patch("secrets_env.load_config", return_value=None):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
 
     def test_load_secret_not_related_command(self, patch_setup_output: Mock):
@@ -97,7 +97,7 @@ class TestVault2EnvPlugin:
         output = cleo.io.outputs.stream_output.StreamOutput(buffer, decorated=False)
 
         self.plugin.setup_output(output)
-        logging.getLogger("vault2env.test").error("test message")
+        logging.getLogger("secrets_env.test").error("test message")
 
         buffer.seek(0)
         assert buffer.read() == "test message\n"
@@ -107,7 +107,7 @@ class TestHandler:
     def setup_method(self):
         self.buffer = io.StringIO()
         self.output = cleo.io.outputs.stream_output.StreamOutput(self.buffer)
-        self.handler = vault_poetry.Handler(self.output)
+        self.handler = plugin.Handler(self.output)
         self.handler.setLevel(logging.NOTSET)
 
     @pytest.mark.parametrize(
@@ -160,7 +160,7 @@ class TestHandler:
 
 class TestFormatter:
     def setup_method(self):
-        self.formatter = vault_poetry.Formatter()
+        self.formatter = plugin.Formatter()
 
     def format(self, level: int) -> str:
         record = logging.makeLogRecord(
@@ -183,7 +183,7 @@ class TestFormatter:
 
     def test_debug(self):
         assert self.format(logging.DEBUG) == (
-            "[vault2env] <debug>test <info>emphasized</info> msg with <comment>"
+            "[secrets.env] <debug>test <info>emphasized</info> msg with <comment>"
             "data</comment></debug>"
         )
 
@@ -212,9 +212,9 @@ class TestTextColoring:
         output.formatter.set_style("debug", Style("white"))
         output.formatter.set_style("warning", Style("yellow"))
 
-        handler = vault_poetry.Handler(output)
+        handler = plugin.Handler(output)
         handler.setLevel(logging.NOTSET)
-        handler.setFormatter(vault_poetry.Formatter())
+        handler.setFormatter(plugin.Formatter())
 
         return handler
 
@@ -234,7 +234,7 @@ class TestTextColoring:
         [
             (
                 logging.DEBUG,
-                f"[vault2env] {WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"[secrets.env] {WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}"
                 f"{WHITE} msg with {DEFAULT}{GREEN}data{DEFAULT}{WHITE}.{DEFAULT}\n",
             ),
             (

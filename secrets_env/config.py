@@ -8,7 +8,7 @@ import typing
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
-import vault2env.auth
+import secrets_env.auth
 
 
 def _import_any(*module):
@@ -44,23 +44,23 @@ class ConfigFileSpec(typing.NamedTuple):
 
 
 ORDERED_CONFIG_FILE_SPECS = (
-    ConfigFileSpec(".vault2env.toml", "toml", __has_lib_toml),
-    ConfigFileSpec(".vault2env.yaml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".vault2env.yml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".vault2env.json", "json", True),
+    ConfigFileSpec(".secrets-env.toml", "toml", __has_lib_toml),
+    ConfigFileSpec(".secrets-env.yaml", "yaml", __has_lib_yaml),
+    ConfigFileSpec(".secrets-env.yml", "yaml", __has_lib_yaml),
+    ConfigFileSpec(".secrets-env.json", "json", True),
     ConfigFileSpec("pyproject.toml", "pyproject.toml", __has_lib_toml),
 )
 
 logger = logging.getLogger(__name__)
 
 
-def find_config() -> Optional[ConfigFileSpec]:
+def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
     """Find configuration file.
 
     It looks up for the file(s) that matches the name defined in ``CONFIG_FILE_SPECS``
     in current directory and parent directories.
     """
-    wd = Path.cwd().absolute()
+    wd = directory or Path.cwd().absolute()
     cnt_hit_root = 0  # counter for only search in root directory once
     while cnt_hit_root < 2:
         # look up for candidates
@@ -107,7 +107,7 @@ class SecretResource(typing.NamedTuple):
 
 class ConfigSpec(typing.NamedTuple):
     url: str
-    auth: vault2env.auth.Auth
+    auth: secrets_env.auth.Auth
     secret_specs: Dict[str, SecretResource]
 
 
@@ -143,7 +143,7 @@ def load_config() -> Optional[ConfigSpec]:
         return None
 
     if file_metadata.spec == "pyproject.toml":
-        data = data.get("tool", {}).get("vault2env", {})
+        data = data.get("tool", {}).get("secrets-env", {})
 
     if not data:
         logger.debug("Configure section not found. Data not loaded.")
@@ -224,27 +224,27 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
         ok = False
         return default_value
 
-    # 'core' section - address and auth
-    data_core = data.get("core", {})
-    data_core = assert_type("core", "dict", data_core)
+    # 'source' section - address and auth
+    data_source = data.get("source", {})
+    data_source = assert_type("source", "dict", data_source)
 
     # url
-    url = data_core.get("url", None)
+    url = data_source.get("url", None)
     if not url:
         url = os.getenv("VAULT_ADDR")
 
     if url:
-        url = assert_type("core.url", "str", url)
+        url = assert_type("source.url", "str", url)
     else:
         logger.error(
             "Missing required config: <data>url</data>. Neither the value "
-            "'<mark>core.url</mark>' in the config file nor the environment "
+            "'<mark>source.url</mark>' in the config file nor the environment "
             "variable '<mark>VAULT_ADDR</mark>' is found."
         )
         ok = False
 
     # auth method
-    data_auth = data_core.get("auth", {})
+    data_auth = data_source.get("auth", {})
     auth = build_auth(data_auth)
     if not auth:
         ok = False
@@ -276,7 +276,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
 
 
-def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
+def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
     """Factory for building Auth object."""
     # get method from 'auth'
     if isinstance(data, str):
@@ -303,16 +303,16 @@ def build_auth(data: dict) -> Optional[vault2env.auth.Auth]:
     if not method:
         logger.error(
             "Missing required config: <data>auth method</data>. Neither the value "
-            "'<mark>core.auth.method</mark>' in the config file nor the environment "
+            "'<mark>source.auth.method</mark>' in the config file nor the environment "
             "variable '<mark>VAULT_METHOD</mark>' is found."
         )
         return None
 
     # build auth object based on auth
     if method == "token":
-        return vault2env.auth.TokenAuth.load(data)
+        return secrets_env.auth.TokenAuth.load(data)
     elif method == "okta":
-        return vault2env.auth.OktaAuth.load(data)
+        return secrets_env.auth.OktaAuth.load(data)
 
     logger.error("Unknown auth method: <data>%s</data>", method)
     return None

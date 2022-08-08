@@ -9,7 +9,7 @@ from poetry.console.commands.run import RunCommand
 from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
-import vault2env
+import secrets_env
 
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
@@ -20,7 +20,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class Vault2EnvPlugin(ApplicationPlugin):
+class SecretsEnvPlugin(ApplicationPlugin):
     def activate(self, application: "Application") -> None:
         application.event_dispatcher.add_listener(COMMAND, self.load_secret)
 
@@ -34,14 +34,14 @@ class Vault2EnvPlugin(ApplicationPlugin):
             return
 
         self.setup_output(event.io.output)
-        logger.debug("Start vault2env poetry plugin.")
+        logger.debug("Start secrets.env poetry plugin.")
 
-        config = vault2env.load_config()
+        config = secrets_env.load_config()
         if not config:
             # skip logging. already show error in `load_config`
             return
 
-        reader = vault2env.KVReader(config.url, config.auth)
+        reader = secrets_env.KVReader(config.url, config.auth)
         secrets = reader.get_values(config.secret_specs.values())
 
         cnt_loaded = 0
@@ -59,7 +59,7 @@ class Vault2EnvPlugin(ApplicationPlugin):
             logger.info("<info>%d</info> secrets loaded", len(secrets))
         else:
             logger.warning(
-                "<error>%d</error> / <comment>%d</comment> secrets loaded",
+                "<error>%d</error> / %d secrets loaded",
                 cnt_loaded,
                 len(config.secret_specs),
             )
@@ -67,11 +67,11 @@ class Vault2EnvPlugin(ApplicationPlugin):
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
 
-        Vault2env internally uses logging module for showing messages to users.
+        Secrets.env internally uses logging module for showing messages to users.
         But cleo hides the logs, unless `-vv` (VERY_VERBOSE) is set, this made
         it harder to show warnings or errors.
 
-        So it forwards all internal logs from vault2env to cleo. (Re)assign the
+        So it forwards all internal logs from secrets.env to cleo. (Re)assign the
         verbosity level in the Handler and colored the output using the custom
         Formatter, powered with cleo's formatter."""
         # set output format
@@ -83,7 +83,7 @@ class Vault2EnvPlugin(ApplicationPlugin):
         handler = Handler(output)
         handler.setFormatter(Formatter())
 
-        root_logger = logging.getLogger("vault2env")
+        root_logger = logging.getLogger("secrets_env")
         root_logger.setLevel(logging.NOTSET)
         root_logger.propagate = False
         root_logger.addHandler(handler)
@@ -132,6 +132,6 @@ class Formatter(logging.Formatter):
         elif record.levelno == logging.WARNING:
             msg = f"<warning>{msg}</warning>"
         elif record.levelno == logging.DEBUG:
-            msg = f"[vault2env] <debug>{msg}</debug>"
+            msg = f"[secrets.env] <debug>{msg}</debug>"
 
         return msg

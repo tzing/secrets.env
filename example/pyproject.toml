@@ -1,7 +1,7 @@
-[tool.vault2env.core]
+[tool.secrets-env.source]
 url = "https://example.com/"
 auth = {method = "token"}
 
-[tool.vault2env.secrets]
+[tool.secrets-env.secrets]
 VAR1 = {path = "kv/default", key = "example"}
 VAR2 = "kv/default#example"
