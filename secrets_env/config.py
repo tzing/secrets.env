@@ -307,9 +307,10 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
         return None
 
     # build auth object based on auth
-    if method == "token":
+    method_key = method.upper()
+    if method_key == "TOKEN":
         return secrets_env.auth.TokenAuth.load(data)
-    elif method == "okta":
+    elif method_key == "OKTA":
         return secrets_env.auth.OktaAuth.load(data)
 
     logger.error("Unknown auth method: <data>%s</data>", method)
@@ -351,7 +352,6 @@ def extract_resource_spec(
         )
 
     else:
-
         logger.warning(
             "Target secret '<data>%s</data>' is invalid. Not a valid resource spec. "
             "Skipping this variable.",
