@@ -114,8 +114,8 @@ class ConfigSpec(typing.NamedTuple):
 def load_config() -> Optional[ConfigSpec]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
-      1. config file
-      2. environment variable
+      1. environment variable
+      2. config file
       3. system keyring service
     When a value has more than one occurrence, the first occurrence would be
     selected based on the order above.
@@ -188,8 +188,8 @@ def load_json_file(path: Path) -> Optional[dict]:
 
 
 def extract(data: dict) -> Tuple[ConfigSpec, bool]:
-    """Extract the config data, environment variable or system and structure
-    them into the ConfigSpec object.
+    """Extract the config data from environment variable, raw data in config file
+    or system. And structure them into the ConfigSpec object.
 
     This function tries to parse every thing instead of raise the error
     immediately. This behavior is preserved to expose every potential errors to
