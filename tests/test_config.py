@@ -149,7 +149,7 @@ class TestLoadConfig:
         ):
             assert config.load_config() is None
 
-    def test_load_file(self):
+    def test_load_file_error(self):
         with patch("builtins.open", mock_open(read_data=b"[]")):
             assert config.load_toml_file("mocked") is None
 
@@ -197,7 +197,7 @@ class TestExtract:
         },
     )
     def test_success_from_env(self):
-        assert config.extract(
+        out, ok = config.extract(
             {
                 "secrets": {
                     "VAR1": "example#val1",
@@ -207,17 +207,34 @@ class TestExtract:
                     "VAR5": 1234,  # type error
                 }
             }
-        ) == (
-            ConfigSpec(
-                "https://example.com/",
-                secrets_env.auth.TokenAuth("ex@mp1e"),
-                {
-                    "VAR1": SecretResource("example", "val1"),
-                    "VAR2": SecretResource("example", "val2"),
-                },
-            ),
-            True,
         )
+
+        assert ok is True
+        assert out.url == "https://example.com/"
+        assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
+        assert out.secret_specs == {
+            "VAR1": SecretResource("example", "val1"),
+            "VAR2": SecretResource("example", "val2"),
+        }
+
+    @patch.dict("os.environ", {"VAULT_ADDR": "https://new.example.com/"})
+    def test_success_use_env(self):
+        # this test case is setup to make sure env var can overwrite the config
+        mock_auth = Mock(spec=secrets_env.auth.Auth)
+        with patch("secrets_env.config.build_auth", return_value=mock_auth):
+            out, ok = config.extract(
+                {
+                    "source": {
+                        "url": "https://example.com/",
+                        "auth": {},
+                    },
+                    "secrets": {},
+                }
+            )
+
+        assert ok is True
+        assert isinstance(out, ConfigSpec)
+        assert out.url == "https://new.example.com/"
 
     def test_error(self):
         # missing source data
@@ -267,6 +284,13 @@ class TestBuildAuth:
             assert config.build_auth({"method": "token"}) == secrets_env.auth.TokenAuth(
                 "ex@mp1e"
             )
+
+        # token, make sure env var overwrites the config file
+        with patch.dict(
+            "os.environ", {"VAULT_METHOD": "TOKEN", "VAULT_TOKEN": "ex@mp1e"}
+        ):
+            out = config.build_auth({"method": "okta", "username": "test@example.com"})
+            assert out == secrets_env.auth.TokenAuth("ex@mp1e")
 
         # auth
         with patch.dict("os.environ", {"VAULT_PASSWORD": "P@ssw0rd"}):

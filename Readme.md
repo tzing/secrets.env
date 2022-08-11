@@ -1,10 +1,10 @@
-# secrets.env 🔓
+# Secrets.env 🔓
 
 [![PyPI version](https://img.shields.io/pypi/v/secrets.env)](https://pypi.org/project/secrets.env/)
 ![Python version](https://img.shields.io/pypi/pyversions/secrets.env)
 [![test result](https://img.shields.io/github/workflow/status/tzing/secrets.env/Tests)](https://github.com/tzing/secrets.env/actions/workflows/test.yml)
 
-Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader. Without not landing data on disk.
+Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without not landing data on disk.
 
 Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be dangerous- some of us put the sensitive data into a shell script and source it, which brings the risk of credential leaking.
 
@@ -22,16 +22,16 @@ Get it from this repository:
 
 ```bash
 # add as poetry global plugin
-poetry self add secrets.env -E toml
+poetry self add secrets.env -E yaml
 
-# add to project venv
+# add to project's virtual environment
 poetry add --group=dev secrets.env -E toml
 ```
 
 Folowing extras avaliable:
 
 * `yaml`: supporting YAML config
-* `toml`: supporting TOML config, includes using `pyproject.toml`
+* `toml`: supporting TOML config, includes `pyproject.toml`
 
 If none of them are selected, this app only supports the config in JSON format.
 
@@ -76,8 +76,8 @@ An example config in YAML format:
 
 ```yaml
 # `source` configured the connection info to vault.
-# This is an *optional* section- values under section are required, but you can
-# provide them using environment variable.
+# All values in this section could be overwritten by environment variable, so
+# it is possible to run secrets.env app without this section.
 source:
   # Address to vault
   # Could be replaced using `VAULT_ADDR` environment variable
@@ -105,16 +105,16 @@ secrets:
   VAR2: "kv/default#example.to.value"
 ```
 
-> For most supported file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./example/pyproject.toml) format- each section must placed under `tool.secrets-env` section, for aligning the community practice.
+> For most supported file format, they shared the same schema to this example. The only different is [`pyproject.toml`](./example/pyproject.toml) format- each section must placed under `tool.secrets-env` section.
 > Visit [example folder](./example/) to read the equivalent expression in each format.
 
 ### Authentication
 
 Vault enforce authentication during requests, so we must provide the identity in order to get the secrets.
 
-#### Method
+*Method*
 
-Secrts.env adapts several auth methods. You must specify the auth method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
+Secrets.env adapts several authentication methods. You must specify the method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
 
 ```yaml
 ---
@@ -132,11 +132,11 @@ source:
   auth: token
 ```
 
-#### Arguments
+*Arguments*
 
-Arguments could be provided by various source: config file, environment variable and system keyring service.
+Auth data could be provided by various source: config file, environment variable, system keyring service... etc.
 
-We're using [keyring] package, which reads and saves the values from OSX [Keychain], KDE [KWallet], etc. For reading/saving value into keyring, use its [command line utility] with the system name `secrets.env`:
+We're using [keyring] package, which reads and saves the values from system keyring, e.g. OSX [Keychain] or KDE [KWallet]. For reading/saving value into keyring, use its [command line utility] with the system name `secrets.env`:
 
 [keyring]: https://keyring.readthedocs.io/en/latest/
 [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
@@ -150,7 +150,7 @@ keyring set secrets.env okta/test@example.com
 
 #### Supported methods
 
-Here's required argument(s), their accepted source, and corresponding keys:
+Here's the argument(s), their accepted source, and corresponding keys.
 
 ##### `token`
 

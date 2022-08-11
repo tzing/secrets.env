@@ -114,8 +114,8 @@ class ConfigSpec(typing.NamedTuple):
 def load_config() -> Optional[ConfigSpec]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
-      1. config file
-      2. environment variable
+      1. environment variable
+      2. config file
       3. system keyring service
     When a value has more than one occurrence, the first occurrence would be
     selected based on the order above.
@@ -188,8 +188,8 @@ def load_json_file(path: Path) -> Optional[dict]:
 
 
 def extract(data: dict) -> Tuple[ConfigSpec, bool]:
-    """Extract the config data, environment variable or system and structure
-    them into the ConfigSpec object.
+    """Extract the config data from environment variable, raw data in config file
+    or system. And structure them into the ConfigSpec object.
 
     This function tries to parse every thing instead of raise the error
     immediately. This behavior is preserved to expose every potential errors to
@@ -229,9 +229,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     data_source = assert_type("source", "dict", data_source)
 
     # url
-    url = data_source.get("url", None)
+    url = os.getenv("VAULT_ADDR")
     if not url:
-        url = os.getenv("VAULT_ADDR")
+        url = data_source.get("url", None)
 
     if url:
         url = assert_type("source.url", "str", url)
@@ -278,28 +278,26 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
 
 def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
     """Factory for building Auth object."""
-    # get method from 'auth'
+    # allow `auth: token` syntax in config
     if isinstance(data, str):
-        # allowing `auth: token` style in config
-        method = data
-        data = {}
-    elif not isinstance(data, dict):
-        # type error
+        data = {
+            "method": data,
+        }
+
+    # check type
+    if not isinstance(data, dict):
         logger.error(
             "Config malformed: <data>auth</data>. Expected <mark>dict</mark> "
             "type, got <mark>%s</mark> type",
             type(data).__name__,
         )
         return None
-    else:
-        # must be dict here
+
+    # get auth method
+    method = os.getenv("VAULT_METHOD")
+    if not method:
         method = data.get("method")
 
-    # 'method' not exists in config file, use env var
-    if not method:
-        method = os.getenv("VAULT_METHOD")
-
-    # 'method' still not found - return with error
     if not method:
         logger.error(
             "Missing required config: <data>auth method</data>. Neither the value "
@@ -309,9 +307,10 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
         return None
 
     # build auth object based on auth
-    if method == "token":
+    method_key = method.upper()
+    if method_key == "TOKEN":
         return secrets_env.auth.TokenAuth.load(data)
-    elif method == "okta":
+    elif method_key == "OKTA":
         return secrets_env.auth.OktaAuth.load(data)
 
     logger.error("Unknown auth method: <data>%s</data>", method)
@@ -353,7 +352,6 @@ def extract_resource_spec(
         )
 
     else:
-
         logger.warning(
             "Target secret '<data>%s</data>' is invalid. Not a valid resource spec. "
             "Skipping this variable.",
