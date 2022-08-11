@@ -149,7 +149,7 @@ class TestLoadConfig:
         ):
             assert config.load_config() is None
 
-    def test_load_file(self):
+    def test_load_file_error(self):
         with patch("builtins.open", mock_open(read_data=b"[]")):
             assert config.load_toml_file("mocked") is None
 
@@ -197,7 +197,7 @@ class TestExtract:
         },
     )
     def test_success_from_env(self):
-        assert config.extract(
+        out, ok = config.extract(
             {
                 "secrets": {
                     "VAR1": "example#val1",
@@ -207,17 +207,15 @@ class TestExtract:
                     "VAR5": 1234,  # type error
                 }
             }
-        ) == (
-            ConfigSpec(
-                "https://example.com/",
-                secrets_env.auth.TokenAuth("ex@mp1e"),
-                {
-                    "VAR1": SecretResource("example", "val1"),
-                    "VAR2": SecretResource("example", "val2"),
-                },
-            ),
-            True,
         )
+
+        assert ok is True
+        assert out.url == "https://example.com/"
+        assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
+        assert out.secret_specs == {
+            "VAR1": SecretResource("example", "val1"),
+            "VAR2": SecretResource("example", "val2"),
+        }
 
     def test_error(self):
         # missing source data
