@@ -229,9 +229,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     data_source = assert_type("source", "dict", data_source)
 
     # url
-    url = data_source.get("url", None)
+    url = os.getenv("VAULT_ADDR")
     if not url:
-        url = os.getenv("VAULT_ADDR")
+        url = data_source.get("url", None)
 
     if url:
         url = assert_type("source.url", "str", url)
@@ -278,28 +278,26 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
 
 def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
     """Factory for building Auth object."""
-    # get method from 'auth'
+    # allow `auth: token` syntax in config
     if isinstance(data, str):
-        # allowing `auth: token` style in config
-        method = data
-        data = {}
-    elif not isinstance(data, dict):
-        # type error
+        data = {
+            "method": data,
+        }
+
+    # check type
+    if not isinstance(data, dict):
         logger.error(
             "Config malformed: <data>auth</data>. Expected <mark>dict</mark> "
             "type, got <mark>%s</mark> type",
             type(data).__name__,
         )
         return None
-    else:
-        # must be dict here
+
+    # get auth method
+    method = os.getenv("VAULT_METHOD")
+    if not method:
         method = data.get("method")
 
-    # 'method' not exists in config file, use env var
-    if not method:
-        method = os.getenv("VAULT_METHOD")
-
-    # 'method' still not found - return with error
     if not method:
         logger.error(
             "Missing required config: <data>auth method</data>. Neither the value "
