@@ -1,6 +1,8 @@
 # secrets.env 🔓
 
-![test result](https://github.com/tzing/secrets.env/actions/workflows/test.yml/badge.svg)
+[![PyPI version](https://img.shields.io/pypi/v/secrets.env)](https://pypi.org/project/secrets.env/)
+![Python version](https://img.shields.io/pypi/pyversions/secrets.env)
+[![test result](https://img.shields.io/github/workflow/status/tzing/secrets.env/Tests)](https://github.com/tzing/secrets.env/actions/workflows/test.yml)
 
 Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader. Without not landing data on disk.
 
@@ -20,10 +22,10 @@ Get it from this repository:
 
 ```bash
 # add as poetry global plugin
-poetry self add 'git+https://github.com/tzing/secrets.env.git@trunk' -E toml
+poetry self add secrets.env -E toml
 
 # add to project venv
-poetry add --dev 'git+https://github.com/tzing/secrets.env.git@trunk' -E toml
+poetry add --group=dev secrets.env -E toml
 ```
 
 Folowing extras avaliable:
@@ -39,7 +41,7 @@ You can use this package as a [poetry plugin](https://python-poetry.org/docs/mas
 
 ```bash
 # 1. install plugin
-poetry self add 'git+https://github.com/tzing/secrets.env.git@trunk' -E yaml
+poetry self add secrets.env -E yaml
 
 # 2. setup config
 #    read configuration section below for details
