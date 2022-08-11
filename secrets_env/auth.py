@@ -110,9 +110,9 @@ class OktaAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        username = data.get("username")
+        username = os.getenv("VAULT_USERNAME")
         if not username:
-            username = os.getenv("VAULT_USERNAME")
+            username = data.get("username")
         if not username:
             username = keyring.get_password(KEYRING_SYSTEM_NAME, "okta/:username")
         if not isinstance(username, str):
