@@ -24,7 +24,7 @@ Get it from this repository:
 # add as poetry global plugin
 poetry self add secrets.env -E yaml
 
-# add to project's virtual env
+# add to project's virtual environment
 poetry add --group=dev secrets.env -E toml
 ```
 
@@ -112,7 +112,7 @@ secrets:
 
 Vault enforce authentication during requests, so we must provide the identity in order to get the secrets.
 
-**Method**
+*Method*
 
 Secrets.env adapts several authentication methods. You must specify the method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
 
@@ -132,7 +132,7 @@ source:
   auth: token
 ```
 
-**Arguments**
+*Arguments*
 
 Auth data could be provided by various source: config file, environment variable, system keyring service... etc.
 
@@ -164,11 +164,3 @@ Here's the argument(s), their accepted source, and corresponding keys.
 |----------|:------------|:-----------------|:----------------------|
 | username | `username`  | `VAULT_USERNAME` | `okta/:username`      |
 | password | ⛔️          | `VAULT_PASSWORD` | `okta/YOUR_USER_NAME` |
-
-> For example, you can setup Okta auth by setting `method: okta` in config file or setting env var `VAULT_METHOD=okta`.
-> The user name can be set by any of following method:
-> 1. Environment variable `VAULT_USERNAME=user@example.com`
-> 2. Explicitly config `username: user@example.com` under `auth:` section
-> 3. Store username in keyring with system name `secrets.env` and account name `okta/:username`.
->
-> Similar rules for password, but you can't set it via config file.
