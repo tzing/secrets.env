@@ -79,14 +79,59 @@ class TokenAuth(Auth):
 
 
 @dataclass(frozen=True)
-class OktaAuth(Auth):
-    """Token-based authentication."""
+class UserPasswordAuth(Auth):
+    """Username and password based authentication."""
 
     username: str
     """User name."""
 
     password: str = field(repr=False)
     """Password."""
+
+    def __init__(self, username: str, password: str) -> None:
+        if not isinstance(username, str):
+            raise TypeError("Expect str for username, got {}", type(username).__name__)
+        if not isinstance(password, str):
+            raise TypeError("Expect str for password, got {}", type(password).__name__)
+        object.__setattr__(self, "username", username)
+        object.__setattr__(self, "password", password)
+
+    @classmethod
+    def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
+        method = cls.method()
+
+        username = os.getenv("VAULT_USERNAME")
+        if not username:
+            username = data.get("username")
+        if not username:
+            username = get_password(f"{method}/:username")
+        if not isinstance(username, str):
+            logger.error(
+                "Missing auth information: username. Neither key 'username' in "
+                "config nor environment variable `VAULT_USERNAME` is found."
+            )
+            return None
+
+        password = os.getenv("VAULT_PASSWORD")
+        if not password:
+            password = get_password(f"{method}/{username}")
+        if not isinstance(password, str):
+            logger.error(
+                "Missing auth information: password. "
+                "Environment variable `VAULT_PASSWORD` not found."
+            )
+            return None
+
+        return cls(username, password)
+
+
+@dataclass(frozen=True)
+class OktaAuth(UserPasswordAuth):
+    """Okta authentication."""
+
+    @classmethod
+    def method(cls):
+        return "okta"
 
     def __init__(self, username: str, password: str) -> None:
         """
@@ -97,16 +142,7 @@ class OktaAuth(Auth):
         password : str
             Password to login to Okta.
         """
-        if not isinstance(username, str):
-            raise TypeError("Expect str for username, got {}", type(username).__name__)
-        if not isinstance(password, str):
-            raise TypeError("Expect str for password, got {}", type(password).__name__)
-        object.__setattr__(self, "username", username)
-        object.__setattr__(self, "password", password)
-
-    @classmethod
-    def method(cls):
-        return "okta"
+        super().__init__(username, password)
 
     def apply(self, client: "hvac.Client"):
         logger.info(
@@ -120,29 +156,3 @@ class OktaAuth(Auth):
             username=self.username,
             password=self.password,
         )
-
-    @classmethod
-    def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        username = os.getenv("VAULT_USERNAME")
-        if not username:
-            username = data.get("username")
-        if not username:
-            username = get_password("okta/:username")
-        if not isinstance(username, str):
-            logger.error(
-                "Missing auth information: username. Neither key 'username' in "
-                "config nor environment variable `VAULT_USERNAME` is found."
-            )
-            return None
-
-        password = os.getenv("VAULT_PASSWORD")
-        if not password:
-            password = get_password(f"okta/{username}")
-        if not isinstance(password, str):
-            logger.error(
-                "Missing auth information: password. "
-                "Environment variable `VAULT_PASSWORD` not found."
-            )
-            return None
-
-        return cls(username, password)
