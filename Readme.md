@@ -18,13 +18,13 @@ This tool is built to *plug in* secrets into development without landing data on
 > Standard CLI usage is not implemented yet.
 > Currently this app could only be used as a poetry plugin. Plugin is a poetry **1.2.0** feature, which is still in beta testing.
 
-Get it from this repository:
+Get it from [PyPI](https://pypi.org/project/secrets.env/):
 
 ```bash
 # add as poetry global plugin
 poetry self add secrets.env -E yaml
 
-# add to project's virtual environment
+# add to local project
 poetry add --group=dev secrets.env -E toml
 ```
 
@@ -41,7 +41,7 @@ You can use this package as a [poetry plugin](https://python-poetry.org/docs/mas
 
 ```bash
 # 1. install plugin
-poetry self add secrets.env -E yaml
+poetry add --group=dev secrets.env -E yaml
 
 # 2. setup config
 #    read configuration section below for details
@@ -134,25 +134,30 @@ source:
 
 *Arguments*
 
-Auth data could be provided by various source: config file, environment variable, system keyring service... etc.
+Auth data could be provided by various source, including:
 
-We're using [keyring] package, which reads and saves the values from system keyring, e.g. OSX [Keychain] or KDE [KWallet]. For reading/saving value into keyring, use its [command line utility] with the system name `secrets.env`:
+* **Config file:** Place the config value under `auth` section, use the key provided in the table.
+* **Environment variable:** In most cases, environment variable could be used to overwrite the values from config file.
+* **Keyring:** We're using [keyring] package to read the values from system keyring (e.g. OSX [Keychain]). For saving a value into keyring, use its [command line utility] with the system name `secrets.env`:
 
-[keyring]: https://keyring.readthedocs.io/en/latest/
-[Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
-[KWallet]: https://en.wikipedia.org/wiki/KWallet
-[command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
+  ```bash
+  keyring get secrets.env token/:token
+  keyring set secrets.env okta/test@example.com
+  ```
 
-```bash
-keyring get secrets.env token/:token
-keyring set secrets.env okta/test@example.com
-```
+  [keyring]: https://keyring.readthedocs.io/en/latest/
+  [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
+  [command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
+
+* **Prompt:** If no data found in all other sources, it prompts user for input. Prompt is only enabled when optional dependency [click](https://click.palletsprojects.com/en/8.1.x/) is installed, and you can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
+
+<!-- for credentials can be displayed. -->
 
 #### Supported methods
 
 Here's the argument(s), their accepted source, and corresponding keys.
 
-##### `token`
+##### method: `token`
 
 | key   | config file | env var        | keyring        | helper |
 |-------|:------------|:---------------|:---------------|--------|
@@ -162,9 +167,9 @@ Here's the argument(s), their accepted source, and corresponding keys.
 
 To use the helper, you can use command [`vault login`](https://www.vaultproject.io/docs/commands/login) to create one.
 
-##### `okta`
+##### method: `okta`
 
-| key      | config file | env var          | keyring               |
-|----------|:------------|:-----------------|:----------------------|
-| username | `username`  | `VAULT_USERNAME` | `okta/:username`      |
-| password | ⛔️          | `VAULT_PASSWORD` | `okta/YOUR_USER_NAME` |
+| key      | config file | environment variable   | keyring               | prompt |
+|----------|:------------|:-----------------------|:----------------------|--------|
+| username | `username`  | `SECRETS_ENV_USERNAME` | `okta/:username`      | ✅     |
+| password | ⛔️          | `SECRETS_ENV_PASSWORD` | `okta/YOUR_USER_NAME` | ✅     |

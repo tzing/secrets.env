@@ -110,7 +110,10 @@ class TestUserPasswordAuth:
         # overwrite username
         with patch.dict(
             "os.environ",
-            {"VAULT_USERNAME": "user-2@example.com", "VAULT_PASSWORD": "P@ssw0rd"},
+            {
+                "SECRETS_ENV_USERNAME": "user-2@example.com",
+                "SECRETS_ENV_PASSWORD": "P@ssw0rd",
+            },
         ):
             obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
         assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
@@ -118,7 +121,7 @@ class TestUserPasswordAuth:
         # password only
         with patch.dict(
             "os.environ",
-            {"VAULT_PASSWORD": "P@ssw0rd"},
+            {"SECRETS_ENV_PASSWORD": "P@ssw0rd"},
         ):
             obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
         assert obj == auth.UserPasswordAuth("user-1@example.com", "P@ssw0rd")
@@ -145,7 +148,7 @@ class TestUserPasswordAuth:
 
     @pytest.mark.usefixtures("_unfreeze")
     def test_load_mixed(self):
-        with patch.dict("os.environ", {"VAULT_PASSWORD": "P@ssw0rd"}), patch(
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}), patch(
             "secrets_env.auth.get_password", return_value="user-2@example.com"
         ):
             obj = auth.UserPasswordAuth.load({})

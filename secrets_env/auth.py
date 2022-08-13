@@ -168,7 +168,7 @@ class UserPasswordAuth(Auth):
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         method = cls.method()
 
-        username = os.getenv("VAULT_USERNAME")
+        username = os.getenv("SECRETS_ENV_USERNAME")
         if not username:
             username = data.get("username")
         if not username:
@@ -182,7 +182,7 @@ class UserPasswordAuth(Auth):
             )
             return None
 
-        password = os.getenv("VAULT_PASSWORD")
+        password = os.getenv("SECRETS_ENV_PASSWORD")
         if not password:
             password = get_password(f"{method}/{username}")
         if not password:
