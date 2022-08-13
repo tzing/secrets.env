@@ -70,11 +70,11 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
                 continue
 
             if not spec.enable and not has_warned_lang_support_issue(spec.lang):
-                logger.info(
-                    "Found file <data>%s</data> but <mark>%s</mark> is not "
-                    "supported (dependency not satisfied)",
-                    candidate.name,
+                logger.warning(
+                    "Dependency for <mark>%s</mark> not installed. "
+                    "Skip config file <data>%s</data>.",
                     spec.lang,
+                    candidate.name,
                 )
                 continue
 
