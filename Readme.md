@@ -154,9 +154,13 @@ Here's the argument(s), their accepted source, and corresponding keys.
 
 ##### `token`
 
-| key   | config file | env var        | keyring        |
-|-------|:------------|:---------------|:---------------|
-| token | ⛔️          | `VAULT_TOKEN`  | `token/:token` |
+| key   | config file | env var        | keyring        | helper |
+|-------|:------------|:---------------|:---------------|--------|
+| token | ⛔️          | `VAULT_TOKEN`  | `token/:token` | ✅     |
+
+*[Token helper](https://www.vaultproject.io/docs/commands/token-helper)*: Vault CLI stores the generated token in the `~/.vault-token` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
+
+To use the helper, you can use command [`vault login`](https://www.vaultproject.io/docs/commands/login) to create one.
 
 ##### `okta`
 

@@ -1,6 +1,7 @@
 import abc
 import logging
 import os
+import pathlib
 import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
@@ -67,6 +68,12 @@ class TokenAuth(Auth):
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         token = os.getenv("VAULT_TOKEN")
+        if not token:
+            # vault places the token on the disk
+            # https://www.vaultproject.io/docs/commands/token-helper
+            file_ = pathlib.Path.home() / ".vault-token"
+            if file_.is_fifo():
+                token = file_.read_text().strip()
         if not token:
             token = get_password("token/:token")
         if not isinstance(token, str):
