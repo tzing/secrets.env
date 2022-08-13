@@ -51,6 +51,9 @@ class TestTokenAuth:
         with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
+        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "foo"}):
+            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
+
         with patch("secrets_env.auth.get_password", return_value="foo"):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 

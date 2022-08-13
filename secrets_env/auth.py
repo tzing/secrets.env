@@ -120,7 +120,9 @@ class TokenAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        token = os.getenv("VAULT_TOKEN")
+        token = os.getenv("SECRETS_ENV_TOKEN")
+        if not token:
+            token = os.getenv("VAULT_TOKEN")
         if not token:
             token = cls._load_from_home()
         if not token:
@@ -128,7 +130,7 @@ class TokenAuth(Auth):
         if not isinstance(token, str):
             logger.error(
                 "Missing auth information: token. "
-                "Environment variable `VAULT_TOKEN` not found."
+                "Environment variable `SECRETS_ENV_TOKEN` not found."
             )
             return None
         return cls(token)

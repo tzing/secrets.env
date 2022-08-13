@@ -45,9 +45,9 @@ poetry add --group=dev secrets.env -E yaml
 
 # 2. setup config
 #    read configuration section below for details
-export VAULT_ADDR='https://example.com'
-export VAULT_METHOD='token'
-export VAULT_TOKEN='example-token'
+export SECRETS_ENV_ADDR='https://example.com'
+export SECRETS_ENV_METHOD='token'
+export SECRETS_ENV_TOKEN='example-token'
 
 echo 'secrets:'                       > .secrets-env.yaml
 echo '  FOO=secrets/default#example'  > .secrets-env.yaml
@@ -80,7 +80,7 @@ An example config in YAML format:
 # it is possible to run secrets.env app without this section.
 source:
   # Address to vault
-  # Could be replaced using `VAULT_ADDR` environment variable
+  # Could be replaced using environment variable `SECRETS_ENV_ADDR` or `VAULT_ADDR`
   url: https://example.com/
 
   # Authentication info
@@ -114,7 +114,7 @@ Vault enforce authentication during requests, so we must provide the identity in
 
 *Method*
 
-Secrets.env adapts several authentication methods. You must specify the method by either config file or the environment variable `VAULT_METHOD`. Here's the format in config file:
+Secrets.env adapts several authentication methods. You must specify the method by either config file or the environment variable `SECRETS_ENV_METHOD`. Here's the format in config file:
 
 ```yaml
 ---
@@ -138,7 +138,7 @@ Auth data could be provided by various source, including:
 
 * **Config file:** Place the config value under `auth` section, use the key provided in the table.
 * **Environment variable:** In most cases, environment variable could be used to overwrite the values from config file.
-* **Keyring:** We're using [keyring] package to read the values from system keyring (e.g. OSX [Keychain]). For saving a value into keyring, use its [command line utility] with the system name `secrets.env`:
+* **Keyring:** We're using [keyring] package to read the values from system keyring (e.g. macOS [Keychain]). For saving a value into keyring, use its [command line utility] with the system name `secrets.env`:
 
   ```bash
   keyring get secrets.env token/:token
@@ -151,17 +151,15 @@ Auth data could be provided by various source, including:
 
 * **Prompt:** If no data found in all other sources, it prompts user for input. Prompt is only enabled when optional dependency [click](https://click.palletsprojects.com/en/8.1.x/) is installed, and you can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
 
-<!-- for credentials can be displayed. -->
-
 #### Supported methods
 
 Here's the argument(s), their accepted source, and corresponding keys.
 
 ##### method: `token`
 
-| key   | config file | env var        | keyring        | helper |
-|-------|:------------|:---------------|:---------------|--------|
-| token | ⛔️          | `VAULT_TOKEN`  | `token/:token` | ✅     |
+| key   | config file | environment variable                | keyring        | helper |
+|-------|:------------|:------------------------------------|:---------------|--------|
+| token | ⛔️          | `SECRETS_ENV_TOKEN`, `VAULT_TOKEN`  | `token/:token` | ✅     |
 
 *[Token helper](https://www.vaultproject.io/docs/commands/token-helper)*: Vault CLI stores the generated token in the `~/.vault-token` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
 

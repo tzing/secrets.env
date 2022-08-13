@@ -126,7 +126,7 @@ def load_config() -> Optional[ConfigSpec]:
         logger.debug("Config file not found.")
         return None
 
-    logger.info("Read config from <data>%s</data>", file_metadata.path)
+    logger.info("Read secrets.env config from <data>%s</data>", file_metadata.path)
 
     # read it
     if file_metadata.lang == "TOML":
@@ -139,14 +139,14 @@ def load_config() -> Optional[ConfigSpec]:
         raise RuntimeError(f"Unexpected format: {file_metadata.spec}")
 
     if data and not isinstance(data, dict):
-        logger.warning("Configuration file is malformed. Data not loaded.")
+        logger.warning("Configuration file is malformed. Stop loading secrets.")
         return None
 
     if file_metadata.spec == "pyproject.toml":
         data = data.get("tool", {}).get("secrets-env", {})
 
     if not data:
-        logger.debug("Configure section not found. Data not loaded.")
+        logger.debug("Configure section not found. Stop loading secrets.")
         return None
 
     # parse
@@ -229,7 +229,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     data_source = assert_type("source", "dict", data_source)
 
     # url
-    url = os.getenv("VAULT_ADDR")
+    url = os.getenv("SECRETS_ENV_ADDR")
+    if not url:
+        url = os.getenv("VAULT_ADDR")
     if not url:
         url = data_source.get("url", None)
 
@@ -239,7 +241,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
         logger.error(
             "Missing required config: <data>url</data>. Neither the value "
             "'<mark>source.url</mark>' in the config file nor the environment "
-            "variable '<mark>VAULT_ADDR</mark>' is found."
+            "variable '<mark>SECRETS_ENV_ADDR</mark>' is found."
         )
         ok = False
 
@@ -294,7 +296,7 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
         return None
 
     # get auth method
-    method = os.getenv("VAULT_METHOD")
+    method = os.getenv("SECRETS_ENV_METHOD")
     if not method:
         method = data.get("method")
 
@@ -302,7 +304,7 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
         logger.error(
             "Missing required config: <data>auth method</data>. Neither the value "
             "'<mark>source.auth.method</mark>' in the config file nor the environment "
-            "variable '<mark>VAULT_METHOD</mark>' is found."
+            "variable '<mark>SECRETS_ENV_METHOD</mark>' is found."
         )
         return None
 
