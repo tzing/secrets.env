@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, mock_open
 
 import hvac
 import keyring.errors
@@ -38,7 +38,15 @@ class TestTokenAuth:
         self.obj.apply(client)
         assert client.token == "T0ken"
 
+    @pytest.fixture()
+    def _no_load_from_home(self):
+        with patch.object(auth.TokenAuth, "_load_from_home", return_value=None):
+            yield
+
+    @pytest.mark.usefixtures("_no_load_from_home")
     def test_load(self):
+        # test `load` without `_load_from_home`
+
         # success
         with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
@@ -48,6 +56,30 @@ class TestTokenAuth:
 
         # no data
         assert auth.TokenAuth.load({}) is None
+
+    def test_load_from_home(self):
+        # test `load` with `_load_from_home`
+        with patch.object(auth.TokenAuth, "_load_from_home", return_value="foo"):
+            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
+
+    @pytest.fixture()
+    def toke_helper_file(self):
+        with patch("pathlib.Path.home") as home:
+            # Hardcoded path to match the path:
+            #   pathlib.Path.home() / ".vault-token"
+            yield home.return_value.__truediv__.return_value
+
+    def test__load_from_home_1(self, toke_helper_file: Mock):
+        # test `_load_from_home` itself
+        # case: success
+        toke_helper_file.open = mock_open(read_data="foo\n")
+        assert auth.TokenAuth._load_from_home() == "foo"
+
+    def test__load_from_home_2(self, toke_helper_file: Mock):
+        # test `_load_from_home` itself
+        # case: file not found
+        toke_helper_file.is_file.return_value = False
+        assert auth.TokenAuth._load_from_home() is None
 
 
 class TestUserPasswordAuth:

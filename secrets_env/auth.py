@@ -69,11 +69,7 @@ class TokenAuth(Auth):
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         token = os.getenv("VAULT_TOKEN")
         if not token:
-            # vault places the token on the disk
-            # https://www.vaultproject.io/docs/commands/token-helper
-            file_ = pathlib.Path.home() / ".vault-token"
-            if file_.is_fifo():
-                token = file_.read_text().strip()
+            token = cls._load_from_home()
         if not token:
             token = get_password("token/:token")
         if not isinstance(token, str):
@@ -83,6 +79,18 @@ class TokenAuth(Auth):
             )
             return None
         return cls(token)
+
+    @classmethod
+    def _load_from_home(cls) -> Optional[str]:
+        # vault places the token on the disk
+        # https://www.vaultproject.io/docs/commands/token-helper
+        file_ = pathlib.Path.home() / ".vault-token"
+        if not file_.is_file():
+            return None
+
+        with file_.open("r", encoding="utf-8") as fd:
+            # (don't think the token could be so long)
+            return fd.read(256).strip()
 
 
 @dataclass(frozen=True)
