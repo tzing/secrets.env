@@ -217,7 +217,7 @@ class TestExtract:
             "VAR2": SecretResource("example", "val2"),
         }
 
-    @patch.dict("os.environ", {"TOKEN_ADDR": "https://new.example.com/"})
+    @patch.dict("os.environ", {"VAULT_ADDR": "https://new.example.com/"})
     def test_success_use_env(self):
         # this test case is setup to make sure env var can overwrite the config
         mock_auth = Mock(spec=secrets_env.auth.Auth)
