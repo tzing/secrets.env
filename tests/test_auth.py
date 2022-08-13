@@ -7,19 +7,18 @@ from secrets_env import auth
 
 
 class TestAuth:
+    @pytest.fixture()
+    def get_password(self):
+        with patch("secrets_env.auth.get_password", return_value=None) as kr:
+            yield kr
+
     def setup_method(self):
         self.client = Mock(spec=hvac.Client)
 
-        self.patcher = patch("keyring.get_password", return_value=None)
-        self.keyring = self.patcher.start()
-
-    def teardown_method(self):
-        self.patcher.stop()
-
-    def test_token_auth(self):
+    def test_token_auth(self, get_password: Mock):
         # success
         obj = auth.TokenAuth("Token")
-        assert obj.method == "token"
+        assert obj.method() == "token"
         assert obj.token == "Token"
 
         # fail
@@ -36,13 +35,13 @@ class TestAuth:
         with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
-        self.keyring.return_value = "Token"
+        get_password.return_value = "Token"
         assert auth.TokenAuth.load({}) == auth.TokenAuth("Token")
 
-    def test_okta_auth(self):
+    def test_okta_auth(self, get_password: Mock):
         # success
         obj = auth.OktaAuth("User", "P@ssw0rd")
-        assert obj.method == "okta"
+        assert obj.method() == "okta"
         assert obj.username == "User"
         assert obj.password == "P@ssw0rd"
 
@@ -67,5 +66,5 @@ class TestAuth:
         with patch.dict("os.environ", {"VAULT_PASSWORD": "bar"}):
             assert auth.OktaAuth.load({}) is None
 
-        self.keyring.side_effect = ["test@example.com", "P@ssw0rd"]
+        get_password.side_effect = ["test@example.com", "P@ssw0rd"]
         assert auth.OktaAuth.load({}) == auth.OktaAuth("test@example.com", "P@ssw0rd")

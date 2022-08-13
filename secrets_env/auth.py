@@ -25,8 +25,9 @@ def get_password(name: str) -> Optional[str]:
 class Auth(abc.ABC):
     """Base class for authentication schemes."""
 
-    method: str
-    """Authentication method."""
+    @abc.abstractclassmethod
+    def method(cls) -> str:
+        """Returns authentication name."""
 
     @abc.abstractmethod
     def apply(self, client: "hvac.Client") -> None:
@@ -54,8 +55,11 @@ class TokenAuth(Auth):
         """
         if not isinstance(token, str):
             raise TypeError("Expect str for token, got {}", type(token).__name__)
-        object.__setattr__(self, "method", "token")
         object.__setattr__(self, "token", token)
+
+    @classmethod
+    def method(cls) -> str:
+        return "token"
 
     def apply(self, client: "hvac.Client"):
         client.token = self.token
@@ -97,9 +101,12 @@ class OktaAuth(Auth):
             raise TypeError("Expect str for username, got {}", type(username).__name__)
         if not isinstance(password, str):
             raise TypeError("Expect str for password, got {}", type(password).__name__)
-        object.__setattr__(self, "method", "okta")
         object.__setattr__(self, "username", username)
         object.__setattr__(self, "password", password)
+
+    @classmethod
+    def method(cls):
+        return "okta"
 
     def apply(self, client: "hvac.Client"):
         logger.info(
