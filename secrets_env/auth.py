@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import keyring
+import keyring.errors
 
 if typing.TYPE_CHECKING:
     import hvac
@@ -13,7 +14,12 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-KEYRING_SYSTEM_NAME = "secrets.env"
+
+def get_password(name: str) -> Optional[str]:
+    try:
+        return keyring.get_password("secrets.env", name)
+    except keyring.errors.NoKeyringError:
+        return None
 
 
 class Auth(abc.ABC):
@@ -58,7 +64,7 @@ class TokenAuth(Auth):
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         token = os.getenv("VAULT_TOKEN")
         if not token:
-            token = keyring.get_password(KEYRING_SYSTEM_NAME, "token/:token")
+            token = get_password("token/:token")
         if not isinstance(token, str):
             logger.error(
                 "Missing auth information: token. "
@@ -114,7 +120,7 @@ class OktaAuth(Auth):
         if not username:
             username = data.get("username")
         if not username:
-            username = keyring.get_password(KEYRING_SYSTEM_NAME, "okta/:username")
+            username = get_password("okta/:username")
         if not isinstance(username, str):
             logger.error(
                 "Missing auth information: username. Neither key 'username' in "
@@ -124,7 +130,7 @@ class OktaAuth(Auth):
 
         password = os.getenv("VAULT_PASSWORD")
         if not password:
-            password = keyring.get_password(KEYRING_SYSTEM_NAME, f"okta/{username}")
+            password = get_password(f"okta/{username}")
         if not isinstance(password, str):
             logger.error(
                 "Missing auth information: password. "
