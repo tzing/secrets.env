@@ -56,13 +56,15 @@ class TokenAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        token = os.getenv("VAULT_TOKEN")
+        token = os.getenv("SECRETS_ENV_TOKEN")
+        if not token:
+            token = os.getenv("VAULT_TOKEN")
         if not token:
             token = keyring.get_password(KEYRING_SYSTEM_NAME, "token/:token")
         if not isinstance(token, str):
             logger.error(
                 "Missing auth information: token. "
-                "Environment variable `VAULT_TOKEN` not found."
+                "Environment variable `SECRETS_ENV_TOKEN` not found."
             )
             return None
         return cls(token)
@@ -110,7 +112,7 @@ class OktaAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        username = os.getenv("VAULT_USERNAME")
+        username = os.getenv("SECRETS_ENV_USERNAME")
         if not username:
             username = data.get("username")
         if not username:
@@ -118,17 +120,17 @@ class OktaAuth(Auth):
         if not isinstance(username, str):
             logger.error(
                 "Missing auth information: username. Neither key 'username' in "
-                "config nor environment variable `VAULT_USERNAME` is found."
+                "config nor environment variable `SECRETS_ENV_USERNAME` is found."
             )
             return None
 
-        password = os.getenv("VAULT_PASSWORD")
+        password = os.getenv("SECRETS_ENV_PASSWORD")
         if not password:
             password = keyring.get_password(KEYRING_SYSTEM_NAME, f"okta/{username}")
         if not isinstance(password, str):
             logger.error(
                 "Missing auth information: password. "
-                "Environment variable `VAULT_PASSWORD` not found."
+                "Environment variable `SECRETS_ENV_PASSWORD` not found."
             )
             return None
 

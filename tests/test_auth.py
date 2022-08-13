@@ -33,6 +33,9 @@ class TestAuth:
         # create
         assert auth.TokenAuth.load({}) is None
 
+        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "foo"}):
+            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
+
         with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
@@ -58,13 +61,13 @@ class TestAuth:
 
         # create
         with patch.dict(
-            "os.environ", {"VAULT_USERNAME": "foo", "VAULT_PASSWORD": "bar"}
+            "os.environ", {"SECRETS_ENV_USERNAME": "foo", "SECRETS_ENV_PASSWORD": "bar"}
         ):
             assert auth.OktaAuth.load({}) == auth.OktaAuth("foo", "bar")
 
-        with patch.dict("os.environ", {"VAULT_USERNAME": "foo"}):
+        with patch.dict("os.environ", {"SECRETS_ENV_USERNAME": "foo"}):
             assert auth.OktaAuth.load({}) is None
-        with patch.dict("os.environ", {"VAULT_PASSWORD": "bar"}):
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
             assert auth.OktaAuth.load({}) is None
 
         self.keyring.side_effect = ["test@example.com", "P@ssw0rd"]
