@@ -85,7 +85,7 @@ class TestLoadConfig:
             ("pyproject.toml", "pyproject.toml"),
         ],
     )
-    @patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"})
+    @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success(self, example_config_dir: Path, filename: str, format_: str):
         # create config spec
         spec = ConfigFileSpec(
@@ -161,7 +161,7 @@ class TestLoadConfig:
 
 
 class TestExtract:
-    @patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"})
+    @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success_from_config(self):
         out, ok = config.extract(
             {
@@ -191,9 +191,9 @@ class TestExtract:
     @patch.dict(
         "os.environ",
         {
-            "VAULT_ADDR": "https://example.com/",
-            "VAULT_METHOD": "token",
-            "VAULT_TOKEN": "ex@mp1e",
+            "SECRETS_ENV_ADDR": "https://example.com/",
+            "SECRETS_ENV_METHOD": "token",
+            "SECRETS_ENV_TOKEN": "ex@mp1e",
         },
     )
     def test_success_from_env(self):
@@ -217,7 +217,7 @@ class TestExtract:
             "VAR2": SecretResource("example", "val2"),
         }
 
-    @patch.dict("os.environ", {"VAULT_ADDR": "https://new.example.com/"})
+    @patch.dict("os.environ", {"TOKEN_ADDR": "https://new.example.com/"})
     def test_success_use_env(self):
         # this test case is setup to make sure env var can overwrite the config
         mock_auth = Mock(spec=secrets_env.auth.Auth)
@@ -280,33 +280,36 @@ class TestExtract:
 class TestBuildAuth:
     def test_success(self):
         # token
-        with patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"}):
+        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
             assert config.build_auth({"method": "token"}) == secrets_env.auth.TokenAuth(
                 "ex@mp1e"
             )
 
         # token, make sure env var overwrites the config file
         with patch.dict(
-            "os.environ", {"VAULT_METHOD": "TOKEN", "VAULT_TOKEN": "ex@mp1e"}
+            "os.environ",
+            {"SECRETS_ENV_METHOD": "TOKEN", "SECRETS_ENV_TOKEN": "ex@mp1e"},
         ):
             out = config.build_auth({"method": "okta", "username": "test@example.com"})
             assert out == secrets_env.auth.TokenAuth("ex@mp1e")
 
         # auth
-        with patch.dict("os.environ", {"VAULT_PASSWORD": "P@ssw0rd"}):
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}):
             assert config.build_auth(
                 {"method": "okta", "username": "test@example.com"}
             ) == secrets_env.auth.OktaAuth("test@example.com", "P@ssw0rd")
 
     def test_shortcut(self):
-        with patch.dict("os.environ", {"VAULT_TOKEN": "ex@mp1e"}):
+        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
             assert config.build_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_type_error(self, caplog: pytest.LogCaptureFixture):
         assert config.build_auth(1234) is None
         assert "Config malformed: <data>auth</data>." in caplog.text
 
-    @patch.dict("os.environ", {"VAULT_METHOD": "token", "VAULT_TOKEN": "ex@mp1e"})
+    @patch.dict(
+        "os.environ", {"SECRETS_ENV_METHOD": "token", "SECRETS_ENV_TOKEN": "ex@mp1e"}
+    )
     def test_from_env(self):
         assert config.build_auth({}) == secrets_env.auth.TokenAuth("ex@mp1e")
 
