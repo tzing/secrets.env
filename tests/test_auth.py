@@ -95,6 +95,11 @@ class TestUserPasswordAuth:
         ):
             yield
 
+    @pytest.fixture()
+    def patch_prompt(self):
+        with patch("secrets_env.auth.prompt") as p:
+            yield p
+
     @pytest.mark.usefixtures("_unfreeze")
     def test___init__(self):
         # success
@@ -150,6 +155,13 @@ class TestUserPasswordAuth:
         g.assert_any_call("mock/user-1@example.com")
 
     @pytest.mark.usefixtures("_unfreeze")
+    def test_load_from_prompt(self, patch_prompt: Mock):
+        patch_prompt.side_effect = ["user-2@example.com", "P@ssw0rd"]
+
+        obj = auth.UserPasswordAuth.load({})
+        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
+
+    @pytest.mark.usefixtures("_unfreeze")
     def test_load_mixed(self):
         with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}), patch(
             "secrets_env.auth.get_password", return_value="user-2@example.com"
@@ -159,15 +171,16 @@ class TestUserPasswordAuth:
         assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
 
     @pytest.mark.usefixtures("_unfreeze")
+    @pytest.mark.usefixtures("patch_prompt")
     def test_load_missing(self, caplog: pytest.LogCaptureFixture):
         with caplog.at_level(logging.ERROR):
             assert auth.UserPasswordAuth.load({}) is None
-            assert "Missing auth information: username." in caplog.text
+            assert "Missing username for mock auth." in caplog.text
 
         with caplog.at_level(logging.ERROR):
             obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
             assert obj is None
-            assert "Missing auth information: password" in caplog.text
+            assert "Missing password for mock auth." in caplog.text
 
 
 class TestOktaAuth:
