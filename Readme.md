@@ -138,7 +138,7 @@ Auth data could be provided by various source, including:
 
 * **Config file:** Place the config value under `auth` section, use the key provided in the table.
 * **Environment variable:** In most cases, environment variable could be used to overwrite the values from config file.
-* **Keyring:** We're using [keyring] package to read the values from system keyring (e.g. OSX [Keychain]). For saving a value into keyring, use its [command line utility] with the system name `secrets.env`:
+* **Keyring:** We're using [keyring] package to read the values from system keyring (e.g. macOS [Keychain]). For saving a value into keyring, use its [command line utility] with the system name `secrets.env`:
 
   ```bash
   keyring get secrets.env token/:token
