@@ -46,7 +46,7 @@ class KVReader:
         logger.debug(
             "Vault client initialization requested. URL= %s, Auth type= %s",
             self.url,
-            self.auth.method,
+            self.auth.method(),
         )
 
         client = hvac.Client(self.url)

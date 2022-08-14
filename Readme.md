@@ -149,19 +149,25 @@ Auth data could be provided by various source, including:
   [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
   [command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
 
+* **Prompt:** If no data found in all other sources, it prompts user for input. Prompt is only enabled when optional dependency [click](https://click.palletsprojects.com/en/8.1.x/) is installed, and you can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
+
 #### Supported methods
 
 Here's the argument(s), their accepted source, and corresponding keys.
 
-##### `token`
+##### method: `token`
 
-| key   | config file | environment variable                | keyring        |
-|-------|:------------|:------------------------------------|:---------------|
-| token | ⛔️          | `SECRETS_ENV_TOKEN`, `VAULT_TOKEN`  | `token/:token` |
+| key   | config file | environment variable                | keyring        | helper |
+|-------|:------------|:------------------------------------|:---------------|--------|
+| token | ⛔️          | `SECRETS_ENV_TOKEN`, `VAULT_TOKEN`  | `token/:token` | ✅     |
 
-##### `okta`
+*[Token helper](https://www.vaultproject.io/docs/commands/token-helper)*: Vault CLI stores the generated token in the `~/.vault-token` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
 
-| key      | config file | environment variable   | keyring               |
-|----------|:------------|:-----------------------|:----------------------|
-| username | `username`  | `SECRETS_ENV_USERNAME` | `okta/:username`      |
-| password | ⛔️          | `SECRETS_ENV_PASSWORD` | `okta/YOUR_USER_NAME` |
+To use the helper, you can use command [`vault login`](https://www.vaultproject.io/docs/commands/login) to create one.
+
+##### method: `okta`
+
+| key      | config file | environment variable   | keyring               | prompt |
+|----------|:------------|:-----------------------|:----------------------|--------|
+| username | `username`  | `SECRETS_ENV_USERNAME` | `okta/:username`      | ✅     |
+| password | ⛔️          | `SECRETS_ENV_PASSWORD` | `okta/YOUR_USER_NAME` | ✅     |

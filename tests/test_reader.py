@@ -131,7 +131,7 @@ class TestReader:
 class TestReaderGetEngineAndVersion:
     def setup_method(self):
         auth = Mock(spec=secrets_env.auth.Auth)
-        auth.method = "mocked"
+        auth.method.return_value = "mocked"
 
         self.reader = reader.KVReader("https://example.com", auth)
 
@@ -197,7 +197,7 @@ class TestReaderGetEngineAndVersion:
 class TestReaderGetSecret:
     def setup_method(self):
         auth = Mock(spec=secrets_env.auth.Auth)
-        auth.method = "mocked"
+        auth.method.return_value = "mocked"
 
         self.reader = reader.KVReader("https://example.com", auth)
 

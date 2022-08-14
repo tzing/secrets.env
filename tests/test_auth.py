@@ -1,74 +1,227 @@
-from unittest.mock import Mock, patch
+import logging
+from unittest.mock import Mock, mock_open, patch
 
+import click
 import hvac
+import keyring.errors
 import pytest
 
 from secrets_env import auth
 
 
-class TestAuth:
+def test_get_password():
+    with patch("keyring.get_password", return_value="bar"):
+        assert auth.get_password("foo") == "bar"
+    with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
+        assert auth.get_password("foo") is None
+
+
+class TestPrompt:
+    def test_no_click(self):
+        with patch(
+            "importlib.import_module",
+            side_effect=ImportError("Mock import error"),
+        ):
+            assert auth.prompt("test") is None
+
+    @patch.dict("os.environ", {"SECRETS_ENV_NO_PROMPT": "True"})
+    def test_disable(self):
+        assert auth.prompt("test") is None
+
+    @patch.dict("os.environ", {"SECRETS_ENV_NO_PROMPT": "Foo"})
+    def test_success(self):
+        with patch("click.prompt", return_value="buzz"):
+            assert auth.prompt("test") == "buzz"
+
+    def test_abort(self):
+        with patch("click.prompt", side_effect=click.Abort("mock abort")):
+            assert auth.prompt("test") is None
+
+
+class TestTokenAuth:
     def setup_method(self):
-        self.client = Mock(spec=hvac.Client)
+        self.obj = auth.TokenAuth("T0ken")
 
-        self.patcher = patch("keyring.get_password", return_value=None)
-        self.keyring = self.patcher.start()
+    def test__init__(self):
+        assert self.obj.method() == "token"
+        assert self.obj.token == "T0ken"
 
-    def teardown_method(self):
-        self.patcher.stop()
-
-    def test_token_auth(self):
-        # success
-        obj = auth.TokenAuth("Token")
-        assert obj.method == "token"
-        assert obj.token == "Token"
-
-        # fail
         with pytest.raises(TypeError):
             auth.TokenAuth(1234)
 
-        # apply
-        obj.apply(self.client)
-        assert self.client.token == "Token"
+    def test__repr__(self):
+        assert repr(self.obj) == "TokenAuth(token='T0ken')"
 
-        # create
-        assert auth.TokenAuth.load({}) is None
+    def test_method(self):
+        assert auth.TokenAuth.method() == "token"
+
+    def test_apply(self):
+        # set up token doesn't trigger connection, so uses real client
+        client = hvac.Client("https://example.com")
+        self.obj.apply(client)
+        assert client.token == "T0ken"
+
+    @pytest.fixture()
+    def _no_load_from_home(self):
+        with patch.object(auth.TokenAuth, "_load_from_home", return_value=None):
+            yield
+
+    @pytest.mark.usefixtures("_no_load_from_home")
+    def test_load(self):
+        # test `load` without `_load_from_home`
+
+        # success
+        with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
+            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
         with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "foo"}):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
-        with patch.dict("os.environ", {"VAULT_TOKEN": "foo"}):
+        with patch("secrets_env.auth.get_password", return_value="foo"):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
-        self.keyring.return_value = "Token"
-        assert auth.TokenAuth.load({}) == auth.TokenAuth("Token")
+        # no data
+        assert auth.TokenAuth.load({}) is None
 
-    def test_okta_auth(self):
+    def test_load_from_home(self):
+        # test `load` with `_load_from_home`
+        with patch.object(auth.TokenAuth, "_load_from_home", return_value="foo"):
+            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
+
+    @pytest.fixture()
+    def toke_helper_file(self):
+        with patch("pathlib.Path.home") as home:
+            # Hardcoded path to match the path:
+            #   pathlib.Path.home() / ".vault-token"
+            yield home.return_value.__truediv__.return_value
+
+    def test__load_from_home_1(self, toke_helper_file: Mock):
+        # test `_load_from_home` itself
+        # case: success
+        toke_helper_file.open = mock_open(read_data="foo\n")
+        assert auth.TokenAuth._load_from_home() == "foo"
+
+    def test__load_from_home_2(self, toke_helper_file: Mock):
+        # test `_load_from_home` itself
+        # case: file not found
+        toke_helper_file.is_file.return_value = False
+        assert auth.TokenAuth._load_from_home() is None
+
+
+class TestUserPasswordAuth:
+    @pytest.fixture()
+    def _unfreeze(self):
+        """UserPasswordAuth has some required abstract method not implemented.
+        Use this fixture to patch the propertires for running the test."""
+        with patch.object(auth.UserPasswordAuth, "__abstractmethods__", set()), patch(
+            "secrets_env.auth.UserPasswordAuth.method", return_value="mock"
+        ):
+            yield
+
+    @pytest.fixture()
+    def patch_prompt(self):
+        with patch("secrets_env.auth.prompt") as p:
+            yield p
+
+    @pytest.mark.usefixtures("_unfreeze")
+    def test___init__(self):
         # success
-        obj = auth.OktaAuth("User", "P@ssw0rd")
-        assert obj.method == "okta"
-        assert obj.username == "User"
+        obj = auth.UserPasswordAuth("user@example.com", "P@ssw0rd")
+        assert obj.username == "user@example.com"
         assert obj.password == "P@ssw0rd"
 
-        # fail
+        # error
         with pytest.raises(TypeError):
-            auth.OktaAuth(1234, "P@ssw0rd")
+            auth.UserPasswordAuth(1234, "P@ssw0rd")
         with pytest.raises(TypeError):
-            auth.OktaAuth("User", 1234)
+            auth.UserPasswordAuth("user@example.com", 1234)
 
-        # apply
-        obj.apply(self.client)
-        assert self.client.auth.okta.login.call_count == 1
-
-        # create
+    @pytest.mark.usefixtures("_unfreeze")
+    def test_load_from_env(self):
+        # overwrite username
         with patch.dict(
-            "os.environ", {"SECRETS_ENV_USERNAME": "foo", "SECRETS_ENV_PASSWORD": "bar"}
+            "os.environ",
+            {
+                "SECRETS_ENV_USERNAME": "user-2@example.com",
+                "SECRETS_ENV_PASSWORD": "P@ssw0rd",
+            },
         ):
-            assert auth.OktaAuth.load({}) == auth.OktaAuth("foo", "bar")
+            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
+        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
 
-        with patch.dict("os.environ", {"SECRETS_ENV_USERNAME": "foo"}):
-            assert auth.OktaAuth.load({}) is None
-        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
-            assert auth.OktaAuth.load({}) is None
+        # password only
+        with patch.dict(
+            "os.environ",
+            {"SECRETS_ENV_PASSWORD": "P@ssw0rd"},
+        ):
+            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
+        assert obj == auth.UserPasswordAuth("user-1@example.com", "P@ssw0rd")
 
-        self.keyring.side_effect = ["test@example.com", "P@ssw0rd"]
-        assert auth.OktaAuth.load({}) == auth.OktaAuth("test@example.com", "P@ssw0rd")
+    @pytest.mark.usefixtures("_unfreeze")
+    def test_load_from_keyring(self):
+        # username + password
+        with patch(
+            "secrets_env.auth.get_password",
+            side_effect=["user-2@example.com", "P@ssw0rd"],
+        ) as g:
+            obj = auth.UserPasswordAuth.load({})
+
+        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
+        g.assert_any_call("mock/:username")
+        g.assert_any_call("mock/user-2@example.com")
+
+        # from keyring, password only
+        with patch("secrets_env.auth.get_password", return_value="P@ssw0rd") as g:
+            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
+
+        assert obj == auth.UserPasswordAuth("user-1@example.com", "P@ssw0rd")
+        g.assert_any_call("mock/user-1@example.com")
+
+    @pytest.mark.usefixtures("_unfreeze")
+    def test_load_from_prompt(self, patch_prompt: Mock):
+        patch_prompt.side_effect = ["user-2@example.com", "P@ssw0rd"]
+
+        obj = auth.UserPasswordAuth.load({})
+        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
+
+    @pytest.mark.usefixtures("_unfreeze")
+    def test_load_mixed(self):
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}), patch(
+            "secrets_env.auth.get_password", return_value="user-2@example.com"
+        ):
+            obj = auth.UserPasswordAuth.load({})
+
+        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
+
+    @pytest.mark.usefixtures("_unfreeze")
+    @pytest.mark.usefixtures("patch_prompt")
+    def test_load_missing(self, caplog: pytest.LogCaptureFixture):
+        with caplog.at_level(logging.ERROR):
+            assert auth.UserPasswordAuth.load({}) is None
+            assert "Missing username for mock auth." in caplog.text
+
+        with caplog.at_level(logging.ERROR):
+            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
+            assert obj is None
+            assert "Missing password for mock auth." in caplog.text
+
+
+class TestOktaAuth:
+    def setup_method(self):
+        self.obj = auth.OktaAuth("user", "pass")
+
+    def test__init__(self):
+        assert self.obj.username == "user"
+        assert self.obj.password == "pass"
+
+    def test__repr__(self):
+        assert repr(self.obj) == "OktaAuth(username='user')"
+
+    def test_method(self):
+        assert auth.OktaAuth.method() == "okta"
+
+    def test_apply(self):
+        client = Mock(spec=hvac.Client)
+
+        self.obj.apply(client)
+        assert client.auth.okta.login.call_count == 1
