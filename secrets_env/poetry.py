@@ -84,7 +84,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         handler.setFormatter(Formatter())
 
         root_logger = logging.getLogger("secrets_env")
-        root_logger.setLevel(logging.NOTSET)
+        root_logger.setLevel(logging.DEBUG)
         root_logger.propagate = False
         root_logger.addHandler(handler)
 

@@ -6,7 +6,7 @@ __all__ = [
     "load_config",
 ]
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 from secrets_env.auth import OktaAuth, TokenAuth
 from secrets_env.config import find_config, load_config
