@@ -15,6 +15,12 @@ def test_read_keyring():
         assert auth.read_keyring("foo") is None
 
 
+@pytest.fixture()
+def patch_read_keyring():
+    with patch("secrets_env.auth.read_keyring", return_value=None) as m:
+        yield m
+
+
 class TestPrompt:
     def test_no_click(self):
         with patch(
@@ -82,11 +88,12 @@ class TestTokenAuth:
         assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
     @pytest.mark.usefixtures("toke_helper_file")
-    def test_load_keyring(self):
-        with patch("secrets_env.auth.read_keyring", return_value="foo"):
-            assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
+    def test_load_keyring(self, patch_read_keyring: Mock):
+        patch_read_keyring.return_value = "foo"
+        assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
     @pytest.mark.usefixtures("toke_helper_file")
+    @pytest.mark.usefixtures("patch_read_keyring")
     def test_load_fail(self):
         assert auth.TokenAuth.load({}) is None
 
