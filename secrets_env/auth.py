@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_password(name: str) -> Optional[str]:
+def read_keyring(name: str) -> Optional[str]:
     """Wrapped `keyring.get_password`. Do not raise error when there is no
     keyring backend enabled."""
     try:
@@ -120,32 +120,30 @@ class TokenAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        token = os.getenv("SECRETS_ENV_TOKEN")
-        if not token:
-            token = os.getenv("VAULT_TOKEN")
-        if not token:
-            token = cls._load_from_home()
-        if not token:
-            token = get_password("token/:token")
-        if not isinstance(token, str):
-            logger.error(
-                "Missing auth information: token. "
-                "Environment variable `SECRETS_ENV_TOKEN` not found."
-            )
-            return None
-        return cls(token)
+        # env var
+        token = os.getenv("SECRETS_ENV_TOKEN") or os.getenv("VAULT_TOKEN")
+        if token:
+            logger.debug("Found token from environment variable")
+            return cls(token)
 
-    @classmethod
-    def _load_from_home(cls) -> Optional[str]:
-        # vault places the token on the disk
+        # token helper
         # https://www.vaultproject.io/docs/commands/token-helper
         file_ = pathlib.Path.home() / ".vault-token"
-        if not file_.is_file():
-            return None
+        if file_.is_file():
+            with file_.open("r", encoding="utf-8") as fd:
+                # don't think the token could be so long
+                token = fd.read(256).strip()
+            logger.debug("Found token from token helper")
+            return cls(token)
 
-        with file_.open("r", encoding="utf-8") as fd:
-            # (don't think the token could be so long)
-            return fd.read(256).strip()
+        # keyring
+        token = read_keyring("token/:token")
+        if token:
+            logger.debug("Found token from keyring")
+            return cls(token)
+
+        logger.error("Missing auth information: token. Stop loading secrets.")
+        return None
 
 
 @dataclass(frozen=True)
@@ -167,36 +165,58 @@ class UserPasswordAuth(Auth):
         object.__setattr__(self, "password", password)
 
     @classmethod
-    def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        method = cls.method()
-
-        username = os.getenv("SECRETS_ENV_USERNAME")
-        if not username:
-            username = data.get("username")
-        if not username:
-            username = get_password(f"{method}/:username")
-        if not username:
-            username = prompt(f"Username for {method} auth")
-        if not isinstance(username, str):
+    def load(cls, data: Dict[str, Any]) -> Optional["UserPasswordAuth"]:
+        username = cls._load_username(data)
+        if not isinstance(username, str) or not username:
             logger.error(
                 "Missing username for %s auth. Stop loading secrets.",
-                method,
+                cls.method(),
             )
             return None
 
-        password = os.getenv("SECRETS_ENV_PASSWORD")
-        if not password:
-            password = get_password(f"{method}/{username}")
-        if not password:
-            password = prompt("Password", hide_input=True)
-        if not isinstance(password, str):
+        password = cls._load_password(username)
+        if not isinstance(password, str) or not password:
             logger.error(
                 "Missing password for %s auth. Stop loading secrets.",
-                method,
+                cls.method(),
             )
             return None
 
         return cls(username, password)
+
+    @classmethod
+    def _load_username(cls, data: Dict[str, Any]) -> Optional[str]:
+        username = os.getenv("SECRETS_ENV_USERNAME")
+        if username:
+            logger.debug("Found username from environment variable.")
+            return username
+
+        username = data.get("username")
+        if username:
+            return username
+
+        method = cls.method()
+        username = read_keyring(f"{method}/:username")
+        if username:
+            logger.debug("Found username from keyring")
+            return username
+
+        return prompt(f"Username for {method} auth")
+
+    @classmethod
+    def _load_password(cls, username: str) -> Optional[str]:
+        password = os.getenv("SECRETS_ENV_PASSWORD")
+        if password:
+            logger.debug("Found password from environment variable.")
+            return password
+
+        method = cls.method()
+        password = read_keyring(f"{method}/{username}")
+        if password:
+            logger.debug("Found password from keyring")
+            return password
+
+        return prompt("Password", hide_input=True)
 
 
 @dataclass(frozen=True)
