@@ -159,7 +159,7 @@ class TestUserPasswordAuth:
             )
         )
 
-    def test__load_username(self):
+    def test__load_username(self, patch_read_keyring: Mock):
         # env var
         with patch.dict("os.environ", {"SECRETS_ENV_USERNAME": "foo"}):
             assert auth.UserPasswordAuth._load_username({}) == "foo"
@@ -167,32 +167,28 @@ class TestUserPasswordAuth:
         # config
         assert auth.UserPasswordAuth._load_username({"username": "foo"}) == "foo"
 
-        # keyring
-        with patch("secrets_env.auth.read_keyring", return_value="foo") as g:
-            assert auth.UserPasswordAuth._load_username({}) == "foo"
-            g.assert_any_call("mock/:username")
-
         # prompt
-        with patch("secrets_env.auth.read_keyring", return_value=None), patch(
-            "secrets_env.auth.prompt", return_value="foo"
-        ):
+        with patch("secrets_env.auth.prompt", return_value="foo"):
             assert auth.UserPasswordAuth._load_username({}) == "foo"
 
-    def test__load_password(self):
+        # keyring
+        patch_read_keyring.return_value = "foo"
+        assert auth.UserPasswordAuth._load_username({}) == "foo"
+        patch_read_keyring.assert_any_call("mock/:username")
+
+    def test__load_password(self, patch_read_keyring: Mock):
         # env var
         with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
             assert auth.UserPasswordAuth._load_password("foo") == "bar"
 
-        # keyring
-        with patch("secrets_env.auth.read_keyring", return_value="bar") as g:
-            assert auth.UserPasswordAuth._load_password("foo") == "bar"
-            g.assert_any_call("mock/foo")
-
         # prompt
-        with patch("secrets_env.auth.read_keyring", return_value=None), patch(
-            "secrets_env.auth.prompt", return_value="bar"
-        ):
+        with patch("secrets_env.auth.prompt", return_value="bar"):
             assert auth.UserPasswordAuth._load_password("foo") == "bar"
+
+        # keyring
+        patch_read_keyring.return_value = "bar"
+        assert auth.UserPasswordAuth._load_password("foo") == "bar"
+        patch_read_keyring.assert_any_call("mock/foo")
 
 
 class TestOktaAuth:
