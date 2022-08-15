@@ -120,32 +120,30 @@ class TokenAuth(Auth):
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        token = os.getenv("SECRETS_ENV_TOKEN")
-        if not token:
-            token = os.getenv("VAULT_TOKEN")
-        if not token:
-            token = cls._load_from_home()
-        if not token:
-            token = get_password("token/:token")
-        if not isinstance(token, str):
-            logger.error(
-                "Missing auth information: token. "
-                "Environment variable `SECRETS_ENV_TOKEN` not found."
-            )
-            return None
-        return cls(token)
+        # env var
+        token = os.getenv("SECRETS_ENV_TOKEN") or os.getenv("VAULT_TOKEN")
+        if token:
+            logger.debug("Found token from environment variable")
+            return cls(token)
 
-    @classmethod
-    def _load_from_home(cls) -> Optional[str]:
-        # vault places the token on the disk
+        # token helper
         # https://www.vaultproject.io/docs/commands/token-helper
         file_ = pathlib.Path.home() / ".vault-token"
-        if not file_.is_file():
-            return None
+        if file_.is_file():
+            with file_.open("r", encoding="utf-8") as fd:
+                # (don't think the token could be so long)
+                token = fd.read(256).strip()
+            logger.debug("Found token from token helper")
+            return cls(token)
 
-        with file_.open("r", encoding="utf-8") as fd:
-            # (don't think the token could be so long)
-            return fd.read(256).strip()
+        # keyring
+        token = get_password("token/:token")
+        if token:
+            logger.debug("Found token from keyring")
+            return cls(token)
+
+        logger.error("Missing auth information: token.")
+        return None
 
 
 @dataclass(frozen=True)
