@@ -1,4 +1,3 @@
-import logging
 from unittest.mock import Mock, mock_open, patch
 
 import click
@@ -93,21 +92,21 @@ class TestTokenAuth:
 
 
 class TestUserPasswordAuth:
-    @pytest.fixture()
-    def _unfreeze(self):
-        """UserPasswordAuth has some required abstract method not implemented.
-        Use this fixture to patch the propertires for running the test."""
-        with patch.object(auth.UserPasswordAuth, "__abstractmethods__", set()), patch(
-            "secrets_env.auth.UserPasswordAuth.method", return_value="mock"
-        ):
-            yield
+    def setup_method(self):
+        # UserPasswordAuth has some required abstract method not implemented.
+        # Use this fixture to patch the propertires for running the test.
+        self.patches = [
+            patch.object(auth.UserPasswordAuth, "__abstractmethods__", set()),
+            patch.object(auth.UserPasswordAuth, "method", return_value="mock"),
+        ]
 
-    @pytest.fixture()
-    def patch_prompt(self):
-        with patch("secrets_env.auth.prompt") as p:
-            yield p
+        for p in self.patches:
+            p.start()
 
-    @pytest.mark.usefixtures("_unfreeze")
+    def teardown_method(self):
+        for p in self.patches:
+            p.stop()
+
     def test___init__(self):
         # success
         obj = auth.UserPasswordAuth("user@example.com", "P@ssw0rd")
@@ -120,74 +119,73 @@ class TestUserPasswordAuth:
         with pytest.raises(TypeError):
             auth.UserPasswordAuth("user@example.com", 1234)
 
-    @pytest.mark.usefixtures("_unfreeze")
-    def test_load_from_env(self):
-        # overwrite username
-        with patch.dict(
-            "os.environ",
-            {
-                "SECRETS_ENV_USERNAME": "user-2@example.com",
-                "SECRETS_ENV_PASSWORD": "P@ssw0rd",
-            },
-        ):
-            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
-        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
-
-        # password only
-        with patch.dict(
-            "os.environ",
-            {"SECRETS_ENV_PASSWORD": "P@ssw0rd"},
-        ):
-            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
-        assert obj == auth.UserPasswordAuth("user-1@example.com", "P@ssw0rd")
-
-    @pytest.mark.usefixtures("_unfreeze")
-    def test_load_from_keyring(self):
-        # username + password
-        with patch(
-            "secrets_env.auth.get_password",
-            side_effect=["user-2@example.com", "P@ssw0rd"],
-        ) as g:
-            obj = auth.UserPasswordAuth.load({})
-
-        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
-        g.assert_any_call("mock/:username")
-        g.assert_any_call("mock/user-2@example.com")
-
-        # from keyring, password only
-        with patch("secrets_env.auth.get_password", return_value="P@ssw0rd") as g:
-            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
-
-        assert obj == auth.UserPasswordAuth("user-1@example.com", "P@ssw0rd")
-        g.assert_any_call("mock/user-1@example.com")
-
-    @pytest.mark.usefixtures("_unfreeze")
-    def test_load_from_prompt(self, patch_prompt: Mock):
-        patch_prompt.side_effect = ["user-2@example.com", "P@ssw0rd"]
-
-        obj = auth.UserPasswordAuth.load({})
-        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
-
-    @pytest.mark.usefixtures("_unfreeze")
-    def test_load_mixed(self):
-        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}), patch(
-            "secrets_env.auth.get_password", return_value="user-2@example.com"
+    def test_load_success(self):
+        with patch.object(
+            auth.UserPasswordAuth, "_load_username", return_value="user@example.com"
+        ), patch.object(
+            auth.UserPasswordAuth, "_load_password", return_value="P@ssw0rd"
         ):
             obj = auth.UserPasswordAuth.load({})
+        assert obj == auth.UserPasswordAuth("user@example.com", "P@ssw0rd")
 
-        assert obj == auth.UserPasswordAuth("user-2@example.com", "P@ssw0rd")
-
-    @pytest.mark.usefixtures("_unfreeze")
-    @pytest.mark.usefixtures("patch_prompt")
-    def test_load_missing(self, caplog: pytest.LogCaptureFixture):
-        with caplog.at_level(logging.ERROR):
+    @pytest.mark.parametrize(
+        ("username", "password"),
+        [
+            ("user@example.com", ""),
+            ("", "P@ssw0rd"),
+            ("user@example.com", None),
+            (None, "P@ssw0rd"),
+        ],
+    )
+    def test_load_failed(
+        self, username: str, password: str, caplog: pytest.LogCaptureFixture
+    ):
+        with patch.object(
+            auth.UserPasswordAuth, "_load_username", return_value=username
+        ), patch.object(auth.UserPasswordAuth, "_load_password", return_value=password):
             assert auth.UserPasswordAuth.load({}) is None
-            assert "Missing username for mock auth." in caplog.text
 
-        with caplog.at_level(logging.ERROR):
-            obj = auth.UserPasswordAuth.load({"username": "user-1@example.com"})
-            assert obj is None
-            assert "Missing password for mock auth." in caplog.text
+        assert any(
+            (
+                "Missing username for mock auth." in caplog.text,
+                "Missing password for mock auth." in caplog.text,
+            )
+        )
+
+    def test__load_username(self):
+        # env var
+        with patch.dict("os.environ", {"SECRETS_ENV_USERNAME": "foo"}):
+            assert auth.UserPasswordAuth._load_username({}) == "foo"
+
+        # config
+        assert auth.UserPasswordAuth._load_username({"username": "foo"}) == "foo"
+
+        # keyring
+        with patch("secrets_env.auth.get_password", return_value="foo") as g:
+            assert auth.UserPasswordAuth._load_username({}) == "foo"
+            g.assert_any_call("mock/:username")
+
+        # prompt
+        with patch("secrets_env.auth.get_password", return_value=None), patch(
+            "secrets_env.auth.prompt", return_value="foo"
+        ):
+            assert auth.UserPasswordAuth._load_username({}) == "foo"
+
+    def test__load_password(self):
+        # env var
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
+            assert auth.UserPasswordAuth._load_password("foo") == "bar"
+
+        # keyring
+        with patch("secrets_env.auth.get_password", return_value="bar") as g:
+            assert auth.UserPasswordAuth._load_password("foo") == "bar"
+            g.assert_any_call("mock/foo")
+
+        # prompt
+        with patch("secrets_env.auth.get_password", return_value=None), patch(
+            "secrets_env.auth.prompt", return_value="bar"
+        ):
+            assert auth.UserPasswordAuth._load_password("foo") == "bar"
 
 
 class TestOktaAuth:
