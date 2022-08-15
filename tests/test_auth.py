@@ -8,11 +8,11 @@ import pytest
 from secrets_env import auth
 
 
-def test_get_password():
+def test_read_keyring():
     with patch("keyring.get_password", return_value="bar"):
-        assert auth.get_password("foo") == "bar"
+        assert auth.read_keyring("foo") == "bar"
     with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
-        assert auth.get_password("foo") is None
+        assert auth.read_keyring("foo") is None
 
 
 class TestPrompt:
@@ -83,7 +83,7 @@ class TestTokenAuth:
 
     @pytest.mark.usefixtures("toke_helper_file")
     def test_load_keyring(self):
-        with patch("secrets_env.auth.get_password", return_value="foo"):
+        with patch("secrets_env.auth.read_keyring", return_value="foo"):
             assert auth.TokenAuth.load({}) == auth.TokenAuth("foo")
 
     @pytest.mark.usefixtures("toke_helper_file")
@@ -161,12 +161,12 @@ class TestUserPasswordAuth:
         assert auth.UserPasswordAuth._load_username({"username": "foo"}) == "foo"
 
         # keyring
-        with patch("secrets_env.auth.get_password", return_value="foo") as g:
+        with patch("secrets_env.auth.read_keyring", return_value="foo") as g:
             assert auth.UserPasswordAuth._load_username({}) == "foo"
             g.assert_any_call("mock/:username")
 
         # prompt
-        with patch("secrets_env.auth.get_password", return_value=None), patch(
+        with patch("secrets_env.auth.read_keyring", return_value=None), patch(
             "secrets_env.auth.prompt", return_value="foo"
         ):
             assert auth.UserPasswordAuth._load_username({}) == "foo"
@@ -177,12 +177,12 @@ class TestUserPasswordAuth:
             assert auth.UserPasswordAuth._load_password("foo") == "bar"
 
         # keyring
-        with patch("secrets_env.auth.get_password", return_value="bar") as g:
+        with patch("secrets_env.auth.read_keyring", return_value="bar") as g:
             assert auth.UserPasswordAuth._load_password("foo") == "bar"
             g.assert_any_call("mock/foo")
 
         # prompt
-        with patch("secrets_env.auth.get_password", return_value=None), patch(
+        with patch("secrets_env.auth.read_keyring", return_value=None), patch(
             "secrets_env.auth.prompt", return_value="bar"
         ):
             assert auth.UserPasswordAuth._load_password("foo") == "bar"

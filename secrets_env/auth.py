@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_password(name: str) -> Optional[str]:
+def read_keyring(name: str) -> Optional[str]:
     """Wrapped `keyring.get_password`. Do not raise error when there is no
     keyring backend enabled."""
     try:
@@ -137,7 +137,7 @@ class TokenAuth(Auth):
             return cls(token)
 
         # keyring
-        token = get_password("token/:token")
+        token = read_keyring("token/:token")
         if token:
             logger.debug("Found token from keyring")
             return cls(token)
@@ -196,7 +196,7 @@ class UserPasswordAuth(Auth):
             return username
 
         method = cls.method()
-        username = get_password(f"{method}/:username")
+        username = read_keyring(f"{method}/:username")
         if username:
             logger.debug("Found username from keyring")
             return username
@@ -211,7 +211,7 @@ class UserPasswordAuth(Auth):
             return password
 
         method = cls.method()
-        password = get_password(f"{method}/{username}")
+        password = read_keyring(f"{method}/{username}")
         if password:
             logger.debug("Found password from keyring")
             return password
