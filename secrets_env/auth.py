@@ -250,3 +250,29 @@ class OktaAuth(UserPasswordAuth):
             username=self.username,
             password=self.password,
         )
+
+
+def load_auth(config: dict) -> Optional[Auth]:
+    """Factory for building Auth object."""
+    # get auth method
+    method = os.getenv("SECRETS_ENV_METHOD")
+    if not method:
+        method = config.get("method")
+
+    if not method:
+        logger.error(
+            "Missing required config: <data>auth method</data>. Neither the value "
+            "'<mark>source.auth.method</mark>' in the config file nor the environment "
+            "variable '<mark>SECRETS_ENV_METHOD</mark>' is found."
+        )
+        return None
+
+    # build auth object based on configured method
+    method_ = method.lower()
+    if method_ == "token":
+        return TokenAuth.load(config)
+    elif method_ == "okta":
+        return OktaAuth.load(config)
+
+    logger.error("Unknown auth method: <data>%s</data>", method)
+    return None

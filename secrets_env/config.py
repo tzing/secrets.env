@@ -247,7 +247,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
 
     # auth method
     data_auth = data_source.get("auth", {})
-    auth = build_auth(data_auth)
+    auth = load_auth(data_auth)
     if not auth:
         ok = False
 
@@ -278,8 +278,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
 
 
-def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
-    """Factory for building Auth object."""
+def load_auth(data: Union[dict, str]) -> Optional[secrets_env.auth.Auth]:
+    """Load the authentication information. This function is a wrapper of
+    `auth.load_auth` and handles syntax variation."""
     # allow `auth: token` syntax in config
     if isinstance(data, str):
         data = {
@@ -296,27 +297,7 @@ def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
         return None
 
     # get auth method
-    method = os.getenv("SECRETS_ENV_METHOD")
-    if not method:
-        method = data.get("method")
-
-    if not method:
-        logger.error(
-            "Missing required config: <data>auth method</data>. Neither the value "
-            "'<mark>source.auth.method</mark>' in the config file nor the environment "
-            "variable '<mark>SECRETS_ENV_METHOD</mark>' is found."
-        )
-        return None
-
-    # build auth object based on auth
-    method_key = method.upper()
-    if method_key == "TOKEN":
-        return secrets_env.auth.TokenAuth.load(data)
-    elif method_key == "OKTA":
-        return secrets_env.auth.OktaAuth.load(data)
-
-    logger.error("Unknown auth method: <data>%s</data>", method)
-    return None
+    return secrets_env.auth.load_auth(data)
 
 
 def extract_resource_spec(
