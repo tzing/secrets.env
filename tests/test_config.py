@@ -287,8 +287,8 @@ class TestLoadAuth:
         assert "Config malformed: <data>auth</data>." in caplog.text
 
 
-def test_has_warned_lang_support_issue():
-    assert config.has_warned_lang_support_issue("TEST") is False
-    assert config.has_warned_lang_support_issue("TEST") is True
-    assert config.has_warned_lang_support_issue("TEST") is True
-    assert config.has_warned_lang_support_issue("TEST2") is False
+def test_warn_lang_support_issue():
+    assert config.warn_lang_support_issue("TEST") is True
+    assert config.warn_lang_support_issue("TEST") is False
+    assert config.warn_lang_support_issue("TEST") is False
+    assert config.warn_lang_support_issue("TEST-2") is True

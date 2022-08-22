@@ -69,13 +69,8 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
             if not candidate.is_file():
                 continue
 
-            if not spec.enable and not has_warned_lang_support_issue(spec.lang):
-                logger.warning(
-                    "Dependency for <mark>%s</mark> not installed. "
-                    "Skip config file <data>%s</data>.",
-                    spec.lang,
-                    candidate.name,
-                )
+            if not spec.enable and warn_lang_support_issue(spec.lang):
+                logger.warning("Skip config file <data>%s</data>.", candidate.name)
                 continue
 
             return ConfigFileSpec(*spec[:3], candidate)
@@ -90,14 +85,15 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
     return None
 
 
-def has_warned_lang_support_issue(format_: str) -> None:
-    """Cache if the language supportting issue is reported."""
-    warned_formats = has_warned_lang_support_issue.__dict__.setdefault(
-        "warned_formats", set()
-    )
-    is_warned = format_ in warned_formats
+def warn_lang_support_issue(format_: str) -> bool:
+    """Check if the given file type is supportted or not."""
+    warned_formats = vars(warn_lang_support_issue).setdefault("warned_formats", set())
+    if format_ in warned_formats:
+        return False
+
     warned_formats.add(format_)
-    return is_warned
+    logger.warning("Optional dependency for <mark>%s</mark> is not installed.", format_)
+    return True
 
 
 class SecretResource(typing.NamedTuple):
