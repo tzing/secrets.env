@@ -277,11 +277,11 @@ class TestExtract:
         assert spec == ConfigSpec("https://example.com", None, {})
 
 
-class TestBuildAuth:
+class TestLoadAuth:
     def test_success(self):
         # token
         with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
-            assert config.build_auth({"method": "token"}) == secrets_env.auth.TokenAuth(
+            assert config.load_auth({"method": "token"}) == secrets_env.auth.TokenAuth(
                 "ex@mp1e"
             )
 
@@ -290,35 +290,35 @@ class TestBuildAuth:
             "os.environ",
             {"SECRETS_ENV_METHOD": "TOKEN", "SECRETS_ENV_TOKEN": "ex@mp1e"},
         ):
-            out = config.build_auth({"method": "okta", "username": "test@example.com"})
+            out = config.load_auth({"method": "okta", "username": "test@example.com"})
             assert out == secrets_env.auth.TokenAuth("ex@mp1e")
 
         # auth
         with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "P@ssw0rd"}):
-            assert config.build_auth(
+            assert config.load_auth(
                 {"method": "okta", "username": "test@example.com"}
             ) == secrets_env.auth.OktaAuth("test@example.com", "P@ssw0rd")
 
     def test_shortcut(self):
         with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
-            assert config.build_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
+            assert config.load_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_type_error(self, caplog: pytest.LogCaptureFixture):
-        assert config.build_auth(1234) is None
+        assert config.load_auth(1234) is None
         assert "Config malformed: <data>auth</data>." in caplog.text
 
     @patch.dict(
         "os.environ", {"SECRETS_ENV_METHOD": "token", "SECRETS_ENV_TOKEN": "ex@mp1e"}
     )
     def test_from_env(self):
-        assert config.build_auth({}) == secrets_env.auth.TokenAuth("ex@mp1e")
+        assert config.load_auth({}) == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_missing_method(self, caplog: pytest.LogCaptureFixture):
-        assert config.build_auth({}) is None
+        assert config.load_auth({}) is None
         assert "Missing required config: <data>auth method</data>." in caplog.text
 
     def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
-        assert config.build_auth({"method": "invalid-method"}) is None
+        assert config.load_auth({"method": "invalid-method"}) is None
         assert "Unknown auth method: <data>invalid-method</data>" in caplog.text
 
 

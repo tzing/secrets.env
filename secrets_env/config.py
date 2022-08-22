@@ -247,7 +247,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
 
     # auth method
     data_auth = data_source.get("auth", {})
-    auth = build_auth(data_auth)
+    auth = load_auth(data_auth)
     if not auth:
         ok = False
 
@@ -278,8 +278,9 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
     return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
 
 
-def build_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
-    """Factory for building Auth object."""
+def load_auth(data: dict) -> Optional[secrets_env.auth.Auth]:
+    """Load the authentication information. This function is a wrapper of
+    `auth.load_auth` and handles syntax variation."""
     # allow `auth: token` syntax in config
     if isinstance(data, str):
         data = {
