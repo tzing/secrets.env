@@ -15,7 +15,7 @@ from cleo.io.outputs.output import Verbosity
 
 import secrets_env
 import secrets_env.poetry as plugin
-from secrets_env.config import ConfigSpec, SecretResource
+from secrets_env.config import Config, SecretResource
 
 
 class TestSecretsEnvPlugin:
@@ -43,7 +43,7 @@ class TestSecretsEnvPlugin:
     def _patch_load_config(self):
         with patch(
             "secrets_env.load_config",
-            return_value=ConfigSpec(
+            return_value=Config(
                 url="https://example.com/",
                 auth=secrets_env.TokenAuth("ex@mp1e"),
                 secret_specs={

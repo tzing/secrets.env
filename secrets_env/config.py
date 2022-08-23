@@ -30,7 +30,7 @@ __has_lib_toml = tomllib is not None
 __has_lib_yaml = yaml is not None
 
 
-class ConfigFileSpec(typing.NamedTuple):
+class ConfigFile(typing.NamedTuple):
     filename: str
     spec: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
@@ -43,42 +43,37 @@ class ConfigFileSpec(typing.NamedTuple):
         return self.spec.upper()
 
 
-ORDERED_CONFIG_FILE_SPECS = (
-    ConfigFileSpec(".secrets-env.toml", "toml", __has_lib_toml),
-    ConfigFileSpec(".secrets-env.yaml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".secrets-env.yml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".secrets-env.json", "json", True),
-    ConfigFileSpec("pyproject.toml", "pyproject.toml", __has_lib_toml),
+CONFIG_FILES = (
+    ConfigFile(".secrets-env.toml", "toml", __has_lib_toml),
+    ConfigFile(".secrets-env.yaml", "yaml", __has_lib_yaml),
+    ConfigFile(".secrets-env.yml", "yaml", __has_lib_yaml),
+    ConfigFile(".secrets-env.json", "json", True),
+    ConfigFile("pyproject.toml", "pyproject.toml", __has_lib_toml),
 )
 
 logger = logging.getLogger(__name__)
 
 
-def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
+def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     """Find configuration file.
 
-    It looks up for the file(s) that matches the name defined in ``CONFIG_FILE_SPECS``
+    It looks up for the file(s) that matches the name defined in ``CONFIG_FILES``
     in current directory and parent directories.
     """
     wd = directory or Path.cwd().absolute()
     cnt_hit_root = 0  # counter for only search in root directory once
     while cnt_hit_root < 2:
         # look up for candidates
-        for spec in ORDERED_CONFIG_FILE_SPECS:
+        for spec in CONFIG_FILES:
             candidate = wd / spec.filename
             if not candidate.is_file():
                 continue
 
-            if not spec.enable and not has_warned_lang_support_issue(spec.lang):
-                logger.warning(
-                    "Dependency for <mark>%s</mark> not installed. "
-                    "Skip config file <data>%s</data>.",
-                    spec.lang,
-                    candidate.name,
-                )
+            if not spec.enable and warn_lang_support_issue(spec.lang):
+                logger.warning("Skip config file <data>%s</data>.", candidate.name)
                 continue
 
-            return ConfigFileSpec(*spec[:3], candidate)
+            return ConfigFile(*spec[:3], candidate)
 
         # go to parent directory
         parent = wd.parent
@@ -90,14 +85,15 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
     return None
 
 
-def has_warned_lang_support_issue(format_: str) -> None:
-    """Cache if the language supportting issue is reported."""
-    warned_formats = has_warned_lang_support_issue.__dict__.setdefault(
-        "warned_formats", set()
-    )
-    is_warned = format_ in warned_formats
+def warn_lang_support_issue(format_: str) -> bool:
+    """Check if the given file type is supportted or not."""
+    warned_formats = vars(warn_lang_support_issue).setdefault("warned_formats", set())
+    if format_ in warned_formats:
+        return False
+
     warned_formats.add(format_)
-    return is_warned
+    logger.warning("Optional dependency for <mark>%s</mark> is not installed.", format_)
+    return True
 
 
 class SecretResource(typing.NamedTuple):
@@ -105,18 +101,19 @@ class SecretResource(typing.NamedTuple):
     key: str
 
 
-class ConfigSpec(typing.NamedTuple):
+class Config(typing.NamedTuple):
     url: str
     auth: secrets_env.auth.Auth
     secret_specs: Dict[str, SecretResource]
 
 
-def load_config() -> Optional[ConfigSpec]:
+def load_config() -> Optional[Config]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
       1. environment variable
       2. config file
       3. system keyring service
+      4. prompt
     When a value has more than one occurrence, the first occurrence would be
     selected based on the order above.
     """
@@ -150,7 +147,7 @@ def load_config() -> Optional[ConfigSpec]:
         return None
 
     # parse
-    config, ok = extract(data)
+    config, ok = _loads(data)
     if not ok:
         return None
 
@@ -187,9 +184,9 @@ def load_json_file(path: Path) -> Optional[dict]:
     return data
 
 
-def extract(data: dict) -> Tuple[ConfigSpec, bool]:
-    """Extract the config data from environment variable, raw data in config file
-    or system. And structure them into the ConfigSpec object.
+def _loads(data: dict) -> Tuple[Config, bool]:
+    """Loads config from various sources and structure them into the Config
+    object.
 
     This function tries to parse every thing instead of raise the error
     immediately. This behavior is preserved to expose every potential errors to
@@ -247,7 +244,15 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
 
     # auth method
     data_auth = data_source.get("auth", {})
-    auth = load_auth(data_auth)
+    if isinstance(data_auth, str):
+        # allow `auth: token` syntax in config
+        data_auth = {
+            "method": data_auth,
+        }
+
+    data_auth = assert_type("auth", "dict", data_auth)
+
+    auth = secrets_env.auth.load_auth(data_auth)
     if not auth:
         ok = False
 
@@ -271,38 +276,14 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
             )
             continue
 
-        resource = extract_resource_spec(name, spec)
+        resource = parse_resource(name, spec)
         if resource:
             secrets[name] = resource
 
-    return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
+    return Config(url=url, auth=auth, secret_specs=secrets), ok
 
 
-def load_auth(data: Union[dict, str]) -> Optional[secrets_env.auth.Auth]:
-    """Load the authentication information. This function is a wrapper of
-    `auth.load_auth` and handles syntax variation."""
-    # allow `auth: token` syntax in config
-    if isinstance(data, str):
-        data = {
-            "method": data,
-        }
-
-    # check type
-    if not isinstance(data, dict):
-        logger.error(
-            "Config malformed: <data>auth</data>. Expected <mark>dict</mark> "
-            "type, got <mark>%s</mark> type",
-            type(data).__name__,
-        )
-        return None
-
-    # get auth method
-    return secrets_env.auth.load_auth(data)
-
-
-def extract_resource_spec(
-    name: str, spec: Union[str, dict]
-) -> Optional[SecretResource]:
+def parse_resource(name: str, spec: Union[str, dict]) -> Optional[SecretResource]:
     """Convert the resource spec in the config file into the SecretResource
     object. Allows both string input and dict input.
     """

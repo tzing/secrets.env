@@ -7,7 +7,7 @@ import pytest
 
 import secrets_env.auth
 from secrets_env import config
-from secrets_env.config import ConfigFileSpec, ConfigSpec, SecretResource
+from secrets_env.config import Config, ConfigFile, SecretResource
 
 
 def test_import_any():
@@ -47,7 +47,7 @@ class TestFindConfig:
 
     def test_exists_multiple(self, example_config_dir: Path):
         # we must have TOML installed in testing env
-        assert config.find_config(example_config_dir) == ConfigFileSpec(
+        assert config.find_config(example_config_dir) == ConfigFile(
             ".secrets-env.toml",
             "toml",
             True,
@@ -56,14 +56,14 @@ class TestFindConfig:
 
     def test_config_not_enabled(self, example_config_dir: Path):
         with patch(
-            "secrets_env.config.ORDERED_CONFIG_FILE_SPECS",
+            "secrets_env.config.CONFIG_FILES",
             [
-                ConfigFileSpec(".secrets-env.toml", "toml", False),
-                ConfigFileSpec(".secrets-env.yaml", "yaml", False),
-                ConfigFileSpec(".secrets-env.json", "json", True),
+                ConfigFile(".secrets-env.toml", "toml", False),
+                ConfigFile(".secrets-env.yaml", "yaml", False),
+                ConfigFile(".secrets-env.json", "json", True),
             ],
         ):
-            assert config.find_config(example_config_dir) == ConfigFileSpec(
+            assert config.find_config(example_config_dir) == ConfigFile(
                 ".secrets-env.json",
                 "json",
                 True,
@@ -88,7 +88,7 @@ class TestLoadConfig:
     @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success(self, example_config_dir: Path, filename: str, format_: str):
         # create config spec
-        spec = ConfigFileSpec(
+        spec = ConfigFile(
             "mock",
             format_,
             True,
@@ -97,7 +97,7 @@ class TestLoadConfig:
 
         # run
         with patch("secrets_env.config.find_config", return_value=spec):
-            assert config.load_config() == ConfigSpec(
+            assert config.load_config() == Config(
                 url="https://example.com/",
                 auth=secrets_env.auth.TokenAuth("ex@mp1e"),
                 secret_specs={
@@ -122,7 +122,7 @@ class TestLoadConfig:
     def test_config_malformed(
         self, caplog: pytest.LogCaptureFixture, find_config: Mock
     ):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
             "secrets_env.config.load_json_file", return_value=["array data"]
         ):
@@ -130,12 +130,12 @@ class TestLoadConfig:
         assert "Configuration file is malformed." in caplog.text
 
     def test_config_runtime_error(self, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "malformed", True)
+        find_config.return_value = ConfigFile("mock", "malformed", True)
         with pytest.raises(RuntimeError):
             config.load_config()
 
     def test_config_empty(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.DEBUG), patch(
             "secrets_env.config.load_json_file", return_value={}
         ):
@@ -143,7 +143,7 @@ class TestLoadConfig:
         assert "Configure section not found." in caplog.text
 
     def test_parse_error(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
             "secrets_env.config.load_json_file", return_value={"foo": "bar"}
         ):
@@ -160,10 +160,10 @@ class TestLoadConfig:
             assert config.load_json_file("mocked") is None
 
 
-class TestExtract:
+class TestLoads:
     @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success_from_config(self):
-        out, ok = config.extract(
+        out, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com/",
@@ -180,7 +180,7 @@ class TestExtract:
         )
 
         assert ok is True
-        assert isinstance(out, ConfigSpec)
+        assert isinstance(out, Config)
         assert out.url == "https://example.com/"
         assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
         assert out.secret_specs == {
@@ -197,7 +197,7 @@ class TestExtract:
         },
     )
     def test_success_from_env(self):
-        out, ok = config.extract(
+        out, ok = config._loads(
             {
                 "secrets": {
                     "VAR1": "example#val1",
@@ -221,8 +221,8 @@ class TestExtract:
     def test_success_use_env(self):
         # this test case is setup to make sure env var can overwrite the config
         mock_auth = Mock(spec=secrets_env.auth.Auth)
-        with patch("secrets_env.config.load_auth", return_value=mock_auth):
-            out, ok = config.extract(
+        with patch("secrets_env.auth.load_auth", return_value=mock_auth):
+            out, ok = config._loads(
                 {
                     "source": {
                         "url": "https://example.com/",
@@ -233,12 +233,25 @@ class TestExtract:
             )
 
         assert ok is True
-        assert isinstance(out, ConfigSpec)
+        assert isinstance(out, Config)
         assert out.url == "https://new.example.com/"
+
+    @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
+    def test_success_brief_auth(self):
+        out, ok = config._loads(
+            {
+                "source": {"url": "https://example.com/", "auth": "token"},
+                "secrets": {},
+            }
+        )
+
+        assert ok is True
+        assert isinstance(out, Config)
+        assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_error(self):
         # missing source data
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": "not-a-dict",
                 "secrets": {
@@ -247,14 +260,14 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec(
+        assert spec == Config(
             None,
             None,
             {"VAR": SecretResource("test", "v1")},
         )
 
         # missing secret data
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com",
@@ -262,10 +275,10 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec("https://example.com", None, {})
+        assert spec == Config("https://example.com", None, {})
 
         # secret section invalid
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com",
@@ -274,21 +287,11 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec("https://example.com", None, {})
+        assert spec == Config("https://example.com", None, {})
 
 
-class TestLoadAuth:
-    def test_shortcut(self):
-        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
-            assert config.load_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
-
-    def test_type_error(self, caplog: pytest.LogCaptureFixture):
-        assert config.load_auth(1234) is None
-        assert "Config malformed: <data>auth</data>." in caplog.text
-
-
-def test_has_warned_lang_support_issue():
-    assert config.has_warned_lang_support_issue("TEST") is False
-    assert config.has_warned_lang_support_issue("TEST") is True
-    assert config.has_warned_lang_support_issue("TEST") is True
-    assert config.has_warned_lang_support_issue("TEST2") is False
+def test_warn_lang_support_issue():
+    assert config.warn_lang_support_issue("TEST") is True
+    assert config.warn_lang_support_issue("TEST") is False
+    assert config.warn_lang_support_issue("TEST") is False
+    assert config.warn_lang_support_issue("TEST-2") is True
