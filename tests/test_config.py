@@ -7,7 +7,7 @@ import pytest
 
 import secrets_env.auth
 from secrets_env import config
-from secrets_env.config import ConfigFile, ConfigSpec, SecretResource
+from secrets_env.config import ConfigFile, Config, SecretResource
 
 
 def test_import_any():
@@ -97,7 +97,7 @@ class TestLoadConfig:
 
         # run
         with patch("secrets_env.config.find_config", return_value=spec):
-            assert config.load_config() == ConfigSpec(
+            assert config.load_config() == Config(
                 url="https://example.com/",
                 auth=secrets_env.auth.TokenAuth("ex@mp1e"),
                 secret_specs={
@@ -180,7 +180,7 @@ class TestExtract:
         )
 
         assert ok is True
-        assert isinstance(out, ConfigSpec)
+        assert isinstance(out, Config)
         assert out.url == "https://example.com/"
         assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
         assert out.secret_specs == {
@@ -233,7 +233,7 @@ class TestExtract:
             )
 
         assert ok is True
-        assert isinstance(out, ConfigSpec)
+        assert isinstance(out, Config)
         assert out.url == "https://new.example.com/"
 
     def test_error(self):
@@ -247,7 +247,7 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec(
+        assert spec == Config(
             None,
             None,
             {"VAR": SecretResource("test", "v1")},
@@ -262,7 +262,7 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec("https://example.com", None, {})
+        assert spec == Config("https://example.com", None, {})
 
         # secret section invalid
         spec, ok = config.extract(
@@ -274,7 +274,7 @@ class TestExtract:
             }
         )
         assert not ok
-        assert spec == ConfigSpec("https://example.com", None, {})
+        assert spec == Config("https://example.com", None, {})
 
 
 class TestLoadAuth:

@@ -101,13 +101,13 @@ class SecretResource(typing.NamedTuple):
     key: str
 
 
-class ConfigSpec(typing.NamedTuple):
+class Config(typing.NamedTuple):
     url: str
     auth: secrets_env.auth.Auth
     secret_specs: Dict[str, SecretResource]
 
 
-def load_config(path: Optional[Path] = None) -> Optional[ConfigSpec]:
+def load_config(path: Optional[Path] = None) -> Optional[Config]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
       1. environment variable
@@ -183,9 +183,9 @@ def load_json_file(path: Path) -> Optional[dict]:
     return data
 
 
-def extract(data: dict) -> Tuple[ConfigSpec, bool]:
+def extract(data: dict) -> Tuple[Config, bool]:
     """Extract the config data from environment variable, raw data in config file
-    or system. And structure them into the ConfigSpec object.
+    or system. And structure them into the Config object.
 
     This function tries to parse every thing instead of raise the error
     immediately. This behavior is preserved to expose every potential errors to
@@ -271,7 +271,7 @@ def extract(data: dict) -> Tuple[ConfigSpec, bool]:
         if resource:
             secrets[name] = resource
 
-    return ConfigSpec(url=url, auth=auth, secret_specs=secrets), ok
+    return Config(url=url, auth=auth, secret_specs=secrets), ok
 
 
 def load_auth(data: Union[dict, str]) -> Optional[secrets_env.auth.Auth]:
