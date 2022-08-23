@@ -268,7 +268,7 @@ def _loads(data: dict) -> Tuple[Config, bool]:
             )
             continue
 
-        resource = extract_resource_spec(name, spec)
+        resource = parse_resource(name, spec)
         if resource:
             secrets[name] = resource
 
@@ -297,9 +297,7 @@ def load_auth(data: Union[dict, str]) -> Optional[secrets_env.auth.Auth]:
     return secrets_env.auth.load_auth(data)
 
 
-def extract_resource_spec(
-    name: str, spec: Union[str, dict]
-) -> Optional[SecretResource]:
+def parse_resource(name: str, spec: Union[str, dict]) -> Optional[SecretResource]:
     """Convert the resource spec in the config file into the SecretResource
     object. Allows both string input and dict input.
     """
