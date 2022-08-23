@@ -7,7 +7,7 @@ import pytest
 
 import secrets_env.auth
 from secrets_env import config
-from secrets_env.config import ConfigFile, Config, SecretResource
+from secrets_env.config import Config, ConfigFile, SecretResource
 
 
 def test_import_any():
