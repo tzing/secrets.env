@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     """Find configuration file.
 
-    It looks up for the file(s) that matches the name defined in ``CONFIG_FILE_SPECS``
+    It looks up for the file(s) that matches the name defined in ``CONFIG_FILES``
     in current directory and parent directories.
     """
     wd = directory or Path.cwd().absolute()
