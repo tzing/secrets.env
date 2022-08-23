@@ -85,6 +85,42 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     return None
 
 
+def use_config(filepath: Path) -> Optional[ConfigFile]:
+    """Converts a file into internal object for using this as the config."""
+    # guess file type use its file name
+    assume_spec = None
+    file_ext = filepath.suffix.lower()
+    if filepath.name == "pyproject.toml":
+        assume_spec = "pyproject.toml"
+    elif file_ext in (".yml", ".yaml"):
+        assume_spec = "yaml"
+    elif file_ext == ".toml":
+        assume_spec = "toml"
+    elif file_ext == ".json":
+        assume_spec = "json"
+
+    if not assume_spec:
+        logger.error(
+            "Failed to recognized file format of <data>%s</data>", filepath.name
+        )
+        return None
+
+    # build into ConfigFile object
+    spec = next(s for s in CONFIG_FILES if s.spec == assume_spec)
+
+    if not spec.enable:
+        if warn_lang_support_issue(spec.lang):
+            logger.warning("Failed to read config file <data>%s</data>.", filepath)
+        return None
+
+    return ConfigFile(
+        filename=filepath.name,
+        spec=spec.spec,
+        enable=spec.enable,
+        path=filepath,
+    )
+
+
 def warn_lang_support_issue(format_: str) -> bool:
     """Check if the given file type is supportted or not."""
     warned_formats = vars(warn_lang_support_issue).setdefault("warned_formats", set())
@@ -107,7 +143,7 @@ class Config(typing.NamedTuple):
     secret_specs: Dict[str, SecretResource]
 
 
-def load_config() -> Optional[Config]:
+def load_config(path: Optional[Path] = None) -> Optional[Config]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
       1. environment variable
@@ -118,7 +154,11 @@ def load_config() -> Optional[Config]:
     selected based on the order above.
     """
     # find config file
-    file_metadata = find_config()
+    if path:
+        file_metadata = use_config(path)
+    else:
+        file_metadata = find_config()
+
     if not file_metadata:
         logger.debug("Config file not found.")
         return None
