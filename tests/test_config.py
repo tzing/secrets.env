@@ -24,6 +24,10 @@ def example_config_dir():
 
 
 class TestFindConfig:
+    def teardown_method(self):
+        # reset warned format list
+        vars(config.warn_lang_support_issue)["warned_formats"] = set()
+
     @pytest.mark.parametrize(
         "filename",
         [
@@ -73,6 +77,50 @@ class TestFindConfig:
     def test_no_config(self, tmpdir: str):
         os.chdir(tmpdir)
         assert config.find_config() is None
+
+
+class TestUseConfig:
+    def teardown_method(self):
+        # reset warned format list
+        vars(config.warn_lang_support_issue)["warned_formats"] = set()
+
+    def test_success(self):
+        assert config.use_config(Path("/test/sample.json")) == ConfigFile(
+            "sample.json", "json", True, Path("/test/sample.json")
+        )
+
+        assert config.use_config(Path("/test/sample.yml")) == ConfigFile(
+            "sample.yml", "yaml", True, Path("/test/sample.yml")
+        )
+
+        assert config.use_config(Path("/test/SAMPLE.TOML")) == ConfigFile(
+            "SAMPLE.TOML", "toml", True, Path("/test/SAMPLE.TOML")
+        )
+
+        assert config.use_config(Path("/test/pyproject.toml")) == ConfigFile(
+            "pyproject.toml", "pyproject.toml", True, Path("/test/pyproject.toml")
+        )
+
+        # Name `pyproject.toml` is case sensitive
+        assert config.use_config(Path("/test/PYPROJECT.TOML")) == ConfigFile(
+            "PYPROJECT.TOML", "toml", True, Path("/test/PYPROJECT.TOML")
+        )
+
+    def test_unknown_format(self, caplog: pytest.LogCaptureFixture):
+        assert config.use_config(Path("/test/sample.dat")) is None
+        assert (
+            "Failed to recognized file format of <data>sample.dat</data>" in caplog.text
+        )
+
+    @patch(
+        "secrets_env.config.CONFIG_FILES",
+        [ConfigFile(".secrets-env.toml", "toml", False)],
+    )
+    def test_not_enable(self, caplog: pytest.LogCaptureFixture):
+        assert config.use_config(Path("/test/sample.toml")) is None
+        assert (
+            "Failed to read config file <data>/test/sample.toml</data>" in caplog.text
+        )
 
 
 class TestLoadConfig:
@@ -142,12 +190,14 @@ class TestLoadConfig:
             assert config.load_config() is None
         assert "Configure section not found." in caplog.text
 
-    def test_parse_error(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
-        find_config.return_value = ConfigFile("mock", "json", True, "mock")
-        with caplog.at_level(logging.WARNING), patch(
+    def test_parse_error(self, caplog: pytest.LogCaptureFixture):
+        with patch(
+            "secrets_env.config.use_config",
+            return_value=ConfigFile("mock", "json", True, "mock"),
+        ), caplog.at_level(logging.WARNING), patch(
             "secrets_env.config.load_json_file", return_value={"foo": "bar"}
         ):
-            assert config.load_config() is None
+            assert config.load_config("mock") is None
 
     def test_load_file_error(self):
         with patch("builtins.open", mock_open(read_data=b"[]")):
