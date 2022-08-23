@@ -160,10 +160,10 @@ class TestLoadConfig:
             assert config.load_json_file("mocked") is None
 
 
-class TestExtract:
+class TestLoads:
     @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success_from_config(self):
-        out, ok = config.extract(
+        out, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com/",
@@ -197,7 +197,7 @@ class TestExtract:
         },
     )
     def test_success_from_env(self):
-        out, ok = config.extract(
+        out, ok = config._loads(
             {
                 "secrets": {
                     "VAR1": "example#val1",
@@ -222,7 +222,7 @@ class TestExtract:
         # this test case is setup to make sure env var can overwrite the config
         mock_auth = Mock(spec=secrets_env.auth.Auth)
         with patch("secrets_env.config.load_auth", return_value=mock_auth):
-            out, ok = config.extract(
+            out, ok = config._loads(
                 {
                     "source": {
                         "url": "https://example.com/",
@@ -238,7 +238,7 @@ class TestExtract:
 
     def test_error(self):
         # missing source data
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": "not-a-dict",
                 "secrets": {
@@ -254,7 +254,7 @@ class TestExtract:
         )
 
         # missing secret data
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com",
@@ -265,7 +265,7 @@ class TestExtract:
         assert spec == Config("https://example.com", None, {})
 
         # secret section invalid
-        spec, ok = config.extract(
+        spec, ok = config._loads(
             {
                 "source": {
                     "url": "https://example.com",

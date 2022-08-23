@@ -107,12 +107,13 @@ class Config(typing.NamedTuple):
     secret_specs: Dict[str, SecretResource]
 
 
-def load_config(path: Optional[Path] = None) -> Optional[Config]:
+def load_config() -> Optional[Config]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
       1. environment variable
       2. config file
       3. system keyring service
+      4. prompt
     When a value has more than one occurrence, the first occurrence would be
     selected based on the order above.
     """
@@ -146,7 +147,7 @@ def load_config(path: Optional[Path] = None) -> Optional[Config]:
         return None
 
     # parse
-    config, ok = extract(data)
+    config, ok = _loads(data)
     if not ok:
         return None
 
@@ -183,9 +184,9 @@ def load_json_file(path: Path) -> Optional[dict]:
     return data
 
 
-def extract(data: dict) -> Tuple[Config, bool]:
-    """Extract the config data from environment variable, raw data in config file
-    or system. And structure them into the Config object.
+def _loads(data: dict) -> Tuple[Config, bool]:
+    """Loads config from various sources and structure them into the Config
+    object.
 
     This function tries to parse every thing instead of raise the error
     immediately. This behavior is preserved to expose every potential errors to
