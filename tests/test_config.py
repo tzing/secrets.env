@@ -7,7 +7,7 @@ import pytest
 
 import secrets_env.auth
 from secrets_env import config
-from secrets_env.config import ConfigFileSpec, ConfigSpec, SecretResource
+from secrets_env.config import ConfigFile, ConfigSpec, SecretResource
 
 
 def test_import_any():
@@ -47,7 +47,7 @@ class TestFindConfig:
 
     def test_exists_multiple(self, example_config_dir: Path):
         # we must have TOML installed in testing env
-        assert config.find_config(example_config_dir) == ConfigFileSpec(
+        assert config.find_config(example_config_dir) == ConfigFile(
             ".secrets-env.toml",
             "toml",
             True,
@@ -58,12 +58,12 @@ class TestFindConfig:
         with patch(
             "secrets_env.config.ORDERED_CONFIG_FILE_SPECS",
             [
-                ConfigFileSpec(".secrets-env.toml", "toml", False),
-                ConfigFileSpec(".secrets-env.yaml", "yaml", False),
-                ConfigFileSpec(".secrets-env.json", "json", True),
+                ConfigFile(".secrets-env.toml", "toml", False),
+                ConfigFile(".secrets-env.yaml", "yaml", False),
+                ConfigFile(".secrets-env.json", "json", True),
             ],
         ):
-            assert config.find_config(example_config_dir) == ConfigFileSpec(
+            assert config.find_config(example_config_dir) == ConfigFile(
                 ".secrets-env.json",
                 "json",
                 True,
@@ -88,7 +88,7 @@ class TestLoadConfig:
     @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
     def test_success(self, example_config_dir: Path, filename: str, format_: str):
         # create config spec
-        spec = ConfigFileSpec(
+        spec = ConfigFile(
             "mock",
             format_,
             True,
@@ -122,7 +122,7 @@ class TestLoadConfig:
     def test_config_malformed(
         self, caplog: pytest.LogCaptureFixture, find_config: Mock
     ):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
             "secrets_env.config.load_json_file", return_value=["array data"]
         ):
@@ -130,12 +130,12 @@ class TestLoadConfig:
         assert "Configuration file is malformed." in caplog.text
 
     def test_config_runtime_error(self, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "malformed", True)
+        find_config.return_value = ConfigFile("mock", "malformed", True)
         with pytest.raises(RuntimeError):
             config.load_config()
 
     def test_config_empty(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.DEBUG), patch(
             "secrets_env.config.load_json_file", return_value={}
         ):
@@ -143,7 +143,7 @@ class TestLoadConfig:
         assert "Configure section not found." in caplog.text
 
     def test_parse_error(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
-        find_config.return_value = ConfigFileSpec("mock", "json", True, "mock")
+        find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.WARNING), patch(
             "secrets_env.config.load_json_file", return_value={"foo": "bar"}
         ):

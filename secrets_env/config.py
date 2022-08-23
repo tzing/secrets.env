@@ -30,7 +30,7 @@ __has_lib_toml = tomllib is not None
 __has_lib_yaml = yaml is not None
 
 
-class ConfigFileSpec(typing.NamedTuple):
+class ConfigFile(typing.NamedTuple):
     filename: str
     spec: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
@@ -44,17 +44,17 @@ class ConfigFileSpec(typing.NamedTuple):
 
 
 ORDERED_CONFIG_FILE_SPECS = (
-    ConfigFileSpec(".secrets-env.toml", "toml", __has_lib_toml),
-    ConfigFileSpec(".secrets-env.yaml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".secrets-env.yml", "yaml", __has_lib_yaml),
-    ConfigFileSpec(".secrets-env.json", "json", True),
-    ConfigFileSpec("pyproject.toml", "pyproject.toml", __has_lib_toml),
+    ConfigFile(".secrets-env.toml", "toml", __has_lib_toml),
+    ConfigFile(".secrets-env.yaml", "yaml", __has_lib_yaml),
+    ConfigFile(".secrets-env.yml", "yaml", __has_lib_yaml),
+    ConfigFile(".secrets-env.json", "json", True),
+    ConfigFile("pyproject.toml", "pyproject.toml", __has_lib_toml),
 )
 
 logger = logging.getLogger(__name__)
 
 
-def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
+def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     """Find configuration file.
 
     It looks up for the file(s) that matches the name defined in ``CONFIG_FILE_SPECS``
@@ -73,7 +73,7 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFileSpec]:
                 logger.warning("Skip config file <data>%s</data>.", candidate.name)
                 continue
 
-            return ConfigFileSpec(*spec[:3], candidate)
+            return ConfigFile(*spec[:3], candidate)
 
         # go to parent directory
         parent = wd.parent
@@ -107,7 +107,7 @@ class ConfigSpec(typing.NamedTuple):
     secret_specs: Dict[str, SecretResource]
 
 
-def load_config() -> Optional[ConfigSpec]:
+def load_config(path: Optional[Path] = None) -> Optional[ConfigSpec]:
     """Load the configurations and formated in to the typed structure. Values
     are loaded NOT ONLY from the config file, it could be:
       1. environment variable
