@@ -221,7 +221,7 @@ class TestLoads:
     def test_success_use_env(self):
         # this test case is setup to make sure env var can overwrite the config
         mock_auth = Mock(spec=secrets_env.auth.Auth)
-        with patch("secrets_env.config.load_auth", return_value=mock_auth):
+        with patch("secrets_env.auth.load_auth", return_value=mock_auth):
             out, ok = config._loads(
                 {
                     "source": {
@@ -235,6 +235,19 @@ class TestLoads:
         assert ok is True
         assert isinstance(out, Config)
         assert out.url == "https://new.example.com/"
+
+    @patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"})
+    def test_success_brief_auth(self):
+        out, ok = config._loads(
+            {
+                "source": {"url": "https://example.com/", "auth": "token"},
+                "secrets": {},
+            }
+        )
+
+        assert ok is True
+        assert isinstance(out, Config)
+        assert out.auth == secrets_env.auth.TokenAuth("ex@mp1e")
 
     def test_error(self):
         # missing source data
@@ -275,16 +288,6 @@ class TestLoads:
         )
         assert not ok
         assert spec == Config("https://example.com", None, {})
-
-
-class TestLoadAuth:
-    def test_shortcut(self):
-        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
-            assert config.load_auth("token") == secrets_env.auth.TokenAuth("ex@mp1e")
-
-    def test_type_error(self, caplog: pytest.LogCaptureFixture):
-        assert config.load_auth(1234) is None
-        assert "Config malformed: <data>auth</data>." in caplog.text
 
 
 def test_warn_lang_support_issue():

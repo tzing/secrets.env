@@ -244,7 +244,15 @@ def _loads(data: dict) -> Tuple[Config, bool]:
 
     # auth method
     data_auth = data_source.get("auth", {})
-    auth = load_auth(data_auth)
+    if isinstance(data_auth, str):
+        # allow `auth: token` syntax in config
+        data_auth = {
+            "method": data_auth,
+        }
+
+    data_auth = assert_type("auth", "dict", data_auth)
+
+    auth = secrets_env.auth.load_auth(data_auth)
     if not auth:
         ok = False
 
@@ -273,28 +281,6 @@ def _loads(data: dict) -> Tuple[Config, bool]:
             secrets[name] = resource
 
     return Config(url=url, auth=auth, secret_specs=secrets), ok
-
-
-def load_auth(data: Union[dict, str]) -> Optional[secrets_env.auth.Auth]:
-    """Load the authentication information. This function is a wrapper of
-    `auth.load_auth` and handles syntax variation."""
-    # allow `auth: token` syntax in config
-    if isinstance(data, str):
-        data = {
-            "method": data,
-        }
-
-    # check type
-    if not isinstance(data, dict):
-        logger.error(
-            "Config malformed: <data>auth</data>. Expected <mark>dict</mark> "
-            "type, got <mark>%s</mark> type",
-            type(data).__name__,
-        )
-        return None
-
-    # get auth method
-    return secrets_env.auth.load_auth(data)
 
 
 def parse_resource(name: str, spec: Union[str, dict]) -> Optional[SecretResource]:
