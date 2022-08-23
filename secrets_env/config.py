@@ -43,7 +43,7 @@ class ConfigFile(typing.NamedTuple):
         return self.spec.upper()
 
 
-ORDERED_CONFIG_FILE_SPECS = (
+CONFIG_FILES = (
     ConfigFile(".secrets-env.toml", "toml", __has_lib_toml),
     ConfigFile(".secrets-env.yaml", "yaml", __has_lib_yaml),
     ConfigFile(".secrets-env.yml", "yaml", __has_lib_yaml),
@@ -64,7 +64,7 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     cnt_hit_root = 0  # counter for only search in root directory once
     while cnt_hit_root < 2:
         # look up for candidates
-        for spec in ORDERED_CONFIG_FILE_SPECS:
+        for spec in CONFIG_FILES:
             candidate = wd / spec.filename
             if not candidate.is_file():
                 continue

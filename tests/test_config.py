@@ -56,7 +56,7 @@ class TestFindConfig:
 
     def test_config_not_enabled(self, example_config_dir: Path):
         with patch(
-            "secrets_env.config.ORDERED_CONFIG_FILE_SPECS",
+            "secrets_env.config.CONFIG_FILES",
             [
                 ConfigFile(".secrets-env.toml", "toml", False),
                 ConfigFile(".secrets-env.yaml", "yaml", False),
