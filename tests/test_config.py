@@ -38,16 +38,16 @@ class TestFindConfig:
             "pyproject.toml",
         ],
     )
-    def test_success(self, tmpdir: Path, filename: str):
+    def test_success(self, tmp_path: Path, filename: str):
         # create fake config file
-        tmpdir = Path(tmpdir)
-        (tmpdir / filename).touch()
-        (tmpdir / ".garbage").touch()
+        (tmp_path / filename).touch()
+        (tmp_path / ".garbage").touch()
 
         # run test
-        out = config.find_config(tmpdir)
+        out = config.find_config(tmp_path)
+        assert isinstance(out, ConfigFile)
         assert out.filename == filename
-        assert out.path == (tmpdir / filename).absolute()
+        assert out.path == (tmp_path / filename).absolute()
 
     def test_exists_multiple(self, example_config_dir: Path):
         # we must have TOML installed in testing env
