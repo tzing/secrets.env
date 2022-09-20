@@ -1,5 +1,6 @@
 import importlib
 import importlib.util
+import itertools
 import json
 import logging
 import os
@@ -60,27 +61,25 @@ def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
     It looks up for the file(s) that matches the name defined in ``CONFIG_FILES``
     in current directory and parent directories.
     """
-    wd = directory or Path.cwd().absolute()
-    cnt_hit_root = 0  # counter for only search in root directory once
-    while cnt_hit_root < 2:
+    if directory is None:
+        directory = Path.cwd().absolute()
+
+    for dir_ in itertools.chain([directory], directory.parents):
         # look up for candidates
         for spec in CONFIG_FILES:
-            candidate = wd / spec.filename
+            candidate = dir_ / spec.filename
+            print(candidate)
             if not candidate.is_file():
                 continue
 
             if not spec.enable and warn_lang_support_issue(spec.lang):
-                logger.warning("Skip config file <data>%s</data>.", candidate.name)
+                logger.warning(
+                    "Skip config file <data>%s</data>. Dependency not satisfied.",
+                    candidate.name,
+                )
                 continue
 
             return ConfigFile(*spec[:3], candidate)
-
-        # go to parent directory
-        parent = wd.parent
-        if parent == wd:
-            cnt_hit_root += 1
-
-        wd = parent
 
     return None
 
@@ -224,7 +223,7 @@ def load_json_file(path: Path) -> Optional[dict]:
     return data
 
 
-def _loads(data: dict) -> Tuple[Config, bool]:
+def _loads(data: dict) -> Tuple[Config, bool]:  # noqa: CCR001
     """Loads config from various sources and structure them into the Config
     object.
 

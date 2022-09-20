@@ -253,7 +253,7 @@ class KVReader:
         return outputs
 
 
-def split_key(key: str) -> List[str]:
+def split_key(key: str) -> List[str]:  # noqa: CCR001
     """Splits the given key string into subsequences for getting the value. It
     supports nested structure by joining the keys with dots, e.g. `aa.bb`.
 

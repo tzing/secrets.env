@@ -8,7 +8,7 @@ on:
 
 env:
   # python version for the jobs that does not need to run on all versions
-  MAIN_PYTHON_VERSION: "3.9"
+  MAIN_PYTHON_VERSION: "3.10"
 
 jobs:
   test:
