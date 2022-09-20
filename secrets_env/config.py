@@ -223,7 +223,7 @@ def load_json_file(path: Path) -> Optional[dict]:
     return data
 
 
-def _loads(data: dict) -> Tuple[Config, bool]:
+def _loads(data: dict) -> Tuple[Config, bool]:  # noqa: CCR001
     """Loads config from various sources and structure them into the Config
     object.
 
