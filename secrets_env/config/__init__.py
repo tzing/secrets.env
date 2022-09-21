@@ -7,9 +7,11 @@ import os
 import re
 import typing
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import secrets_env.auth
+
+from .types import ConfigFile, Config, SecretResource
 
 
 def _import_any(*module):
@@ -29,19 +31,6 @@ if typing.TYPE_CHECKING:
 
 __has_lib_toml = tomllib is not None
 __has_lib_yaml = yaml is not None
-
-
-class ConfigFile(typing.NamedTuple):
-    filename: str
-    spec: str  # Literal["json", "yaml", "toml", "pyproject.toml"]
-    enable: bool
-    path: Optional[Path] = None
-
-    @property
-    def lang(self) -> str:
-        if self.spec == "pyproject.toml":
-            return "TOML"
-        return self.spec.upper()
 
 
 CONFIG_FILES = (
@@ -129,17 +118,6 @@ def warn_lang_support_issue(format_: str) -> bool:
     warned_formats.add(format_)
     logger.warning("Optional dependency for <mark>%s</mark> is not installed.", format_)
     return True
-
-
-class SecretResource(typing.NamedTuple):
-    path: str
-    key: str
-
-
-class Config(typing.NamedTuple):
-    url: str
-    auth: secrets_env.auth.Auth
-    secret_specs: Dict[str, SecretResource]
 
 
 def load_config(path: Optional[Path] = None) -> Optional[Config]:
