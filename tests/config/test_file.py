@@ -1,5 +1,7 @@
+import builtins
 import os
 from pathlib import Path
+from unittest.mock import mock_open
 
 import pytest
 
@@ -160,3 +162,17 @@ class TestReadConfigFile:
     def test_runtime_error(self):
         with pytest.raises(RuntimeError):
             t.read_config_file(ConfigFileMetadata("mock", "malformed", True)) is None
+
+
+class TestReadFileErrors:
+    def test_toml(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"["))
+        assert t.read_toml_file("mocked") is None
+
+    def test_yaml(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b":\x0a"))
+        assert t.read_yaml_file("mocked") is None
+
+    def test_json(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"{"))
+        assert t.read_json_file("mocked") is None

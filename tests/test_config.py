@@ -10,119 +10,6 @@ from secrets_env import config
 from secrets_env.config import Config, ConfigFile, SecretResource
 
 
-def test_import_any():
-    assert config._import_any("json")
-    assert config._import_any("module-not-exists", "json")
-    assert config._import_any("module-not-exists") is None
-
-
-@pytest.fixture()
-def example_config_dir():
-    this_file = Path(__file__).resolve()
-    this_repo = this_file.parent.parent
-    return this_repo / "example"
-
-
-class TestFindConfig:
-    def teardown_method(self):
-        # reset warned format list
-        vars(config.warn_lang_support_issue)["warned_formats"] = set()
-
-    @pytest.mark.parametrize(
-        "filename",
-        [
-            ".secrets-env.json",
-            ".secrets-env.yaml",
-            ".secrets-env.yml",
-            ".secrets-env.toml",
-            "pyproject.toml",
-        ],
-    )
-    def test_success(self, tmp_path: Path, filename: str):
-        # create fake config file
-        (tmp_path / filename).touch()
-        (tmp_path / ".garbage").touch()
-
-        # run test
-        out = config.find_config(tmp_path)
-        assert isinstance(out, ConfigFile)
-        assert out.filename == filename
-        assert out.path == (tmp_path / filename).absolute()
-
-    def test_exists_multiple(self, example_config_dir: Path):
-        # we must have TOML installed in testing env
-        assert config.find_config(example_config_dir) == ConfigFile(
-            ".secrets-env.toml",
-            "toml",
-            True,
-            example_config_dir / ".secrets-env.toml",
-        )
-
-    def test_config_not_enabled(self, example_config_dir: Path):
-        with patch(
-            "secrets_env.config.CONFIG_FILES",
-            [
-                ConfigFile(".secrets-env.toml", "toml", False),
-                ConfigFile(".secrets-env.yaml", "yaml", False),
-                ConfigFile(".secrets-env.json", "json", True),
-            ],
-        ):
-            assert config.find_config(example_config_dir) == ConfigFile(
-                ".secrets-env.json",
-                "json",
-                True,
-                example_config_dir / ".secrets-env.json",
-            )
-
-    def test_no_config(self, tmpdir: str):
-        os.chdir(tmpdir)
-        assert config.find_config() is None
-
-
-class TestUseConfig:
-    def teardown_method(self):
-        # reset warned format list
-        vars(config.warn_lang_support_issue)["warned_formats"] = set()
-
-    def test_success(self):
-        assert config.use_config(Path("/test/sample.json")) == ConfigFile(
-            "sample.json", "json", True, Path("/test/sample.json")
-        )
-
-        assert config.use_config(Path("/test/sample.yml")) == ConfigFile(
-            "sample.yml", "yaml", True, Path("/test/sample.yml")
-        )
-
-        assert config.use_config(Path("/test/SAMPLE.TOML")) == ConfigFile(
-            "SAMPLE.TOML", "toml", True, Path("/test/SAMPLE.TOML")
-        )
-
-        assert config.use_config(Path("/test/pyproject.toml")) == ConfigFile(
-            "pyproject.toml", "pyproject.toml", True, Path("/test/pyproject.toml")
-        )
-
-        # Name `pyproject.toml` is case sensitive
-        assert config.use_config(Path("/test/PYPROJECT.TOML")) == ConfigFile(
-            "PYPROJECT.TOML", "toml", True, Path("/test/PYPROJECT.TOML")
-        )
-
-    def test_unknown_format(self, caplog: pytest.LogCaptureFixture):
-        assert config.use_config(Path("/test/sample.dat")) is None
-        assert (
-            "Failed to recognized file format of <data>sample.dat</data>" in caplog.text
-        )
-
-    @patch(
-        "secrets_env.config.CONFIG_FILES",
-        [ConfigFile(".secrets-env.toml", "toml", False)],
-    )
-    def test_not_enable(self, caplog: pytest.LogCaptureFixture):
-        assert config.use_config(Path("/test/sample.toml")) is None
-        assert (
-            "Failed to read config file <data>/test/sample.toml</data>" in caplog.text
-        )
-
-
 class TestLoadConfig:
     @pytest.mark.parametrize(
         ("filename", "format_"),
@@ -167,21 +54,6 @@ class TestLoadConfig:
             assert config.load_config() is None
         assert "Config file not found." in caplog.text
 
-    def test_config_malformed(
-        self, caplog: pytest.LogCaptureFixture, find_config: Mock
-    ):
-        find_config.return_value = ConfigFile("mock", "json", True, "mock")
-        with caplog.at_level(logging.WARNING), patch(
-            "secrets_env.config.load_json_file", return_value=["array data"]
-        ):
-            assert config.load_config() is None
-        assert "Configuration file is malformed." in caplog.text
-
-    def test_config_runtime_error(self, find_config: Mock):
-        find_config.return_value = ConfigFile("mock", "malformed", True)
-        with pytest.raises(RuntimeError):
-            config.load_config()
-
     def test_config_empty(self, caplog: pytest.LogCaptureFixture, find_config: Mock):
         find_config.return_value = ConfigFile("mock", "json", True, "mock")
         with caplog.at_level(logging.DEBUG), patch(
@@ -198,16 +70,6 @@ class TestLoadConfig:
             "secrets_env.config.load_json_file", return_value={"foo": "bar"}
         ):
             assert config.load_config("mock") is None
-
-    def test_load_file_error(self):
-        with patch("builtins.open", mock_open(read_data=b"[]")):
-            assert config.load_toml_file("mocked") is None
-
-        with patch("builtins.open", mock_open(read_data=b":\x0a")):
-            assert config.load_yaml_file("mocked") is None
-
-        with patch("builtins.open", mock_open(read_data=b"{")):
-            assert config.load_json_file("mocked") is None
 
 
 class TestLoads:
@@ -338,10 +200,3 @@ class TestLoads:
         )
         assert not ok
         assert spec == Config("https://example.com", None, {})
-
-
-def test_warn_lang_support_issue():
-    assert config.warn_lang_support_issue("TEST") is True
-    assert config.warn_lang_support_issue("TEST") is False
-    assert config.warn_lang_support_issue("TEST") is False
-    assert config.warn_lang_support_issue("TEST-2") is True

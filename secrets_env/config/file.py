@@ -148,7 +148,7 @@ def read_toml_file(path: Path) -> Optional[dict]:
 def read_yaml_file(path: Path) -> Optional[dict]:
     with open(path, "rb") as fp:
         try:
-            data = yaml.load(fp, Loader=yaml.SafeLoader)
+            data = yaml.safe_load(fp)
         except (yaml.error.YAMLError, UnicodeDecodeError):
             logger.exception("Failed to load YAML file: %s", path)
             return None
