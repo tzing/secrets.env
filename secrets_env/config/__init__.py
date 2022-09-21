@@ -7,7 +7,7 @@ from typing import Any, Optional, Tuple, Union
 
 import secrets_env.auth
 
-from .types import Config, ConfigFile, SecretResource
+from .types import Config, ConfigFileMetadata as ConfigFile, SecretResource
 
 logger = logging.getLogger(__name__)
 

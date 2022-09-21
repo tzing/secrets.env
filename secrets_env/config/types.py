@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from secrets_env.auth import Auth
 
 
-class ConfigFile(NamedTuple):
+class ConfigFileMetadata(NamedTuple):
     filename: str
     spec: Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool

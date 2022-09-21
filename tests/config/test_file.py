@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config.file as t
-from secrets_env.config.types import ConfigFile
+from secrets_env.config.types import ConfigFileMetadata
 
 
 @pytest.fixture(autouse=True)
@@ -25,14 +25,14 @@ def test_import_any():
 
 class TestIsSupportted:
     def test_ok(self, caplog: pytest.LogCaptureFixture):
-        spec = ConfigFile("test", "json", True)
-        assert t.is_supportted(spec) is True
+        meta = ConfigFileMetadata("test", "json", True)
+        assert t.is_supportted(meta) is True
         assert caplog.text == ""
 
     def test_not_ok(self, caplog: pytest.LogCaptureFixture):
-        spec = ConfigFile("test", "toml", False)
-        assert t.is_supportted(spec) is False
-        assert t.is_supportted(spec) is False
+        meta = ConfigFileMetadata("test", "toml", False)
+        assert t.is_supportted(meta) is False
+        assert t.is_supportted(meta) is False
         assert len(caplog.records) == 1  # must only raise once
 
 
@@ -54,19 +54,19 @@ class TestFindConfigFile:
 
         # run test
         out = t.find_config_file(tmp_path)
-        assert isinstance(out, ConfigFile)
+        assert isinstance(out, ConfigFileMetadata)
         assert out.filename == filename
         assert out.path == (tmp_path / filename).absolute()
 
     def test_success_2(self, repo_path: Path):
         # use default path, and expect to find the pyproject.toml in this repo
-        assert t.find_config_file() == ConfigFile(
+        assert t.find_config_file() == ConfigFileMetadata(
             "pyproject.toml", "pyproject.toml", True, repo_path / "pyproject.toml"
         )
 
     def test_multiple(self, example_path: Path):
         # TOML is top prioritized and we must have toml parser installed in testing env
-        assert t.find_config_file(example_path) == ConfigFile(
+        assert t.find_config_file(example_path) == ConfigFileMetadata(
             ".secrets-env.toml",
             "toml",
             True,
@@ -78,12 +78,12 @@ class TestFindConfigFile:
             t,
             "CONFIG_FILES",
             [
-                ConfigFile(".secrets-env.toml", "toml", False),
-                ConfigFile(".secrets-env.json", "json", True),
+                ConfigFileMetadata(".secrets-env.toml", "toml", False),
+                ConfigFileMetadata(".secrets-env.json", "json", True),
             ],
         )
 
-        assert t.find_config_file(example_path) == ConfigFile(
+        assert t.find_config_file(example_path) == ConfigFileMetadata(
             ".secrets-env.json",
             "json",
             True,
@@ -95,7 +95,7 @@ class TestFindConfigFile:
         assert t.find_config_file() is None
 
 
-class TestBuildConfigFileSpec:
+class TestBuildConfigFileMetadata:
     @pytest.mark.parametrize(
         ("filename", "spec"),
         [
@@ -107,13 +107,13 @@ class TestBuildConfigFileSpec:
         ],
     )
     def test_success(self, filename: str, spec: str):
-        out = t.build_config_file_spec(Path(filename))
-        assert isinstance(out, ConfigFile)
+        out = t.build_config_file_metadata(Path(filename))
+        assert isinstance(out, ConfigFileMetadata)
         assert out.filename == filename
         assert out.spec == spec
 
     def test_fail(self, caplog: pytest.LogCaptureFixture):
-        assert t.build_config_file_spec(Path("/test/sample.dat")) is None
+        assert t.build_config_file_metadata(Path("/test/sample.dat")) is None
         assert "Failed to detect file format of <data>sample.dat</data>" in caplog.text
 
     def test_not_enabled(
@@ -123,9 +123,9 @@ class TestBuildConfigFileSpec:
             t,
             "CONFIG_FILES",
             [
-                ConfigFile(".secrets-env.json", "json", False),
+                ConfigFileMetadata(".secrets-env.json", "json", False),
             ],
         )
 
-        assert t.build_config_file_spec(Path("sample.json")) is None
+        assert t.build_config_file_metadata(Path("sample.json")) is None
         assert "Failed to use config file <data>sample.json</data>" in caplog.text
