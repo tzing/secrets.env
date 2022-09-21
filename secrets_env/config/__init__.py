@@ -1,123 +1,23 @@
-import importlib
-import importlib.util
-import itertools
 import json
 import logging
 import os
 import re
-import typing
 from pathlib import Path
 from typing import Any, Optional, Tuple, Union
 
 import secrets_env.auth
 
-from .types import ConfigFile, Config, SecretResource
-
-
-def _import_any(*module):
-    """Import any of these modules if it exists."""
-    for name in module:
-        if importlib.util.find_spec(name):
-            return importlib.import_module(name)
-    return None
-
-
-tomllib = _import_any("tomllib", "tomli")
-yaml = _import_any("yaml")
-
-if typing.TYPE_CHECKING:
-    import tomli as tomllib
-    import yaml
-
-__has_lib_toml = tomllib is not None
-__has_lib_yaml = yaml is not None
-
-
-CONFIG_FILES = (
-    ConfigFile(".secrets-env.toml", "toml", __has_lib_toml),
-    ConfigFile(".secrets-env.yaml", "yaml", __has_lib_yaml),
-    ConfigFile(".secrets-env.yml", "yaml", __has_lib_yaml),
-    ConfigFile(".secrets-env.json", "json", True),
-    ConfigFile("pyproject.toml", "pyproject.toml", __has_lib_toml),
-)
+from .types import Config, ConfigFile, SecretResource
 
 logger = logging.getLogger(__name__)
 
 
-def find_config(directory: Optional[Path] = None) -> Optional[ConfigFile]:
-    """Find configuration file.
-
-    It looks up for the file(s) that matches the name defined in ``CONFIG_FILES``
-    in current directory and parent directories.
-    """
-    if directory is None:
-        directory = Path.cwd().absolute()
-
-    for dir_ in itertools.chain([directory], directory.parents):
-        # look up for candidates
-        for spec in CONFIG_FILES:
-            candidate = dir_ / spec.filename
-            print(candidate)
-            if not candidate.is_file():
-                continue
-
-            if not spec.enable and warn_lang_support_issue(spec.lang):
-                logger.warning(
-                    "Skip config file <data>%s</data>. Dependency not satisfied.",
-                    candidate.name,
-                )
-                continue
-
-            return ConfigFile(*spec[:3], candidate)
-
-    return None
+def find_config(*args, **kwargs):
+    pass
 
 
 def use_config(filepath: Path) -> Optional[ConfigFile]:
-    """Converts a file into internal object for using this as the config."""
-    # guess file type use its file name
-    assume_spec = None
-    file_ext = filepath.suffix.lower()
-    if filepath.name == "pyproject.toml":
-        assume_spec = "pyproject.toml"
-    elif file_ext in (".yml", ".yaml"):
-        assume_spec = "yaml"
-    elif file_ext == ".toml":
-        assume_spec = "toml"
-    elif file_ext == ".json":
-        assume_spec = "json"
-
-    if not assume_spec:
-        logger.error(
-            "Failed to recognized file format of <data>%s</data>", filepath.name
-        )
-        return None
-
-    # build into ConfigFile object
-    spec = next(s for s in CONFIG_FILES if s.spec == assume_spec)
-
-    if not spec.enable:
-        if warn_lang_support_issue(spec.lang):
-            logger.warning("Failed to read config file <data>%s</data>.", filepath)
-        return None
-
-    return ConfigFile(
-        filename=filepath.name,
-        spec=spec.spec,
-        enable=spec.enable,
-        path=filepath,
-    )
-
-
-def warn_lang_support_issue(format_: str) -> bool:
-    """Check if the given file type is supportted or not."""
-    warned_formats = vars(warn_lang_support_issue).setdefault("warned_formats", set())
-    if format_ in warned_formats:
-        return False
-
-    warned_formats.add(format_)
-    logger.warning("Optional dependency for <mark>%s</mark> is not installed.", format_)
-    return True
+    pass
 
 
 def load_config(path: Optional[Path] = None) -> Optional[Config]:
