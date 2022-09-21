@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import re
@@ -7,16 +6,15 @@ from typing import Any, Optional, Tuple, Union
 
 import secrets_env.auth
 
-from .types import Config, ConfigFileMetadata as ConfigFile, SecretResource
+from .file import build_config_file_metadata, find_config_file, read_config_file
+from .types import Config
+from .types import ConfigFileMetadata as ConfigFile
+from .types import SecretResource
 
 logger = logging.getLogger(__name__)
 
 
 def find_config(*args, **kwargs):
-    pass
-
-
-def use_config(filepath: Path) -> Optional[ConfigFile]:
     pass
 
 
@@ -32,9 +30,9 @@ def load_config(path: Optional[Path] = None) -> Optional[Config]:
     """
     # find config file
     if path:
-        file_metadata = use_config(path)
+        file_metadata = build_config_file_metadata(path)
     else:
-        file_metadata = find_config()
+        file_metadata = find_config_file()
 
     if not file_metadata:
         logger.debug("Config file not found.")
@@ -43,22 +41,7 @@ def load_config(path: Optional[Path] = None) -> Optional[Config]:
     logger.info("Read secrets.env config from <data>%s</data>", file_metadata.path)
 
     # read it
-    if file_metadata.lang == "TOML":
-        data = load_toml_file(file_metadata.path)
-    elif file_metadata.lang == "YAML":
-        data = load_yaml_file(file_metadata.path)
-    elif file_metadata.lang == "JSON":
-        data = load_json_file(file_metadata.path)
-    else:
-        raise RuntimeError(f"Unexpected format: {file_metadata.spec}")
-
-    if data and not isinstance(data, dict):
-        logger.warning("Configuration file is malformed. Stop loading secrets.")
-        return None
-
-    if file_metadata.spec == "pyproject.toml":
-        data = data.get("tool", {}).get("secrets-env", {})
-
+    data = read_config_file(file_metadata)
     if not data:
         logger.debug("Configure section not found. Stop loading secrets.")
         return None
@@ -69,36 +52,6 @@ def load_config(path: Optional[Path] = None) -> Optional[Config]:
         return None
 
     return config
-
-
-def load_toml_file(path: Path) -> Optional[dict]:
-    with open(path, "rb") as fp:
-        try:
-            data = tomllib.load(fp)
-        except (tomllib.TOMLDecodeError, UnicodeDecodeError):
-            logger.exception("Failed to load TOML file: %s", path)
-            return None
-    return data
-
-
-def load_yaml_file(path: Path) -> Optional[dict]:
-    with open(path, "rb") as fp:
-        try:
-            data = yaml.load(fp, Loader=yaml.SafeLoader)
-        except (yaml.error.YAMLError, UnicodeDecodeError):
-            logger.exception("Failed to load YAML file: %s", path)
-            return None
-    return data
-
-
-def load_json_file(path: Path) -> Optional[dict]:
-    with open(path, "rb") as fp:
-        try:
-            data = json.load(fp)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            logger.exception("Failed to load JSON file: %s", path)
-            return None
-    return data
 
 
 def _loads(data: dict) -> Tuple[Config, bool]:  # noqa: CCR001

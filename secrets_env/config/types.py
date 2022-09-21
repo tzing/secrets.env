@@ -18,7 +18,7 @@ class ConfigFileMetadata(NamedTuple):
             "yaml": "YAML",
             "toml": "TOML",
             "pyproject.toml": "TOML",
-        }[self.spec]
+        }.get(self.spec)
 
 
 class SecretResource(NamedTuple):

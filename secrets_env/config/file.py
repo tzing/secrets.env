@@ -1,9 +1,10 @@
 import importlib
 import importlib.util
 import itertools
+import json
 import logging
 from pathlib import Path
-from typing import Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from .types import ConfigFileMetadata
 
@@ -109,3 +110,56 @@ def build_config_file_metadata(path: Path) -> Optional[ConfigFileMetadata]:
         enable=meta.enable,
         path=path,
     )
+
+
+def read_config_file(meta: ConfigFileMetadata) -> Optional[Dict[str, Any]]:
+    """Read the file."""
+    if meta.lang == "TOML":
+        data = read_toml_file(meta.path)
+    elif meta.lang == "YAML":
+        data = read_yaml_file(meta.path)
+    elif meta.lang == "JSON":
+        data = read_json_file(meta.path)
+    else:
+        raise RuntimeError(f"Unexpected format: {meta.spec}")
+
+    if data and not isinstance(data, dict):
+        logger.warning("Config file is malformed: <data>%s</data>", meta.path)
+        return None
+
+    data = data or {}
+
+    if meta.spec == "pyproject.toml":
+        data = data.get("tool", {}).get("secrets-env", {})
+
+    return data
+
+
+def read_toml_file(path: Path) -> Optional[dict]:
+    with open(path, "rb") as fp:
+        try:
+            data = tomllib.load(fp)
+        except (tomllib.TOMLDecodeError, UnicodeDecodeError):
+            logger.exception("Failed to load TOML file: %s", path)
+            return None
+    return data
+
+
+def read_yaml_file(path: Path) -> Optional[dict]:
+    with open(path, "rb") as fp:
+        try:
+            data = yaml.load(fp, Loader=yaml.SafeLoader)
+        except (yaml.error.YAMLError, UnicodeDecodeError):
+            logger.exception("Failed to load YAML file: %s", path)
+            return None
+    return data
+
+
+def read_json_file(path: Path) -> Optional[dict]:
+    with open(path, "rb") as fp:
+        try:
+            data = json.load(fp)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            logger.exception("Failed to load JSON file: %s", path)
+            return None
+    return data

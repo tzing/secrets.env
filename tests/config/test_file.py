@@ -129,3 +129,34 @@ class TestBuildConfigFileMetadata:
 
         assert t.build_config_file_metadata(Path("sample.json")) is None
         assert "Failed to use config file <data>sample.json</data>" in caplog.text
+
+
+class TestReadConfigFile:
+    @pytest.mark.parametrize(
+        ("filename", "spec"),
+        [
+            (".secrets-env.json", "json"),
+            (".secrets-env.toml", "toml"),
+            (".secrets-env.yaml", "yaml"),
+            ("pyproject.toml", "pyproject.toml"),
+        ],
+    )
+    def test_success(self, filename: str, spec: str, example_path: Path):
+        meta = ConfigFileMetadata(filename, spec, True, example_path / filename)
+        out = t.read_config_file(meta)
+        assert isinstance(out, dict)
+        assert isinstance(out["source"], dict)
+        assert isinstance(out["secrets"], dict)
+
+    def test_malformed(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        monkeypatch.setattr(t, "read_json_file", lambda _: ["array", "data"])
+
+        meta = ConfigFileMetadata("mock", "json", True, "mock")
+        assert t.read_config_file(meta) is None
+        assert "Config file is malformed" in caplog.text
+
+    def test_runtime_error(self):
+        with pytest.raises(RuntimeError):
+            t.read_config_file(ConfigFileMetadata("mock", "malformed", True)) is None
