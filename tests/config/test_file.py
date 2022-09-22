@@ -161,7 +161,7 @@ class TestReadConfigFile:
 
     def test_runtime_error(self):
         with pytest.raises(RuntimeError):
-            t.read_config_file(ConfigFileMetadata("mock", "malformed", True)) is None
+            t.read_config_file(ConfigFileMetadata("mock", "malformed", True))
 
 
 class TestReadFileErrors:

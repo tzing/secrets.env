@@ -21,7 +21,7 @@ class ConfigFileMetadata(NamedTuple):
         }.get(self.spec)
 
 
-class SecretResource(NamedTuple):
+class SecretPath(NamedTuple):
     path: str
     key: str
 
@@ -29,4 +29,4 @@ class SecretResource(NamedTuple):
 class Config(NamedTuple):
     url: str
     auth: "Auth"
-    secret_specs: Dict[str, SecretResource]
+    secret_specs: Dict[str, SecretPath]

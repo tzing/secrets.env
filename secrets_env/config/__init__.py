@@ -7,9 +7,10 @@ from typing import Any, Optional, Tuple, Union
 import secrets_env.auth
 
 from .file import build_config_file_metadata, find_config_file, read_config_file
+from .parse import parse_path
 from .types import Config
 from .types import ConfigFileMetadata as ConfigFile
-from .types import SecretResource
+from .types import SecretPath as SecretResource
 
 logger = logging.getLogger(__name__)
 
@@ -146,50 +147,8 @@ def _loads(data: dict) -> Tuple[Config, bool]:  # noqa: CCR001
             )
             continue
 
-        resource = parse_resource(name, spec)
+        resource = parse_path(name, spec)
         if resource:
             secrets[name] = resource
 
     return Config(url=url, auth=auth, secret_specs=secrets), ok
-
-
-def parse_resource(name: str, spec: Union[str, dict]) -> Optional[SecretResource]:
-    """Convert the resource spec in the config file into the SecretResource
-    object. Allows both string input and dict input.
-    """
-    if isinstance(spec, str):
-        # string input: path#key
-        idx = spec.find("#")
-        if idx > 0:
-            path = spec[:idx]
-            key = spec[idx + 1 :]
-            return SecretResource(path, key)
-
-        logger.warning(
-            "Target secret '<data>%s</data>' is invalid. Failed to resolve "
-            "resource '<data>%s</data>'. Skipping this variable.",
-            name,
-            spec,
-        )
-
-    elif isinstance(spec, dict):
-        # dict input
-        path = spec.get("path")
-        key = spec.get("key")
-        if isinstance(path, str) and isinstance(key, str):
-            return SecretResource(path, key)
-
-        logger.warning(
-            "Target secret '<data>%s</data>' is invalid. Missing resource spec "
-            "'<mark>path</mark>' or '<mark>key</mark>'. Skipping this variable.",
-            name,
-        )
-
-    else:
-        logger.warning(
-            "Target secret '<data>%s</data>' is invalid. Not a valid resource spec. "
-            "Skipping this variable.",
-            name,
-        )
-
-    return None
