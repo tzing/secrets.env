@@ -18,13 +18,29 @@ def get_url(section_source: T_ConfigData) -> Optional[str]:
 
     if not url:
         logger.error(
-            "Missing required config '<data>url</data>'. "
+            "Missing required config '<mark>url</mark>'. "
             "Neither <mark>source.url</mark> in the config file "
             "nor environment variable <mark>SECRETS_ENV_ADDR</mark> is found."
         )
         return None, False
 
     return ensure_str("source.url", url)
+
+
+def get_auth_method(data: T_ConfigData) -> Tuple[str, bool]:
+    method = get_env_var("SECRETS_ENV_METHOD")
+    if not method:
+        method = data.get("method")
+
+    if not method:
+        logger.error(
+            "Missing required config '<mark>auth method</mark>'. "
+            "Neither <mark>source.auth.method</mark> in the config file "
+            "nor environment variable <mark>SECRETS_ENV_METHOD</mark> is found."
+        )
+        return None, False
+
+    return ensure_str("method", method)
 
 
 def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:

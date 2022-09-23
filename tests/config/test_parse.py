@@ -18,10 +18,29 @@ class TestGetURL:
 
     def test_no_data(self, caplog: pytest.LogCaptureFixture):
         assert t.get_url({}) == (None, False)
-        assert "Missing required config '<data>url</data>'." in caplog.text
+        assert "Missing required config '<mark>url</mark>'." in caplog.text
 
     def test_type_error(self):
         assert t.get_url({"url": object()}) == (None, False)
+
+
+class TestGetAuthMethod:
+    def setup_method(self):
+        self.data = {"method": "test"}
+
+    def test_data(self):
+        assert t.get_auth_method(self.data) == ("test", True)
+
+    def test_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_METHOD", "env-test")
+        assert t.get_auth_method(self.data) == ("env-test", True)
+
+    def test_no_data(self, caplog: pytest.LogCaptureFixture):
+        assert t.get_auth_method({}) == (None, False)
+        assert "Missing required config '<mark>auth method</mark>'." in caplog.text
+
+    def test_type_error(self):
+        assert t.get_auth_method({"method": object()}) == (None, False)
 
 
 def test_parse_section_secrets():
