@@ -1,6 +1,6 @@
-import secrets_env.utils as t
-
 import pytest
+
+import secrets_env.utils as t
 
 
 def test_get_env_var(monkeypatch: pytest.MonkeyPatch):
