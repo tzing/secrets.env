@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
-from .types import ConfigFileMetadata
+from secrets_env.config.types import ConfigFileMetadata
 
 
 def import_any(*module):

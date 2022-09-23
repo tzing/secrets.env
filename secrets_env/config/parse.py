@@ -2,12 +2,31 @@ import logging
 import re
 from typing import Any, Dict, Optional, Tuple, Union
 
-from .types import SecretPath
+from secrets_env.config.types import SecretPath
+from secrets_env.utils import get_env_var
+
+T_ConfigData = Dict[str, Union[str, Dict]]
 
 logger = logging.getLogger(__name__)
 
 
-def parse_section_secrets(data: Dict[str, Any]) -> Dict[str, SecretPath]:
+def get_url(section_source: T_ConfigData) -> Optional[str]:
+    url = get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR")
+    if not url:
+        url = section_source.get("url", None)
+
+    if not url:
+        logger.error(
+            "Missing required config '<data>url</data>'. "
+            "Neither <mark>source.url</mark> in the config file "
+            "nor environment variable <mark>SECRETS_ENV_ADDR</mark> is found."
+        )
+        return None, False
+
+    return ensure_type("source.url", "str", url)
+
+
+def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
     """Parse the 'secrets' section from raw configs."""
     secrets = {}
 

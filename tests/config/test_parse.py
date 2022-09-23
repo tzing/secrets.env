@@ -4,6 +4,26 @@ import secrets_env.config.parse as t
 from secrets_env.config.types import SecretPath
 
 
+class TestGetURL:
+    def setup_method(self):
+        self.data = {"url": "https://data.example.com"}
+
+    def test_data(self):
+        assert t.get_url(self.data) == ("https://data.example.com", True)
+
+    @pytest.mark.parametrize("var_name", ["SECRETS_ENV_ADDR", "VAULT_ADDR"])
+    def test_env(self, monkeypatch: pytest.MonkeyPatch, var_name: str):
+        monkeypatch.setenv(var_name, "https://env.example.com")
+        assert t.get_url(self.data) == ("https://env.example.com", True)
+
+    def test_no_data(self, caplog: pytest.LogCaptureFixture):
+        assert t.get_url({}) == (None, False)
+        assert "Missing required config '<data>url</data>'." in caplog.text
+
+    def test_type_error(self):
+        assert t.get_url({"url": object()}) == (None, False)
+
+
 def test_parse_section_secrets():
     assert t.parse_section_secrets(
         {
