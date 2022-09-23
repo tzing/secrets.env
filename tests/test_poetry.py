@@ -15,7 +15,7 @@ from cleo.io.outputs.output import Verbosity
 
 import secrets_env
 import secrets_env.poetry as plugin
-from secrets_env.config import Config, SecretResource
+from secrets_env.config.types import Config, SecretPath
 
 
 class TestSecretsEnvPlugin:
@@ -47,8 +47,8 @@ class TestSecretsEnvPlugin:
                 url="https://example.com/",
                 auth=secrets_env.TokenAuth("ex@mp1e"),
                 secret_specs={
-                    "VAR1": SecretResource("key1", "example"),
-                    "VAR2": SecretResource("key2", "example"),
+                    "VAR1": SecretPath("key1", "example"),
+                    "VAR2": SecretPath("key2", "example"),
                 },
             ),
         ):
@@ -60,8 +60,8 @@ class TestSecretsEnvPlugin:
         with patch(
             "secrets_env.KVReader.get_values",
             return_value={
-                SecretResource("key1", "example"): "foo",
-                SecretResource("key2", "example"): "bar",
+                SecretPath("key1", "example"): "foo",
+                SecretPath("key2", "example"): "bar",
             },
         ):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
@@ -73,7 +73,7 @@ class TestSecretsEnvPlugin:
             "secrets_env.KVReader.get_values",
             return_value={
                 # no key2
-                SecretResource("key1", "example"): "foo",
+                SecretPath("key1", "example"): "foo",
             },
         ):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
