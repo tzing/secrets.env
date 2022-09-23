@@ -1,14 +1,33 @@
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, TypeVar, Union
 
+from secrets_env.auth import get_auth
 from secrets_env.config.types import SecretPath
 from secrets_env.utils import get_env_var
+
+if TYPE_CHECKING:
+    from secrets_env.auth import Auth
 
 T = TypeVar("T")
 T_ConfigData = Dict[str, Union[str, Dict]]
 
 logger = logging.getLogger(__name__)
+
+
+def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
+    """Parse 'source.auth' section from raw configs."""
+    if isinstance(data, str):
+        # syntax sugar: `auth: <method>`
+        data = {"method": data}
+
+    data, _ = ensure_dict("source.auth", data)
+
+    method, ok = get_auth_method(data)
+    if not ok:
+        return None
+
+    return get_auth(method, data)
 
 
 def get_url(section_source: T_ConfigData) -> Optional[str]:

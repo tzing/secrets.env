@@ -1,7 +1,22 @@
+from unittest.mock import Mock, patch
+
 import pytest
 
 import secrets_env.config.parse as t
 from secrets_env.config.types import SecretPath
+
+
+@pytest.fixture()
+def patch_get_auth():
+    with patch.object(t, "get_auth") as m:
+        yield m.return_value
+
+
+def test_parse_section_auth(patch_get_auth: Mock):
+    assert t.parse_section_auth("test") is patch_get_auth
+    assert t.parse_section_auth({"method": "test"}) is patch_get_auth
+
+    assert t.parse_section_auth({}) is None
 
 
 class TestGetURL:
