@@ -1,10 +1,11 @@
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, TypeVar, Union
 
 from secrets_env.config.types import SecretPath
 from secrets_env.utils import get_env_var
 
+T = TypeVar("T")
 T_ConfigData = Dict[str, Union[str, Dict]]
 
 logger = logging.getLogger(__name__)
@@ -23,11 +24,11 @@ def get_url(section_source: T_ConfigData) -> Optional[str]:
         )
         return None, False
 
-    return ensure_type("source.url", "str", url)
+    return ensure_str("source.url", url)
 
 
 def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
-    """Parse the 'secrets' section from raw configs."""
+    """Parse 'secrets' section from raw configs."""
     secrets = {}
 
     for name, path in data.items():
@@ -78,29 +79,30 @@ def parse_path(name: str, spec: Union[str, Dict[str, str]]) -> Optional[SecretPa
     return None
 
 
-def ensure_type(var_name: str, type_name: str, obj: Any) -> Tuple[Any, bool]:
+def _ensure_type(name: str, obj: T, expect: type, default: T) -> Tuple[T, bool]:
     """Ensure the a value is in desired type. Show warning and fallback to
     default value when the it is not valid."""
-    __types = {
-        "str": (str, None),
-        "dict": (dict, {}),
-    }
-
-    type_, default = __types[type_name]
-    if not isinstance(obj, type_):
+    if isinstance(obj, expect):
+        return obj, True
+    else:
         logger.warning(
             "Config <data>%s</data> is malformed: "
             "expect <mark>%s</mark> type, "
             "got '<data>%s</data>' (<mark>%s</mark> type)",
-            var_name,
-            type_name,
+            name,
+            expect.__name__,
             trimmed_str(obj),
             type(obj).__name__,
         )
-
         return default, False
 
-    return obj, True
+
+def ensure_str(name: str, s: str) -> Tuple[str, bool]:
+    return _ensure_type(name, s, str, None)
+
+
+def ensure_dict(name: str, d: dict) -> Tuple[dict, bool]:
+    return _ensure_type(name, d, dict, {})
 
 
 def trimmed_str(o: Any):

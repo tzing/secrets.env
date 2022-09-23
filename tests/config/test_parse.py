@@ -71,18 +71,21 @@ class TestParsePath:
         ) in caplog.text
 
 
-def test_ensure_type(caplog: pytest.LogCaptureFixture):
-    assert t.ensure_type("test", "str", "hello") == ("hello", True)
-    assert t.ensure_type("test", "dict", {"foo": "bar"}) == ({"foo": "bar"}, True)
+def test_ensure_str(caplog: pytest.LogCaptureFixture):
+    assert t.ensure_str("test", "hello") == ("hello", True)
 
-    assert t.ensure_type("not-str", "str", 123) == (None, False)
+    assert t.ensure_str("not-str", 123) == (None, False)
     assert (
         "Config <data>not-str</data> is malformed: "
         "expect <mark>str</mark> type, "
         "got '<data>123</data>' (<mark>int</mark> type)"
     ) in caplog.text
 
-    assert t.ensure_type("not-dict", "dict", "hello") == ({}, False)
+
+def test_ensure_dict(caplog: pytest.LogCaptureFixture):
+    assert t.ensure_dict("test", {"foo": "bar"}) == ({"foo": "bar"}, True)
+
+    assert t.ensure_dict("not-dict", "hello") == ({}, False)
     assert (
         "Config <data>not-dict</data> is malformed: "
         "expect <mark>dict</mark> type, "
