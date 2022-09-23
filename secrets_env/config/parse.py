@@ -1,9 +1,30 @@
 import logging
+import re
 from typing import Any, Dict, Optional, Tuple, Union
 
 from .types import SecretPath
 
 logger = logging.getLogger(__name__)
+
+
+def parse_section_secrets(data: Dict[str, Any]) -> Dict[str, SecretPath]:
+    """Parse the 'secrets' section from raw configs."""
+    secrets = {}
+
+    for name, path in data.items():
+        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
+            logger.warning(
+                "Target environment variable '<data>%s</data>' is not a "
+                "valid name. Skipping this variable.",
+                name,
+            )
+            continue
+
+        resource = parse_path(name, path)
+        if resource:
+            secrets[name] = resource
+
+    return secrets
 
 
 def parse_path(name: str, spec: Union[str, Dict[str, str]]) -> Optional[SecretPath]:

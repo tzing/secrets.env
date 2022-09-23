@@ -4,6 +4,20 @@ import secrets_env.config.parse as t
 from secrets_env.config.types import SecretPath
 
 
+def test_parse_section_secrets():
+    assert t.parse_section_secrets(
+        {
+            "var1": "foo#bar",  # valid
+            "VAR2": "foo#",  # path invalid
+            "3var": "foo#bar",  # name invalid
+            "VAR4": "foo#bar",  # valid
+        }
+    ) == {
+        "var1": SecretPath("foo", "bar"),
+        "VAR4": SecretPath("foo", "bar"),
+    }
+
+
 class TestParsePath:
     def test_str(self, caplog: pytest.LogCaptureFixture):
         assert t.parse_path("test", "foo#bar") == SecretPath("foo", "bar")

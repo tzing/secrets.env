@@ -7,7 +7,7 @@ from typing import Any, Optional, Tuple, Union
 import secrets_env.auth
 
 from .file import build_config_file_metadata, find_config_file, read_config_file
-from .parse import parse_path
+from .parse import parse_section_secrets
 from .types import Config
 from .types import ConfigFileMetadata as ConfigFile
 from .types import SecretPath as SecretResource
@@ -137,18 +137,6 @@ def _loads(data: dict) -> Tuple[Config, bool]:  # noqa: CCR001
         )
         data_secrets = {}
 
-    secrets = {}
-    for name, spec in data_secrets.items():
-        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
-            logger.warning(
-                "Target environment variable '<data>%s</data>' is not a "
-                "valid name. Skipping this variable.",
-                name,
-            )
-            continue
-
-        resource = parse_path(name, spec)
-        if resource:
-            secrets[name] = resource
+    secrets = parse_secrets_section(data_secrets)
 
     return Config(url=url, auth=auth, secret_specs=secrets), ok
