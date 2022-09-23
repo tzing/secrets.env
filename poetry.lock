@@ -616,6 +616,17 @@ virtualenv = ">=20.4.3,<20.4.5 || >20.4.5,<20.4.6 || >20.4.6"
 xattr = {version = ">=0.9.7,<0.10.0", markers = "sys_platform == \"darwin\""}
 
 [[package]]
+name = "poetry-bumpversion"
+version = "0.2.0"
+description = "Poetry plugin to update project version strings on poetry version command"
+category = "dev"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+poetry = ">=1.2.0a1,<2.0.0"
+
+[[package]]
 name = "poetry-core"
 version = "1.2.0"
 description = "Poetry PEP 517 Build Backend"
@@ -930,7 +941,7 @@ yaml = ["PyYAML"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b416715a77ea4c11ab7309521cda3ca777fdc4e26c2439dcd19fc125fb8ae17c"
+content-hash = "cff18dd52767bd2df87d18ecc019a4f5bb1a25ca46f257e5d6af7e360ca77626"
 
 [metadata.files]
 attrs = [
@@ -1360,6 +1371,10 @@ pluggy = [
 poetry = [
     {file = "poetry-1.2.1-py3-none-any.whl", hash = "sha256:43be0a7b0fdc3efa661324e288e9630ad00c54dcf17e2a054740a160d7f25d63"},
     {file = "poetry-1.2.1.tar.gz", hash = "sha256:2750bb2b636ef435d8beac51dde0b13d06199017a1d9b96cba899863d1e81024"},
+]
+poetry-bumpversion = [
+    {file = "poetry-bumpversion-0.2.0.tar.gz", hash = "sha256:3d662da26d7b42114230f7e0434c61b059aec05f5ef5c98a188d062b6079637b"},
+    {file = "poetry_bumpversion-0.2.0-py3-none-any.whl", hash = "sha256:823e47a80221a65495cd92806301ad9cf6490cfd6d1d9ae7cac6dfe512d0490b"},
 ]
 poetry-core = [
     {file = "poetry-core-1.2.0.tar.gz", hash = "sha256:ceccec95487e46c63a41761fbac5211b809bca22658e25a049f4c7da96269f71"},
