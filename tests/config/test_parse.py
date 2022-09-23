@@ -3,7 +3,39 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env.config.parse as t
+from secrets_env.auth import TokenAuth
 from secrets_env.config.types import SecretPath
+
+
+def test_parse_config(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e-t0ken")
+
+    # success
+    cfg = t.parse_config(
+        {
+            "source": {
+                "url": "https://example.com/",
+                "auth": {
+                    "method": "token",
+                },
+            },
+            "secrets": {
+                "VAR1": "example#val1",
+                "VAR2": {"path": "example", "key": "val2"},
+                "3VAR": "example#val3",  # name invalid
+            },
+        }
+    )
+
+    assert cfg.url == "https://example.com/"
+    assert cfg.auth == TokenAuth("ex@mp1e-t0ken")
+    assert cfg.secret_specs == {
+        "VAR1": SecretPath("example", "val1"),
+        "VAR2": SecretPath("example", "val2"),
+    }
+
+    # fail
+    assert t.parse_config({}) is None
 
 
 @pytest.fixture()

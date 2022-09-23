@@ -1,18 +1,46 @@
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, TypeVar, Union
+import typing
+from typing import Dict, Optional, Tuple, Union
 
 from secrets_env.auth import get_auth
-from secrets_env.config.types import SecretPath
+from secrets_env.config.types import Config, SecretPath
 from secrets_env.utils import get_env_var
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from secrets_env.auth import Auth
 
-T = TypeVar("T")
+T = typing.TypeVar("T")
 T_ConfigData = Dict[str, Union[str, Dict]]
 
 logger = logging.getLogger(__name__)
+
+
+def parse_config(data: T_ConfigData) -> Optional[Config]:
+    """Parse and validate raw configs, build it into structured object."""
+    is_success = True
+
+    section_source = data.get("source", {})
+    section_source, ok = ensure_dict("source", section_source)
+    is_success &= ok
+
+    url, ok = get_url(section_source)
+    is_success &= ok
+
+    section_auth = section_source.get("auth", {})
+    auth = parse_section_auth(section_auth)
+    if not auth:
+        is_success = False
+
+    section_secrets = data.get("secrets", {})
+    section_secrets, ok = ensure_dict("secrets", section_secrets)
+    is_success &= ok
+
+    secrets = parse_section_secrets(section_secrets)
+
+    if not is_success:
+        return None
+    return Config(url=url, auth=auth, secret_specs=secrets)
 
 
 def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
@@ -140,7 +168,7 @@ def ensure_dict(name: str, d: dict) -> Tuple[dict, bool]:
     return _ensure_type(name, d, dict, {})
 
 
-def trimmed_str(o: Any):
+def trimmed_str(o: typing.Any) -> str:
     """Cast an object to str and trimmed."""
     __max_len = 20
     s = str(o)
