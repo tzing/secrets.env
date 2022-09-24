@@ -73,15 +73,12 @@ class TestLoadConfig:
         }
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        # find file
         monkeypatch.setattr(t, "find_config_file", lambda: None)
         assert t.load_config() is None
 
-        # use file
-        assert t.load_config(Path("/no-this-data.json")) is None
-
     def test_not_content(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
         path = tmp_path / "empty.json"
+        path.touch()
 
         with caplog.at_level(logging.INFO):
             assert t.load_config(path) is None
