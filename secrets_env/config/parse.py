@@ -58,6 +58,26 @@ def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
     return get_auth(method, data)
 
 
+def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
+    """Parse 'secrets' section from raw configs."""
+    secrets = {}
+
+    for name, path in data.items():
+        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
+            logger.warning(
+                "Target environment variable '<data>%s</data>' is not a "
+                "valid name. Skipping this variable.",
+                name,
+            )
+            continue
+
+        resource = parse_path(name, path)
+        if resource:
+            secrets[name] = resource
+
+    return secrets
+
+
 def get_url(section_source: T_ConfigData) -> Optional[str]:
     url = get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR")
     if not url:
@@ -88,26 +108,6 @@ def get_auth_method(data: T_ConfigData) -> Tuple[str, bool]:
         return None, False
 
     return ensure_str("method", method)
-
-
-def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
-    """Parse 'secrets' section from raw configs."""
-    secrets = {}
-
-    for name, path in data.items():
-        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
-            logger.warning(
-                "Target environment variable '<data>%s</data>' is not a "
-                "valid name. Skipping this variable.",
-                name,
-            )
-            continue
-
-        resource = parse_path(name, path)
-        if resource:
-            secrets[name] = resource
-
-    return secrets
 
 
 def parse_path(name: str, spec: Union[str, Dict[str, str]]) -> Optional[SecretPath]:
