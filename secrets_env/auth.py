@@ -254,23 +254,6 @@ class OktaAuth(UserPasswordAuth):
         )
 
 
-def load_auth(config: dict) -> Optional[Auth]:
-    """Factory for building Auth object."""
-    method = get_env_var("SECRETS_ENV_METHOD")
-    if not method:
-        method = config.get("method")
-
-    if not method:
-        logger.error(
-            "Missing required config: <data>auth method</data>. Neither the value "
-            "'<mark>source.auth.method</mark>' in the config file nor the environment "
-            "variable '<mark>SECRETS_ENV_METHOD</mark>' is found."
-        )
-        return None
-
-    return get_auth(method, config)
-
-
 def get_auth(name: str, data: dict) -> Optional[Auth]:
     """Factory for building Auth object."""
     name_ = name.lower()

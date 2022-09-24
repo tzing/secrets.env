@@ -43,37 +43,15 @@ class TestPrompt:
             assert auth.prompt("test") is None
 
 
-class TestLoadAuth:
-    def test_success_token(self):
-        with patch.dict("os.environ", {"SECRETS_ENV_TOKEN": "ex@mp1e"}):
-            assert auth.load_auth({"method": "TOKEN"}) == auth.TokenAuth("ex@mp1e")
+class TestGetAuth:
+    def test_success_token(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
+        assert auth.get_auth("TOKEN", {"method": "TOKEN"}) == auth.TokenAuth("ex@mp1e")
 
-    def test_success_okta(self):
-        with patch.dict(
-            "os.environ",
-            {
-                "SECRETS_ENV_METHOD": "OKTA",
-                "SECRETS_ENV_USERNAME": "foo",
-                "SECRETS_ENV_PASSWORD": "bar",
-            },
-        ):
-            assert auth.load_auth({}) == auth.OktaAuth("foo", "bar")
-
-    def test_from_env(self):
-        # env var must overwrites the configure
-        with patch.dict(
-            "os.environ",
-            {"SECRETS_ENV_METHOD": "token", "SECRETS_ENV_TOKEN": "ex@mp1e"},
-        ):
-            assert auth.load_auth({"method": "okta"}) == auth.TokenAuth("ex@mp1e")
-
-    def test_missing_method(self, caplog: pytest.LogCaptureFixture):
-        assert auth.load_auth({}) is None
-        assert "Missing required config: <data>auth method</data>." in caplog.text
-
-    def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
-        assert auth.load_auth({"method": "invalid-method"}) is None
-        assert "Unknown auth method: <data>invalid-method</data>" in caplog.text
+    def test_success_okta(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "foo")
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "bar")
+        assert auth.get_auth("okta", {}) == auth.OktaAuth("foo", "bar")
 
 
 class TestTokenAuth:
