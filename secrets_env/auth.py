@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional, Union
 import keyring
 import keyring.errors
 
+from secrets_env.utils import get_env_var
+
 if typing.TYPE_CHECKING:
     import click
     import hvac
@@ -121,7 +123,7 @@ class TokenAuth(Auth):
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         # env var
-        token = os.getenv("SECRETS_ENV_TOKEN") or os.getenv("VAULT_TOKEN")
+        token = get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN")
         if token:
             logger.debug("Found token from environment variable")
             return cls(token)
@@ -186,7 +188,7 @@ class UserPasswordAuth(Auth):
 
     @classmethod
     def _load_username(cls, data: Dict[str, Any]) -> Optional[str]:
-        username = os.getenv("SECRETS_ENV_USERNAME")
+        username = get_env_var("SECRETS_ENV_USERNAME")
         if username:
             logger.debug("Found username from environment variable.")
             return username
@@ -205,7 +207,7 @@ class UserPasswordAuth(Auth):
 
     @classmethod
     def _load_password(cls, username: str) -> Optional[str]:
-        password = os.getenv("SECRETS_ENV_PASSWORD")
+        password = get_env_var("SECRETS_ENV_PASSWORD")
         if password:
             logger.debug("Found password from environment variable.")
             return password
@@ -252,27 +254,13 @@ class OktaAuth(UserPasswordAuth):
         )
 
 
-def load_auth(config: dict) -> Optional[Auth]:
+def get_auth(name: str, data: dict) -> Optional[Auth]:
     """Factory for building Auth object."""
-    # get auth method
-    method = os.getenv("SECRETS_ENV_METHOD")
-    if not method:
-        method = config.get("method")
+    name_ = name.lower()
+    if name_ == "token":
+        return TokenAuth.load(data)
+    elif name_ == "okta":
+        return OktaAuth.load(data)
 
-    if not method:
-        logger.error(
-            "Missing required config: <data>auth method</data>. Neither the value "
-            "'<mark>source.auth.method</mark>' in the config file nor the environment "
-            "variable '<mark>SECRETS_ENV_METHOD</mark>' is found."
-        )
-        return None
-
-    # build auth object based on configured method
-    method_ = method.lower()
-    if method_ == "token":
-        return TokenAuth.load(config)
-    elif method_ == "okta":
-        return OktaAuth.load(config)
-
-    logger.error("Unknown auth method: <data>%s</data>", method)
+    logger.error("Unknown auth method: <data>%s</data>", name)
     return None
