@@ -64,43 +64,37 @@ def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
 
 def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     """Parse 'tls' section from raw configs."""
+    tls = {}
     is_success = True
 
     # ca cert
-    path_ca = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
-    if not path_ca:
-        path_ca = data.get("ca_cert")
+    path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
+    if not path:
+        path = data.get("ca_cert")
 
-    if path_ca:
-        path_ca, ok = ensure_path("source.tls.ca_cert", path_ca)
+    if path:
+        tls["ca_cert"], ok = ensure_path("source.tls.ca_cert", path)
         is_success &= ok
 
     # client cert
-    path_client_cert = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
-    if not path_client_cert:
-        path_client_cert = data.get("client_cert")
+    path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
+    if not path:
+        path = data.get("client_cert")
 
-    if path_client_cert:
-        path_client_cert, ok = ensure_path("source.tls.client_cert", path_client_cert)
+    if path:
+        tls["client_cert"], ok = ensure_path("source.tls.client_cert", path)
         is_success &= ok
 
     # client key
-    path_client_key = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
-    if not path_client_key:
-        path_client_key = data.get("client_key")
+    path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
+    if not path:
+        path = data.get("client_key")
 
-    if path_client_key:
-        path_client_key, ok = ensure_path("source.tls.client_key", path_client_key)
+    if path:
+        tls["client_key"], ok = ensure_path("source.tls.client_key", path)
         is_success &= ok
 
-    if not is_success:
-        return None
-
-    return TLSConfig(
-        ca_cert=path_ca,
-        client_cert=path_client_cert,
-        client_key=path_client_key,
-    )
+    return tls if is_success else {}
 
 
 def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:

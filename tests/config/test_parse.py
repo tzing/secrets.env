@@ -61,30 +61,30 @@ class TestParseSectionTLS:
         assert t.parse_section_tls(
             {
                 "ca_cert": "/data/ca.cert",
-                "client_cert": "/data/client.pem",
+                "client_cert": "/data/client.cert",
                 "client_key": "/data/client.pub",
             }
-        ) == TLSConfig(
-            ca_cert=Path("/data/ca.cert"),
-            client_cert=Path("/data/client.pem"),
-            client_key=Path("/data/client.pub"),
-        )
+        ) == {
+            "ca_cert": Path("/data/ca.cert"),
+            "client_cert": Path("/data/client.cert"),
+            "client_key": Path("/data/client.pub"),
+        }
 
         # test standalone
-        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == TLSConfig(
-            Path("/data/ca.cert"), None, None
-        )
-        assert t.parse_section_tls({"client_cert": "/data/client.pem"}) == TLSConfig(
-            None, Path("/data/client.pem"), None
-        )
-        assert t.parse_section_tls({"client_key": "/data/client.pub"}) == TLSConfig(
-            None, None, Path("/data/client.pub")
-        )
+        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == {
+            "ca_cert": Path("/data/ca.cert")
+        }
+        assert t.parse_section_tls({"client_cert": "/data/client.cert"}) == {
+            "client_cert": Path("/data/client.cert")
+        }
+        assert t.parse_section_tls({"client_key": "/data/client.pub"}) == {
+            "client_key": Path("/data/client.pub")
+        }
 
     def test_path_not_exist(self):
-        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) is None
-        assert t.parse_section_tls({"client_cert": "/data/client.pem"}) is None
-        assert t.parse_section_tls({"client_key": "/data/client.pub"}) is None
+        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == {}
+        assert t.parse_section_tls({"client_cert": "/data/client.cert"}) == {}
+        assert t.parse_section_tls({"client_key": "/data/client.pub"}) == {}
 
 
 class TestGetURL:

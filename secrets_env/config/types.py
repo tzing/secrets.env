@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, Literal, NamedTuple, Optional
+from typing import TYPE_CHECKING, Dict, Literal, NamedTuple, Optional, TypedDict
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,10 +27,10 @@ class SecretPath(NamedTuple):
     key: str
 
 
-class TLSConfig(NamedTuple):
-    ca_cert: Optional["Path"]
-    client_cert: Optional["Path"]
-    client_key: Optional["Path"]
+class TLSConfig(TypedDict):
+    ca_cert: "Path"
+    client_cert: "Path"
+    client_key: "Path"
 
 
 class Config(NamedTuple):
