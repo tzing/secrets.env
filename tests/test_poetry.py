@@ -46,6 +46,7 @@ class TestSecretsEnvPlugin:
             return_value=Config(
                 url="https://example.com/",
                 auth=secrets_env.TokenAuth("ex@mp1e"),
+                tls={},
                 secret_specs={
                     "VAR1": SecretPath("key1", "example"),
                     "VAR2": SecretPath("key2", "example"),

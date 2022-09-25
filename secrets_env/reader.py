@@ -8,6 +8,7 @@ import requests
 import requests.exceptions
 
 from secrets_env.auth import Auth
+from secrets_env.config.types import TLSConfig
 from secrets_env.exception import AuthenticationError, TypeError, UnsupportedError
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class KVReader:
     """Read secrets from Vault KV engine."""
 
-    def __init__(self, url: str, auth: Auth) -> None:
+    def __init__(self, url: str, auth: Auth, tls: TLSConfig = {}) -> None:
         """
         Parameters
         ----------
@@ -31,8 +32,11 @@ class KVReader:
             raise TypeError(
                 "Expect Auth instance for auth, got {}", type(auth).__name__
             )
+        if not isinstance(tls, dict):
+            raise TypeError("Expect dict for tls, got {}", type(tls).__name__)
 
         self.url = url
+        self.tls = tls
         self.auth = auth
 
         self._client: Optional[hvac.Client] = None
@@ -50,6 +54,9 @@ class KVReader:
         )
 
         client = hvac.Client(self.url)
+
+        if self.tls:
+            apply_tls(client.session, self.tls)
 
         self.auth.apply(client)
         if not client.is_authenticated():
@@ -251,6 +258,25 @@ class KVReader:
             sum(1 for value in outputs.values() if value is not None),
         )
         return outputs
+
+
+def apply_tls(session: requests.Session, cfg: TLSConfig) -> None:
+    """Apply TLS configration on request session."""
+    if cfg.ca_cert:
+        logger.debug("CA installed: %s", cfg.ca_cert)
+        session.verify = str(cfg.ca_cert)
+
+    if cfg.client_cert and cfg.client_key:
+        logger.debug(
+            "Client side certificate pair installed: %s, %s",
+            cfg.client_cert,
+            cfg.client_key,
+        )
+        session.cert = (str(cfg.client_cert), str(cfg.client_key))
+
+    elif cfg.client_cert:
+        logger.debug("Client side certificate file installed: %s", cfg.client_cert)
+        session.cert = str(cfg.client_cert)
 
 
 def split_key(key: str) -> List[str]:  # noqa: CCR001
