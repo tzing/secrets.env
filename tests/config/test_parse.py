@@ -5,11 +5,12 @@ import pytest
 
 import secrets_env.config.parse as t
 from secrets_env.auth import TokenAuth
-from secrets_env.config.types import SecretPath, TLSConfig
+from secrets_env.config.types import SecretPath
 
 
 def test_parse_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e-t0ken")
+    monkeypatch.setattr(t, "ensure_path", lambda _, p: (Path(p), True))
 
     # success
     cfg = t.parse_config(
@@ -18,6 +19,10 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
                 "url": "https://example.com/",
                 "auth": {
                     "method": "token",
+                },
+                "tls": {
+                    "ca_cert": "/path/ca.cert",
+                    "client_cert": "/path/client.cert",
                 },
             },
             "secrets": {
@@ -30,6 +35,10 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
 
     assert cfg.url == "https://example.com/"
     assert cfg.auth == TokenAuth("ex@mp1e-t0ken")
+    assert cfg.tls == {
+        "ca_cert": Path("/path/ca.cert"),
+        "client_cert": Path("/path/client.cert"),
+    }
     assert cfg.secret_specs == {
         "VAR1": SecretPath("example", "val1"),
         "VAR2": SecretPath("example", "val2"),

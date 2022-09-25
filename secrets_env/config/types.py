@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, Dict, Literal, NamedTuple, Optional, TypedDict
+import typing
+from typing import Dict, Literal, NamedTuple, Optional, TypedDict
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from pathlib import Path
 
     from secrets_env.auth import Auth
@@ -36,5 +37,5 @@ class TLSConfig(TypedDict):
 class Config(NamedTuple):
     url: str
     auth: "Auth"
-    tls: Optional[TLSConfig]
+    tls: TLSConfig
     secret_specs: Dict[str, SecretPath]
