@@ -260,23 +260,25 @@ class KVReader:
         return outputs
 
 
-def apply_tls(session: requests.Session, cfg: TLSConfig) -> None:
+def apply_tls(session: requests.Session, tls: TLSConfig) -> None:
     """Apply TLS configration on request session."""
-    if cfg.ca_cert:
-        logger.debug("CA installed: %s", cfg.ca_cert)
-        session.verify = str(cfg.ca_cert)
+    if ca_cert := tls.get("ca_cert"):
+        logger.debug("CA installed: %s", ca_cert)
+        session.verify = str(ca_cert)
 
-    if cfg.client_cert and cfg.client_key:
+    if (client_cert := tls.get("client_cert")) and (
+        client_key := tls.get("client_key")
+    ):
         logger.debug(
             "Client side certificate pair installed: %s, %s",
-            cfg.client_cert,
-            cfg.client_key,
+            client_cert,
+            client_key,
         )
-        session.cert = (str(cfg.client_cert), str(cfg.client_key))
+        session.cert = (str(client_cert), str(client_key))
 
-    elif cfg.client_cert:
-        logger.debug("Client side certificate file installed: %s", cfg.client_cert)
-        session.cert = str(cfg.client_cert)
+    elif client_cert := tls.get("client_cert"):
+        logger.debug("Client side certificate file installed: %s", client_cert)
+        session.cert = str(client_cert)
 
 
 def split_key(key: str) -> List[str]:  # noqa: CCR001
