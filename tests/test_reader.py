@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import hvac
@@ -8,6 +9,7 @@ import requests.exceptions
 import responses
 
 import secrets_env.auth
+import secrets_env.reader as t
 from secrets_env import reader
 from secrets_env.exception import AuthenticationError, UnsupportedError
 
@@ -24,23 +26,130 @@ def _set_authenticated():
         yield
 
 
-class TestReader:
+@pytest.mark.usefixtures("_set_authenticated")
+class TestReader_1:
+    # unit tests for Reader class
+
+    def setup_method(self):
+        self.auth = Mock(spec=secrets_env.auth.Auth)
+        self.auth.method.return_value = "mocked"
+
+        self.reader = t.KVReader(
+            url="https://example.com/",
+            auth=self.auth,
+            tls={
+                "ca_cert": Path("/path/ca.cert"),
+                "client_cert": Path("/path/client.cert"),
+                "client_key": Path("/path/client.key"),
+            },
+        )
+
+    def test___init__type_error(self):
+        with pytest.raises(TypeError):
+            reader.KVReader(1234, self.auth)
+        with pytest.raises(TypeError):
+            reader.KVReader("https://example.com", 1234)
+        with pytest.raises(TypeError):
+            reader.KVReader("https://example.com", self.auth, 1234)
+
+    def test_client(self):
+        assert isinstance(self.reader.client, hvac.Client)
+        assert isinstance(self.reader.client, hvac.Client)  # from cache
+
+    def test_get_engine_and_version_1(self, request_mock: responses.RequestsMock):
+        # standard response
+        request_mock.get(
+            "https://example.com/v1/sys/internal/ui/mounts/secrets/test",
+            status=HTTPStatus.OK,
+            json={
+                "request_id": "989b476f-1f1d-c493-0777-8f7e9823a3c8",
+                "lease_id": "",
+                "renewable": False,
+                "lease_duration": 0,
+                "data": {
+                    "accessor": "kv_8e4430be",
+                    "config": {
+                        "default_lease_ttl": 0,
+                        "force_no_cache": False,
+                        "max_lease_ttl": 0,
+                    },
+                    "description": "",
+                    "external_entropy_access": False,
+                    "local": False,
+                    "options": {"version": "2"},
+                    "path": "secrets/",
+                    "seal_wrap": False,
+                    "type": "kv",
+                    "uuid": "1dc09fc2-4844-f332-b08d-845fcb754545",
+                },
+                "wrap_info": None,
+                "warnings": None,
+                "auth": None,
+            },
+        )
+        assert self.reader.get_engine_and_version("secrets/test") == ("secrets/", 2)
+
+    def test_get_engine_and_version_2(self, request_mock: responses.RequestsMock):
+        # legacy vault
+        request_mock.get(
+            "https://example.com/v1/sys/internal/ui/mounts/secrets/test",
+            status=HTTPStatus.NOT_FOUND,
+        )
+        assert self.reader.get_engine_and_version("secrets/test") == ("", 1)
+
+    @pytest.mark.parametrize(
+        ("status_code", "body"),
+        [
+            # not a ported version
+            (
+                HTTPStatus.OK,
+                {"data": {"path": "mock/", "type": "kv", "options": {"version": "99"}}},
+            ),
+            # query fail
+            (HTTPStatus.BAD_REQUEST, {"msg": "test error"}),
+        ],
+    )
+    def test_get_engine_and_version_3(
+        self,
+        request_mock: responses.RequestsMock,
+        status_code: int,
+        body: dict,
+    ):
+        # internal errors
+        request_mock.get(
+            "https://example.com/v1/sys/internal/ui/mounts/test",
+            status=status_code,
+            json=body,
+        )
+        assert self.reader.get_engine_and_version("test") == (None, None)
+
+    def test_get_engine_and_version_4(self, request_mock: responses.RequestsMock):
+        # connection error
+        request_mock.get(
+            "https://example.com/v1/sys/internal/ui/mounts/test",
+            body=requests.ConnectTimeout("test connection error"),
+        )
+        assert self.reader.get_engine_and_version("test") == (None, None)
+
+    def test_get_engine_and_version_5(self, request_mock: responses.RequestsMock):
+        # this function only catch some error. e.g. connection error
+        request_mock.get(
+            "https://example.com/v1/sys/internal/ui/mounts/test",
+            body=requests.HTTPError("test request error"),
+        )
+        with pytest.raises(requests.RequestException):
+            self.reader.get_engine_and_version("test")
+
+
+class _Reader_FunctionalTest:
     def setup_method(self):
         # connect to real vault for integration test
         # see .github/workflows/test.yml for test data
         auth = secrets_env.auth.TokenAuth("!ntegr@t!0n-test")
         self.reader = reader.KVReader("http://127.0.0.1:8200", auth)
 
-    def test___init__(self):
-        with pytest.raises(TypeError):
-            reader.KVReader(1234, 1234)
-        with pytest.raises(TypeError):
-            reader.KVReader("http://example.com", 1234)
-
-    def test_client_success(self):
-        """succeed cases; use token, real connection"""
+    def test_client(self):
         assert isinstance(self.reader.client, hvac.Client)
-        assert isinstance(self.reader.client, hvac.Client)  # from cache
 
     @patch("hvac.Client")
     def test_client_auth_error(self, client_: Mock):
@@ -126,72 +235,6 @@ class TestReader:
         }
 
         assert self.reader.get_values([]) == {}
-
-
-class TestReaderGetEngineAndVersion:
-    def setup_method(self):
-        auth = Mock(spec=secrets_env.auth.Auth)
-        auth.method.return_value = "mocked"
-
-        self.reader = reader.KVReader("https://example.com", auth)
-
-    @pytest.mark.parametrize(
-        ("status_code", "body", "mount_point", "version"),
-        [
-            # not a ported version
-            (
-                HTTPStatus.OK,
-                {
-                    "data": {
-                        "path": "mock/",
-                        "type": "kv",
-                        "options": {"version": "99"},
-                    }
-                },
-                None,
-                None,
-            ),
-            # legacy vault
-            (HTTPStatus.NOT_FOUND, {}, "", 1),
-            # query fail
-            (HTTPStatus.BAD_REQUEST, {"msg": "test error"}, None, None),
-            # connection error
-            (None, requests.ConnectTimeout("test connection error"), None, None),
-        ],
-    )
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_error(
-        self,
-        request_mock: responses.RequestsMock,
-        status_code: int,
-        body: dict,
-        mount_point: str,
-        version: int,
-    ):
-        if isinstance(body, dict):
-            request_mock.get(
-                "https://example.com/v1/sys/internal/ui/mounts/test",
-                status=status_code,
-                json=body,
-            )
-        else:
-            request_mock.get(
-                "https://example.com/v1/sys/internal/ui/mounts/test",
-                status=status_code,
-                body=body,
-            )
-
-        assert self.reader.get_engine_and_version("test") == (mount_point, version)
-
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_error_not_captured(self, request_mock: responses.RequestsMock):
-        # this function only catch some error. e.g. connection error
-        request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/test",
-            body=requests.HTTPError("test request error"),
-        )
-        with pytest.raises(requests.RequestException):
-            self.reader.get_engine_and_version("test")
 
 
 class TestReaderGetSecret:
