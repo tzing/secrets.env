@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class KVReader:
     """Read secrets from Vault KV engine."""
 
-    def __init__(self, url: str, auth: Auth, tls: TLSConfig = {}) -> None:
+    def __init__(self, url: str, auth: Auth, tls: Optional[TLSConfig] = None) -> None:
         """
         Parameters
         ----------
@@ -36,7 +36,7 @@ class KVReader:
             raise TypeError(
                 "Expect Auth instance for auth, got {}", type(auth).__name__
             )
-        if not isinstance(tls, dict):
+        if tls is not None and not isinstance(tls, dict):
             raise TypeError("Expect dict for tls, got {}", type(tls).__name__)
 
         self.url = url
