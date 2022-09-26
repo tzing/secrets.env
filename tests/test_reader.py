@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import hvac
+import hvac.adapters
 import pytest
 import requests
 import requests.exceptions
@@ -27,9 +28,7 @@ def _set_authenticated():
 
 
 @pytest.mark.usefixtures("_set_authenticated")
-class TestReader_1:
-    # unit tests for Reader class
-
+class TestReader_UnitTest:
     def setup_method(self):
         self.auth = Mock(spec=secrets_env.auth.Auth)
         self.auth.method.return_value = "mocked"
@@ -315,6 +314,102 @@ class TestReaderGetSecret:
                 json={"msg": "mock error"},
             )
             assert self.reader.get_secret("secret/test") is None
+
+
+class TestGetEngineAndVersion:
+    URL = "https://example.com/v1/sys/internal/ui/mounts/secrets/test"
+
+    def run(self):
+        adapter = hvac.adapters.JSONAdapter(base_uri="https://example.com/")
+        return t.get_engine_and_version(adapter, "secrets/test")
+
+    @pytest.mark.parametrize(
+        ("options", "version"),
+        [
+            ({"version": "1"}, 1),
+            ({"version": "2"}, 2),
+        ],
+    )
+    def test_success(
+        self, request_mock: responses.RequestsMock, options: dict, version: int
+    ):
+        request_mock.get(
+            self.URL,
+            status=HTTPStatus.OK,
+            json={
+                "request_id": "989b476f-1f1d-c493-0777-8f7e9823a3c8",
+                "lease_id": "",
+                "renewable": False,
+                "lease_duration": 0,
+                "data": {
+                    "accessor": "kv_8e4430be",
+                    "config": {
+                        "default_lease_ttl": 0,
+                        "force_no_cache": False,
+                        "max_lease_ttl": 0,
+                    },
+                    "description": "",
+                    "external_entropy_access": False,
+                    "local": False,
+                    "options": options,
+                    "path": "secrets/",
+                    "seal_wrap": False,
+                    "type": "kv",
+                    "uuid": "1dc09fc2-4844-f332-b08d-845fcb754545",
+                },
+                "wrap_info": None,
+                "warnings": None,
+                "auth": None,
+            },
+        )
+        assert self.run() == ("secrets/", version)
+
+    def test_success_legacy(self, request_mock: responses.RequestsMock):
+        # legacy vault
+        request_mock.get(self.URL, status=HTTPStatus.NOT_FOUND)
+        assert self.run() == ("", 1)
+
+    def test_not_ported_version(self, request_mock: responses.RequestsMock):
+        request_mock.get(
+            self.URL,
+            status=HTTPStatus.OK,
+            json={
+                "data": {"path": "mock/", "type": "kv", "options": {"version": "99"}}
+            },
+        )
+        assert self.run() == (None, None)
+
+    def test_unauthorized(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
+    ):
+        request_mock.get(self.URL, status=HTTPStatus.FORBIDDEN)
+        assert self.run() == (None, None)
+        assert "The used token has no access to path secrets/test" in caplog.text
+
+    def test_bad_request(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
+    ):
+        request_mock.get(self.URL, status=HTTPStatus.BAD_REQUEST)
+        assert self.run() == (None, None)
+        assert "Error occurred during checking metadata for secrets/test" in caplog.text
+
+    def test_connection_error(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
+    ):
+        request_mock.get(
+            self.URL, body=requests.ConnectTimeout("test connection error")
+        )
+        assert self.run() == (None, None)
+        assert (
+            "Error occurred during checking metadata secrets/test: connect timeout"
+            in caplog.text
+        )
+
+    def test_not_captured_error(self, request_mock: responses.RequestsMock):
+        # this function only catch some error. e.g. http error
+        request_mock.get(self.URL, body=requests.HTTPError("test request error"))
+        with pytest.raises(requests.RequestException):
+            self.run()
 
 
 def test_split_key():
