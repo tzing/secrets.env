@@ -41,7 +41,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
             # skip logging. already show error in `load_config`
             return
 
-        reader = secrets_env.KVReader(config.url, config.auth)
+        reader = secrets_env.KVReader(config.url, config.auth, config.tls)
         secrets = reader.get_values(config.secret_specs.values())
 
         cnt_loaded = 0

@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,6 +10,7 @@ from secrets_env.config.types import SecretPath
 
 def test_parse_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e-t0ken")
+    monkeypatch.setattr(t, "ensure_path", lambda _, p: (Path(p), True))
 
     # success
     cfg = t.parse_config(
@@ -17,6 +19,10 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
                 "url": "https://example.com/",
                 "auth": {
                     "method": "token",
+                },
+                "tls": {
+                    "ca_cert": "/path/ca.cert",
+                    "client_cert": "/path/client.cert",
                 },
             },
             "secrets": {
@@ -29,6 +35,10 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
 
     assert cfg.url == "https://example.com/"
     assert cfg.auth == TokenAuth("ex@mp1e-t0ken")
+    assert cfg.tls == {
+        "ca_cert": Path("/path/ca.cert"),
+        "client_cert": Path("/path/client.cert"),
+    }
     assert cfg.secret_specs == {
         "VAR1": SecretPath("example", "val1"),
         "VAR2": SecretPath("example", "val2"),
@@ -49,6 +59,41 @@ def test_parse_section_auth(patch_get_auth: Mock):
     assert t.parse_section_auth({"method": "test"}) is patch_get_auth
 
     assert t.parse_section_auth({}) is None
+
+
+class TestParseSectionTLS:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        # disable file exist check
+        monkeypatch.setattr(t, "ensure_path", lambda _, p: (Path(p), True))
+
+        # test all
+        assert t.parse_section_tls(
+            {
+                "ca_cert": "/data/ca.cert",
+                "client_cert": "/data/client.cert",
+                "client_key": "/data/client.pub",
+            }
+        ) == {
+            "ca_cert": Path("/data/ca.cert"),
+            "client_cert": Path("/data/client.cert"),
+            "client_key": Path("/data/client.pub"),
+        }
+
+        # test standalone
+        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == {
+            "ca_cert": Path("/data/ca.cert")
+        }
+        assert t.parse_section_tls({"client_cert": "/data/client.cert"}) == {
+            "client_cert": Path("/data/client.cert")
+        }
+        assert t.parse_section_tls({"client_key": "/data/client.pub"}) == {
+            "client_key": Path("/data/client.pub")
+        }
+
+    def test_path_not_exist(self):
+        assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == {}
+        assert t.parse_section_tls({"client_cert": "/data/client.cert"}) == {}
+        assert t.parse_section_tls({"client_key": "/data/client.pub"}) == {}
 
 
 class TestGetURL:
@@ -142,7 +187,7 @@ def test_ensure_str(caplog: pytest.LogCaptureFixture):
 
     assert t.ensure_str("not-str", 123) == (None, False)
     assert (
-        "Config <data>not-str</data> is malformed: "
+        "Config <mark>not-str</mark> is malformed: "
         "expect <mark>str</mark> type, "
         "got '<data>123</data>' (<mark>int</mark> type)"
     ) in caplog.text
@@ -153,9 +198,32 @@ def test_ensure_dict(caplog: pytest.LogCaptureFixture):
 
     assert t.ensure_dict("not-dict", "hello") == ({}, False)
     assert (
-        "Config <data>not-dict</data> is malformed: "
+        "Config <mark>not-dict</mark> is malformed: "
         "expect <mark>dict</mark> type, "
         "got '<data>hello</data>' (<mark>str</mark> type)"
+    ) in caplog.text
+
+
+def test_ensure_path(caplog: pytest.LogCaptureFixture):
+    assert t.ensure_path("test", __file__, True) == (Path(__file__), True)
+    assert t.ensure_path("test", Path(__file__), True) == (Path(__file__), True)
+
+    assert t.ensure_path("type-error", 1234) == (None, False)
+    assert (
+        "Config <mark>type-error</mark> is malformed: "
+        "expect <mark>str</mark> type, "
+        "got '<data>1234</data>' (<mark>int</mark> type)"
+    ) in caplog.text
+
+    assert t.ensure_path("path-error", "/data/not-exist", False) == (
+        Path("/data/not-exist"),
+        True,
+    )
+
+    assert t.ensure_path("path-error", "/data/not-exist", True) == (None, False)
+    assert (
+        "Config <mark>path-error</mark> is malformed: "
+        "path <data>/data/not-exist</data> not exists"
     ) in caplog.text
 
 

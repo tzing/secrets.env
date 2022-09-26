@@ -1,10 +1,11 @@
 import logging
 import re
 import typing
+from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
 from secrets_env.auth import get_auth
-from secrets_env.config.types import Config, SecretPath
+from secrets_env.config.types import Config, SecretPath, TLSConfig
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
@@ -29,8 +30,11 @@ def parse_config(data: T_ConfigData) -> Optional[Config]:
 
     section_auth = section_source.get("auth", {})
     auth = parse_section_auth(section_auth)
-    if not auth:
-        is_success = False
+    is_success &= auth is not None
+
+    section_tls = section_source.get("tls", {})
+    tls = parse_section_tls(section_tls)
+    is_success &= tls is not None
 
     section_secrets = data.get("secrets", {})
     section_secrets, ok = ensure_dict("secrets", section_secrets)
@@ -40,7 +44,7 @@ def parse_config(data: T_ConfigData) -> Optional[Config]:
 
     if not is_success:
         return None
-    return Config(url=url, auth=auth, secret_specs=secrets)
+    return Config(url=url, auth=auth, tls=tls, secret_specs=secrets)
 
 
 def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
@@ -56,6 +60,61 @@ def parse_section_auth(data: Union[T_ConfigData, str]) -> Optional["Auth"]:
         return None
 
     return get_auth(method, data)
+
+
+def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
+    """Parse 'tls' section from raw configs."""
+    tls = {}
+    is_success = True
+
+    # ca cert
+    path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
+    if not path:
+        path = data.get("ca_cert")
+
+    if path:
+        tls["ca_cert"], ok = ensure_path("source.tls.ca_cert", path)
+        is_success &= ok
+
+    # client cert
+    path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
+    if not path:
+        path = data.get("client_cert")
+
+    if path:
+        tls["client_cert"], ok = ensure_path("source.tls.client_cert", path)
+        is_success &= ok
+
+    # client key
+    path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
+    if not path:
+        path = data.get("client_key")
+
+    if path:
+        tls["client_key"], ok = ensure_path("source.tls.client_key", path)
+        is_success &= ok
+
+    return tls if is_success else {}
+
+
+def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
+    """Parse 'secrets' section from raw configs."""
+    secrets = {}
+
+    for name, path in data.items():
+        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
+            logger.warning(
+                "Target environment variable '<data>%s</data>' is not a "
+                "valid name. Skipping this variable.",
+                name,
+            )
+            continue
+
+        resource = parse_path(name, path)
+        if resource:
+            secrets[name] = resource
+
+    return secrets
 
 
 def get_url(section_source: T_ConfigData) -> Optional[str]:
@@ -88,26 +147,6 @@ def get_auth_method(data: T_ConfigData) -> Tuple[str, bool]:
         return None, False
 
     return ensure_str("method", method)
-
-
-def parse_section_secrets(data: T_ConfigData) -> Dict[str, SecretPath]:
-    """Parse 'secrets' section from raw configs."""
-    secrets = {}
-
-    for name, path in data.items():
-        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
-            logger.warning(
-                "Target environment variable '<data>%s</data>' is not a "
-                "valid name. Skipping this variable.",
-                name,
-            )
-            continue
-
-        resource = parse_path(name, path)
-        if resource:
-            secrets[name] = resource
-
-    return secrets
 
 
 def parse_path(name: str, spec: Union[str, Dict[str, str]]) -> Optional[SecretPath]:
@@ -149,7 +188,7 @@ def _ensure_type(name: str, obj: T, expect: type, default: T) -> Tuple[T, bool]:
         return obj, True
     else:
         logger.warning(
-            "Config <data>%s</data> is malformed: "
+            "Config <mark>%s</mark> is malformed: "
             "expect <mark>%s</mark> type, "
             "got '<data>%s</data>' (<mark>%s</mark> type)",
             name,
@@ -166,6 +205,30 @@ def ensure_str(name: str, s: str) -> Tuple[str, bool]:
 
 def ensure_dict(name: str, d: dict) -> Tuple[dict, bool]:
     return _ensure_type(name, d, dict, {})
+
+
+def ensure_path(
+    name: str, p: Union[str, Path], check_exist: bool = True
+) -> Tuple[Path, bool]:
+    # type check
+    if isinstance(p, Path):
+        ok = True
+    else:
+        p, ok = ensure_str(name, p)
+        if not ok:
+            return None, False
+        p = Path(p)
+
+    # existence check
+    if check_exist and not (ok := p.exists()):
+        logger.warning(
+            "Config <mark>%s</mark> is malformed: path <data>%s</data> not exists",
+            name,
+            p,
+        )
+        p = None
+
+    return p, ok
 
 
 def trimmed_str(o: typing.Any) -> str:

@@ -1,7 +1,9 @@
-from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Literal, NamedTuple, Optional
+import typing
+from typing import Dict, Literal, NamedTuple, Optional, TypedDict
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
+    from pathlib import Path
+
     from secrets_env.auth import Auth
 
 
@@ -9,7 +11,7 @@ class ConfigFileMetadata(NamedTuple):
     filename: str
     spec: Literal["json", "yaml", "toml", "pyproject.toml"]
     enable: bool
-    path: Optional[Path] = None
+    path: Optional["Path"] = None
 
     @property
     def lang(self) -> str:
@@ -26,7 +28,14 @@ class SecretPath(NamedTuple):
     key: str
 
 
+class TLSConfig(TypedDict):
+    ca_cert: "Path"
+    client_cert: "Path"
+    client_key: "Path"
+
+
 class Config(NamedTuple):
     url: str
     auth: "Auth"
+    tls: TLSConfig
     secret_specs: Dict[str, SecretPath]

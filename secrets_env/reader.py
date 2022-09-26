@@ -1,4 +1,5 @@
 import logging
+import typing
 from http import HTTPStatus
 from typing import Dict, List, Optional, Tuple
 
@@ -8,7 +9,11 @@ import requests
 import requests.exceptions
 
 from secrets_env.auth import Auth
+from secrets_env.config.types import TLSConfig
 from secrets_env.exception import AuthenticationError, TypeError, UnsupportedError
+
+if typing.TYPE_CHECKING:
+    import hvac.adapters
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +21,7 @@ logger = logging.getLogger(__name__)
 class KVReader:
     """Read secrets from Vault KV engine."""
 
-    def __init__(self, url: str, auth: Auth) -> None:
+    def __init__(self, url: str, auth: Auth, tls: Optional[TLSConfig] = None) -> None:
         """
         Parameters
         ----------
@@ -31,8 +36,11 @@ class KVReader:
             raise TypeError(
                 "Expect Auth instance for auth, got {}", type(auth).__name__
             )
+        if tls is not None and not isinstance(tls, dict):
+            raise TypeError("Expect dict for tls, got {}", type(tls).__name__)
 
         self.url = url
+        self.tls = tls
         self.auth = auth
 
         self._client: Optional[hvac.Client] = None
@@ -51,73 +59,15 @@ class KVReader:
 
         client = hvac.Client(self.url)
 
+        if self.tls:
+            apply_tls(client.session, self.tls)
+
         self.auth.apply(client)
         if not client.is_authenticated():
             raise AuthenticationError("Authentication failed")
 
         self._client = client
         return client
-
-    def get_engine_and_version(self, path: str) -> Tuple[Optional[str], Optional[int]]:
-        """Query for the KV engine mount point and version of a secret.
-
-        Parameters
-        ----------
-        path : str
-            Path to the secret
-
-        Returns
-        -------
-        mount_point : str
-            The path the secret engine mounted on.
-        version : int
-            The secret engine version
-
-        See also
-        --------
-        consul-template implementation
-            https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
-        """
-        try:
-            resp = self.client.adapter.get(
-                f"/v1/sys/internal/ui/mounts/{path}", raise_exception=False
-            )
-        except requests.RequestException as e:
-            reason = _reason_request_error(e)
-            if not reason:
-                raise
-
-            logger.error("Error occurred during checking metadata %s: %s", path, reason)
-            return None, None
-
-        if isinstance(resp, dict):
-            data = resp.get("data", {})
-
-            mount_point = data.get("path")
-            type_ = data.get("type")
-            version = data.get("options", {}).get("version")
-
-            if version == "2" and type_ == "kv":
-                return mount_point, 2
-            elif version == "1":
-                return mount_point, 1
-            else:
-                logging.error("Unknown version %s for path %s", version, path)
-                logging.debug("Raw response: %s", resp)
-                return None, None
-
-        assert isinstance(resp, requests.Response)
-        if resp.status_code == HTTPStatus.NOT_FOUND:
-            # 404 is expected on an older version of vault, default to version 1
-            # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
-            return "", 1
-        elif resp.status_code == HTTPStatus.FORBIDDEN:
-            logger.error("The used token has no access to path %s", path)
-            return None, None
-
-        logger.error("Error occurred during checking metadata for %s", path)
-        logger.debug("Raw response: %s", resp.text)
-        return None, None
 
     def get_secret(self, path: str) -> Optional[dict]:
         """Query for a secret set.
@@ -135,7 +85,7 @@ class KVReader:
         if not isinstance(path, str):
             raise TypeError("Expect str for path, got {}", type(path).__name__)
 
-        mount_point, version = self.get_engine_and_version(path)
+        mount_point, version = get_engine_and_version(self.client.adapter, path)
         if not mount_point:
             return None
 
@@ -164,7 +114,7 @@ class KVReader:
             return None
         except hvac.exceptions.VaultError as e:
             logger.error(
-                "Error during query secret '%s': %s",
+                "Error during query secret %s: %s",
                 path,
                 e.args[0],
             )
@@ -251,6 +201,88 @@ class KVReader:
             sum(1 for value in outputs.values() if value is not None),
         )
         return outputs
+
+
+def apply_tls(session: requests.Session, tls: TLSConfig) -> None:
+    """Apply TLS configration on request session."""
+    if ca_cert := tls.get("ca_cert"):
+        logger.debug("CA installed: %s", ca_cert)
+        session.verify = str(ca_cert)
+
+    if (client_cert := tls.get("client_cert")) and (
+        client_key := tls.get("client_key")
+    ):
+        logger.debug(
+            "Client side certificate pair installed: %s, %s",
+            client_cert,
+            client_key,
+        )
+        session.cert = (str(client_cert), str(client_key))
+
+    elif client_cert := tls.get("client_cert"):
+        logger.debug("Client side certificate file installed: %s", client_cert)
+        session.cert = str(client_cert)
+
+
+def get_engine_and_version(
+    adapter: "hvac.adapters.Adapter", path: str
+) -> Tuple[str, int]:
+    """Query for the KV engine mount point and version of a secret.
+
+    Parameters
+    ----------
+    path : str
+        Path to the secret
+
+    Returns
+    -------
+    mount_point : str
+        The path the secret engine mounted on.
+    version : int
+        The secret engine version
+
+    See also
+    --------
+    consul-template
+        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
+    """
+    try:
+        resp = adapter.get(f"/v1/sys/internal/ui/mounts/{path}", raise_exception=False)
+    except requests.RequestException as e:
+        reason = _reason_request_error(e)
+        if not reason:
+            raise
+
+        logger.error("Error occurred during checking metadata %s: %s", path, reason)
+        return None, None
+
+    if isinstance(resp, dict):
+        data = resp.get("data", {})
+
+        mount_point = data.get("path")
+        version = data.get("options", {}).get("version")
+
+        if version == "2" and data.get("type") == "kv":
+            return mount_point, 2
+        elif version == "1":
+            return mount_point, 1
+
+        logging.error("Unknown version %s for path %s", version, path)
+        logging.debug("Raw response: %s", resp)
+        return None, None
+
+    assert isinstance(resp, requests.Response)
+    if resp.status_code == HTTPStatus.NOT_FOUND:
+        # 404 is expected on an older version of vault, default to version 1
+        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
+        return "", 1
+    elif resp.status_code == HTTPStatus.FORBIDDEN:
+        logger.error("The used token has no access to path %s", path)
+        return None, None
+
+    logger.error("Error occurred during checking metadata for %s", path)
+    logger.debug("Raw response: %s", resp.text)
+    return None, None
 
 
 def split_key(key: str) -> List[str]:  # noqa: CCR001

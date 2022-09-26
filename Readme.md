@@ -15,8 +15,7 @@ This tool is built to *plug in* secrets into development without landing data on
 
 > **Note**
 >
-> Standard CLI usage is not implemented yet.
-> Currently this app could only be used as a poetry plugin. Plugin is a poetry **1.2.0** feature, which is still in beta testing.
+> Standard CLI usage is not implemented yet. Currently this app could only be used as a poetry plugin.
 
 Get it from [PyPI](https://pypi.org/project/secrets.env/):
 
@@ -88,6 +87,16 @@ source:
   auth:
     method: okta
     username: user@example.com
+
+  # Transport layer security (TLS) configurations.
+  # All keys under this section are optional.
+  tls:
+    # Server side certificate for verifying responses.
+    ca_cert: /path/ca.cert
+
+    # Client side certificate for communicating with vault server.
+    client_cert: /path/client.cert
+    client_key: /path/client.key
 
 # `secrets` lists the environment variable name, and the path the get the secret value
 secrets:
