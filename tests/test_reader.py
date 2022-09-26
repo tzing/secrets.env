@@ -21,14 +21,19 @@ def request_mock():
         yield rsps
 
 
-@pytest.fixture()
-def _set_authenticated():
-    with patch("hvac.Client.is_authenticated", return_value=True):
-        yield
-
-
-@pytest.mark.usefixtures("_set_authenticated")
 class TestReader_UnitTest:
+    @pytest.fixture(autouse=True)
+    def set_authenticated(self):
+        with patch("hvac.Client.is_authenticated", return_value=True) as patcher:
+            yield patcher
+
+    @pytest.fixture(autouse=True)
+    def patch_version_check(self):
+        with patch.object(
+            t, "get_engine_and_version", return_value=("secrets/", 1)
+        ) as patcher:
+            yield patcher
+
     def setup_method(self):
         self.auth = Mock(spec=secrets_env.auth.Auth)
         self.auth.method.return_value = "mocked"
@@ -55,14 +60,11 @@ class TestReader_UnitTest:
         assert isinstance(self.reader.client, hvac.Client)
         assert isinstance(self.reader.client, hvac.Client)  # from cache
 
-    @pytest.fixture()
-    def patch_version_check(self):
-        with patch.object(
-            t, "get_engine_and_version", return_value=("secrets/", 1)
-        ) as patcher:
-            yield patcher
+    def test_client_error(self, set_authenticated: Mock):
+        set_authenticated.return_value = False
+        with pytest.raises(AuthenticationError):
+            self.reader.client
 
-    @pytest.mark.usefixtures("patch_version_check")
     def test_get_secret_success_kv1(self, request_mock: responses.RequestsMock):
         # success, kv1
         request_mock.get(
@@ -124,7 +126,6 @@ class TestReader_UnitTest:
         with pytest.raises(UnsupportedError):
             self.reader.get_secret("secrets/test")
 
-    @pytest.mark.usefixtures("patch_version_check")
     def test_get_secret_request_error(
         self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
     ):
@@ -139,7 +140,6 @@ class TestReader_UnitTest:
             in caplog.text
         )
 
-    @pytest.mark.usefixtures("patch_version_check")
     def test_get_secret_not_captured_error(self, request_mock: responses.RequestsMock):
         # this function only catch some error. e.g. http error
         request_mock.get(
@@ -149,7 +149,6 @@ class TestReader_UnitTest:
         with pytest.raises(requests.RequestException):
             self.reader.get_secret("secrets/test")
 
-    @pytest.mark.usefixtures("patch_version_check")
     def test_get_secret_not_found(
         self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
     ):
@@ -159,7 +158,6 @@ class TestReader_UnitTest:
         assert self.reader.get_secret("secrets/test") is None
         assert "Secret not found: secrets/test" in caplog.text
 
-    @pytest.mark.usefixtures("patch_version_check")
     def test_get_secret_server_error(
         self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
     ):
@@ -175,7 +173,7 @@ class TestReader_UnitTest:
         )
 
 
-class _Reader_FunctionalTest:
+class TestReader_FunctionalTest:
     def setup_method(self):
         # connect to real vault for integration test
         # see .github/workflows/test.yml for test data
@@ -185,6 +183,8 @@ class _Reader_FunctionalTest:
     def test_client(self):
         assert isinstance(self.reader.client, hvac.Client)
 
+
+class _Reader_:
     @patch("hvac.Client")
     def test_client_auth_error(self, client_: Mock):
         """failed cases; use token, mocked connection"""
@@ -194,8 +194,7 @@ class _Reader_FunctionalTest:
         r = reader.KVReader(
             "http://example.com:8200", secrets_env.auth.TokenAuth("invalid")
         )
-        with pytest.raises(AuthenticationError):
-            r.client
+        r.client
 
     def test_get_engine_and_version(self):
         # success
