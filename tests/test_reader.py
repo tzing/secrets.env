@@ -55,89 +55,124 @@ class TestReader_UnitTest:
         assert isinstance(self.reader.client, hvac.Client)
         assert isinstance(self.reader.client, hvac.Client)  # from cache
 
-    def test_get_engine_and_version_1(self, request_mock: responses.RequestsMock):
-        # standard response
+    @pytest.fixture()
+    def patch_version_check(self):
+        with patch.object(
+            t, "get_engine_and_version", return_value=("secrets/", 1)
+        ) as patcher:
+            yield patcher
+
+    @pytest.mark.usefixtures("patch_version_check")
+    def test_get_secret_success_kv1(self, request_mock: responses.RequestsMock):
+        # success, kv1
         request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/secrets/test",
-            status=HTTPStatus.OK,
+            "https://example.com/v1/secrets/test",
             json={
-                "request_id": "989b476f-1f1d-c493-0777-8f7e9823a3c8",
+                "request_id": "a8f28d97-8a9d-c9dd-4d86-e815083b33ad",
+                "lease_id": "",
+                "renewable": False,
+                "lease_duration": 2764800,
+                "data": {"test": "mock"},
+                "wrap_info": None,
+                "warnings": None,
+                "auth": None,
+            },
+        )
+        assert self.reader.get_secret("secrets/test") == {"test": "mock"}
+
+    def test_get_secret_success_kv2(
+        self, request_mock: responses.RequestsMock, patch_version_check: Mock
+    ):
+        # success, kv2
+        request_mock.get(
+            "https://example.com/v1/secrets/data/test",
+            json={
+                "request_id": "9ababbb6-3749-cf2c-5a5b-85660e917e8e",
                 "lease_id": "",
                 "renewable": False,
                 "lease_duration": 0,
                 "data": {
-                    "accessor": "kv_8e4430be",
-                    "config": {
-                        "default_lease_ttl": 0,
-                        "force_no_cache": False,
-                        "max_lease_ttl": 0,
+                    "data": {"test": "mock"},
+                    "metadata": {
+                        "created_time": "2022-09-20T15:57:45.143053836Z",
+                        "custom_metadata": None,
+                        "deletion_time": "",
+                        "destroyed": False,
+                        "version": 1,
                     },
-                    "description": "",
-                    "external_entropy_access": False,
-                    "local": False,
-                    "options": {"version": "2"},
-                    "path": "secrets/",
-                    "seal_wrap": False,
-                    "type": "kv",
-                    "uuid": "1dc09fc2-4844-f332-b08d-845fcb754545",
                 },
                 "wrap_info": None,
                 "warnings": None,
                 "auth": None,
             },
         )
-        assert self.reader.get_engine_and_version("secrets/test") == ("secrets/", 2)
 
-    def test_get_engine_and_version_2(self, request_mock: responses.RequestsMock):
-        # legacy vault
-        request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/secrets/test",
-            status=HTTPStatus.NOT_FOUND,
-        )
-        assert self.reader.get_engine_and_version("secrets/test") == ("", 1)
+        patch_version_check.return_value = ("secrets/", 2)
+        assert self.reader.get_secret("secrets/test") == {"test": "mock"}
 
-    @pytest.mark.parametrize(
-        ("status_code", "body"),
-        [
-            # not a ported version
-            (
-                HTTPStatus.OK,
-                {"data": {"path": "mock/", "type": "kv", "options": {"version": "99"}}},
-            ),
-            # query fail
-            (HTTPStatus.BAD_REQUEST, {"msg": "test error"}),
-        ],
-    )
-    def test_get_engine_and_version_3(
-        self,
-        request_mock: responses.RequestsMock,
-        status_code: int,
-        body: dict,
+    def test_get_secret_errors(self, patch_version_check: Mock):
+        # input error
+        with pytest.raises(TypeError):
+            self.reader.get_secret(1234)
+
+        # error occurs in get_engine_and_version
+        patch_version_check.return_value = (None, None)
+        assert self.reader.get_secret("secrets/test") is None
+
+        # unsupported version
+        patch_version_check.return_value = ("secrets/", 99)
+        with pytest.raises(UnsupportedError):
+            self.reader.get_secret("secrets/test")
+
+    @pytest.mark.usefixtures("patch_version_check")
+    def test_get_secret_request_error(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
     ):
-        # internal errors
+        # request error
         request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/test",
-            status=status_code,
-            json=body,
-        )
-        assert self.reader.get_engine_and_version("test") == (None, None)
-
-    def test_get_engine_and_version_4(self, request_mock: responses.RequestsMock):
-        # connection error
-        request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/test",
+            "https://example.com/v1/secrets/test",
             body=requests.ConnectTimeout("test connection error"),
         )
-        assert self.reader.get_engine_and_version("test") == (None, None)
+        assert self.reader.get_secret("secrets/test") is None
+        assert (
+            "Error occurred during query secret secrets/test: connect timeout"
+            in caplog.text
+        )
 
-    def test_get_engine_and_version_5(self, request_mock: responses.RequestsMock):
-        # this function only catch some error. e.g. connection error
+    @pytest.mark.usefixtures("patch_version_check")
+    def test_get_secret_not_captured_error(self, request_mock: responses.RequestsMock):
+        # this function only catch some error. e.g. http error
         request_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/test",
+            "https://example.com/v1/secrets/test",
             body=requests.HTTPError("test request error"),
         )
         with pytest.raises(requests.RequestException):
-            self.reader.get_engine_and_version("test")
+            self.reader.get_secret("secrets/test")
+
+    @pytest.mark.usefixtures("patch_version_check")
+    def test_get_secret_not_found(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
+    ):
+        request_mock.get(
+            "https://example.com/v1/secrets/test", status=HTTPStatus.NOT_FOUND
+        )
+        assert self.reader.get_secret("secrets/test") is None
+        assert "Secret not found: secrets/test" in caplog.text
+
+    @pytest.mark.usefixtures("patch_version_check")
+    def test_get_secret_server_error(
+        self, request_mock: responses.RequestsMock, caplog: pytest.LogCaptureFixture
+    ):
+        request_mock.get(
+            "https://example.com/v1/secrets/test",
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            json={"msg": "mock error"},
+        )
+        assert self.reader.get_secret("secrets/test") is None
+        assert (
+            'Error during query secret secrets/test: {"msg": "mock error"}'
+            in caplog.text
+        )
 
 
 class _Reader_FunctionalTest:
@@ -234,86 +269,6 @@ class _Reader_FunctionalTest:
         }
 
         assert self.reader.get_values([]) == {}
-
-
-class TestReaderGetSecret:
-    def setup_method(self):
-        auth = Mock(spec=secrets_env.auth.Auth)
-        auth.method.return_value = "mocked"
-
-        self.reader = reader.KVReader("https://example.com", auth)
-
-    def test_input_error(self):
-        with pytest.raises(TypeError):
-            self.reader.get_secret(1234)
-
-    def test_internal_error(self):
-        with patch.object(
-            self.reader, "get_engine_and_version", return_value=(None, None)
-        ):
-            assert self.reader.get_secret("test") is None
-
-    def test_unimplemented_version(self):
-        with pytest.raises(UnsupportedError), patch.object(
-            self.reader, "get_engine_and_version", return_value=("test/", 3)
-        ):
-            assert self.reader.get_secret("test") is None
-
-    @pytest.mark.parametrize(
-        ("kv", "patch_url"),
-        [
-            (1, "https://example.com/v1/secret/test"),
-            (2, "https://example.com/v1/secret/data/test"),
-        ],
-    )
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_connection_error(
-        self, request_mock: responses.RequestsMock, kv: int, patch_url: str
-    ):
-        request_mock.get(
-            patch_url,
-            body=requests.ConnectTimeout("test connection error"),
-        )
-
-        # test
-        with patch.object(
-            self.reader, "get_engine_and_version", return_value=("secret/", kv)
-        ):
-            assert self.reader.get_secret("secret/test") is None
-
-    @pytest.mark.parametrize(
-        ("kv", "patch_url"),
-        [
-            (1, "https://example.com/v1/secret/test"),
-            (2, "https://example.com/v1/secret/data/test"),
-        ],
-    )
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_request_error(
-        self, request_mock: responses.RequestsMock, kv: int, patch_url: str
-    ):
-        request_mock.get(
-            patch_url,
-            body=requests.HTTPError("test http error"),
-        )
-
-        # test
-        with patch.object(
-            self.reader, "get_engine_and_version", return_value=("secret/", kv)
-        ), pytest.raises(requests.RequestException):
-            self.reader.get_secret("secret/test")
-
-    @pytest.mark.usefixtures("_set_authenticated")
-    def test_server_side_error(self, request_mock: responses.RequestsMock):
-        with patch.object(
-            self.reader, "get_engine_and_version", return_value=("secret/", 2)
-        ):
-            request_mock.get(
-                "https://example.com/v1/secret/data/test",
-                status=HTTPStatus.INTERNAL_SERVER_ERROR,
-                json={"msg": "mock error"},
-            )
-            assert self.reader.get_secret("secret/test") is None
 
 
 class TestGetEngineAndVersion:

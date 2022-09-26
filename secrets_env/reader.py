@@ -113,7 +113,7 @@ class KVReader:
             return None
         except hvac.exceptions.VaultError as e:
             logger.error(
-                "Error during query secret '%s': %s",
+                "Error during query secret %s: %s",
                 path,
                 e.args[0],
             )
