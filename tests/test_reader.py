@@ -80,7 +80,7 @@ class TestReader_UnitTest:
                 "auth": None,
             },
         )
-        assert self.reader.get_secret("secrets/test") == {"test": "mock"}
+        assert self.reader.get_secret("test") == {"test": "mock"}
 
     def test_get_secret_success_kv2(
         self, request_mock: responses.RequestsMock, patch_version_check: Mock
@@ -247,6 +247,50 @@ class TestReader_FunctionalTest:
         }
 
         assert self.reader.get_values([]) == {}
+
+
+class TestApplyTLS:
+    def apply(self, tls: dict):
+        session = Mock(spec=requests.Session)
+        session.verify = True
+        session.cert = None
+        t.apply_tls(session, tls)
+        return session
+
+    def test_1(self):
+        session = self.apply(
+            {
+                "ca_cert": Mock(spec=Path),
+                "client_cert": Mock(spec=Path),
+                "client_key": Mock(spec=Path),
+            }
+        )
+        assert isinstance(session.verify, str)
+        assert isinstance(session.cert, tuple)
+
+    def test_2(self):
+        session = self.apply(
+            {
+                "ca_cert": Mock(spec=Path),
+                "client_cert": Mock(spec=Path),
+            }
+        )
+        assert isinstance(session.verify, str)
+        assert isinstance(session.cert, str)
+
+    def test_3(self):
+        session = self.apply(
+            {
+                "client_key": Mock(spec=Path),
+            }
+        )
+        assert not isinstance(session.verify, str)
+        assert not isinstance(session.cert, (str, tuple))
+
+    def test_empty(self):
+        session = self.apply({})
+        assert not isinstance(session.verify, str)
+        assert not isinstance(session.cert, (str, tuple))
 
 
 class TestGetEngineAndVersion:
