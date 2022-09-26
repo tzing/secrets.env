@@ -14,6 +14,7 @@ from secrets_env.exception import AuthenticationError, TypeError, UnsupportedErr
 
 if typing.TYPE_CHECKING:
     import hvac.adapters
+
 logger = logging.getLogger(__name__)
 
 
