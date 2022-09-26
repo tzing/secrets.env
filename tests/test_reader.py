@@ -172,6 +172,13 @@ class TestReader_UnitTest:
             in caplog.text
         )
 
+    def test_get_value(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(self.reader, "get_secret", lambda _: {"test": "mock"})
+        assert self.reader.get_value("secrets/test", "test") == "mock"
+
+        with pytest.raises(TypeError):
+            self.reader.get_value("kv1/test", 1234)
+
 
 class TestReader_FunctionalTest:
     def setup_method(self):
@@ -182,29 +189,6 @@ class TestReader_FunctionalTest:
 
     def test_client(self):
         assert isinstance(self.reader.client, hvac.Client)
-
-
-class _Reader_:
-    @patch("hvac.Client")
-    def test_client_auth_error(self, client_: Mock):
-        """failed cases; use token, mocked connection"""
-        client = client_.return_value
-        client.is_authenticated.return_value = False
-
-        r = reader.KVReader(
-            "http://example.com:8200", secrets_env.auth.TokenAuth("invalid")
-        )
-        r.client
-
-    def test_get_engine_and_version(self):
-        # success
-        assert self.reader.get_engine_and_version("kv1/test") == ("kv1/", 1)
-        assert self.reader.get_engine_and_version("kv2/test") == ("kv2/", 2)
-
-        # engine not exists, but things are fine
-        assert self.reader.get_engine_and_version("null/test") == (None, None)
-
-        # NOTE test for errors are in `TestReaderGetEngineAndVersion` class below
 
     def test_get_secret(self):
         # success
@@ -231,8 +215,6 @@ class _Reader_:
         # not found
         assert self.reader.get_secret("kv1/no-this-secret") is None
 
-        # NOTE test for errors are in `TestReaderGetSecret` class below
-
     def test_get_value(self):
         assert self.reader.get_value("kv1/test", "foo") == "hello"
         assert self.reader.get_value("kv1/test", "bar.baz") == "world"
@@ -246,9 +228,6 @@ class _Reader_:
 
         assert self.reader.get_value("kv1/test", "no-this-key") is None
         assert self.reader.get_value("no-this-path", "no-this-key") is None
-
-        with pytest.raises(TypeError):
-            self.reader.get_value("kv1/test", 1234)
 
     def test_get_values(self):
         assert self.reader.get_values(
