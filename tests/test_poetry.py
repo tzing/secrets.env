@@ -210,7 +210,7 @@ class TestTextColoring:
             self.buffer, Verbosity.DEBUG, decorated=decorated
         )
 
-        output.formatter.set_style("debug", Style("white"))
+        output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
         output.formatter.set_style("warning", Style("yellow"))
 
         handler = plugin.Handler(output)
@@ -229,14 +229,15 @@ class TestTextColoring:
     # bold styles
     BDEFAULT = "\033[39;22m"
     BRED = "\033[31;1m"
+    DWHITE = "\033[37;2m"
 
     @pytest.mark.parametrize(
         ("log_level", "output"),
         [
             (
                 logging.DEBUG,
-                f"[secrets.env] {WHITE}test {DEFAULT}{BLUE}emphasized{DEFAULT}"
-                f"{WHITE} msg with {DEFAULT}{GREEN}data{DEFAULT}{WHITE}.{DEFAULT}\n",
+                f"[secrets.env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}.{BDEFAULT}\n",
             ),
             (
                 logging.INFO,

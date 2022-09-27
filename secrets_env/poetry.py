@@ -76,7 +76,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         Formatter, powered with cleo's formatter."""
         # set output format
         output.formatter.set_style("debug", Style("white"))
-        output.formatter.set_style("warning", Style("yellow"))
+        output.formatter.set_style("warning", Style("light_gray", options=["dark"]))
 
         # send internal message to cleo
         # see docstring in Handler for details
@@ -90,7 +90,13 @@ class SecretsEnvPlugin(ApplicationPlugin):
 
 
 class Handler(logging.Handler):
-    """Send the logs to cleo's IO module."""
+    """Send the logs to cleo's IO module.
+
+    This app has more than one entry point: command line tool and poetry plugin,
+    which use different frameworks. This app reports the information using the
+    built-in 'logging' module. Then use this customized handler for converting
+    them to the format in corresponding framework, powered with their features
+    like color stripping on non-interactive terminal."""
 
     VERBOSITY = {
         logging.DEBUG: Verbosity.VERY_VERBOSE,
