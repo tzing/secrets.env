@@ -1,7 +1,16 @@
+import os
 from typing import Optional
 
 import keyring
 import keyring.errors
+
+
+def get_env_var(*names: str) -> Optional[str]:
+    """Get value from (any candidate) environment variable."""
+    for name in names:
+        if var := os.getenv(name):
+            return var
+    return None
 
 
 def read_keyring(name: str) -> Optional[str]:
