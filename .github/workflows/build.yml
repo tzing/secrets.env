@@ -149,7 +149,7 @@ jobs:
       - test
       - lint
 
-    # if: startsWith(github.event.ref, 'refs/tags/v')
+    if: startsWith(github.event.ref, 'refs/tags/v')
 
     steps:
       - uses: actions/checkout@v3
