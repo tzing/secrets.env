@@ -188,7 +188,7 @@ jobs:
         run: |
           for name in $(find dist -type f); do
             name_rec=$(echo $name | sed -E s/secrets.env/secrets.env/)
-            mv -v "$name" "$name_rec"
+            [[ "x$name" != "x$name_rec" ]] && mv -v "$name" "$name_rec"
           done
 
       # - name: Publish a Python distribution to PyPI
