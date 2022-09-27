@@ -1,10 +1,10 @@
-import abc
 import logging
 import pathlib
 import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from secrets_env.auth.base import Auth
 from secrets_env.io import get_env_var, prompt, read_keyring
 
 if typing.TYPE_CHECKING:
@@ -12,23 +12,6 @@ if typing.TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-class Auth(abc.ABC):
-    """Base class for authentication schemes."""
-
-    @abc.abstractclassmethod
-    def method(cls) -> str:
-        """Returns authentication name."""
-
-    @abc.abstractmethod
-    def apply(self, client: "hvac.Client") -> None:
-        """Provide the identity information to the client."""
-
-    @abc.abstractclassmethod
-    def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
-        """Initialize an instance of this class using the provided config data
-        or internally load the secrets from the system."""
 
 
 @dataclass(frozen=True)
