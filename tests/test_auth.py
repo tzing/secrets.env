@@ -2,17 +2,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import click
 import hvac
-import keyring.errors
 import pytest
 
 from secrets_env import auth
-
-
-def test_read_keyring():
-    with patch("keyring.get_password", return_value="bar"):
-        assert auth.read_keyring("foo") == "bar"
-    with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
-        assert auth.read_keyring("foo") is None
 
 
 @pytest.fixture()

@@ -8,9 +8,7 @@ import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Union
 
-import keyring
-import keyring.errors
-
+from secrets_env.auth.io import read_keyring
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
@@ -19,15 +17,6 @@ if typing.TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-def read_keyring(name: str) -> Optional[str]:
-    """Wrapped `keyring.get_password`. Do not raise error when there is no
-    keyring backend enabled."""
-    try:
-        return keyring.get_password("secrets.env", name)
-    except keyring.errors.NoKeyringError:
-        return None
 
 
 def prompt(
