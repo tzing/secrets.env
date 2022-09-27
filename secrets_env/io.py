@@ -1,8 +1,14 @@
+import importlib
 import os
-from typing import Optional
+import sys
+import typing
+from typing import Any, Optional, Union
 
 import keyring
 import keyring.errors
+
+if typing.TYPE_CHECKING:
+    import click
 
 
 def get_env_var(*names: str) -> Optional[str]:
@@ -11,6 +17,54 @@ def get_env_var(*names: str) -> Optional[str]:
         if var := os.getenv(name):
             return var
     return None
+
+
+def prompt(
+    text: str,
+    default: Optional[Any] = None,
+    hide_input: bool = False,
+    type: Optional[Union["click.types.ParamType", Any]] = None,
+    show_default: bool = True,
+) -> Optional[Any]:
+    """Wrapped `click.prompt` function. Only shows the prompt when click is
+    installed and this feature is not disabled.
+
+    Parameters
+    ----------
+    text : str
+        The text to show for the prompt.
+    default : Optional[Any]
+        The default value to use if no input happens. If this is not given it
+        will prompt until it's aborted.
+    hide_input : bool
+        If this is set to true then the input value will be hidden.
+    type : Optional[Union[click.types.ParamType, Any]]
+        The type to use to check the value against.
+    show_default : bool
+        Shows or hides the default value in the prompt.
+    """
+    # skip prompt if click is not installed
+    try:
+        click = importlib.import_module("click")
+    except ImportError:
+        return None
+
+    # skip prompt if the env var is set
+    env = os.getenv("SECRETS_ENV_NO_PROMPT", "FALSE")
+    if env.upper() in ("TRUE", "T", "YES", "Y", "1"):
+        return None
+
+    try:
+        return click.prompt(
+            text=text,
+            default=default,
+            hide_input=hide_input,
+            type=type,
+            show_default=show_default,
+        )
+    except click.Abort:
+        sys.stdout.write(os.linesep)
+        return None
 
 
 def read_keyring(name: str) -> Optional[str]:

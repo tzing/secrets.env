@@ -1,6 +1,5 @@
 from unittest.mock import Mock, mock_open, patch
 
-import click
 import hvac
 import pytest
 
@@ -11,28 +10,6 @@ from secrets_env import auth
 def patch_read_keyring():
     with patch("secrets_env.auth.read_keyring", return_value=None) as m:
         yield m
-
-
-class TestPrompt:
-    def test_no_click(self):
-        with patch(
-            "importlib.import_module",
-            side_effect=ImportError("Mock import error"),
-        ):
-            assert auth.prompt("test") is None
-
-    @patch.dict("os.environ", {"SECRETS_ENV_NO_PROMPT": "True"})
-    def test_disable(self):
-        assert auth.prompt("test") is None
-
-    @patch.dict("os.environ", {"SECRETS_ENV_NO_PROMPT": "Foo"})
-    def test_success(self):
-        with patch("click.prompt", return_value="buzz"):
-            assert auth.prompt("test") == "buzz"
-
-    def test_abort(self):
-        with patch("click.prompt", side_effect=click.Abort("mock abort")):
-            assert auth.prompt("test") is None
 
 
 class TestGetAuth:
