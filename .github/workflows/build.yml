@@ -170,28 +170,29 @@ jobs:
         run: |
           python -m pip install poetry
 
-      # - name: Check version
-      #   run: |
-      #     export PACKAGE_VERSION="$(poetry version --short)"
-      #     export TAG_VERSION="${GITHUB_REF_NAME:1}"
+      - name: Check version
+        run: |
+          export PACKAGE_VERSION="$(poetry version --short)"
+          export TAG_VERSION="${GITHUB_REF_NAME:1}"
 
-      #     echo "package version: $PACKAGE_VERSION"
-      #     echo "github ref: $TAG_VERSION"
+          echo "package version: $PACKAGE_VERSION"
+          echo "github ref: $TAG_VERSION"
 
-      #     [[ "x$PACKAGE_VERSION" == "x$TAG_VERSION" ]]
+          [[ "x$PACKAGE_VERSION" == "x$TAG_VERSION" ]]
 
       - name: Build
         run: |
           poetry build
 
       - name: Workaround for package naming issue
+        # https://github.com/python-poetry/poetry/issues/5782
         run: |
           for name in $(find dist -type f); do
             name_rec=$(echo $name | sed -E s/secrets.env/secrets.env/)
             [[ "x$name" != "x$name_rec" ]] && mv -v "$name" "$name_rec"
           done
 
-      # - name: Publish a Python distribution to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish a Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
