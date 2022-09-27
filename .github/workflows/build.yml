@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - trunk
+    tags:
+      - x*
   pull_request:
 
 env:
@@ -137,3 +139,18 @@ jobs:
       - name: Linting
         run: |
           poetry run flake8
+
+  mock:
+    name: yet another testing
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+      - lint
+
+    if: startsWith(github.event.ref, 'refs/tags/x')
+
+    steps:
+      - name: sample
+        run: echo hello
