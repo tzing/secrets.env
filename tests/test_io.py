@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import keyring.errors
 
-import secrets_env.auth.io as t
+import secrets_env.io as t
 
 
 def test_read_keyring():

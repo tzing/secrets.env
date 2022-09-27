@@ -8,7 +8,7 @@ import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Union
 
-from secrets_env.auth.io import read_keyring
+from secrets_env.io import read_keyring
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
