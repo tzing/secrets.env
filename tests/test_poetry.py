@@ -237,7 +237,8 @@ class TestTextColoring:
             (
                 logging.DEBUG,
                 f"[secrets.env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
-                f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}.{BDEFAULT}\n",
+                f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}."
+                f"{BDEFAULT}\n",
             ),
             (
                 logging.INFO,
