@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple, Union
 
 from secrets_env.auth import get_auth
 from secrets_env.config.types import Config, SecretPath, TLSConfig
-from secrets_env.utils import get_env_var
+from secrets_env.io import get_env_var
 
 if typing.TYPE_CHECKING:
     from secrets_env.auth import Auth
