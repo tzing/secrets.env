@@ -14,5 +14,5 @@ class TestGetAuth:
         assert get_auth("okta", {}) == OktaAuth("foo", "bar")
 
     def test_fail(self, caplog: pytest.LogCaptureFixture):
-        assert getattr("no-this-method", {})
+        assert get_auth("no-this-method", {}) is None
         assert "Unknown auth method: <data>no-this-method</data>" in caplog.text
