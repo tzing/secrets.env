@@ -36,33 +36,9 @@ class SecretsEnvPlugin(ApplicationPlugin):
         self.setup_output(event.io.output)
         logger.debug("Start secrets.env poetry plugin.")
 
-        config = secrets_env.load_config()
-        if not config:
-            # skip logging. already show error in `load_config`
-            return
-
-        reader = secrets_env.KVReader(config.url, config.auth, config.tls)
-        secrets = reader.get_values(config.secret_specs.values())
-
-        cnt_loaded = 0
-        for name, spec in config.secret_specs.items():
-            value = secrets.get(spec)
-            if not value:
-                # skip logging. already show warning in `get_value`
-                continue
-
-            logger.debug("Load <info>%s</info>", name)
-            os.environ[name] = value
-            cnt_loaded += 1
-
-        if cnt_loaded == len(config.secret_specs):
-            logger.info("<info>%d</info> secrets loaded", len(secrets))
-        else:
-            logger.warning(
-                "<error>%d</error> / %d secrets loaded",
-                cnt_loaded,
-                len(config.secret_specs),
-            )
+        secrets = secrets_env.load_secrets()
+        for key, value in secrets.items():
+            os.environ[key] = value
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
@@ -138,6 +114,6 @@ class Formatter(logging.Formatter):
         elif record.levelno == logging.WARNING:
             msg = f"<warning>{msg}</warning>"
         elif record.levelno == logging.DEBUG:
-            msg = f"[secrets.env] <debug>{msg}</debug>"
+            msg = f"[{secrets_env.__name__}] <debug>{msg}</debug>"
 
         return msg

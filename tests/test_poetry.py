@@ -1,5 +1,7 @@
+import contextlib
 import io
 import logging
+import os
 import time
 from unittest.mock import Mock, patch
 
@@ -13,9 +15,7 @@ import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import secrets_env
 import secrets_env.poetry as plugin
-from secrets_env.config.types import Config, SecretPath
 
 
 class TestSecretsEnvPlugin:
@@ -28,6 +28,11 @@ class TestSecretsEnvPlugin:
         self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
 
     def teardown_method(self):
+        # reset env
+        with contextlib.suppress(KeyError):
+            os.environ.pop("VAR1")
+
+        # reset logger
         logger = logging.getLogger("secrets_env")
         logger.setLevel(logging.NOTSET)
         logger.propagate = True
@@ -39,49 +44,11 @@ class TestSecretsEnvPlugin:
         with patch.object(self.plugin, "setup_output") as mock:
             yield mock
 
-    @pytest.fixture()
-    def _patch_load_config(self):
-        with patch(
-            "secrets_env.load_config",
-            return_value=Config(
-                url="https://example.com/",
-                auth=secrets_env.TokenAuth("ex@mp1e"),
-                tls={},
-                secret_specs={
-                    "VAR1": SecretPath("key1", "example"),
-                    "VAR2": SecretPath("key2", "example"),
-                },
-            ),
-        ):
-            yield
-
     @pytest.mark.usefixtures("patch_setup_output")
-    @pytest.mark.usefixtures("_patch_load_config")
     def test_load_secret(self):
-        with patch(
-            "secrets_env.KVReader.get_values",
-            return_value={
-                SecretPath("key1", "example"): "foo",
-                SecretPath("key2", "example"): "bar",
-            },
-        ):
+        with patch("secrets_env.load_secrets", return_value={"VAR1": "test"}):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
-
-    @pytest.mark.usefixtures("patch_setup_output")
-    @pytest.mark.usefixtures("_patch_load_config")
-    def test_load_secret_partial(self):
-        with patch(
-            "secrets_env.KVReader.get_values",
-            return_value={
-                # no key2
-                SecretPath("key1", "example"): "foo",
-            },
-        ):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
-
-    def test_load_secret_no_config(self):
-        with patch("secrets_env.load_config", return_value=None):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
+        assert os.getenv("VAR1") == "test"
 
     def test_load_secret_not_related_command(self, patch_setup_output: Mock):
         # command is not `run` or `shell`
