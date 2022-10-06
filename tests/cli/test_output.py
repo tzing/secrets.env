@@ -1,12 +1,10 @@
 import logging
-import subprocess
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-import secrets_env.__main__ as t
-
+import secrets_env.cli.output as t
 
 
 class TestHandler:

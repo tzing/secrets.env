@@ -1,12 +1,7 @@
 import logging
-import os
-import subprocess
 import sys
-from pathlib import Path
-from typing import Tuple
 
 import click
-import click_option_group
 
 import secrets_env
 
@@ -77,7 +72,3 @@ class Formatter(logging.Formatter):
         msg = msg.replace("</data>", reset_code)
 
         return msg
-
-
-if __name__ == "__main__":
-    entrypoint()
