@@ -75,7 +75,7 @@ class TestHandler:
     def setup_method(self):
         self.buffer = io.StringIO()
         self.output = cleo.io.outputs.stream_output.StreamOutput(self.buffer)
-        self.handler = plugin.Handler(self.output)
+        self.handler = plugin.CleoHandler(self.output)
         self.handler.setLevel(logging.NOTSET)
 
     @pytest.mark.parametrize(
@@ -128,7 +128,7 @@ class TestHandler:
 
 class TestFormatter:
     def setup_method(self):
-        self.formatter = plugin.Formatter()
+        self.formatter = plugin.CleoFormatter()
 
     def format(self, level: int) -> str:
         record = logging.makeLogRecord(
@@ -180,9 +180,9 @@ class TestTextColoring:
         output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
         output.formatter.set_style("warning", Style("yellow"))
 
-        handler = plugin.Handler(output)
+        handler = plugin.CleoHandler(output)
         handler.setLevel(logging.NOTSET)
-        handler.setFormatter(plugin.Formatter())
+        handler.setFormatter(plugin.CleoFormatter())
 
         return handler
 

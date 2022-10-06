@@ -56,8 +56,8 @@ class SecretsEnvPlugin(ApplicationPlugin):
 
         # send internal message to cleo
         # see docstring in Handler for details
-        handler = Handler(output)
-        handler.setFormatter(Formatter())
+        handler = CleoHandler(output)
+        handler.setFormatter(CleoFormatter())
 
         root_logger = logging.getLogger("secrets_env")
         root_logger.setLevel(logging.DEBUG)
@@ -65,7 +65,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         root_logger.addHandler(handler)
 
 
-class Handler(logging.Handler):
+class CleoHandler(logging.Handler):
     """Send the logs to cleo's IO module.
 
     This app has more than one entry point: command line tool and poetry plugin,
@@ -97,7 +97,7 @@ class Handler(logging.Handler):
         self.output.write_line(msg, verbosity=verbosity)
 
 
-class Formatter(logging.Formatter):
+class CleoFormatter(logging.Formatter):
     """Translates internal expression into cleo's format."""
 
     def format(self, record: logging.LogRecord) -> str:

@@ -8,7 +8,7 @@ import secrets_env
 logger = logging.getLogger(__name__)
 
 
-class Handler(logging.Handler):
+class ClickHandler(logging.Handler):
     """Send the logs to click's echo.
 
     This app has more than one entry point: command line tool and poetry plugin,
@@ -26,7 +26,7 @@ class Handler(logging.Handler):
         click.echo(msg, file=sys.stderr)
 
 
-class Formatter(logging.Formatter):
+class ANSIFormatter(logging.Formatter):
     """Add colors based on internal expression. It doesn't use click's 'style'
     function because the nested style breaks it."""
 
