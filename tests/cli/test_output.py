@@ -55,42 +55,57 @@ class TestClickHandler:
 
 
 class TestANSIFormatter:
-    @pytest.fixture(scope="class")
-    def formatter(self):
-        return t.ANSIFormatter()
-
     @pytest.mark.parametrize(
         ("levelno", "msg"),
         [
             (
                 logging.INFO,
-                "test with \033[36mmark\033[39m and \033[32mdata\033[39m",
+                "[test] test with \033[36mmark\033[39m and \033[32mdata\033[39m",
             ),
             (
                 logging.WARNING,
-                "\033[1m\033[33mtest with \033[36mmark\033[33m and "
+                "[test] \033[1m\033[33mtest with \033[36mmark\033[33m and "
                 "\033[32mdata\033[33m\033[0m",
             ),
             (
                 logging.ERROR,
-                "\033[1m\033[31mtest with \033[36mmark\033[31m and "
+                "[test] \033[1m\033[31mtest with \033[36mmark\033[31m and "
                 "\033[32mdata\033[31m\033[0m",
             ),
             (
                 logging.DEBUG,
-                "[secrets.env] \033[2m\033[37mtest with \033[36mmark\033[37m and "
+                "[test] \033[2m\033[37mtest with \033[36mmark\033[37m and "
                 "\033[32mdata\033[37m\033[0m",
             ),
         ],
     )
-    def test_success(self, formatter: t.ANSIFormatter, levelno: int, msg: str):
+    def test_success_1(self, levelno: int, msg: str):
         record = logging.makeLogRecord(
             {
-                "name": "test",
+                "name": "test.foo",
                 "levelno": levelno,
                 "levelname": logging.getLevelName(levelno),
                 "msg": "test with <mark>mark</mark> and <data>data</data>",
                 "created": time.time(),
             }
         )
+
+        formatter = t.ANSIFormatter(True)
         assert formatter.format(record) == msg
+
+    def test_success_2(self):
+        record = logging.makeLogRecord(
+            {
+                "name": "test.foo",
+                "levelno": logging.INFO,
+                "levelname": "INFO",
+                "msg": "test with <mark>mark</mark> and <data>data</data>",
+                "created": time.time(),
+            }
+        )
+
+        formatter = t.ANSIFormatter(False)
+        assert (
+            formatter.format(record)
+            == "[test] test with <mark>mark</mark> and <data>data</data>"
+        )

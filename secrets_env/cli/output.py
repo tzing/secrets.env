@@ -41,6 +41,12 @@ class ANSIFormatter(logging.Formatter):
     S_DIM = "\033[2m"
     S_RESET = "\033[0m"
 
+    def __init__(self, tag_highlight: bool) -> None:
+        super().__init__(
+            fmt=None, datefmt=None, style="%", validate=True, defaults=None
+        )
+        self.tag_highlight = tag_highlight
+
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
 
@@ -59,16 +65,17 @@ class ANSIFormatter(logging.Formatter):
         if base_color:
             msg = base_style + base_color + msg + self.S_RESET
 
-        # extra prefix
-        if record.levelno == logging.DEBUG:
-            msg = f"[{secrets_env.__name__}] {msg}"
+        # prefix
+        name, *_ = record.name.split(".", 1)  # always use package name
+        msg = f"[{name}] {msg}"
 
         # tag translate
-        reset_code = base_color or self.C_RESET
+        if self.tag_highlight:
+            reset_code = base_color or self.C_RESET
 
-        msg = msg.replace("<mark>", self.C_CYAN)
-        msg = msg.replace("</mark>", reset_code)
-        msg = msg.replace("<data>", self.C_GREEN)
-        msg = msg.replace("</data>", reset_code)
+            msg = msg.replace("<mark>", self.C_CYAN)
+            msg = msg.replace("</mark>", reset_code)
+            msg = msg.replace("<data>", self.C_GREEN)
+            msg = msg.replace("</data>", reset_code)
 
         return msg
