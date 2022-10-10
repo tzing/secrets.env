@@ -1,9 +1,35 @@
+import enum
+import functools
 import logging
 import sys
+from typing import Callable
 
 import click
 
 logger = logging.getLogger(__name__)
+
+
+class Verbosity(enum.IntEnum):
+    def __new__(
+        cls, value: int, levelno_internal: int, levelno_others: int
+    ) -> "Verbosity":
+        obj = int.__new__(cls)
+        obj._value_ = value
+        obj.levelno_internal = levelno_internal
+        obj.levelno_others = levelno_others
+        return obj
+
+    Quiet = -1, logging.WARNING, logging.WARNING
+    """Only show errors."""
+
+    Default = 0, logging.INFO, logging.WARNING
+    """Show INFO for secrets.env messages. Show WARNING for others."""
+
+    Verbose = 1, logging.NOTSET, logging.WARNING
+    """Show all for secrets.env messages. Show WARNING for others."""
+
+    Debug = 3, logging.NOTSET, logging.NOTSET
+    """Show everything."""
 
 
 class SecretsEnvHandler(logging.Handler):
@@ -14,6 +40,19 @@ class SecretsEnvHandler(logging.Handler):
     built-in 'logging' module. Then use this customized handler for converting
     them to the format in corresponding framework, powered with their features
     like color stripping on non-interactive terminal."""
+
+    def __init__(self, verbosity: Verbosity) -> None:
+        super().__init__(logging.NOTSET)
+        self.verbosity = verbosity
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        is_internal_log = record.name.startswith("secrets_env.")
+        is_internal_log |= record.name == "secrets_env"
+
+        if is_internal_log:
+            return record.levelno >= self.verbosity.levelno_internal
+        else:
+            return record.levelno >= self.verbosity.levelno_others
 
     def emit(self, record: logging.LogRecord) -> None:
         try:

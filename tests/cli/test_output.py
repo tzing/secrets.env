@@ -9,6 +9,48 @@ import secrets_env.cli.output as t
 
 class TestSecretsEnvHandler:
     @pytest.mark.parametrize(
+        ("name", "level", "verbosity", "output"),
+        [
+            ("secrets_env", logging.WARNING, t.Verbosity.Quiet, True),
+            ("secrets_env.foo", logging.INFO, t.Verbosity.Quiet, False),
+            ("secrets_env.foo", logging.INFO, t.Verbosity.Default, True),
+            ("secrets_env.foo", logging.DEBUG, t.Verbosity.Default, False),
+            ("secrets_env.foo", logging.DEBUG, t.Verbosity.Verbose, True),
+            ("test", logging.WARNING, t.Verbosity.Quiet, True),
+            ("test", logging.INFO, t.Verbosity.Quiet, False),
+            ("test", logging.INFO, t.Verbosity.Default, False),
+            ("test", logging.INFO, t.Verbosity.Verbose, False),
+            ("test", logging.INFO, t.Verbosity.Debug, True),
+        ],
+    )
+    def test_filter(
+        self,
+        capsys: pytest.CaptureFixture,
+        name: str,
+        level: int,
+        verbosity: t.Verbosity,
+        output: bool,
+    ):
+        record = logging.makeLogRecord(
+            {
+                "name": name,
+                "levelno": level,
+                "levelname": logging.getLevelName(level),
+                "msg": "test message",
+                "created": time.time(),
+            }
+        )
+
+        handler = t.SecretsEnvHandler(verbosity)
+        handler.handle(record)
+
+        captured = capsys.readouterr()
+        if output:
+            assert captured.err == "test message\n"
+        else:
+            assert captured.err == ""
+
+    @pytest.mark.parametrize(
         ("should_strip_ansi", "stderr"),
         [
             (True, "test message\n"),
