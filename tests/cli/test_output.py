@@ -7,9 +7,9 @@ import pytest
 import secrets_env.cli.output as t
 
 
-class TestClickHandler:
+class TestSecretsEnvHandler:
     def setup_method(self):
-        self.handler = t.ClickHandler(logging.DEBUG)
+        self.handler = t.SecretsEnvHandler(logging.DEBUG)
         self.record = logging.makeLogRecord(
             {
                 "name": "test",
@@ -54,7 +54,7 @@ class TestClickHandler:
         assert "Message: '%d'" in captured.err
 
 
-class TestANSIFormatter:
+class TestSecretsEnvFormatter:
     @pytest.mark.parametrize(
         ("levelno", "msg"),
         [
@@ -90,7 +90,7 @@ class TestANSIFormatter:
             }
         )
 
-        formatter = t.ANSIFormatter(True)
+        formatter = t.SecretsEnvFormatter(True)
         assert formatter.format(record) == msg
 
     def test_success_2(self):
@@ -104,7 +104,7 @@ class TestANSIFormatter:
             }
         )
 
-        formatter = t.ANSIFormatter(False)
+        formatter = t.SecretsEnvFormatter(False)
         assert (
             formatter.format(record)
             == "[test] test with <mark>mark</mark> and <data>data</data>"
