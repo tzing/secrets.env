@@ -8,18 +8,6 @@ import secrets_env.cli.output as t
 
 
 class TestSecretsEnvHandler:
-    def setup_method(self):
-        self.handler = t.SecretsEnvHandler(logging.DEBUG)
-        self.record = logging.makeLogRecord(
-            {
-                "name": "test",
-                "levelno": logging.INFO,
-                "levelname": logging.getLevelName(logging.INFO),
-                "msg": "\033[31mtest message\033[0m",
-                "created": time.time(),
-            }
-        )
-
     @pytest.mark.parametrize(
         ("should_strip_ansi", "stderr"),
         [
@@ -27,16 +15,27 @@ class TestSecretsEnvHandler:
             (False, "\033[31mtest message\033[0m\n"),
         ],
     )
-    def test_success(
+    def test_emit(
         self, capsys: pytest.CaptureFixture, should_strip_ansi: bool, stderr: str
     ):
+        handler = t.SecretsEnvHandler(t.Verbosity.Debug)
         with patch("click.utils.should_strip_ansi", return_value=should_strip_ansi):
-            self.handler.emit(self.record)
+            handler.emit(
+                logging.makeLogRecord(
+                    {
+                        "name": "test",
+                        "levelno": logging.INFO,
+                        "levelname": logging.getLevelName(logging.INFO),
+                        "msg": "\033[31mtest message\033[0m",
+                        "created": time.time(),
+                    }
+                )
+            )
 
         captured = capsys.readouterr()
         assert captured.err == stderr
 
-    def test_error(self, capsys: pytest.CaptureFixture):
+    def test_emit_error(self, capsys: pytest.CaptureFixture):
         record = logging.makeLogRecord(
             {
                 "name": "test",
@@ -48,7 +47,8 @@ class TestSecretsEnvHandler:
             }
         )
 
-        self.handler.emit(record)
+        handler = t.SecretsEnvHandler(t.Verbosity.Debug)
+        handler.emit(record)
 
         captured = capsys.readouterr()
         assert "Message: '%d'" in captured.err
