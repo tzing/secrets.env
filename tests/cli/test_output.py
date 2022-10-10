@@ -2,54 +2,14 @@ import logging
 import time
 from unittest.mock import patch
 
+import click
+import click.testing
 import pytest
 
 import secrets_env.cli.output as t
 
 
-class TestSecretsEnvHandler:
-    @pytest.mark.parametrize(
-        ("name", "level", "verbosity", "output"),
-        [
-            ("secrets_env", logging.WARNING, t.Verbosity.Quiet, True),
-            ("secrets_env.foo", logging.INFO, t.Verbosity.Quiet, False),
-            ("secrets_env.foo", logging.INFO, t.Verbosity.Default, True),
-            ("secrets_env.foo", logging.DEBUG, t.Verbosity.Default, False),
-            ("secrets_env.foo", logging.DEBUG, t.Verbosity.Verbose, True),
-            ("test", logging.WARNING, t.Verbosity.Quiet, True),
-            ("test", logging.INFO, t.Verbosity.Quiet, False),
-            ("test", logging.INFO, t.Verbosity.Default, False),
-            ("test", logging.INFO, t.Verbosity.Verbose, False),
-            ("test", logging.INFO, t.Verbosity.Debug, True),
-        ],
-    )
-    def test_filter(
-        self,
-        capsys: pytest.CaptureFixture,
-        name: str,
-        level: int,
-        verbosity: t.Verbosity,
-        output: bool,
-    ):
-        record = logging.makeLogRecord(
-            {
-                "name": name,
-                "levelno": level,
-                "levelname": logging.getLevelName(level),
-                "msg": "test message",
-                "created": time.time(),
-            }
-        )
-
-        handler = t.SecretsEnvHandler(verbosity)
-        handler.handle(record)
-
-        captured = capsys.readouterr()
-        if output:
-            assert captured.err == "test message\n"
-        else:
-            assert captured.err == ""
-
+class TestClickHandler:
     @pytest.mark.parametrize(
         ("should_strip_ansi", "stderr"),
         [
@@ -60,7 +20,7 @@ class TestSecretsEnvHandler:
     def test_emit(
         self, capsys: pytest.CaptureFixture, should_strip_ansi: bool, stderr: str
     ):
-        handler = t.SecretsEnvHandler(t.Verbosity.Debug)
+        handler = t.ClickHandler()
         with patch("click.utils.should_strip_ansi", return_value=should_strip_ansi):
             handler.emit(
                 logging.makeLogRecord(
@@ -89,7 +49,7 @@ class TestSecretsEnvHandler:
             }
         )
 
-        handler = t.SecretsEnvHandler(t.Verbosity.Debug)
+        handler = t.ClickHandler()
         handler.emit(record)
 
         captured = capsys.readouterr()
@@ -151,3 +111,53 @@ class TestSecretsEnvFormatter:
             formatter.format(record)
             == "[test] test with <mark>mark</mark> and <data>data</data>"
         )
+
+
+class TestSetupLogging:
+    @click.command()
+    @t.add_output_options
+    def sample_command():
+        for logger in (
+            logging.getLogger("secrets_env.test"),
+            logging.getLogger("mock.test"),
+        ):
+            logger.debug("test debug msg")
+            logger.info("test info msg")
+            logger.warning("test warning msg")
+
+    @pytest.fixture()
+    def runner(self):
+        return click.testing.CliRunner()
+
+    def test_default(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command)
+        assert res.exit_code == 0
+        assert "[secrets_env] test debug msg" not in res.output
+        assert "[secrets_env] test info msg" in res.output
+        assert "[mock] test info msg" not in res.output
+        assert "[mock] test warning msg" in res.output
+
+    def test_quiet(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-q"])
+        assert res.exit_code == 0
+        assert "[secrets_env] test info msg" not in res.output
+        assert "[secrets_env] test warning msg" in res.output
+        assert "[mock] test info msg" not in res.output
+        assert "[mock] test warning msg" in res.output
+
+    def test_verbose(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-v"])
+        assert res.exit_code == 0
+        assert "[secrets_env] test debug msg" in res.output
+        assert "[mock] test info msg" not in res.output
+        assert "[mock] test warning msg" in res.output
+
+    def test_debug(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-vvvv"])
+        assert res.exit_code == 0
+        assert "[secrets_env] test debug msg" in res.output
+        assert "[mock] test debug msg" in res.output
+
+    def test_error(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-vq"])
+        assert res.exit_code == 1

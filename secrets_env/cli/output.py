@@ -25,14 +25,14 @@ class Verbosity(enum.IntEnum):
     Default = 0, logging.INFO, logging.WARNING
     """Show INFO for secrets.env messages. Show WARNING for others."""
 
-    Verbose = 1, logging.NOTSET, logging.WARNING
+    Verbose = 1, logging.DEBUG, logging.WARNING
     """Show all for secrets.env messages. Show WARNING for others."""
 
-    Debug = 3, logging.NOTSET, logging.NOTSET
+    Debug = 2, logging.DEBUG, logging.DEBUG
     """Show everything."""
 
 
-class SecretsEnvHandler(logging.Handler):
+class ClickHandler(logging.Handler):
     """Send the logs to click's echo.
 
     This app has more than one entry point: command line tool and poetry plugin,
@@ -40,19 +40,6 @@ class SecretsEnvHandler(logging.Handler):
     built-in 'logging' module. Then use this customized handler for converting
     them to the format in corresponding framework, powered with their features
     like color stripping on non-interactive terminal."""
-
-    def __init__(self, verbosity: Verbosity) -> None:
-        super().__init__(logging.NOTSET)
-        self.verbosity = verbosity
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        is_internal_log = record.name.startswith("secrets_env.")
-        is_internal_log |= record.name == "secrets_env"
-
-        if is_internal_log:
-            return record.levelno >= self.verbosity.levelno_internal
-        else:
-            return record.levelno >= self.verbosity.levelno_others
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -116,3 +103,63 @@ class SecretsEnvFormatter(logging.Formatter):
             msg = msg.replace("</data>", reset_code)
 
         return msg
+
+
+def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
+    # add options
+    click.option(
+        "-v",
+        "--verbose",
+        count=True,
+        help="Increase output verbosity.",
+    )(func)
+    click.option(
+        "-q",
+        "--quiet",
+        is_flag=True,
+        help="Silent mode. Don't show output until error.",
+    )(func)
+
+    # wrap original function for post-parsing actions
+    @functools.wraps(func)
+    def decorated(verbose: int, quiet: bool, *args, **kwargs):
+        if verbose and quiet:
+            click.secho(
+                "Option --verbose and --quiet are mutually exclusive.",
+                err=True,
+                fg="red",
+            )
+            raise click.Abort()
+
+        setup_logging(verbose, quiet)
+
+        return func(*args, **kwargs)
+
+    return decorated
+
+
+def setup_logging(verbose: int, quiet: bool):
+    """Setup logging module and forwards internal messages to click."""
+    if quiet:
+        verbosity = Verbosity.Quiet
+    else:
+        # the customized verbosity expression must in [-1, 2]
+        verbose = min(verbose, 2)
+        verbosity = Verbosity(verbose)
+
+    # logging for internal messages
+    internal_handler = ClickHandler()
+    internal_handler.setFormatter(SecretsEnvFormatter(True))
+
+    internal_logger = logging.getLogger("secrets_env")
+    internal_logger.setLevel(verbosity.levelno_internal)
+    internal_logger.addHandler(internal_handler)
+    internal_logger.propagate = False
+
+    # logging for external modules
+    root_handler = ClickHandler()
+    root_handler.setFormatter(SecretsEnvFormatter(False))
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(verbosity.levelno_others)
+    root_logger.addHandler(root_handler)
