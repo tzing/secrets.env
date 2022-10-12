@@ -114,6 +114,21 @@ class TestSecretsEnvFormatter:
 
 
 class TestSetupLogging:
+    @pytest.fixture(autouse=True)
+    def _reset_logging(self):
+        # reset internal
+        logger = logging.getLogger("secrets_env")
+        logger.setLevel(logging.NOTSET)
+        logger.propagate = True
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+
+        # reset global
+        logger = logging.getLogger()
+        logger.setLevel(logging.NOTSET)
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+
     @click.command()
     @t.add_output_options
     def sample_command():

@@ -38,7 +38,7 @@ class TestLoadSecrets:
                 "VAR2": "bar",
             }
 
-        assert "<info>2</info> secrets loaded" in caplog.text
+        assert "<mark>2</mark> secrets loaded" in caplog.text
 
     @pytest.mark.usefixtures("patch_load_config")
     def test_partial_loaded(self, caplog: pytest.LogCaptureFixture):

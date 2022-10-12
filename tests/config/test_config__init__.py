@@ -58,7 +58,6 @@ class TestLoadConfig:
     def test_success_2(
         self, monkeypatch: pytest.MonkeyPatch, repo_path: Path, filename: str
     ):
-
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
 
         path = repo_path / "example" / filename

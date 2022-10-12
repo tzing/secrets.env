@@ -151,7 +151,7 @@ class TestFormatter:
 
     def test_debug(self):
         assert self.format(logging.DEBUG) == (
-            "[secrets.env] <debug>test <info>emphasized</info> msg with <comment>"
+            "[secrets_env] <debug>test <info>emphasized</info> msg with <comment>"
             "data</comment></debug>"
         )
 
@@ -203,7 +203,7 @@ class TestTextColoring:
         [
             (
                 logging.DEBUG,
-                f"[secrets.env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"[secrets_env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
                 f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}."
                 f"{BDEFAULT}\n",
             ),
