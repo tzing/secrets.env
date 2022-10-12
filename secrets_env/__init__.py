@@ -1,4 +1,4 @@
-__name__ = "secrets.env"
+__name__ = "secrets_env"
 __version__ = "0.8.0"
 
 import logging
