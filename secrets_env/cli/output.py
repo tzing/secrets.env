@@ -101,6 +101,8 @@ class SecretsEnvFormatter(logging.Formatter):
             msg = msg.replace("</mark>", reset_code)
             msg = msg.replace("<data>", self.C_GREEN)
             msg = msg.replace("</data>", reset_code)
+            msg = msg.replace("<error>", self.C_RED)
+            msg = msg.replace("</error>", reset_code)
 
         return msg
 
