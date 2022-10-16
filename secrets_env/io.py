@@ -1,14 +1,10 @@
-import importlib
 import os
 import sys
-import typing
 from typing import Any, Optional, Union
 
+import click
 import keyring
 import keyring.errors
-
-if typing.TYPE_CHECKING:
-    import click
 
 
 def get_env_var(*names: str) -> Optional[str]:
@@ -26,8 +22,8 @@ def prompt(
     type: Optional[Union["click.types.ParamType", Any]] = None,
     show_default: bool = True,
 ) -> Optional[Any]:
-    """Wrapped `click.prompt` function. Only shows the prompt when click is
-    installed and this feature is not disabled.
+    """Wrapped `click.prompt` function. Shows the prompt when this feature is
+    not disabled.
 
     Parameters
     ----------
@@ -43,12 +39,6 @@ def prompt(
     show_default : bool
         Shows or hides the default value in the prompt.
     """
-    # skip prompt if click is not installed
-    try:
-        click = importlib.import_module("click")
-    except ImportError:
-        return None
-
     # skip prompt if the env var is set
     env = os.getenv("SECRETS_ENV_NO_PROMPT", "FALSE")
     if env.upper() in ("TRUE", "T", "YES", "Y", "1"):

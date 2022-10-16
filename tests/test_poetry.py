@@ -1,5 +1,7 @@
+import contextlib
 import io
 import logging
+import os
 import time
 from unittest.mock import Mock, patch
 
@@ -13,11 +15,10 @@ import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import secrets_env
 import secrets_env.poetry as plugin
-from secrets_env.config.types import Config, SecretPath
 
 
+@pytest.mark.usefixtures("_reset_logging")
 class TestSecretsEnvPlugin:
     def setup_method(self):
         self.plugin = plugin.SecretsEnvPlugin()
@@ -28,60 +29,20 @@ class TestSecretsEnvPlugin:
         self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
 
     def teardown_method(self):
-        logger = logging.getLogger("secrets_env")
-        logger.setLevel(logging.NOTSET)
-        logger.propagate = True
-        for h in list(logger.handlers):
-            logger.removeHandler(h)
+        # reset env
+        with contextlib.suppress(KeyError):
+            os.environ.pop("VAR1")
 
     @pytest.fixture()
     def patch_setup_output(self):
         with patch.object(self.plugin, "setup_output") as mock:
             yield mock
 
-    @pytest.fixture()
-    def _patch_load_config(self):
-        with patch(
-            "secrets_env.load_config",
-            return_value=Config(
-                url="https://example.com/",
-                auth=secrets_env.TokenAuth("ex@mp1e"),
-                tls={},
-                secret_specs={
-                    "VAR1": SecretPath("key1", "example"),
-                    "VAR2": SecretPath("key2", "example"),
-                },
-            ),
-        ):
-            yield
-
     @pytest.mark.usefixtures("patch_setup_output")
-    @pytest.mark.usefixtures("_patch_load_config")
     def test_load_secret(self):
-        with patch(
-            "secrets_env.KVReader.get_values",
-            return_value={
-                SecretPath("key1", "example"): "foo",
-                SecretPath("key2", "example"): "bar",
-            },
-        ):
+        with patch("secrets_env.load_secrets", return_value={"VAR1": "test"}):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
-
-    @pytest.mark.usefixtures("patch_setup_output")
-    @pytest.mark.usefixtures("_patch_load_config")
-    def test_load_secret_partial(self):
-        with patch(
-            "secrets_env.KVReader.get_values",
-            return_value={
-                # no key2
-                SecretPath("key1", "example"): "foo",
-            },
-        ):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
-
-    def test_load_secret_no_config(self):
-        with patch("secrets_env.load_config", return_value=None):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
+        assert os.getenv("VAR1") == "test"
 
     def test_load_secret_not_related_command(self, patch_setup_output: Mock):
         # command is not `run` or `shell`
@@ -108,7 +69,7 @@ class TestHandler:
     def setup_method(self):
         self.buffer = io.StringIO()
         self.output = cleo.io.outputs.stream_output.StreamOutput(self.buffer)
-        self.handler = plugin.Handler(self.output)
+        self.handler = plugin.CleoHandler(self.output)
         self.handler.setLevel(logging.NOTSET)
 
     @pytest.mark.parametrize(
@@ -161,7 +122,7 @@ class TestHandler:
 
 class TestFormatter:
     def setup_method(self):
-        self.formatter = plugin.Formatter()
+        self.formatter = plugin.CleoFormatter()
 
     def format(self, level: int) -> str:
         record = logging.makeLogRecord(
@@ -184,7 +145,7 @@ class TestFormatter:
 
     def test_debug(self):
         assert self.format(logging.DEBUG) == (
-            "[secrets.env] <debug>test <info>emphasized</info> msg with <comment>"
+            "[secrets_env] <debug>test <info>emphasized</info> msg with <comment>"
             "data</comment></debug>"
         )
 
@@ -213,9 +174,9 @@ class TestTextColoring:
         output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
         output.formatter.set_style("warning", Style("yellow"))
 
-        handler = plugin.Handler(output)
+        handler = plugin.CleoHandler(output)
         handler.setLevel(logging.NOTSET)
-        handler.setFormatter(plugin.Formatter())
+        handler.setFormatter(plugin.CleoFormatter())
 
         return handler
 
@@ -236,7 +197,7 @@ class TestTextColoring:
         [
             (
                 logging.DEBUG,
-                f"[secrets.env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"[secrets_env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
                 f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}."
                 f"{BDEFAULT}\n",
             ),

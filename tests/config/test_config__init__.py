@@ -58,7 +58,6 @@ class TestLoadConfig:
     def test_success_2(
         self, monkeypatch: pytest.MonkeyPatch, repo_path: Path, filename: str
     ):
-
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
 
         path = repo_path / "example" / filename
@@ -78,7 +77,7 @@ class TestLoadConfig:
 
     def test_not_content(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
         path = tmp_path / "empty.json"
-        path.touch()
+        path.write_text("{}")
 
         with caplog.at_level(logging.INFO):
             assert t.load_config(path) is None
