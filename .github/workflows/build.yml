@@ -92,8 +92,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install poetry
-          poetry install --no-root -E toml -E yaml
+          pip install -U pip  # https://github.com/pypa/pip/issues/11352
+          pip install poetry
+          poetry install --no-root -E all
 
       - name: Run pytest
         run: |
@@ -183,14 +184,6 @@ jobs:
       - name: Build
         run: |
           poetry build
-
-      - name: Workaround for package naming issue
-        # https://github.com/python-poetry/poetry/issues/5782
-        run: |
-          for name in $(find dist -type f); do
-            name_rec=$(echo $name | sed -E s/secrets.env/secrets.env/)
-            [[ "x$name" != "x$name_rec" ]] && mv -v "$name" "$name_rec"
-          done
 
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
