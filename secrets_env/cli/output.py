@@ -66,9 +66,7 @@ class SecretsEnvFormatter(logging.Formatter):
     S_RESET = "\033[0m"
 
     def __init__(self, tag_highlight: bool) -> None:
-        super().__init__(
-            fmt=None, datefmt=None, style="%", validate=True, defaults=None
-        )
+        super().__init__()
         self.tag_highlight = tag_highlight
 
     def format(self, record: logging.LogRecord) -> str:
