@@ -18,6 +18,7 @@ from cleo.io.outputs.output import Verbosity
 import secrets_env.poetry as plugin
 
 
+@pytest.mark.usefixtures("_reset_logging")
 class TestSecretsEnvPlugin:
     def setup_method(self):
         self.plugin = plugin.SecretsEnvPlugin()
@@ -31,13 +32,6 @@ class TestSecretsEnvPlugin:
         # reset env
         with contextlib.suppress(KeyError):
             os.environ.pop("VAR1")
-
-        # reset logger
-        logger = logging.getLogger("secrets_env")
-        logger.setLevel(logging.NOTSET)
-        logger.propagate = True
-        for h in list(logger.handlers):
-            logger.removeHandler(h)
 
     @pytest.fixture()
     def patch_setup_output(self):
