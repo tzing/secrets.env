@@ -162,6 +162,5 @@ def setup_logging(verbose: int, quiet: bool):
     root_handler = ClickHandler()
     root_handler.setFormatter(SecretsEnvFormatter(False))
 
-    root_logger = logging.getLogger()
-    root_logger.setLevel(verbosity.levelno_others)
-    root_logger.addHandler(root_handler)
+    logging.root.setLevel(verbosity.levelno_others)
+    logging.root.addHandler(root_handler)

@@ -77,7 +77,7 @@ class TestLoadConfig:
 
     def test_not_content(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
         path = tmp_path / "empty.json"
-        path.touch()
+        path.write_text("{}")
 
         with caplog.at_level(logging.INFO):
             assert t.load_config(path) is None

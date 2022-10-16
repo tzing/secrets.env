@@ -14,8 +14,6 @@ def repo_path():
 def _reset_logging():
     yield
     for logger in (logging.root, logging.getLogger("secrets_env")):
-        logger.setLevel(logging.WARNING)
+        logger.setLevel(logging.NOTSET)
         logger.propagate = True
-        logger.disabled = False
         logger.handlers.clear()
-        logger.filters.clear()
