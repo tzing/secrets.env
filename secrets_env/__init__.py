@@ -28,7 +28,7 @@ def load_secrets(config_file: Path = None) -> Dict[str, str]:
             # skip logging. already show warning in `get_value`
             continue
 
-        logger.debug("Load <data>%s</data>", name)
+        logger.debug("Loaded <data>$%s</data>", name)
         output[name] = value
 
     if len(output) == len(config.secret_specs):
