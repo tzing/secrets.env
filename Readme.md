@@ -158,7 +158,7 @@ Auth data could be provided by various source, including:
   [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
   [command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
 
-* **Prompt:** If no data found in all other sources, it prompts user for input. Prompt is only enabled when optional dependency [click](https://click.palletsprojects.com/en/8.1.x/) is installed, and you can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
+* **Prompt:** If no data found in all other sources, it prompts user for input. You can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
 
 #### Supported methods
 

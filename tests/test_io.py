@@ -18,13 +18,6 @@ def test_get_env_var(monkeypatch: pytest.MonkeyPatch):
 
 
 class TestPrompt:
-    def test_no_click(self):
-        with patch(
-            "importlib.import_module",
-            side_effect=ImportError("Mock import error"),
-        ):
-            assert t.prompt("test") is None
-
     def test_disable(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_NO_PROMPT", "True")
         assert t.prompt("test") is None
