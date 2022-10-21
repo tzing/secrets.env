@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from secrets_env.auth.base import Auth
+from secrets_env.exception import TypeError
 from secrets_env.io import get_env_var, read_keyring
 
 if typing.TYPE_CHECKING:

@@ -1,9 +1,9 @@
 __name__ = "secrets_env"
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import secrets_env.config
 import secrets_env.reader
@@ -11,7 +11,7 @@ import secrets_env.reader
 logger = logging.getLogger(__name__)
 
 
-def load_secrets(config_file: Path = None) -> Dict[str, str]:
+def load_secrets(config_file: Optional[Path] = None) -> Dict[str, str]:
     """Load secrets from vault and put them to environment variable."""
     config = secrets_env.config.load_config(config_file)
     if not config:
