@@ -6,6 +6,8 @@ from typing import Callable, Optional
 
 import click
 
+from secrets_env.utils import removeprefix
+
 logger = logging.getLogger(__name__)
 
 
@@ -209,10 +211,3 @@ def setup_logging(verbose: int, quiet: bool):
 
     logging.root.setLevel(verbosity.levelno_others)
     logging.root.addHandler(root_handler)
-
-
-def removeprefix(s: str, prefix: str):
-    # str.removeprefix is only available after python 3.9
-    if s.startswith(prefix):
-        return s[len(prefix) :]
-    return s
