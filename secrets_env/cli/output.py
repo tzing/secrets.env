@@ -82,6 +82,51 @@ class ClickHandler(logging.Handler):
         click.echo(msg, file=sys.stderr)
 
 
+class ColorFormatter(logging.Formatter):
+
+    C_RED = "\033[31m"
+    C_GREEN = "\033[32m"
+    C_YELLOW = "\033[33m"
+    C_CYAN = "\033[36m"
+    C_WHITE = "\033[37m"
+    C_RESET = "\033[39m"
+
+    S_BRIGHT = "\033[1m"
+    S_DIM = "\033[2m"
+    S_RESET = "\033[0m"
+
+    def get_color(self, level: int):
+        if level >= logging.ERROR:
+            return self.C_RED
+        elif level >= logging.WARNING:
+            return self.C_YELLOW
+        elif level <= logging.DEBUG:
+            return self.C_WHITE
+        return ""
+
+    def get_style(self, level: int):
+        if level >= logging.WARNING:
+            return self.S_BRIGHT
+        elif level <= logging.DEBUG:
+            return self.S_DIM
+        return ""
+
+    def format(self, record: logging.LogRecord) -> str:
+        msg = super().format(record)
+
+        # add color and style
+        color = self.get_color(record.levelno)
+        style = self.get_style(record.levelno)
+
+        msg = f"{style}{color}{msg}{self.S_RESET}"
+
+        # add package name as prefix
+        logger_name, *_ = record.name.split(".", 1)
+        msg = f"[{logger_name}] {msg}"
+
+        return msg
+
+
 class SecretsEnvFormatter(logging.Formatter):
     """Add colors based on internal expression. It doesn't use click's 'style'
     function because the nested style breaks it."""
@@ -193,7 +238,7 @@ def setup_logging(verbose: int, quiet: bool):
 
     # logging for external modules
     root_handler = ClickHandler()
-    root_handler.setFormatter(SecretsEnvFormatter(False))
+    root_handler.setFormatter(ColorFormatter())
 
     logging.root.setLevel(verbosity.levelno_others)
     logging.root.addHandler(root_handler)
