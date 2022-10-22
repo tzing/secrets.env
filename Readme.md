@@ -6,55 +6,82 @@
 
 Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without not landing data on disk.
 
-Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be dangerous- some of us put the sensitive data into a shell script and source it, which brings the risk of credential leaking.
+![screenshot](./docs/screenshot.png)
 
-This tool is built to *plug in* secrets into development without landing data on disk. Furthermore, we can safely commit the config file into CVS, for easily reproducing the environment, and reduce the risk of uploading the secrets to the server.
+Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be a trouble.
+
+This app is built to *plug in* secrets into development without landing data on disk, easily reproduce the environment, and reduce the risk of uploading the secrets to the server.
 
 
 ## Usage
 
-> **Note**
->
-> Standard CLI usage is not implemented yet.
-> Currently this app could only be used as a poetry plugin. Plugin is a poetry **1.2.0** feature, which is still in beta testing.
+Install, add config, and run.
 
-Get it from [PyPI](https://pypi.org/project/secrets.env/):
+### Install
+
+This app is available on [PyPI](https://pypi.org/project/secrets.env/):
 
 ```bash
-# add as poetry global plugin
-poetry self add secrets.env -E yaml
+# simple install
+pip install secrets.env -E all
 
-# add to local project
-poetry add --group=dev secrets.env -E toml
+# OR add as poetry global plugin
+poetry self add secrets.env -E toml
 ```
 
 Folowing extras avaliable:
 
-* `yaml`: supporting YAML config
-* `toml`: supporting TOML config, includes `pyproject.toml`
+* `all` - *install everything below*
+* `yaml` - supporting YAML config
+* `toml` - supporting TOML config, includes `pyproject.toml`
 
 If none of them are selected, this app only supports the config in JSON format.
 
-### With poetry
+### Add config
 
-You can use this package as a [poetry plugin](https://python-poetry.org/docs/master/plugins/), then this app will pull the secrets from vault on poetry command `run` and `shell`.
+This app could read vault URL and authentication information from various source:
 
 ```bash
-# 1. install plugin
-poetry add --group=dev secrets.env -E yaml
-
-# 2. setup config
-#    read configuration section below for details
 export SECRETS_ENV_ADDR='https://example.com'
 export SECRETS_ENV_METHOD='token'
 export SECRETS_ENV_TOKEN='example-token'
-
-echo 'secrets:'                       > .secrets-env.yaml
-echo '  FOO=secrets/default#example'  > .secrets-env.yaml
-
-# 3. run
-poetry run sh -c 'echo $FOO'
 ```
+
+But we must list the desired secret path and key in the config file:
+
+```json
+{
+  "secrets": {
+    "EXAMPLE": {
+      "path": "secrets/example",
+      "key": "foo"
+    }
+  }
+}
+```
+
+**Read 'Configure' section below for more details.**
+
+### Run
+
+This app could be used as a command line tool, or a [poetry plugin](https://python-poetry.org/docs/master/plugins/).
+
+* As a CLI tool
+
+  ```bash
+  secrets.env run -- some-app-that-needs-secret --args foo bar
+  ```
+
+  It loads the secrets, run the command, then forget the secrets.
+
+* As a poetry plugin
+
+  ```bash
+  poetry run some-app-that-needs-secret --args foo bar
+  ```
+
+  This app will pull the secrets from vault on poetry command [run](https://python-poetry.org/docs/cli/#run) and [shell](https://python-poetry.org/docs/cli/#shell).
+
 
 
 ## Configure
@@ -88,6 +115,16 @@ source:
   auth:
     method: okta
     username: user@example.com
+
+  # Transport layer security (TLS) configurations.
+  # All keys under this section are optional.
+  tls:
+    # Server side certificate for verifying responses.
+    ca_cert: /path/ca.cert
+
+    # Client side certificate for communicating with vault server.
+    client_cert: /path/client.cert
+    client_key: /path/client.key
 
 # `secrets` lists the environment variable name, and the path the get the secret value
 secrets:
@@ -149,7 +186,7 @@ Auth data could be provided by various source, including:
   [Keychain]: https://en.wikipedia.org/wiki/Keychain_%28software%29
   [command line utility]: https://keyring.readthedocs.io/en/latest/#command-line-utility
 
-* **Prompt:** If no data found in all other sources, it prompts user for input. Prompt is only enabled when optional dependency [click](https://click.palletsprojects.com/en/8.1.x/) is installed, and you can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
+* **Prompt:** If no data found in all other sources, it prompts user for input. You can disable it by setting environment variable `SECRETS_ENV_NO_PROMPT=True`.
 
 #### Supported methods
 
@@ -157,8 +194,8 @@ Here's the argument(s), their accepted source, and corresponding keys.
 
 ##### method: `token`
 
-| key   | config file | environment variable                | keyring        | helper |
-|-------|:------------|:------------------------------------|:---------------|--------|
+| key   | config file | environment variable               | keyring        | helper |
+| ----- | ----------- | ---------------------------------- | -------------- | ------ |
 | token | ⛔️          | `SECRETS_ENV_TOKEN`, `VAULT_TOKEN`  | `token/:token` | ✅     |
 
 *[Token helper](https://www.vaultproject.io/docs/commands/token-helper)*: Vault CLI stores the generated token in the `~/.vault-token` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
@@ -168,6 +205,6 @@ To use the helper, you can use command [`vault login`](https://www.vaultproject.
 ##### method: `okta`
 
 | key      | config file | environment variable   | keyring               | prompt |
-|----------|:------------|:-----------------------|:----------------------|--------|
+| -------- | ----------- | ---------------------- | --------------------- | ------ |
 | username | `username`  | `SECRETS_ENV_USERNAME` | `okta/:username`      | ✅     |
 | password | ⛔️          | `SECRETS_ENV_PASSWORD` | `okta/YOUR_USER_NAME` | ✅     |

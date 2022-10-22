@@ -10,6 +10,7 @@ from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
 import secrets_env
+from secrets_env.utils import removeprefix
 
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
@@ -36,33 +37,9 @@ class SecretsEnvPlugin(ApplicationPlugin):
         self.setup_output(event.io.output)
         logger.debug("Start secrets.env poetry plugin.")
 
-        config = secrets_env.load_config()
-        if not config:
-            # skip logging. already show error in `load_config`
-            return
-
-        reader = secrets_env.KVReader(config.url, config.auth)
-        secrets = reader.get_values(config.secret_specs.values())
-
-        cnt_loaded = 0
-        for name, spec in config.secret_specs.items():
-            value = secrets.get(spec)
-            if not value:
-                # skip logging. already show warning in `get_value`
-                continue
-
-            logger.debug("Load <info>%s</info>", name)
-            os.environ[name] = value
-            cnt_loaded += 1
-
-        if cnt_loaded == len(config.secret_specs):
-            logger.info("<info>%d</info> secrets loaded", len(secrets))
-        else:
-            logger.warning(
-                "<error>%d</error> / %d secrets loaded",
-                cnt_loaded,
-                len(config.secret_specs),
-            )
+        secrets = secrets_env.load_secrets()
+        for key, value in secrets.items():
+            os.environ[key] = value
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
@@ -76,12 +53,12 @@ class SecretsEnvPlugin(ApplicationPlugin):
         Formatter, powered with cleo's formatter."""
         # set output format
         output.formatter.set_style("debug", Style("white"))
-        output.formatter.set_style("warning", Style("yellow"))
+        output.formatter.set_style("warning", Style("light_gray", options=["dark"]))
 
         # send internal message to cleo
         # see docstring in Handler for details
-        handler = Handler(output)
-        handler.setFormatter(Formatter())
+        handler = CleoHandler(output)
+        handler.setFormatter(CleoFormatter())
 
         root_logger = logging.getLogger("secrets_env")
         root_logger.setLevel(logging.DEBUG)
@@ -89,8 +66,14 @@ class SecretsEnvPlugin(ApplicationPlugin):
         root_logger.addHandler(handler)
 
 
-class Handler(logging.Handler):
-    """Send the logs to cleo's IO module."""
+class CleoHandler(logging.Handler):
+    """Send the logs to cleo's IO module.
+
+    This app has more than one entry point: command line tool and poetry plugin,
+    which use different frameworks. This app reports the information using the
+    built-in 'logging' module. Then use this customized handler for converting
+    them to the format in corresponding framework, powered with their features
+    like color stripping on non-interactive terminal."""
 
     VERBOSITY = {
         logging.DEBUG: Verbosity.VERY_VERBOSE,
@@ -111,15 +94,20 @@ class Handler(logging.Handler):
             self.handleError(record)
             return
 
-        verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
+        if msg.startswith("<!important>"):
+            verbosity = Verbosity.QUIET
+        else:
+            verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
+
         self.output.write_line(msg, verbosity=verbosity)
 
 
-class Formatter(logging.Formatter):
+class CleoFormatter(logging.Formatter):
     """Translates internal expression into cleo's format."""
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
+        msg = removeprefix(msg, "<!important>")
 
         # tag translate
         # uses builtin tags for aligning the appearance with poetry and other plugins
@@ -132,6 +120,6 @@ class Formatter(logging.Formatter):
         elif record.levelno == logging.WARNING:
             msg = f"<warning>{msg}</warning>"
         elif record.levelno == logging.DEBUG:
-            msg = f"[secrets.env] <debug>{msg}</debug>"
+            msg = f"[{secrets_env.__name__}] <debug>{msg}</debug>"
 
         return msg
