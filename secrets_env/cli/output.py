@@ -2,7 +2,7 @@ import enum
 import functools
 import logging
 import sys
-from typing import Callable
+from typing import Callable, Optional
 
 import click
 
@@ -41,6 +41,38 @@ class ClickHandler(logging.Handler):
     them to the format in corresponding framework, powered with their features
     like color stripping on non-interactive terminal."""
 
+    def __init__(self, extra_filter_level: Optional[int] = None) -> None:
+        """
+        Parameters
+        ----------
+        extra_filter_level : int | None
+            Log level to apply in the *extra filter feature*. Set to None to
+            keep the behavior like normal handler.
+
+        Note
+        ----
+        Extra filter feature is designed for secrets.env itself. In this app we
+        want to let some special message penetrates the filters. So we'll set
+        this handler into DEBUG level, receiving all the message and do the log
+        level filtering inside.
+        """
+        super().__init__(logging.NOTSET)
+        self.extra_filter_level = extra_filter_level
+
+    def filter(self, record: logging.LogRecord):
+        """To let <!important> tag penetrate the level-based filters."""
+        if self.extra_filter_level is not None:
+            # accept <!important> to penetrate filter
+            if record.msg.startswith("<!important>"):
+                return True
+
+            # level based filter
+            if record.levelno < self.extra_filter_level:
+                return False
+
+        # fallback to normal filtering rules
+        return super().filter(record)
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
@@ -65,12 +97,15 @@ class SecretsEnvFormatter(logging.Formatter):
     S_DIM = "\033[2m"
     S_RESET = "\033[0m"
 
-    def __init__(self, tag_highlight: bool) -> None:
+    def __init__(self, is_secrets_env: bool) -> None:
         super().__init__()
-        self.tag_highlight = tag_highlight
+        self.is_secrets_env = is_secrets_env
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
+
+        if self.is_secrets_env:
+            msg = removeprefix(msg, "<!important>")
 
         # color msg by log level
         base_style = base_color = ""
@@ -92,7 +127,7 @@ class SecretsEnvFormatter(logging.Formatter):
         msg = f"[{name}] {msg}"
 
         # tag translate
-        if self.tag_highlight:
+        if self.is_secrets_env:
             reset_code = base_color or self.C_RESET
 
             msg = msg.replace("<mark>", self.C_CYAN)
@@ -148,12 +183,12 @@ def setup_logging(verbose: int, quiet: bool):
         verbosity = Verbosity(verbose)
 
     # logging for internal messages
-    internal_handler = ClickHandler()
+    internal_handler = ClickHandler(verbosity.levelno_internal)
     internal_handler.setFormatter(SecretsEnvFormatter(True))
 
     internal_logger = logging.getLogger("secrets_env")
-    internal_logger.setLevel(verbosity.levelno_internal)
     internal_logger.addHandler(internal_handler)
+    internal_logger.setLevel(logging.DEBUG)
     internal_logger.propagate = False
 
     # logging for external modules
@@ -162,3 +197,10 @@ def setup_logging(verbose: int, quiet: bool):
 
     logging.root.setLevel(verbosity.levelno_others)
     logging.root.addHandler(root_handler)
+
+
+def removeprefix(s: str, prefix: str):
+    # str.removeprefix is only available after python 3.9
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return s

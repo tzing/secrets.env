@@ -125,6 +125,7 @@ class TestSetupLogging:
             logger.debug("test debug msg")
             logger.info("test info msg")
             logger.warning("test warning msg")
+            logger.info("<!important>test important info msg")
 
     @pytest.fixture()
     def runner(self):
@@ -137,14 +138,17 @@ class TestSetupLogging:
         assert "[secrets_env] test info msg" in res.output
         assert "[mock] test info msg" not in res.output
         assert "[mock] test warning msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
 
     def test_quiet(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-q"])
         assert res.exit_code == 0
+
         assert "[secrets_env] test info msg" not in res.output
         assert "[secrets_env] test warning msg" in res.output
         assert "[mock] test info msg" not in res.output
         assert "[mock] test warning msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
 
     def test_verbose(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-v"])
