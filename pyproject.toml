@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.9.1"
+version = "0.10.0"
 description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
