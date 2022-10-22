@@ -1,14 +1,18 @@
 import pytest
 
-from secrets_env.auth import OktaAuth, TokenAuth, get_auth
+from secrets_env.auth import get_auth
 
 
 class TestGetAuth:
     def test_success_token(self, monkeypatch: pytest.MonkeyPatch):
+        from secrets_env.auth.token import TokenAuth
+
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
         assert get_auth("TOKEN", {"method": "TOKEN"}) == TokenAuth("ex@mp1e")
 
     def test_success_okta(self, monkeypatch: pytest.MonkeyPatch):
+        from secrets_env.auth.userpass import OktaAuth
+
         monkeypatch.setenv("SECRETS_ENV_USERNAME", "foo")
         monkeypatch.setenv("SECRETS_ENV_PASSWORD", "bar")
         assert get_auth("okta", {}) == OktaAuth("foo", "bar")

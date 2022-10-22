@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config as t
-from secrets_env.auth import TokenAuth
+from secrets_env.auth.token import TokenAuth
 from secrets_env.config.types import Config, ConfigFileMetadata, SecretPath
 
 
