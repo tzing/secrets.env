@@ -12,6 +12,7 @@ import responses
 import secrets_env.auth
 import secrets_env.reader as t
 from secrets_env import reader
+from secrets_env.auth.token import TokenAuth
 from secrets_env.exception import AuthenticationError, UnsupportedError
 
 
@@ -184,7 +185,7 @@ class TestReader_FunctionalTest:
     def setup_method(self):
         # connect to real vault for integration test
         # see .github/workflows/test.yml for test data
-        auth = secrets_env.auth.TokenAuth("!ntegr@t!0n-test")
+        auth = TokenAuth("!ntegr@t!0n-test")
         self.reader = reader.KVReader("http://127.0.0.1:8200", auth)
 
     def test_client(self):

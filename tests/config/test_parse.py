@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env.config.parse as t
-from secrets_env.auth import TokenAuth
+from secrets_env.auth.token import TokenAuth
 from secrets_env.config.types import SecretPath
 
 

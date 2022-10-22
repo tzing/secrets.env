@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env
+from secrets_env.auth.token import TokenAuth
 from secrets_env.config.types import Config, SecretPath
 
 
@@ -14,7 +15,7 @@ class TestLoadSecrets:
             "secrets_env.config.load_config",
             return_value=Config(
                 url="https://example.com/",
-                auth=secrets_env.auth.TokenAuth("ex@mp1e"),
+                auth=TokenAuth("ex@mp1e"),
                 tls={},
                 secret_specs={
                     "VAR1": SecretPath("key1", "example"),
