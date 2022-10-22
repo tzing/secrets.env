@@ -83,6 +83,7 @@ class ClickHandler(logging.Handler):
 
 
 class ColorFormatter(logging.Formatter):
+    """Add colors based on log level."""
 
     C_RED = "\033[31m"
     C_GREEN = "\033[32m"
@@ -118,7 +119,8 @@ class ColorFormatter(logging.Formatter):
         color = self.get_color(record.levelno)
         style = self.get_style(record.levelno)
 
-        msg = f"{style}{color}{msg}{self.S_RESET}"
+        if color or style:
+            msg = f"{style}{color}{msg}{self.S_RESET}"
 
         # add package name as prefix
         logger_name, *_ = record.name.split(".", 1)
@@ -127,60 +129,25 @@ class ColorFormatter(logging.Formatter):
         return msg
 
 
-class SecretsEnvFormatter(logging.Formatter):
-    """Add colors based on internal expression. It doesn't use click's 'style'
-    function because the nested style breaks it."""
-
-    C_RED = "\033[31m"
-    C_GREEN = "\033[32m"
-    C_YELLOW = "\033[33m"
-    C_CYAN = "\033[36m"
-    C_WHITE = "\033[37m"
-    C_RESET = "\033[39m"
-
-    S_BRIGHT = "\033[1m"
-    S_DIM = "\033[2m"
-    S_RESET = "\033[0m"
-
-    def __init__(self, is_secrets_env: bool) -> None:
-        super().__init__()
-        self.is_secrets_env = is_secrets_env
+class SecretsEnvFormatter(ColorFormatter):
+    """Add colors for internal expression."""
 
     def format(self, record: logging.LogRecord) -> str:
+        # remvoe the <!important> prefix, which was used for filter
+        record.msg = removeprefix(record.msg, "<!important>")
         msg = super().format(record)
 
-        if self.is_secrets_env:
-            msg = removeprefix(msg, "<!important>")
+        # add color based on internal expressions
+        reset_code = self.get_color(record.levelno) or self.C_RESET
 
-        # color msg by log level
-        base_style = base_color = ""
-        if record.levelno >= logging.ERROR:
-            base_color = self.C_RED
-            base_style = self.S_BRIGHT
-        elif record.levelno == logging.WARNING:
-            base_color = self.C_YELLOW
-            base_style = self.S_BRIGHT
-        elif record.levelno == logging.DEBUG:
-            base_color = self.C_WHITE
-            base_style = self.S_DIM
+        msg = msg.replace("<mark>", self.C_CYAN)
+        msg = msg.replace("</mark>", reset_code)
 
-        if base_color:
-            msg = base_style + base_color + msg + self.S_RESET
+        msg = msg.replace("<data>", self.C_GREEN)
+        msg = msg.replace("</data>", reset_code)
 
-        # prefix
-        name, *_ = record.name.split(".", 1)  # always use package name
-        msg = f"[{name}] {msg}"
-
-        # tag translate
-        if self.is_secrets_env:
-            reset_code = base_color or self.C_RESET
-
-            msg = msg.replace("<mark>", self.C_CYAN)
-            msg = msg.replace("</mark>", reset_code)
-            msg = msg.replace("<data>", self.C_GREEN)
-            msg = msg.replace("</data>", reset_code)
-            msg = msg.replace("<error>", self.C_RED)
-            msg = msg.replace("</error>", reset_code)
+        msg = msg.replace("<error>", self.C_RED)
+        msg = msg.replace("</error>", reset_code)
 
         return msg
 
@@ -229,7 +196,7 @@ def setup_logging(verbose: int, quiet: bool):
 
     # logging for internal messages
     internal_handler = ClickHandler(verbosity.levelno_internal)
-    internal_handler.setFormatter(SecretsEnvFormatter(True))
+    internal_handler.setFormatter(SecretsEnvFormatter())
 
     internal_logger = logging.getLogger("secrets_env")
     internal_logger.addHandler(internal_handler)
