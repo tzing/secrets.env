@@ -107,7 +107,7 @@ class OktaAuth(UserPasswordAuth):
 
     def apply(self, client: "hvac.Client"):
         logger.info(
-            "Login to <mark>Okta</mark> with user <data>%s</data>. "
+            "<!important>Login to <mark>Okta</mark> with user <data>%s</data>. "
             "Waiting for 2FA proceeded...",
             self.username,
         )

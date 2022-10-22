@@ -56,61 +56,63 @@ class TestClickHandler:
         assert "Message: '%d'" in captured.err
 
 
-class TestSecretsEnvFormatter:
-    @pytest.mark.parametrize(
-        ("levelno", "msg"),
-        [
-            (
-                logging.INFO,
-                "[test] test with \033[36mmark\033[39m and \033[32mdata\033[39m",
-            ),
-            (
-                logging.WARNING,
-                "[test] \033[1m\033[33mtest with \033[36mmark\033[33m and "
-                "\033[32mdata\033[33m\033[0m",
-            ),
-            (
-                logging.ERROR,
-                "[test] \033[1m\033[31mtest with \033[36mmark\033[31m and "
-                "\033[32mdata\033[31m\033[0m",
-            ),
-            (
-                logging.DEBUG,
-                "[test] \033[2m\033[37mtest with \033[36mmark\033[37m and "
-                "\033[32mdata\033[37m\033[0m",
-            ),
-        ],
+def test_color_formatter():
+    record = logging.makeLogRecord(
+        {
+            "name": "test.foo",
+            "levelno": logging.WARNING,
+            "levelname": "WARNING",
+            "msg": "test with <mark>mark</mark> and <data>data</data>",
+            "created": time.time(),
+        }
     )
-    def test_success_1(self, levelno: int, msg: str):
-        record = logging.makeLogRecord(
-            {
-                "name": "test.foo",
-                "levelno": levelno,
-                "levelname": logging.getLevelName(levelno),
-                "msg": "test with <mark>mark</mark> and <data>data</data>",
-                "created": time.time(),
-            }
-        )
 
-        formatter = t.SecretsEnvFormatter(True)
-        assert formatter.format(record) == msg
+    formatter = t.ColorFormatter()
+    assert formatter.format(record) == (
+        # style for warning level is applied
+        # but style for tags should not take effect
+        "[test] "
+        "\033[1m\033[33mtest with <mark>mark</mark> and <data>data</data>\033[0m"
+    )
 
-    def test_success_2(self):
-        record = logging.makeLogRecord(
-            {
-                "name": "test.foo",
-                "levelno": logging.INFO,
-                "levelname": "INFO",
-                "msg": "test with <mark>mark</mark> and <data>data</data>",
-                "created": time.time(),
-            }
-        )
 
-        formatter = t.SecretsEnvFormatter(False)
-        assert (
-            formatter.format(record)
-            == "[test] test with <mark>mark</mark> and <data>data</data>"
-        )
+@pytest.mark.parametrize(
+    ("levelno", "msg"),
+    [
+        (
+            logging.INFO,
+            "[test] test with \033[36mmark\033[39m and \033[32mdata\033[39m",
+        ),
+        (
+            logging.WARNING,
+            "[test] \033[1m\033[33mtest with \033[36mmark\033[33m and "
+            "\033[32mdata\033[33m\033[0m",
+        ),
+        (
+            logging.ERROR,
+            "[test] \033[1m\033[31mtest with \033[36mmark\033[31m and "
+            "\033[32mdata\033[31m\033[0m",
+        ),
+        (
+            logging.DEBUG,
+            "[test] \033[2m\033[37mtest with \033[36mmark\033[37m and "
+            "\033[32mdata\033[37m\033[0m",
+        ),
+    ],
+)
+def test_secrets_env_formatter(levelno: int, msg: str):
+    record = logging.makeLogRecord(
+        {
+            "name": "test.foo",
+            "levelno": levelno,
+            "levelname": logging.getLevelName(levelno),
+            "msg": "test with <mark>mark</mark> and <data>data</data>",
+            "created": time.time(),
+        }
+    )
+
+    formatter = t.SecretsEnvFormatter()
+    assert formatter.format(record) == msg
 
 
 @pytest.mark.usefixtures("_reset_logging")
@@ -125,6 +127,7 @@ class TestSetupLogging:
             logger.debug("test debug msg")
             logger.info("test info msg")
             logger.warning("test warning msg")
+            logger.info("<!important>test important info msg")
 
     @pytest.fixture()
     def runner(self):
@@ -137,14 +140,17 @@ class TestSetupLogging:
         assert "[secrets_env] test info msg" in res.output
         assert "[mock] test info msg" not in res.output
         assert "[mock] test warning msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
 
     def test_quiet(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-q"])
         assert res.exit_code == 0
+
         assert "[secrets_env] test info msg" not in res.output
         assert "[secrets_env] test warning msg" in res.output
         assert "[mock] test info msg" not in res.output
         assert "[mock] test warning msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
 
     def test_verbose(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-v"])

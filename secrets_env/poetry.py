@@ -10,6 +10,7 @@ from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
 import secrets_env
+from secrets_env.utils import removeprefix
 
 if typing.TYPE_CHECKING:
     from cleo.events.console_command_event import ConsoleCommandEvent
@@ -93,7 +94,11 @@ class CleoHandler(logging.Handler):
             self.handleError(record)
             return
 
-        verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
+        if msg.startswith("<!important>"):
+            verbosity = Verbosity.QUIET
+        else:
+            verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
+
         self.output.write_line(msg, verbosity=verbosity)
 
 
@@ -102,6 +107,7 @@ class CleoFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
+        msg = removeprefix(msg, "<!important>")
 
         # tag translate
         # uses builtin tags for aligning the appearance with poetry and other plugins

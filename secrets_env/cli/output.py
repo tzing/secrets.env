@@ -2,9 +2,11 @@ import enum
 import functools
 import logging
 import sys
-from typing import Callable
+from typing import Callable, Optional
 
 import click
+
+from secrets_env.utils import removeprefix
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,38 @@ class ClickHandler(logging.Handler):
     them to the format in corresponding framework, powered with their features
     like color stripping on non-interactive terminal."""
 
+    def __init__(self, extra_filter_level: Optional[int] = None) -> None:
+        """
+        Parameters
+        ----------
+        extra_filter_level : int | None
+            Log level to apply in the *extra filter feature*. Set to None to
+            keep the behavior like normal handler.
+
+        Note
+        ----
+        Extra filter feature is designed for secrets.env itself. In this app we
+        want to let some special message penetrates the filters. So we'll set
+        this handler into DEBUG level, receiving all the message and do the log
+        level filtering inside.
+        """
+        super().__init__(logging.NOTSET)
+        self.extra_filter_level = extra_filter_level
+
+    def filter(self, record: logging.LogRecord):
+        """To let <!important> tag penetrate the level-based filters."""
+        if self.extra_filter_level is not None:
+            # accept <!important> to penetrate filter
+            if record.msg.startswith("<!important>"):
+                return True
+
+            # level based filter
+            if record.levelno < self.extra_filter_level:
+                return False
+
+        # fallback to normal filtering rules
+        return super().filter(record)
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
@@ -50,9 +84,8 @@ class ClickHandler(logging.Handler):
         click.echo(msg, file=sys.stderr)
 
 
-class SecretsEnvFormatter(logging.Formatter):
-    """Add colors based on internal expression. It doesn't use click's 'style'
-    function because the nested style breaks it."""
+class ColorFormatter(logging.Formatter):
+    """Add colors based on log level."""
 
     C_RED = "\033[31m"
     C_GREEN = "\033[32m"
@@ -65,42 +98,58 @@ class SecretsEnvFormatter(logging.Formatter):
     S_DIM = "\033[2m"
     S_RESET = "\033[0m"
 
-    def __init__(self, tag_highlight: bool) -> None:
-        super().__init__()
-        self.tag_highlight = tag_highlight
+    def get_color(self, level: int):
+        if level >= logging.ERROR:
+            return self.C_RED
+        elif level >= logging.WARNING:
+            return self.C_YELLOW
+        elif level <= logging.DEBUG:
+            return self.C_WHITE
+        return ""
+
+    def get_style(self, level: int):
+        if level >= logging.WARNING:
+            return self.S_BRIGHT
+        elif level <= logging.DEBUG:
+            return self.S_DIM
+        return ""
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
 
-        # color msg by log level
-        base_style = base_color = ""
-        if record.levelno >= logging.ERROR:
-            base_color = self.C_RED
-            base_style = self.S_BRIGHT
-        elif record.levelno == logging.WARNING:
-            base_color = self.C_YELLOW
-            base_style = self.S_BRIGHT
-        elif record.levelno == logging.DEBUG:
-            base_color = self.C_WHITE
-            base_style = self.S_DIM
+        # add color and style
+        color = self.get_color(record.levelno)
+        style = self.get_style(record.levelno)
 
-        if base_color:
-            msg = base_style + base_color + msg + self.S_RESET
+        if color or style:
+            msg = f"{style}{color}{msg}{self.S_RESET}"
 
-        # prefix
-        name, *_ = record.name.split(".", 1)  # always use package name
-        msg = f"[{name}] {msg}"
+        # add package name as prefix
+        logger_name, *_ = record.name.split(".", 1)
+        msg = f"[{logger_name}] {msg}"
 
-        # tag translate
-        if self.tag_highlight:
-            reset_code = base_color or self.C_RESET
+        return msg
 
-            msg = msg.replace("<mark>", self.C_CYAN)
-            msg = msg.replace("</mark>", reset_code)
-            msg = msg.replace("<data>", self.C_GREEN)
-            msg = msg.replace("</data>", reset_code)
-            msg = msg.replace("<error>", self.C_RED)
-            msg = msg.replace("</error>", reset_code)
+
+class SecretsEnvFormatter(ColorFormatter):
+    """Add colors for internal expression."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        # remvoe the <!important> prefix, which was used for filter
+        record.msg = removeprefix(record.msg, "<!important>")
+        msg = super().format(record)
+
+        # add color based on internal expressions
+        reset_code = self.get_color(record.levelno) or self.C_RESET
+
+        msg = msg.replace("<mark>", self.C_CYAN)
+        msg = msg.replace("</mark>", reset_code)
+
+        msg = msg.replace("<data>", self.C_GREEN)
+        msg = msg.replace("</data>", reset_code)
+
+        msg = msg.replace("<error>", self.C_RED)
+        msg = msg.replace("</error>", reset_code)
 
         return msg
 
@@ -148,17 +197,17 @@ def setup_logging(verbose: int, quiet: bool):
         verbosity = Verbosity(verbose)
 
     # logging for internal messages
-    internal_handler = ClickHandler()
-    internal_handler.setFormatter(SecretsEnvFormatter(True))
+    internal_handler = ClickHandler(verbosity.levelno_internal)
+    internal_handler.setFormatter(SecretsEnvFormatter())
 
     internal_logger = logging.getLogger("secrets_env")
-    internal_logger.setLevel(verbosity.levelno_internal)
     internal_logger.addHandler(internal_handler)
+    internal_logger.setLevel(logging.DEBUG)
     internal_logger.propagate = False
 
     # logging for external modules
     root_handler = ClickHandler()
-    root_handler.setFormatter(SecretsEnvFormatter(False))
+    root_handler.setFormatter(ColorFormatter())
 
     logging.root.setLevel(verbosity.levelno_others)
     logging.root.addHandler(root_handler)

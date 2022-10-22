@@ -112,6 +112,26 @@ class TestHandler:
         else:
             assert self.buffer.read() == ""
 
+    def test_important(self):
+        self.output.set_verbosity(Verbosity.QUIET)
+
+        self.handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.DEBUG,
+                    "levelname": "DEBUG",
+                    "msg": "<!important>test important message",
+                    "created": time.time(),
+                }
+            )
+        )
+
+        # test
+        # formatter is not installed in this test, so tag is not removed
+        self.buffer.seek(0)
+        assert self.buffer.read() == "<!important>test important message\n"
+
     def test_error(self):
         record = Mock(spec=logging.LogRecord)
         with patch.object(
@@ -159,6 +179,20 @@ class TestFormatter:
         assert self.format(logging.ERROR) == (
             "<error>test <info>emphasized</info> msg with <comment>data"
             "</comment></error>"
+        )
+
+    def test_important(self):
+        record = logging.makeLogRecord(
+            {
+                "name": "test",
+                "levelno": logging.DEBUG,
+                "levelname": "DEBUG",
+                "msg": "<!important>test <mark>important</mark> message",
+                "created": time.time(),
+            }
+        )
+        assert self.formatter.format(record) == (
+            "[secrets_env] <debug>test <info>important</info> message</debug>"
         )
 
 

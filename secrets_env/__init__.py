@@ -1,5 +1,5 @@
 __name__ = "secrets_env"
-__version__ = "0.9.1"
+__version__ = "0.10.0"
 
 import logging
 from pathlib import Path
@@ -32,10 +32,10 @@ def load_secrets(config_file: Optional[Path] = None) -> Dict[str, str]:
         output[name] = value
 
     if len(output) == len(config.secret_specs):
-        logger.info("<mark>%d</mark> secrets loaded", len(secrets))
+        logger.info("<!important><mark>%d</mark> secrets loaded", len(secrets))
     else:
         logger.warning(
-            "<error>%d</error> / %d secrets loaded",
+            "<!important><error>%d</error> / %d secrets loaded",
             len(output),
             len(config.secret_specs),
         )
