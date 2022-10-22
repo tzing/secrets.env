@@ -1,13 +1,12 @@
 import logging
-import typing
+from typing import Optional
 
-if typing.TYPE_CHECKING:
-    from secrets_env.auth.base import Auth
+from secrets_env.auth.base import Auth
 
 logger = logging.getLogger(__name__)
 
 
-def get_auth(name: str, data: dict) -> typing.Optional["Auth"]:
+def get_auth(name: str, data: dict) -> Optional[Auth]:
     """Factory for building Auth object."""
     name_ = name.lower()
 
