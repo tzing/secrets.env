@@ -17,3 +17,9 @@ Put secrets from `Vault <https://www.vaultproject.io/>`_ KV engine to environmen
 Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be a trouble.
 
 This app is built to *plug in* secrets into development without landing data on disk, easily reproduce the environment, and reduce the risk of uploading the secrets to the server.
+
+
+User guide
+----------
+
+:doc:`/installation`
