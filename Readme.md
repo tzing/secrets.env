@@ -6,7 +6,7 @@
 
 Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without not landing data on disk.
 
-![screenshot](./docs/screenshot.png)
+![screenshot](./docs/imgs/screenshot.png)
 
 Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be a trouble.
 
