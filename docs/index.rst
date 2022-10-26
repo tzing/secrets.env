@@ -3,18 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to secrets.env's documentation!
-=======================================
+Secrets.env
+===========
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+Put secrets from `Vault <https://www.vaultproject.io/>`_ KV engine to environment variables like a ``.env`` loader, without not landing data on disk.
 
+.. image:: imgs/screenshot.png
 
-Indices and tables
-==================
+Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be a trouble.
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+This app is built to *plug in* secrets into development without landing data on disk, easily reproduce the environment, and reduce the risk of uploading the secrets to the server.
