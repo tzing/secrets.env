@@ -63,12 +63,12 @@ Example config
 
       # Authentication info
       # Schema for authentication could be various, read 'authentication' section.
-      [secret.auth]
+      [source.auth]
       method = "okta"
       username = "user@example.com"
 
       # Transport layer security (TLS) configurations.
-      [secret.tls]
+      [source.tls]
       # Server side certificate for verifying responses.
       ca_cert = "/path/ca.cert"
 
@@ -92,11 +92,15 @@ Config file path
 
 This app searches for the file that matches following names in the current working directory and parent folders, and load the config from it. When there are more than one exists, the first one would be selected according to the order here:
 
-1. ``.secrets-env.toml`` [1]_
-2. ``.secrets-env.yaml`` [2]_
-3. ``.secrets-env.yml`` [2]_
+1. ``.secrets-env.toml`` [#use-toml]_
+2. ``.secrets-env.yaml`` [#use-yaml]_
+3. ``.secrets-env.yml`` [#use-yaml]_
 4. ``.secrets-env.json``
-5. ``pyproject.toml`` [1]_
+5. ``pyproject.toml`` [#use-toml]_
 
-.. [1] TOML format is only supported when either `tomllib <https://docs.python.org/3.11/library/tomllib.html>`_ or `tomli <https://pypi.org/project/tomli/>`_ is available.
-.. [2] YAML format is only supported when `PyYAML <https://pypi.org/project/PyYAML/>`_ is installed.
+.. [#use-toml] TOML format is only supported when either `tomllib <https://docs.python.org/3.11/library/tomllib.html>`_ or `tomli <https://pypi.org/project/tomli/>`_ is available.
+.. [#use-yaml] YAML format is only supported when `PyYAML <https://pypi.org/project/PyYAML/>`_ is installed.
+
+
+.. Import auth docs
+.. include:: auth.rst
