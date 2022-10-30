@@ -52,13 +52,13 @@ Arguments
 
 Auth data could be provided by various source, including:
 
-Config file
+config file
    Place the config value under ``auth`` section, use the key provided in the table.
 
-Environment variable
+environment variable
    In most cases, environment variable could be used to overwrite the values from config file.
 
-Keyring
+keyring
    We're using `keyring`_ package to read the values from system keyring (e.g. macOS `Keychain`_). For saving a value into keyring, use its `command line utility`_ with the system name ``secrets.env``:
 
    .. code-block:: bash
@@ -70,7 +70,7 @@ Keyring
 .. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
 .. _command line utility: https://keyring.readthedocs.io/en/latest/#command-line-utility
 
-Prompt
+prompt
    If no data found in all other sources, it prompts user for input. You can disable it by setting environment variable ``SECRETS_ENV_NO_PROMPT=True``.
 
 

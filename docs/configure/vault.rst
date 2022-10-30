@@ -1,4 +1,4 @@
-Vault Connection
+Vault connection
 ----------------
 
 Vault connection information could be set in ``source`` section, or using environment variable.
