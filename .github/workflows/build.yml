@@ -23,7 +23,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-          - "3.11-dev"
+          - "3.11"
 
     services:
       vault:
@@ -94,7 +94,7 @@ jobs:
         run: |
           pip install -U pip  # https://github.com/pypa/pip/issues/11352
           pip install poetry
-          poetry install --no-root --all-extra --with test
+          poetry install --no-root --all-extras --with test
 
       - name: Run pytest
         run: |
@@ -214,6 +214,9 @@ jobs:
         run: |
           python -m pip install poetry
           poetry install --no-root --with doc
+        env:
+          # workaround for issue: g-dbus-error-quark: The name org.freedesktop.secrets was not provided by any .service files (2)
+          PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
       - name: Build doc
         run: poetry run sphinx-build -b html docs build
