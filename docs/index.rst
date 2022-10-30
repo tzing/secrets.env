@@ -6,10 +6,6 @@
 Secrets.env
 ===========
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
 Put secrets from `Vault <https://www.vaultproject.io/>`_ KV engine to environment variables like a ``.env`` loader, without not landing data on disk.
 
 .. image:: imgs/screenshot.png
@@ -22,5 +18,8 @@ This app is built to *plug in* secrets into development without landing data on 
 User guide
 ----------
 
-* :doc:`/quick-start`
-* :doc:`/configure/index`
+.. toctree::
+   :maxdepth: 1
+
+   quick-start
+   configure/index

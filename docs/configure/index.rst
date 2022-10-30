@@ -1,10 +1,6 @@
 Configure
 =========
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
 Example config
 --------------
 
