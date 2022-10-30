@@ -65,7 +65,7 @@ And list the desired secret path and key in a config file:
       VAR1 = {path = "secrets/default", key = "example-1"}
       VAR2 = "secrets/default#example-2"
 
-Read :doc:`/configure/index` for more details.
+Read :doc:`configure` for more details.
 
 
 Run
