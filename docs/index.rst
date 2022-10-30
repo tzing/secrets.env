@@ -22,4 +22,4 @@ User guide
    :maxdepth: 1
 
    quick-start
-   configure/index
+   configure
