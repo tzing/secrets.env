@@ -1,52 +1,50 @@
+.. _authentication:
+
 Authentication
 --------------
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Contents:
-
 Vault enforce authentication during requests, so we must provide the identity in order to get the secrets.
 
+.. tabs::
+
+   .. code-tab:: yaml
+
+      auth:
+        method: okta
+        username: user@example.com
+
+   .. code-tab:: toml
+
+      [source.auth]
+      method = "okta"
+      username = "user@example.com"
+
+Like the ``source`` section, it is possible to complete setup auth info from a non-config file source:
+
+.. code-block:: bash
+
+   export SECRETS_ENV_METHOD='okta'
+   export SECRETS_ENV_USERNAME='user@example.com'
+   export SECRETS_ENV_PASSWORD='Ex@mp1e_P@ssw0rd'
 
 Method
 ++++++
 
 Secrets.env adapts several authentication methods. You MUST specify the method by either config file or the environment variable ``SECRETS_ENV_METHOD``.
 
-Here's the format to set it in the config file:
+If you do not need to store arguments in config file, then you can drop ``method`` keyword, as a shortcut:
 
 .. tabs::
 
    .. code-tab:: yaml
 
-      ---
-      # standard layout
-      # arguments could be included in ``auth:``
       source:
-        auth:
-          method: okta
-          username: user@example.com
-          # password is NOT accepted here. Credentials must be provided via other source.
-
-      ---
-      # alternative layout
-      # on using alternative layout, arguments must be avaliable in other source
-      source:
-        auth: token
+        auth: okta
 
    .. code-tab:: toml
 
-      ---
-      [source.auth]
-      method = "okta"
-      username = "user@example.com"
-      # password is NOT accepted here. Credentials must be provided via other source.
-
-      ---
-      # alternative layout
-      # on using alternative layout, arguments must be avaliable in other source
       [source]
-      auth = "token"
+      auth = "okta"
 
 
 Arguments

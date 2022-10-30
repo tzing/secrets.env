@@ -98,5 +98,6 @@ This app searches for the file that matches following names in the current worki
 .. [#use-yaml] YAML format is only supported when `PyYAML <https://pypi.org/project/PyYAML/>`_ is installed.
 
 
-.. Import auth docs
+.. Import other docs
+.. include:: vault.rst
 .. include:: auth.rst
