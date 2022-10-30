@@ -1038,6 +1038,20 @@ sphinx = "*"
 test = ["pytest", "pytest-cov"]
 
 [[package]]
+name = "sphinx-code-tabs"
+version = "0.5.3"
+description = "Sphinx extension for adding alternative code-blocks as selectable tabs"
+category = "dev"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+sphinx = ">=3"
+
+[package.extras]
+doc = ["sphinx-rtd-theme"]
+
+[[package]]
 name = "sphinxcontrib-applehelp"
 version = "1.0.2"
 description = "sphinxcontrib-applehelp is a sphinx extension which outputs Apple help books"
@@ -1209,7 +1223,7 @@ yaml = ["PyYAML"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "5d637b51bdff899532f872ea0106fb24d5e4c64013232e4eab9864276e32b19d"
+content-hash = "23145bd0933b8305b394a420d24032cf5188117039c8d83674d83b2a9cfca16c"
 
 [metadata.files]
 alabaster = [
@@ -1872,6 +1886,10 @@ sphinx = [
 sphinx-autobuild = [
     {file = "sphinx-autobuild-2021.3.14.tar.gz", hash = "sha256:de1ca3b66e271d2b5b5140c35034c89e47f263f2cd5db302c9217065f7443f05"},
     {file = "sphinx_autobuild-2021.3.14-py3-none-any.whl", hash = "sha256:8fe8cbfdb75db04475232f05187c776f46f6e9e04cacf1e49ce81bdac649ccac"},
+]
+sphinx-code-tabs = [
+    {file = "sphinx_code_tabs-0.5.3-py3-none-any.whl", hash = "sha256:11d9d1fa7eb5f21c5b24a023e3522bbd36b456392a74a5597ca0adde30dc27e3"},
+    {file = "sphinx_code_tabs-0.5.3.tar.gz", hash = "sha256:a17f387a37e09b9deb64c5335023baa0f1f5b47ff451fee4fc0f02ea46a0bed3"},
 ]
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},

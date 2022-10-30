@@ -27,7 +27,7 @@ version = secrets_env.__version__
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ["sphinx_code_tabs"]
 
 templates_path = ["_templates"]
 exclude_patterns = []
