@@ -1,9 +1,12 @@
-Installation
-============
+Quick start
+===========
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+Installation
+------------
 
 This app is available on PyPI as `secrets-env <https://pypi.org/project/secrets-env/>`_.
 

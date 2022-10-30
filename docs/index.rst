@@ -22,4 +22,4 @@ This app is built to *plug in* secrets into development without landing data on 
 User guide
 ----------
 
-:doc:`/installation`
+:doc:`/quick-start`
