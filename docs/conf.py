@@ -11,8 +11,7 @@ docdir = pathlib.Path(__file__).resolve().parent
 repodir = docdir.parent
 sys.path.insert(0, str(repodir))
 
-import secrets_env
-
+import secrets_env  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
