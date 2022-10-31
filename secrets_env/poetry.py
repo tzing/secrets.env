@@ -52,8 +52,8 @@ class SecretsEnvPlugin(ApplicationPlugin):
         verbosity level in the Handler and colored the output using the custom
         Formatter, powered with cleo's formatter."""
         # set output format
-        output.formatter.set_style("debug", Style("white"))
-        output.formatter.set_style("warning", Style("light_gray", options=["dark"]))
+        output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
+        output.formatter.set_style("warning", Style("yellow", options=["bold"]))
 
         # send internal message to cleo
         # see docstring in Handler for details
