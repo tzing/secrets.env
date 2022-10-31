@@ -3,7 +3,7 @@ import typing
 from typing import Any, Dict, Optional
 
 if typing.TYPE_CHECKING:
-    import hvac
+    import httpx
 
 
 class Auth(abc.ABC):
@@ -14,8 +14,8 @@ class Auth(abc.ABC):
         """Returns authentication name."""
 
     @abc.abstractmethod
-    def apply(self, client: "hvac.Client") -> None:
-        """Provide the identity information to the client."""
+    def login(self, client: "httpx.Client") -> str:
+        """Login and get token."""
 
     @abc.abstractclassmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:

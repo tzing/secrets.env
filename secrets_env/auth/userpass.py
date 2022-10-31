@@ -1,6 +1,8 @@
 import logging
 import typing
+import urllib.parse
 from dataclasses import dataclass, field
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from secrets_env.auth.base import Auth
@@ -8,7 +10,7 @@ from secrets_env.exception import TypeError
 from secrets_env.io import get_env_var, prompt, read_keyring
 
 if typing.TYPE_CHECKING:
-    import hvac
+    import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +107,7 @@ class OktaAuth(UserPasswordAuth):
         """
         super().__init__(username, password)
 
-    def apply(self, client: "hvac.Client"):
+    def login(self, client: "httpx.Client") -> str:
         logger.info(
             "<!important>Login to <mark>Okta</mark> with user <data>%s</data>. "
             "Waiting for 2FA proceeded...",
@@ -113,7 +115,20 @@ class OktaAuth(UserPasswordAuth):
         )
 
         # Okta 2FA got triggerred within this api call
-        client.auth.okta.login(
-            username=self.username,
-            password=self.password,
+        username = urllib.parse.quote(self.username)
+        resp = client.post(
+            f"/v1/auth/okta/login/{username}",
+            json={
+                "username": self.username,
+                "password": self.password,
+            },
         )
+
+        if resp.status_code != HTTPStatus.OK:
+            logger.error("Failed to login Okta")
+            logger.debug(
+                "Okta login failed. Code= %d. Msg= %s", resp.status_code, resp.text
+            )
+            return
+
+        return resp.json()["auth"]["client_token"]
