@@ -18,7 +18,7 @@ def load_secrets(config_file: Optional[Path] = None) -> Dict[str, str]:
         # skip logging. already show error in `load_config`
         return {}
 
-    reader = secrets_env.reader.KVReader(config.url, config.auth)
+    reader = secrets_env.reader.KVReader(config.url, config.auth, config.tls)
     secrets = reader.get_values(config.secret_specs.values())
 
     output = {}
