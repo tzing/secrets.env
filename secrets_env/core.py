@@ -1,7 +1,7 @@
 import logging
 from http import HTTPStatus
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import httpx
 
@@ -139,3 +139,85 @@ def is_authenticated(client: httpx.Client, token: str):
         )
         return False
     return True
+
+
+def get_mount_point(client: httpx.Client, path: str) -> Tuple[str, int]:
+    """Get mount point and KV engine version to a secret.
+
+    Parameters
+    ----------
+    path : str
+        Path to the secret
+
+    Returns
+    -------
+    mount_point : str
+        The path the secret engine mounted on.
+    version : int
+        The secret engine version
+
+    See also
+    --------
+    Vault HTTP API
+        https://developer.hashicorp.com/vault/api-docs/system/internal-ui-mounts
+    consul-template
+        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
+    """
+    try:
+        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
+    except httpx.HTTPError as e:
+        if not (reason := _reason_httpx_error(e)):
+            raise
+        logger.error("Error occurred during checking metadata for %s: %s", path, reason)
+        return None, None
+
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json().get("data", {})
+
+        mount_point = data.get("path")
+        version = data.get("options", {}).get("version")
+
+        if version == "2" and data.get("type") == "kv":
+            return mount_point, 2
+        elif version == "1":
+            return mount_point, 1
+
+        logging.error("Unknown version %s for path %s", version, path)
+        logging.debug("Raw response: %s", resp)
+        return None, None
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        # 404 is expected on an older version of vault, default to version 1
+        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
+        return "", 1
+
+    logger.error("Error occurred during checking metadata for %s", path)
+    _log_response(resp)
+    return None, None
+
+
+def _reason_httpx_error(e: httpx.HTTPError):
+    logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
+
+    if isinstance(e, httpx.ProxyError):
+        return "proxy error"
+    elif isinstance(e, httpx.TransportError):
+        return "connection error"
+
+    return None
+
+
+def _log_response(r: httpx.Response):
+    try:
+        code_enum = HTTPStatus(r.status_code)
+        code_name = code_enum.name
+    except ValueError:
+        code_name = "unknown"
+
+    logger.debug(
+        "URL= %s. Status= %d (%s). Raw response= %s",
+        r.url,
+        r.status_code,
+        code_name,
+        r.text,
+    )
