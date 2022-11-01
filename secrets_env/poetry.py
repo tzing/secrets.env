@@ -88,16 +88,16 @@ class CleoHandler(logging.Handler):
         self.output = output
 
     def emit(self, record: logging.LogRecord) -> None:
+        if record.msg.startswith("<!important>"):
+            verbosity = Verbosity.QUIET
+        else:
+            verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
+
         try:
             msg = self.format(record)
         except Exception:
             self.handleError(record)
             return
-
-        if msg.startswith("<!important>"):
-            verbosity = Verbosity.QUIET
-        else:
-            verbosity = self.VERBOSITY.get(record.levelno, Verbosity.NORMAL)
 
         self.output.write_line(msg, verbosity=verbosity)
 

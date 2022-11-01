@@ -134,6 +134,9 @@ class TestHandler:
 
     def test_error(self):
         record = Mock(spec=logging.LogRecord)
+        record.msg = "test msg"
+        record.levelno = logging.INFO
+
         with patch.object(
             self.handler, "format", side_effect=RuntimeError("Test error")
         ):
