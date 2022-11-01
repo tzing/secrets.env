@@ -144,11 +144,6 @@ def is_authenticated(client: httpx.Client, token: str):
 def get_mount_point(client: httpx.Client, path: str) -> Tuple[str, int]:
     """Get mount point and KV engine version to a secret.
 
-    Parameters
-    ----------
-    path : str
-        Path to the secret
-
     Returns
     -------
     mount_point : str
@@ -196,6 +191,49 @@ def get_mount_point(client: httpx.Client, path: str) -> Tuple[str, int]:
     return None, None
 
 
+def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
+    """Read secret from Vault.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/secret/kv
+    """
+    mount_point, version = get_mount_point(client, path)
+    if not mount_point:
+        return None
+
+    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
+
+    if version == 1:
+        url = f"/v1/{path}"
+    elif version == 2:
+        subpath = _remove_prefix(path, mount_point)
+        url = f"/v1/{mount_point}data/{subpath}"
+
+    try:
+        resp = client.get(url)
+    except httpx.HTTPError as e:
+        if not (reason := _reason_httpx_error(e)):
+            raise
+        logger.error("Error occurred during query secret %s: %s", path, reason)
+        return None
+
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json()
+        if version == 1:
+            return data["data"]
+        elif version == 2:
+            return data["data"]["data"]
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        logger.error("Secret <data>%s</data> not found", path)
+        return None
+
+    logger.error("Error occurred during query secret %s", path)
+    _log_response(resp)
+    return None
+
+
 def _reason_httpx_error(e: httpx.HTTPError):
     logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
 
@@ -221,3 +259,10 @@ def _log_response(r: httpx.Response):
         code_name,
         r.text,
     )
+
+
+def _remove_prefix(s: str, prefix: str) -> str:
+    """Remove prefix if it exists."""
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return s
