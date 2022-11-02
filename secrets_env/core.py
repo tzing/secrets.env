@@ -1,4 +1,5 @@
 import logging
+import os
 from http import HTTPStatus
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -92,6 +93,39 @@ class KVReader:
         self._client = client
         return client
 
+    def read_secret(self, path: str) -> Optional[Dict[str, str]]:
+        """Read secret from Vault.
+
+        Parameters
+        ----------
+        path : str
+            Secret path
+
+        Returns
+        -------
+        secret : dict
+            Secret data. Or None when not found.
+        """
+        return read_secret(self.client, path)
+
+    def read_field(self, path: str, field: str) -> Optional[str]:
+        """Read only one field from Vault.
+
+        Parameters
+        ----------
+        path : str
+            Secret path
+        field : str
+            Field name
+
+        Returns
+        -------
+        value : str
+            The secret value (if matched), or None when value not found.
+        """
+        if not (secret := read_secret(self.client, path)):
+            return None
+
 
 def create_client(
     base_url: str,
@@ -100,6 +134,19 @@ def create_client(
     client_key: Optional["Path"],
 ):
     """Initialize a client."""
+    if not isinstance(base_url, str):
+        raise TypeError("Expect str for base_url, got {}", type(base_url).__name__)
+    if ca_cert is not None and not isinstance(ca_cert, os.PathLike):
+        raise TypeError("Expect path-like for ca_cert, got {}", type(ca_cert).__name__)
+    if client_cert is not None and not isinstance(client_cert, os.PathLike):
+        raise TypeError(
+            "Expect path-like for client_cert, got {}", type(client_cert).__name__
+        )
+    if client_key is not None and not isinstance(client_key, os.PathLike):
+        raise TypeError(
+            "Expect path-like for client_key, got {}", type(client_key).__name__
+        )
+
     params = {
         "base_url": base_url,
     }
@@ -128,6 +175,11 @@ def is_authenticated(client: httpx.Client, token: str):
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/token
     """
+    if not isinstance(client, httpx.Client):
+        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+    if not isinstance(token, str):
+        raise TypeError("Expect str for path, got {}", type(token).__name__)
+
     resp = client.request(
         "LIST", "/v1/auth/token/accessors", headers={"X-Vault-Token": token}
     )
@@ -158,6 +210,11 @@ def get_mount_point(client: httpx.Client, path: str) -> Tuple[str, int]:
     consul-template
         https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
     """
+    if not isinstance(client, httpx.Client):
+        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+    if not isinstance(path, str):
+        raise TypeError("Expect str for path, got {}", type(path).__name__)
+
     try:
         resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
     except httpx.HTTPError as e:
@@ -198,6 +255,11 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
     --------
     https://developer.hashicorp.com/vault/api-docs/secret/kv
     """
+    if not isinstance(client, httpx.Client):
+        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+    if not isinstance(path, str):
+        raise TypeError("Expect str for path, got {}", type(path).__name__)
+
     mount_point, version = get_mount_point(client, path)
     if not mount_point:
         return None

@@ -53,26 +53,43 @@ class TestKVReader:
             assert isinstance(reader.client, httpx.Client)  # from cache
 
 
-def test_create_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    # disable cert format check
-    monkeypatch.setattr(
-        httpx._config.SSLConfig, "load_ssl_context_verify", lambda _: None
-    )
+class TestCreateClient:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        # disable cert format check
+        monkeypatch.setattr(
+            httpx._config.SSLConfig, "load_ssl_context_verify", lambda _: None
+        )
 
-    path = tmp_path / "test.pem"
+        path = Path("/data/fake.pem")
 
-    # no error could be enough
-    t.create_client("http://example.com", None, None, None)
-    t.create_client("http://example.com", path, None, None)
-    t.create_client("http://example.com", path, path, None)
-    t.create_client("http://example.com", path, path, path)
+        # no error could be enough
+        t.create_client("http://example.com", None, None, None)
+        t.create_client("http://example.com", path, None, None)
+        t.create_client("http://example.com", path, path, None)
+        t.create_client("http://example.com", path, path, path)
+
+    def test_type_error(self):
+        with pytest.raises(TypeError):
+            t.create_client(1234, None, None, None)
+        with pytest.raises(TypeError):
+            t.create_client("http://example.com", 1234, None, None)
+        with pytest.raises(TypeError):
+            t.create_client("http://example.com", None, 1234, None)
+        with pytest.raises(TypeError):
+            t.create_client("http://example.com", None, None, 1234)
 
 
 def test_is_authenticated():
-    # use real client
+    # success: use real client
     client = httpx.Client(base_url="http://localhost:8200")
     assert t.is_authenticated(client, "!ntegr@t!0n-test")
     assert not t.is_authenticated(client, "invalid-token")
+
+    # type error
+    with pytest.raises(TypeError):
+        t.is_authenticated("http://example.com", "token")
+    with pytest.raises(TypeError):
+        t.is_authenticated(client, 1234)
 
 
 class TestGetMountPoint:
@@ -199,6 +216,12 @@ class TestGetMountPoint:
         with pytest.raises(httpx.DecodingError):
             t.get_mount_point(unittest_client, "secrets/test")
 
+    def test_type_error(self):
+        with pytest.raises(TypeError):
+            t.get_mount_point(1234, "secrets/test")
+        with pytest.raises(TypeError):
+            t.get_mount_point(Mock(spec=httpx.Client), 1234)
+
 
 class TestReadSecret:
     @pytest.fixture()
@@ -315,6 +338,12 @@ class TestReadSecret:
         respx_mock.get("https://example.com/v1/secrets/test").mock(httpx.Response(499))
         assert t.read_secret(unittest_client, "secrets/test") is None
         assert "Error occurred during query secret secrets/test" in caplog.text
+
+    def test_type_error(self):
+        with pytest.raises(TypeError):
+            t.read_secret(1234, "secrets/test")
+        with pytest.raises(TypeError):
+            t.read_secret(Mock(spec=httpx.Client), 1234)
 
 
 def test_remove_prefix():
