@@ -1,8 +1,9 @@
 import logging
 import os
+import re
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -294,6 +295,36 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
     logger.error("Error occurred during query secret %s", path)
     _log_response(resp)
     return None
+
+
+def split_field(name: str) -> List[str]:
+    """Split a field name into subsequences. By default, this function splits
+    the name by dots, with supportting of preserving the quoted subpaths.
+    """
+    pattern_quoted = re.compile(r'"([^"]+)"')
+    pattern_simple = re.compile(r"([\w-]+)")
+
+    seq = []
+    pos = 0
+    while pos < len(name):
+        # try match pattern
+        if m := pattern_simple.match(name, pos):
+            pass
+        elif m := pattern_quoted.match(name, pos):
+            pass
+        else:
+            break
+
+        seq.append(m.group(1))
+
+        # check remaining part
+        # +1 for skipping the dot (if exists)
+        pos = m.end() + 1
+
+    if pos <= len(name):
+        raise ValueError(f"Failed to parse name: {name}")
+
+    return seq
 
 
 def _reason_httpx_error(e: httpx.HTTPError):

@@ -346,6 +346,23 @@ class TestReadSecret:
             t.read_secret(Mock(spec=httpx.Client), 1234)
 
 
+def test_split_field():
+    assert t.split_field("aa") == ["aa"]
+    assert t.split_field("aa.bb") == ["aa", "bb"]
+    assert t.split_field('aa."bb.cc"') == ["aa", "bb.cc"]
+    assert t.split_field('"aa.bb".cc') == ["aa.bb", "cc"]
+    assert t.split_field('"aa.bb"') == ["aa.bb"]
+
+    with pytest.raises(ValueError, match=r"Failed to parse name: "):
+        t.split_field("")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field(".")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field("aa.")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field(".aa")
+
+
 def test_remove_prefix():
     assert t._remove_prefix("foobar", "foo") == "bar"
     assert t._remove_prefix("foobar", "bar") == "foobar"
