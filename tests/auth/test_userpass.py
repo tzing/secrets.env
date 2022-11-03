@@ -1,8 +1,9 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
 import respx
-import httpx
+
 import secrets_env.auth.userpass as t
 
 
@@ -44,7 +45,6 @@ class TestUserPasswordAuth:
     )
     def test_load_fail(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         username: str,
         password: str,
         caplog: pytest.LogCaptureFixture,
@@ -136,7 +136,7 @@ class TestOktaAuth:
         client = httpx.Client(base_url="http://example.com")
         assert self.authobj.login(client) == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
 
-    def test_login_success(self, respx_mock: respx.MockRouter):
+    def test_login_fail(self, respx_mock: respx.MockRouter):
         respx_mock.post("http://example.com/v1/auth/okta/login/user").mock(
             return_value=httpx.Response(403)
         )
