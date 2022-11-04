@@ -17,31 +17,31 @@ def unittest_client() -> httpx.Client:
 
 
 class TestKVReader:
-    def setup_method(self):
-        self.auth = Mock(spec=secrets_env.auth.Auth)
-        self.auth.method.return_value = "mocked"
-
     def test___init__type_errors(self):
+        auth = Mock(spec=secrets_env.auth.Auth)
+
         with pytest.raises(TypeError):
-            t.KVReader(1234, self.auth)
+            t.KVReader(1234, auth)
         with pytest.raises(TypeError):
             t.KVReader("https://example.com", 1234)
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", self.auth, ca_cert="/path/cert")
+            t.KVReader("https://example.com", auth, ca_cert="/path/cert")
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", self.auth, client_cert="/path/cert")
+            t.KVReader("https://example.com", auth, client_cert="/path/cert")
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", self.auth, client_key="/path/cert")
+            t.KVReader("https://example.com", auth, client_key="/path/cert")
 
     def test_client(self):
-        reader = t.KVReader(url="https://example.com/", auth=self.auth)
+        auth = Mock(spec=secrets_env.auth.Auth)
+        auth.method.return_value = "mocked"
+        reader = t.KVReader(url="https://example.com/", auth=auth)
 
         # fail
-        self.auth.login.return_value = None
+        auth.login.return_value = None
         with pytest.raises(AuthenticationError):
             reader.client
 
-        self.auth.login.return_value = "test-token"
+        auth.login.return_value = "test-token"
         with pytest.raises(AuthenticationError), patch.object(
             t, "is_authenticated", return_value=False
         ):
@@ -51,6 +51,38 @@ class TestKVReader:
         with patch.object(t, "is_authenticated", return_value=True):
             assert isinstance(reader.client, httpx.Client)
             assert isinstance(reader.client, httpx.Client)  # from cache
+
+    @pytest.fixture()
+    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.KVReader:
+        """Returns a reader that connects to real"""
+        monkeypatch.setenv("SECRETS_ENV_TOKEN", "!ntegr@t!0n-test")
+        return t.KVReader(
+            "http://localhost:8200",
+            secrets_env.auth.get_auth("token", {}),
+        )
+
+    def test_read_secret(self, reader: t.KVReader):
+        secret = reader.read_secret("kv1/test")
+        assert isinstance(secret, dict)
+        assert secret["foo"] == "hello"
+
+        secret = reader.read_secret("kv2/test")
+        assert isinstance(secret, dict)
+        assert secret["foo"] == "hello, world"
+
+        assert reader.read_secret("secret/no-this-secret") is None
+
+    def test_read_field(self, reader: t.KVReader):
+        assert reader.read_field("kv1/test", "foo") == "hello"
+        assert reader.read_field("kv2/test", 'test."key.2"') == "value-3"
+        assert reader.read_field("kv2/test", "foo.no-extra-level") is None
+        assert reader.read_field("kv2/test", "test.no-this-key") is None
+        assert reader.read_field("secret/no-this-secret", "test") is None
+
+        with pytest.raises(TypeError):
+            reader.read_field(1234, "foo")
+        with pytest.raises(TypeError):
+            reader.read_field("secret/test", 1234)
 
 
 class TestCreateClient:

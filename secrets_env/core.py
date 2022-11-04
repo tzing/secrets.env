@@ -124,8 +124,21 @@ class KVReader:
         value : str
             The secret value (if matched), or None when value not found.
         """
+        if not isinstance(field, str):
+            raise TypeError("Expect str for field, got {}", type(field).__name__)
+
         if not (secret := read_secret(self.client, path)):
             return None
+
+        value = _get_field(secret, field)
+        logger.debug(
+            "Query for %s#%s %s",
+            path,
+            field,
+            "succeed" if value is not None else "failed",
+        )
+
+        return value
 
 
 def create_client(
@@ -147,6 +160,8 @@ def create_client(
         raise TypeError(
             "Expect path-like for client_key, got {}", type(client_key).__name__
         )
+
+    logger.debug("Creating client to %s", base_url)
 
     params = {
         "base_url": base_url,
@@ -180,6 +195,8 @@ def is_authenticated(client: httpx.Client, token: str):
         raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
     if not isinstance(token, str):
         raise TypeError("Expect str for path, got {}", type(token).__name__)
+
+    logger.debug("Validate token for %s", client.base_url)
 
     resp = client.request(
         "LIST", "/v1/auth/token/accessors", headers={"X-Vault-Token": token}
@@ -359,3 +376,16 @@ def _remove_prefix(s: str, prefix: str) -> str:
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s
+
+
+def _get_field(secret: dict, name: str) -> Optional[str]:
+    """Traverse the secret data to get the field along with the given name."""
+    for n in split_field(name):
+        if not isinstance(secret, dict):
+            return None
+        secret = secret.get(n)
+
+    if not isinstance(secret, str):
+        return None
+
+    return secret
