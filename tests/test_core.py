@@ -74,7 +74,8 @@ class TestKVReader:
 
     def test_read_field(self, reader: t.KVReader):
         assert reader.read_field("kv1/test", "foo") == "hello"
-        assert reader.read_field("kv2/test", 'test."key.2"') == "value-3"
+        assert reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
+
         assert reader.read_field("kv2/test", "foo.no-extra-level") is None
         assert reader.read_field("kv2/test", "test.no-this-key") is None
         assert reader.read_field("secret/no-this-secret", "test") is None
