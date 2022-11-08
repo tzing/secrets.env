@@ -28,7 +28,7 @@ class TestLoadSecrets:
     @pytest.mark.usefixtures("patch_load_config")
     def test_success(self, caplog: pytest.LogCaptureFixture):
         with patch(
-            "secrets_env.reader.KVReader.get_values",
+            "secrets_env.core.KVReader.read_values",
             return_value={
                 SecretPath("key1", "example"): "foo",
                 SecretPath("key2", "example"): "bar",
@@ -44,7 +44,7 @@ class TestLoadSecrets:
     @pytest.mark.usefixtures("patch_load_config")
     def test_partial_loaded(self, caplog: pytest.LogCaptureFixture):
         with patch(
-            "secrets_env.reader.KVReader.get_values",
+            "secrets_env.core.KVReader.read_values",
             return_value={
                 # no key2
                 SecretPath("key1", "example"): "foo",

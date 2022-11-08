@@ -68,27 +68,15 @@ jobs:
 
           vault kv put kv1/test - << EoS
             {
-              "foo": "hello",
-              "bar": {
-                "baz": "world"
-              }
+              "foo": "hello"
             }
           EoS
 
           vault kv put kv2/test - << EoS
             {
               "foo": "hello, world",
-              "bar": {
-                "baz": "hello, vault"
-              },
-              "test.key": "value-1",
               "test": {
-                "key": "value-2",
-                "key.2": "value-3"
-              },
-              "": {
-                "n/a": "value-4",
-                "\"special key\"": "value-5"
+                "name.with-dot": "sample-value"
               }
             }
           EoS

@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
-import hvac
+import httpx
 import pytest
 
 import secrets_env.auth.token as t
@@ -23,10 +23,9 @@ class TestTokenAuth:
     def test_method(self):
         assert t.TokenAuth.method() == "token"
 
-    def test_apply(self):
-        client = Mock(spec=hvac.Client)
-        self.authobj.apply(client)
-        assert client.token == "T0ken"
+    def test_login(self):
+        client = Mock(spec=httpx.Client)
+        assert self.authobj.login(client) == "T0ken"
 
     def test_load_env(self, monkeypatch: pytest.MonkeyPatch):
         with monkeypatch.context() as m:
