@@ -81,6 +81,9 @@ profile = "black"
 
 [tool.pytest.ini_options]
 addopts = "--cov=secrets_env --cov-report=term-missing"
+filterwarnings = [
+    "ignore::pytest.PytestDeprecationWarning:pytest_cov"
+]
 
 [tool.coverage.report]
 exclude_lines = [
