@@ -1,4 +1,4 @@
-class VaultEnvError(Exception):
+class SecretsEnvError(Exception):
     """Base error type for errors in this module"""
 
     def __init__(self, msg: str, *args: object, **kwargs: object) -> None:
@@ -18,13 +18,13 @@ class VaultEnvError(Exception):
         super().__init__(msg)
 
 
-class TypeError(VaultEnvError, TypeError):
+class TypeError(SecretsEnvError, TypeError):
     """Inappropriate argument type."""
 
 
-class UnsupportedError(VaultEnvError):
+class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
 
 
-class AuthenticationError(VaultEnvError):
+class AuthenticationError(SecretsEnvError):
     """Authentication failed."""
