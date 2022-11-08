@@ -1,7 +1,8 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import hvac
+import httpx
 import pytest
+import respx
 
 import secrets_env.auth.userpass as t
 
@@ -44,7 +45,6 @@ class TestUserPasswordAuth:
     )
     def test_load_fail(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         username: str,
         password: str,
         caplog: pytest.LogCaptureFixture,
@@ -111,8 +111,35 @@ class TestOktaAuth:
     def test_method(self):
         assert t.OktaAuth.method() == "okta"
 
-    def test_apply(self):
-        client = Mock(spec=hvac.Client)
+    def test_login_success(self, respx_mock: respx.MockRouter):
+        respx_mock.post("http://example.com/v1/auth/okta/login/user").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "lease_id": "",
+                    "renewable": False,
+                    "lease_duration": 0,
+                    "data": None,
+                    "warnings": None,
+                    "auth": {
+                        "client_token": "64d2a8f2-2a2f-5688-102b-e6088b76e344",
+                        "accessor": "18bb8f89-826a-56ee-c65b-1736dc5ea27d",
+                        "policies": ["default"],
+                        "metadata": {"username": "fred", "policies": "default"},
+                        "lease_duration": 7200,
+                        "renewable": True,
+                    },
+                },
+            )
+        )
 
-        self.authobj.apply(client)
-        assert client.auth.okta.login.call_count == 1
+        client = httpx.Client(base_url="http://example.com")
+        assert self.authobj.login(client) == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
+
+    def test_login_fail(self, respx_mock: respx.MockRouter):
+        respx_mock.post("http://example.com/v1/auth/okta/login/user").mock(
+            return_value=httpx.Response(403)
+        )
+
+        client = httpx.Client(base_url="http://example.com")
+        assert self.authobj.login(client) is None

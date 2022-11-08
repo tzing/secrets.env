@@ -9,7 +9,7 @@ from secrets_env.exception import TypeError
 from secrets_env.io import get_env_var, read_keyring
 
 if typing.TYPE_CHECKING:
-    import hvac
+    import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ class TokenAuth(Auth):
     def method(cls) -> str:
         return "token"
 
-    def apply(self, client: "hvac.Client"):
-        client.token = self.token
+    def login(self, client: "httpx.Client") -> str:
+        return self.token
 
     @classmethod
     def load(cls, data: Dict[str, Any]) -> Optional[Auth]:

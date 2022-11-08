@@ -4,7 +4,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env
+from secrets_env.auth.token import TokenAuth
 from secrets_env.config.types import Config, SecretPath
+from secrets_env.exception import AuthenticationError
 
 
 class TestLoadSecrets:
@@ -14,7 +16,7 @@ class TestLoadSecrets:
             "secrets_env.config.load_config",
             return_value=Config(
                 url="https://example.com/",
-                auth=secrets_env.auth.TokenAuth("ex@mp1e"),
+                auth=TokenAuth("ex@mp1e"),
                 tls={},
                 secret_specs={
                     "VAR1": SecretPath("key1", "example"),
@@ -27,7 +29,7 @@ class TestLoadSecrets:
     @pytest.mark.usefixtures("patch_load_config")
     def test_success(self, caplog: pytest.LogCaptureFixture):
         with patch(
-            "secrets_env.reader.KVReader.get_values",
+            "secrets_env.core.KVReader.read_values",
             return_value={
                 SecretPath("key1", "example"): "foo",
                 SecretPath("key2", "example"): "bar",
@@ -43,7 +45,7 @@ class TestLoadSecrets:
     @pytest.mark.usefixtures("patch_load_config")
     def test_partial_loaded(self, caplog: pytest.LogCaptureFixture):
         with patch(
-            "secrets_env.reader.KVReader.get_values",
+            "secrets_env.core.KVReader.read_values",
             return_value={
                 # no key2
                 SecretPath("key1", "example"): "foo",
@@ -56,3 +58,13 @@ class TestLoadSecrets:
     def test_no_config(self, patch_load_config: Mock):
         patch_load_config.return_value = None
         assert secrets_env.load_secrets(None) == {}
+
+    @pytest.mark.usefixtures("patch_load_config")
+    def test_auth_error(self, caplog: pytest.LogCaptureFixture):
+        with patch(
+            "secrets_env.core.KVReader.read_values",
+            side_effect=AuthenticationError("test error"),
+        ):
+            assert secrets_env.load_secrets(None) == {}
+
+        assert "Vault authentication error: test error" in caplog.text
