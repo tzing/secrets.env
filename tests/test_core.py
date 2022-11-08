@@ -17,6 +17,15 @@ def unittest_client() -> httpx.Client:
 
 
 class TestKVReader:
+    @pytest.fixture()
+    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.KVReader:
+        """Returns a reader that connects to real"""
+        monkeypatch.setenv("SECRETS_ENV_TOKEN", "!ntegr@t!0n-test")
+        return t.KVReader(
+            "http://localhost:8200",
+            secrets_env.auth.get_auth("token", {}),
+        )
+
     def test___init__type_errors(self):
         auth = Mock(spec=secrets_env.auth.Auth)
 
@@ -52,15 +61,6 @@ class TestKVReader:
             assert isinstance(reader.client, httpx.Client)
             assert isinstance(reader.client, httpx.Client)  # from cache
 
-    @pytest.fixture()
-    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.KVReader:
-        """Returns a reader that connects to real"""
-        monkeypatch.setenv("SECRETS_ENV_TOKEN", "!ntegr@t!0n-test")
-        return t.KVReader(
-            "http://localhost:8200",
-            secrets_env.auth.get_auth("token", {}),
-        )
-
     def test_read_secret(self, reader: t.KVReader):
         secret = reader.read_secret("kv1/test")
         assert isinstance(secret, dict)
@@ -84,6 +84,20 @@ class TestKVReader:
             reader.read_field(1234, "foo")
         with pytest.raises(TypeError):
             reader.read_field("secret/test", 1234)
+
+    def test_read_values(self, reader: t.KVReader):
+        output = reader.read_values(
+            [
+                ("kv1/test", "foo"),
+                ("kv2/test", "foo"),
+                ("kv2/no-this-path", "foo"),
+                ("kv2/test", "no-this-value"),
+            ]
+        )
+        assert output["kv1/test", "foo"] == "hello"
+        assert output["kv2/test", "foo"] == "hello, world"
+        assert output["kv2/no-this-path", "foo"] is None
+        assert output["kv2/test", "no-this-value"] is None
 
 
 class TestCreateClient:

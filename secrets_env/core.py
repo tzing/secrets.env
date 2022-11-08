@@ -107,7 +107,14 @@ class KVReader:
         secret : dict
             Secret data. Or None when not found.
         """
-        return read_secret(self.client, path)
+        secret = read_secret(self.client, path)
+        logger.debug(
+            "Query for secret %s %s",
+            path,
+            "succeed" if secret is not None else "failed",
+        )
+
+        return secret
 
     def read_field(self, path: str, field: str) -> Optional[str]:
         """Read only one field from Vault.
@@ -132,13 +139,52 @@ class KVReader:
 
         value = _get_field(secret, field)
         logger.debug(
-            "Query for %s#%s %s",
+            "Query for field %s#%s %s",
             path,
             field,
             "succeed" if value is not None else "failed",
         )
 
         return value
+
+    def read_values(self, pairs: List[Tuple[str, str]]):
+        """Get multiple secret values.
+
+        Parameters
+        ----------
+        pairs : List[Tuple[str,str]]
+            Pairs of secret path and field name.
+
+        Returns
+        -------
+        values : Dict[Tuple[str,str], str]
+            The secret values. The dictionary key is the given secret path and
+            field name, and its value is the secret value. The value could be
+            none on query error.
+        """
+        # read secrets
+        secrets = {}
+        for path, _ in pairs:
+            if path in secrets:
+                continue
+            secrets[path] = read_secret(self.client, path)
+
+        # extract values
+        outputs = {}
+        for path, field in pairs:
+            secret = secrets[path]
+            value = _get_field(secret, field)
+
+            logger.debug(
+                "Query for field %s#%s %s",
+                path,
+                field,
+                "succeed" if value is not None else "failed",
+            )
+
+            outputs[path, field] = value
+
+        return outputs
 
 
 def create_client(
