@@ -4,17 +4,17 @@ import socket
 import threading
 import typing
 import urllib.parse
+import uuid
 import webbrowser
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Optional
 
 from secrets_env.auth.base import Auth
-from secrets_env.exception import TypeError
+from secrets_env.exception import AuthenticationError, TypeError
 
 if typing.TYPE_CHECKING:
-    import hvac
-    import hvac.adapters
+    import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -38,22 +38,39 @@ class OpenIDConnectAuth(Auth):
     def method(cls) -> str:
         return "oidc"
 
-    def apply(self, client: "hvac.Client"):
+    def login(self, client: "httpx.Client") -> str:
         logger.debug("Applying ODIC auth")
 
         # start server for receiving callback
         port = get_free_port()
-        server_thread = self.start_server(port)
+        server_thread, stop_event = self.start_server(port)
 
-        # TODO open the link
-        # FIXME the builtin one is lack of error handling
+        # request for auth url
+        nonce = uuid.uuid1().hex
+        auth_url = get_oidc_authorization_url(
+            client,
+            f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
+            self.role,
+            nonce,
+        )
 
-        logger.info("<!important>Waiting for response from OIDC provider...")
+        # open the link
+        logger.info("<!important>Waiting for response from OpenID connect provider...")
         logger.info(
             "<!important>If browser does not open automatically, open the link:"
         )
         logger.info("<!important>  %s", auth_url)
         webbrowser.open(auth_url)
+
+        # wait until callback
+        try:
+            server_thread.join()
+        except KeyboardInterrupt:
+            raise AuthenticationError("keyboard interrupted")
+        finally:
+            stop_event.set()
+
+        # TODO call second URL
 
     def start_server(self, port: int):
         """Starting a HTTP server locally and waiting for the authentication code."""
@@ -78,10 +95,10 @@ class OpenIDConnectAuth(Auth):
         thread = threading.Thread(target=_worker, args=(stop_event,), daemon=True)
         thread.start()
 
-        return thread
+        return thread, stop_event
 
     def load(self):
-        ...
+        raise NotImplementedError()
 
 
 class OpenIDConnectCallbackHandler(http.server.SimpleHTTPRequestHandler):
@@ -120,18 +137,27 @@ def get_free_port() -> int:
 
 
 def get_oidc_authorization_url(
-    adapter: "hvac.adapters.Adapter", redirect_uri: str, role: Optional[str]
-):
+    client: "httpx.Client", redirect_uri: str, role: Optional[str], nonce: str
+) -> Optional[str]:
     """Get OIDC authorization URL.
 
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-authorization-url-request
     """
-    data = {"redirect_uri": redirect_uri}
+    request = {
+        "redirect_uri": redirect_uri,
+        "nonce": nonce,
+    }
     if role:
-        data["role"] = role
+        request["role"] = role
 
-    return adapter.post(
-        "/v1/auth/jwt/oidc/auth_url", data=data
-    )  # FIXME must extract data from it
+    resp = client.post("/v1/auth/jwt/oidc/auth_url", data=request)
+
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json()
+        return data["data"]["auth_url"]
+
+    logger.error("Error requesting authorization URL")
+    logger.debug("Code= %d. Raw response= %s", resp.status_code, resp.text)
+    return None
