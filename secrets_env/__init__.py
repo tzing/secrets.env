@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import secrets_env.config
-import secrets_env.reader
+import secrets_env.core
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,14 @@ def load_secrets(config_file: Optional[Path] = None) -> Dict[str, str]:
         # skip logging. already show error in `load_config`
         return {}
 
-    reader = secrets_env.reader.KVReader(config.url, config.auth)
-    secrets = reader.get_values(config.secret_specs.values())
+    reader = secrets_env.core.KVReader(
+        url=config.url,
+        auth=config.auth,
+        ca_cert=config.tls.get("ca_cert"),
+        client_cert=config.tls.get("client_cert"),
+        client_key=config.tls.get("client_key"),
+    )
+    secrets = reader.read_values(config.secret_specs.values())
 
     output = {}
     for name, spec in config.secret_specs.items():
