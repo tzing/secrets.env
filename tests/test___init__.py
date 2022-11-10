@@ -67,4 +67,4 @@ class TestLoadSecrets:
         ):
             assert secrets_env.load_secrets(None) == {}
 
-        assert "Vault authentication error: test error" in caplog.text
+        assert "Authentication error: test error" in caplog.text

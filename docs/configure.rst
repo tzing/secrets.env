@@ -238,7 +238,7 @@ Token is the most basic method to get authentication from Vault.
 token
    Vault token
 
-   * ✅ From config file: ``token``
+   * ⛔️ From config file
    * ✅ From environment variable: any of ``SECRETS_ENV_TOKEN``, ``VAULT_TOKEN``
    * ✅ From keyring: ``token/:token``
    * ✅ From `token helper`_ [#token-helper]_
