@@ -152,7 +152,7 @@ def get_oidc_authorization_url(
     if role:
         request["role"] = role
 
-    resp = client.post("/v1/auth/jwt/oidc/auth_url", data=request)
+    resp = client.post("/v1/auth/jwt/oidc/auth_url", json=request)
 
     if resp.status_code == HTTPStatus.OK:
         data = resp.json()
