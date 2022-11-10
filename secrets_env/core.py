@@ -244,9 +244,7 @@ def is_authenticated(client: httpx.Client, token: str):
 
     logger.debug("Validate token for %s", client.base_url)
 
-    resp = client.request(
-        "LIST", "/v1/auth/token/accessors", headers={"X-Vault-Token": token}
-    )
+    resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
     if resp.status_code != HTTPStatus.OK:
         logger.debug(
             "Token verification failed. Code= %d. Msg= %s",
