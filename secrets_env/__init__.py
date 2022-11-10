@@ -30,7 +30,9 @@ def load_secrets(config_file: Optional[pathlib.Path] = None) -> Dict[str, str]:
     try:
         secrets = reader.read_values(config.secret_specs.values())
     except secrets_env.exception.AuthenticationError as e:
-        logger.error("Vault authentication error: %s", e.args[0])
+        logger.error(
+            "<!important>\u26D4 Authentication error: %s. No secret loaded.", e.args[0]
+        )
         return {}
 
     output = {}
@@ -44,10 +46,13 @@ def load_secrets(config_file: Optional[pathlib.Path] = None) -> Dict[str, str]:
         output[name] = value
 
     if len(output) == len(config.secret_specs):
-        logger.info("<!important><mark>%d</mark> secrets loaded", len(secrets))
+        logger.info(
+            "<!important>\U0001F511 <mark>%d</mark> secrets loaded", len(secrets)
+        )
     else:
         logger.warning(
-            "<!important><error>%d</error> / %d secrets loaded",
+            # NOTE need extra whitespace after the modifier
+            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets loaded",
             len(output),
             len(config.secret_specs),
         )
