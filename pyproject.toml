@@ -6,6 +6,7 @@ authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
 repository = "https://github.com/tzing/secrets.env"
+documentation = "https://tzing.github.io/secrets.env/"
 keywords = ["vault", "environment variables"]
 classifiers = [
     "Development Status :: 3 - Alpha",
