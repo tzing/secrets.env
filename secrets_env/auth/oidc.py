@@ -74,12 +74,21 @@ class OpenIDConnectAuth(Auth):
         # wait until callback
         try:
             server_thread.join()
-        except KeyboardInterrupt:
-            raise AuthenticationError("keyboard interrupted")
         finally:
             server_thread.shutdown_server()
 
-        # TODO call second URL
+        if not self.authorization_code:
+            raise AuthenticationError("OIDC Authorization code not received")
+
+        # get client token
+        token = get_client_token(
+            client, auth_url, self.authorization_code, client_nonce
+        )
+
+        if not token:
+            raise AuthenticationError("Failed to fetch OIDC client token")
+
+        return token
 
     def load(self):
         raise NotImplementedError()
@@ -166,19 +175,55 @@ def get_oidc_authorization_url(
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-authorization-url-request
     """
-    data = {
+    payload = {
         "redirect_uri": redirect_uri,
         "client_nonce": client_nonce,
     }
     if role:
-        data["role"] = role
+        payload["role"] = role
 
-    resp = client.post("/v1/auth/oidc/oidc/auth_url", json=data)
+    resp = client.post("/v1/auth/oidc/oidc/auth_url", json=payload)
 
     if resp.status_code == HTTPStatus.OK:
         data = resp.json()
         return data["data"]["auth_url"]
 
     logger.error("Error requesting authorization URL")
+    logger.debug("Code= %d. Raw response= %s", resp.status_code, resp.text)
+    return None
+
+
+def get_client_token(
+    client: "httpx.Client", auth_url: str, auth_code: str, client_nonce: str
+):
+    """Call OIDC callback and get the client token.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-callback
+    """
+    # extract server-provided metadata
+    url = urllib.parse.urlsplit(auth_url)
+    params = urllib.parse.parse_qs(url.query)
+    server_state = params["state"][0]
+    server_nonce = params["nonce"][0]
+
+    # call oidc callback
+    resp = client.get(
+        "/v1/auth/oidc/oidc/callback",
+        params={
+            "state": server_state,
+            "nonce": server_nonce,
+            "code": auth_code,
+            "client_nonce": client_nonce,
+        },
+    )
+
+    # parse result
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json()
+        return data["auth"]["client_token"]
+
+    logger.error("Error requesting OIDC callback URL")
     logger.debug("Code= %d. Raw response= %s", resp.status_code, resp.text)
     return None
