@@ -145,14 +145,14 @@ def get_oidc_authorization_url(
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-authorization-url-request
     """
-    request = {
+    data = {
         "redirect_uri": redirect_uri,
-        "nonce": nonce,
+        "client_nonce": nonce,
     }
     if role:
-        request["role"] = role
+        data["role"] = role
 
-    resp = client.post("/v1/auth/jwt/oidc/auth_url", json=request)
+    resp = client.post("/v1/auth/oidc/oidc/auth_url", json=data)
 
     if resp.status_code == HTTPStatus.OK:
         data = resp.json()
