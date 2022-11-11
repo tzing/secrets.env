@@ -1,4 +1,3 @@
-import http.server
 import logging
 import socket
 import threading
@@ -8,6 +7,7 @@ import uuid
 import webbrowser
 from dataclasses import dataclass, field
 from http import HTTPStatus
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Optional
 
 from secrets_env.auth.base import Auth
@@ -15,6 +15,8 @@ from secrets_env.exception import AuthenticationError, TypeError
 
 if typing.TYPE_CHECKING:
     import httpx
+
+SERVER_LOOP_TIMEOUT = 0.08
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,9 @@ class OpenIDConnectAuth(Auth):
 
         # start server for receiving callback
         port = get_free_port()
-        server_thread, stop_event = self.start_server(port)
+
+        server_thread = OpenIDConnectCallbackService(port, self)
+        server_thread.start()
 
         # request for auth url
         nonce = uuid.uuid1().hex
@@ -55,11 +59,12 @@ class OpenIDConnectAuth(Auth):
         )
 
         # open the link
-        logger.info("<!important>Waiting for response from OpenID connect provider...")
         logger.info(
-            "<!important>If browser does not open automatically, open the link:"
+            "<!important>"
+            "Waiting for response from OpenID connect provider...\n"
+            "If browser does not open automatically, open the link:\n"
+            f"  {auth_url}"
         )
-        logger.info("<!important>  %s", auth_url)
         webbrowser.open(auth_url)
 
         # wait until callback
@@ -68,65 +73,77 @@ class OpenIDConnectAuth(Auth):
         except KeyboardInterrupt:
             raise AuthenticationError("keyboard interrupted")
         finally:
-            stop_event.set()
+            server_thread.shutdown_server()
 
         # TODO call second URL
-
-    def start_server(self, port: int):
-        """Starting a HTTP server locally and waiting for the authentication code."""
-        stop_event = threading.Event()
-
-        def _set_code(code: str) -> None:
-            object.__setattr__(self, "authorization_code", code)
-
-        class _Handler(OpenIDConnectCallbackHandler):
-            def finalize(self, code: str):
-                nonlocal stop_event, _set_code
-                _set_code(code)
-                stop_event.set()
-
-        def _worker(event: threading.Event):
-            global logger
-            with http.server.HTTPServer(("localhost", port), _Handler) as srv:
-                logger.debug("Start listening port %d for OIDC response", port)
-                while not event.is_set():
-                    srv.handle_request()
-
-        thread = threading.Thread(target=_worker, args=(stop_event,), daemon=True)
-        thread.start()
-
-        return thread, stop_event
 
     def load(self):
         raise NotImplementedError()
 
 
-class OpenIDConnectCallbackHandler(http.server.SimpleHTTPRequestHandler):
+class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
     CALLBACK_PATH = "/oidc/callback"
 
     def do_GET(self) -> None:
         """Handles GET request."""
+        # parse path
         url = urllib.parse.urlsplit(self.path)
+        logger.debug('Receive "%s %s %s"', self.command, url.path, self.request_version)
+
+        # only accepts callback path
         if url.path != self.CALLBACK_PATH:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
+        # send http 400 if 'code' does not provided
         params = urllib.parse.parse_qs(url.query)
         code, *_ = params.get("code", [None])
         if not code:
             self.send_error(HTTPStatus.BAD_REQUEST)
             return
 
-        self.send_response(200)
+        # save token
+        self.server.auth_token = code
+
+        # response
+        self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/plain; charset=UTF-8")
         self.end_headers()
         self.wfile.write(b"Authentication successful, you can close the browser now.")
 
-        self.finalize(code)
 
-    def finalize(self, code: str) -> None:
-        """Successfully received the authorization code. Notify for stop serving."""
-        raise NotImplementedError()
+class OpenIDConnectCallbackService(threading.Thread):
+    def __init__(self, port: int, storage: OpenIDConnectAuth) -> None:
+        super().__init__(daemon=True)
+        self.port = port
+        self.storage = storage
+        self._stop_event = threading.Event()
+
+    def run(self) -> None:
+        """Run a http server in background thread."""
+        logger.debug("Start listening port %d for OIDC callback", self.port)
+
+        # serve until stop event is set
+        with HTTPServer(
+            server_address=("localhost", self.port),
+            RequestHandlerClass=OpenIDConnectCallbackHandler,
+        ) as srv:
+            srv.timeout = SERVER_LOOP_TIMEOUT
+            srv.auth_token = None
+
+            while not srv.auth_token and not self._stop_event.is_set():
+                srv.handle_request()
+
+        logger.debug("Stopping OIDC callback server")
+
+        # finalize; set auth code
+        if srv.auth_token:
+            object.__setattr__(self.storage, "authorization_code", srv.auth_token)
+
+    def shutdown_server(self):
+        """Shutdown internal http server."""
+        logger.debug("Shutdown OIDC callback server")
+        self._stop_event.set()
 
 
 def get_free_port() -> int:
