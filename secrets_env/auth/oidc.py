@@ -84,7 +84,6 @@ class OpenIDConnectAuth(Auth):
         token = get_client_token(
             client, auth_url, self.authorization_code, client_nonce
         )
-
         if not token:
             raise AuthenticationError("Failed to fetch OIDC client token")
 

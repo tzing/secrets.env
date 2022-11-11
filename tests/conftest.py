@@ -3,6 +3,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import respx
 
 
 @pytest.fixture()
@@ -23,3 +24,9 @@ def _reset_logging():
 @pytest.fixture()
 def unittest_client() -> httpx.Client:
     return httpx.Client(base_url="https://example.com")
+
+
+@pytest.fixture()
+def unittest_respx() -> respx.Route:
+    with respx.mock(base_url="https://example.com") as r:
+        yield r
