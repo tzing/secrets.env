@@ -27,7 +27,7 @@ class OpenIDConnectAuth(Auth):
     """Role.
     """
 
-    authorization_code: str = field(repr=False)
+    authorization_code: str = field(repr=False, default=None)
     """Authorization code from server response."""
 
     def __init__(self, role: Optional[str] = None) -> None:
