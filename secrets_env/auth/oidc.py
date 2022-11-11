@@ -45,14 +45,14 @@ class OpenIDConnectAuth(Auth):
 
         # prepare data for callback server
         port = get_free_port()
-        nonce = uuid.uuid1().hex
+        client_nonce = uuid.uuid1().hex
 
         # request for auth url
         auth_url = get_oidc_authorization_url(
             client,
             f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
             self.role,
-            nonce,
+            client_nonce,
         )
 
         if not auth_url:
@@ -158,7 +158,7 @@ def get_free_port() -> int:
 
 
 def get_oidc_authorization_url(
-    client: "httpx.Client", redirect_uri: str, role: Optional[str], nonce: str
+    client: "httpx.Client", redirect_uri: str, role: Optional[str], client_nonce: str
 ) -> Optional[str]:
     """Get OIDC authorization URL.
 
@@ -168,7 +168,7 @@ def get_oidc_authorization_url(
     """
     data = {
         "redirect_uri": redirect_uri,
-        "client_nonce": nonce,
+        "client_nonce": client_nonce,
     }
     if role:
         data["role"] = role
