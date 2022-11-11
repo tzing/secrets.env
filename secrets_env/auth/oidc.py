@@ -8,7 +8,8 @@ import webbrowser
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from secrets_env.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
@@ -118,10 +119,24 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
         self.server.auth_token = code
 
         # response
+        lib_dir = Path(__file__).resolve().parent.parent
+        response_page = lib_dir / "templates" / "oidc-success.html"
+        response_data = response_page.read_bytes()
+
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/plain; charset=UTF-8")
+        self.send_header("Content-Type", "text/html; charset=UTF-8")
         self.end_headers()
-        self.wfile.write(b"Authentication successful, you can close the browser now.")
+        self.wfile.write(response_data)
+
+    def log_message(self, fmt: str, *args: Any) -> None:
+        # builtin `log_message` directly writes data to stderr
+        # adopting them to logging
+        logger.debug(
+            "%s - - [%s] %s",
+            self.address_string(),
+            self.log_date_time_string(),
+            fmt % args,
+        )
 
 
 class OpenIDConnectCallbackService(threading.Thread):

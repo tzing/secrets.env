@@ -109,7 +109,10 @@ def test_callback_service():
     # valid call - the thread should stop
     resp = httpx.get("http://localhost:56789/oidc/callback?code=test")
     assert resp.status_code == HTTPStatus.OK
-    assert resp.headers["Content-Type"].startswith("text/plain")
+    assert resp.headers["Content-Type"].startswith("text/html")
+    assert (
+        "<p>OIDC authentication successful, you can close the browser now.</p>"
+    ) in resp.text
 
     thread.join()
     assert auth.authorization_code == "test"
