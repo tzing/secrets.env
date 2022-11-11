@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import httpx
 import pytest
 
 
@@ -17,3 +18,8 @@ def _reset_logging():
         logger.setLevel(logging.NOTSET)
         logger.propagate = True
         logger.handlers.clear()
+
+
+@pytest.fixture()
+def unittest_client() -> httpx.Client:
+    return httpx.Client(base_url="https://example.com")
