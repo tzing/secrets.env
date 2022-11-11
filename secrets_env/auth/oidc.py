@@ -43,20 +43,24 @@ class OpenIDConnectAuth(Auth):
     def login(self, client: "httpx.Client") -> str:
         logger.debug("Applying ODIC auth")
 
-        # start server for receiving callback
+        # prepare data for callback server
         port = get_free_port()
-
-        server_thread = OpenIDConnectCallbackService(port, self)
-        server_thread.start()
+        nonce = uuid.uuid1().hex
 
         # request for auth url
-        nonce = uuid.uuid1().hex
         auth_url = get_oidc_authorization_url(
             client,
             f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
             self.role,
             nonce,
         )
+
+        if not auth_url:
+            raise AuthenticationError("Failed to get OIDC authorization URL")
+
+        # start callback server
+        server_thread = OpenIDConnectCallbackService(port, self)
+        server_thread.start()
 
         # open the link
         logger.info(
