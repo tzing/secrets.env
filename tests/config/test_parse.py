@@ -173,18 +173,18 @@ class TestParsePath:
         ) in caplog.text
 
     def test_dict(self, caplog: pytest.LogCaptureFixture):
-        assert t.parse_path("test", {"path": "foo", "key": "bar"}) == SecretPath(
+        assert t.parse_path("test", {"path": "foo", "field": "bar"}) == SecretPath(
             "foo", "bar"
         )
 
         assert t.parse_path("test-fail-1", {"path": "foo"}) is None
-        assert t.parse_path("test-fail-2", {"key": "bar"}) is None
-        assert t.parse_path("test-fail-3", {"path": "foo", "key": 1234}) is None
-        assert t.parse_path("test-fail-4", {"path": 1234, "key": "bar"}) is None
+        assert t.parse_path("test-fail-2", {"field": "bar"}) is None
+        assert t.parse_path("test-fail-3", {"path": "foo", "field": 1234}) is None
+        assert t.parse_path("test-fail-4", {"path": 1234, "field": "bar"}) is None
 
         assert (
             "Target secret <data>test-fail-4</data> is invalid. "
-            "Missing required key <mark>path</mark> or <mark>key</mark>. "
+            "Missing required key <mark>path</mark> or <mark>field</mark>. "
             "Skip this variable."
         ) in caplog.text
 

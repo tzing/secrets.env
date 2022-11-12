@@ -28,7 +28,7 @@ class TestLoadConfig:
         # fixtures
         def find_config_file():
             return ConfigFileMetadata(
-                filename, spec, True, repo_path / "example" / filename
+                filename, spec, True, repo_path / "tests" / "fixtures" / filename
             )
 
         monkeypatch.setattr(t, "find_config_file", find_config_file)
