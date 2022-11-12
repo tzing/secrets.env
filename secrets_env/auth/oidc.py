@@ -18,7 +18,6 @@ from secrets_env.io import get_env_var
 if typing.TYPE_CHECKING:
     import httpx
 
-SERVER_LOOP_TIMEOUT = 0.08
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +105,6 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
     CALLBACK_PATH = "/oidc/callback"
 
     def do_GET(self) -> None:
-        """Handles GET request."""
         # parse path
         url = urllib.parse.urlsplit(self.path)
         logger.debug('Receive "%s %s %s"', self.command, url.path, self.request_version)
@@ -127,8 +125,8 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
         self.server.auth_token = code
 
         # response
-        lib_dir = Path(__file__).resolve().parent.parent
-        response_page = lib_dir / "templates" / "oidc-success.html"
+        pkg_dir = Path(__file__).resolve().parent.parent
+        response_page = pkg_dir / "templates" / "oidc-success.html"
         response_data = response_page.read_bytes()
 
         self.send_response(HTTPStatus.OK)
@@ -148,6 +146,8 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
 
 
 class OpenIDConnectCallbackService(threading.Thread):
+    SERVER_LOOP_TIMEOUT = 0.08
+
     def __init__(self, port: int, storage: OpenIDConnectAuth) -> None:
         super().__init__(daemon=True)
         self.port = port
@@ -163,7 +163,7 @@ class OpenIDConnectCallbackService(threading.Thread):
             server_address=("localhost", self.port),
             RequestHandlerClass=OpenIDConnectCallbackHandler,
         ) as srv:
-            srv.timeout = SERVER_LOOP_TIMEOUT
+            srv.timeout = self.SERVER_LOOP_TIMEOUT
             srv.auth_token = None
 
             while not srv.auth_token and not self._stop_event.is_set():
