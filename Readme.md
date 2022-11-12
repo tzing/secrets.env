@@ -4,7 +4,7 @@
 ![Python version](https://img.shields.io/pypi/pyversions/secrets.env)
 [![test result](https://img.shields.io/github/workflow/status/tzing/secrets.env/Tests)](https://github.com/tzing/secrets.env/actions/workflows/test.yml)
 
-Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without not landing data on disk.
+Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without landing data on disk.
 
 ![screenshot](./docs/imgs/screenshot.png)
 
