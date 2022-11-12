@@ -139,7 +139,7 @@ def test_get_free_port():
     assert 49152 <= port <= 65535
 
 
-def test_get_oidc_authorization_url_success(
+def test_get_authorization_url_success(
     unittest_respx: respx.MockRouter, unittest_client: httpx.Client
 ):
     unittest_respx.post("/v1/auth/oidc/oidc/auth_url").mock(
@@ -158,7 +158,7 @@ def test_get_oidc_authorization_url_success(
         )
     )
     assert (
-        t.get_oidc_authorization_url(
+        t.get_authorization_url(
             unittest_client,
             "http://localhost/callback",
             None,
@@ -168,12 +168,12 @@ def test_get_oidc_authorization_url_success(
     )
 
 
-def test_get_oidc_authorization_url_error(
+def test_get_authorization_url_error(
     unittest_respx: respx.MockRouter, unittest_client: httpx.Client
 ):
     unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
     assert (
-        t.get_oidc_authorization_url(
+        t.get_authorization_url(
             unittest_client,
             "http://localhost/callback",
             "test_role",
@@ -183,7 +183,7 @@ def test_get_oidc_authorization_url_error(
     )
 
 
-def test_get_client_token_success(
+def test_request_token_success(
     unittest_respx: respx.MockRouter, unittest_client: httpx.Client
 ):
     unittest_respx.get(
@@ -224,7 +224,7 @@ def test_get_client_token_success(
         )
     )
     assert (
-        t.get_client_token(
+        t.request_token(
             unittest_client,
             "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
             "test-code",
@@ -234,12 +234,12 @@ def test_get_client_token_success(
     )
 
 
-def test_get_client_token_error(
+def test_request_token_error(
     unittest_respx: respx.MockRouter, unittest_client: httpx.Client
 ):
     unittest_respx.get("/v1/auth/oidc/oidc/callback") % 403
     assert (
-        t.get_client_token(
+        t.request_token(
             unittest_client,
             "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
             "test-code",

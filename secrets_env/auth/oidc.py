@@ -9,10 +9,11 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from secrets_env.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
+from secrets_env.io import get_env_var
 
 if typing.TYPE_CHECKING:
     import httpx
@@ -49,7 +50,7 @@ class OpenIDConnectAuth(Auth):
         client_nonce = uuid.uuid1().hex
 
         # request for auth url
-        auth_url = get_oidc_authorization_url(
+        auth_url = get_authorization_url(
             client,
             f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
             self.role,
@@ -82,16 +83,23 @@ class OpenIDConnectAuth(Auth):
             raise AuthenticationError("OIDC Authorization code not received")
 
         # get client token
-        token = get_client_token(
-            client, auth_url, self.authorization_code, client_nonce
-        )
+        token = request_token(client, auth_url, self.authorization_code, client_nonce)
         if not token:
             raise AuthenticationError("Failed to fetch OIDC client token")
 
         return token
 
-    def load(self):
-        raise NotImplementedError()
+    def load(cls, data: Dict[str, Any]) -> "OpenIDConnectAuth":
+        if role := get_env_var("SECRETS_ENV_ROLE"):
+            logger.debug("Found role from environment variable: %s", role)
+            return cls(role)
+
+        if role := data.get("role"):
+            logger.debug("Found role from config file: %s", role)
+            return cls(role)
+
+        logger.debug("Missing OIDC role. Use default.")
+        return cls()
 
 
 class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
@@ -180,7 +188,7 @@ def get_free_port() -> int:
     return port
 
 
-def get_oidc_authorization_url(
+def get_authorization_url(
     client: "httpx.Client", redirect_uri: str, role: Optional[str], client_nonce: str
 ) -> Optional[str]:
     """Get OIDC authorization URL.
@@ -207,10 +215,10 @@ def get_oidc_authorization_url(
     return None
 
 
-def get_client_token(
+def request_token(
     client: "httpx.Client", auth_url: str, auth_code: str, client_nonce: str
 ):
-    """Call OIDC callback and get the client token.
+    """Exchange authorization code for client token.
 
     See also
     --------
