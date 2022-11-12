@@ -11,22 +11,24 @@ import secrets_env.auth.oidc as t
 from secrets_env.exception import AuthenticationError
 
 
-class TestOpenIDConnectAuth:
+def test_auth__init__():
+    # success
+    t.OpenIDConnectAuth("default")
+    t.OpenIDConnectAuth(None)
+
+    # fail
+    with pytest.raises(TypeError):
+        t.OpenIDConnectAuth(1234)
+
+
+def test_auth_method():
+    assert isinstance(t.OpenIDConnectAuth.method(), str)
+
+
+class TestOpenIDConnectAuthLogin:
     def setup_method(self):
         self.auth = t.OpenIDConnectAuth()
         self.client = Mock(spec=httpx.Client)
-
-    def test___init__(self):
-        # success
-        t.OpenIDConnectAuth("default")
-        t.OpenIDConnectAuth(None)
-
-        # fail
-        with pytest.raises(TypeError):
-            t.OpenIDConnectAuth(1234)
-
-    def test_method(self):
-        assert isinstance(self.auth.method(), str)
 
     def test_login_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
