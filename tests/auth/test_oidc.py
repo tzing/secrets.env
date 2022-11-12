@@ -154,7 +154,7 @@ def test_stop_callback_service():
 def test_get_free_port():
     port = t.get_free_port()
     assert isinstance(port, int)
-    assert 49152 <= port <= 65535
+    assert 1023 < port < 65536
 
 
 def test_get_authorization_url_success(
