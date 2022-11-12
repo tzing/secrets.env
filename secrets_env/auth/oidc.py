@@ -88,6 +88,7 @@ class OpenIDConnectAuth(Auth):
 
         return token
 
+    @classmethod
     def load(cls, data: Dict[str, Any]) -> "OpenIDConnectAuth":
         if role := get_env_var("SECRETS_ENV_ROLE"):
             logger.debug("Found role from environment variable: %s", role)
