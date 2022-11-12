@@ -48,7 +48,13 @@ def run(args: Tuple[str, ...], file: Path):
     """Loads secrets into environment variable then run the command."""
     # prepare environment variable set
     environ = os.environ.copy()
-    environ.update(secrets_env.load_secrets(file))
+    secrets = secrets_env.load_secrets(file)
+
+    if any(s is None for s in secrets):
+        logger.warning("<!important>Stop running command")
+        sys.exit(128)
+
+    environ.update(secrets)
 
     # run
     logger.debug("exec> %s", " ".join(args))
