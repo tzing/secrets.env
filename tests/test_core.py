@@ -11,11 +11,6 @@ import secrets_env.core as t
 from secrets_env.exception import AuthenticationError
 
 
-@pytest.fixture()
-def unittest_client() -> httpx.Client:
-    return httpx.Client(base_url="https://example.com")
-
-
 class TestKVReader:
     @pytest.fixture()
     def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.KVReader:

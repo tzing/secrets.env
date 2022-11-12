@@ -254,8 +254,8 @@ Get authentication by login to Okta.
 username
    User name to login Okta
 
-   * ✅ From config file: ``username``
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
+   * ✅ From config file: ``username``
    * ✅ From keyring: ``okta/:username``
    * ✅ A prompt would be displayed when none of the above are provided
 
@@ -267,6 +267,16 @@ password
    * ✅ From keyring: ``okta/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
 
+OpenID connect (``oidc``)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Get authentication via configured OIDC provider using your web browser.
+
+role
+   (Optional) OIDC role. Will use default role if not set.
+
+   * ✅ From environment variable: ``SECRETS_ENV_ROLE``
+   * ✅ From config file: ``role``
 
 Secret values
 -------------
