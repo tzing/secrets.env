@@ -178,8 +178,11 @@ Like the ``source`` section, it is possible to complete setup auth info from a n
    export SECRETS_ENV_USERNAME='user@example.com'
    export SECRETS_ENV_PASSWORD='Ex@mp1e_P@ssw0rd'
 
+Format
+^^^^^^
+
 Method
-++++++
+""""""
 
 Secrets.env adapts several authentication methods. You MUST specify the method by either config file or the environment variable ``SECRETS_ENV_METHOD``.
 
@@ -199,7 +202,7 @@ If you do not need to store arguments in config file, then you can drop ``method
 
 
 Arguments
-+++++++++
+"""""""""
 
 Auth data could be provided by various source, including:
 
@@ -226,12 +229,14 @@ prompt
 
 
 Supported methods
-+++++++++++++++++
+"""""""""""""""""
 
-Here's supported auth methods, corresponding arguments, and their accepted source:
+In the following paragraphs, they shows the supported authentication methods and their corresponding arguments.
 
-Vault token (``token``)
-~~~~~~~~~~~~~~~~~~~~~~~
+Vault token
+^^^^^^^^^^^
+
+:method: ``token``
 
 Token is the most basic method to get authentication from Vault.
 
@@ -246,8 +251,10 @@ token
 .. _token helper: https://www.vaultproject.io/docs/commands/token-helper
 .. [#token-helper] Vault CLI stores the generated token in the ``~/.vault-token`` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
 
-Okta login (``okta``)
-~~~~~~~~~~~~~~~~~~~~~
+Okta login
+^^^^^^^^^^
+
+:method: ``okta``
 
 Get authentication by login to Okta.
 
@@ -267,13 +274,15 @@ password
    * ✅ From keyring: ``okta/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
 
-OpenID connect (``oidc``)
-~~~~~~~~~~~~~~~~~~~~~~~~~
+OpenID Connect
+^^^^^^^^^^^^^^
+
+:method: ``oidc``
 
 Get authentication via configured OIDC provider using your web browser.
 
 role
-   (Optional) OIDC role. Will use default role if not set.
+   *(Optional)* OIDC role. Will use default role if not set.
 
    * ✅ From environment variable: ``SECRETS_ENV_ROLE``
    * ✅ From config file: ``role``
