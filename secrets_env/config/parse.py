@@ -75,6 +75,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["ca_cert"], ok = ensure_path("source.tls.ca_cert", path)
         is_success &= ok
+    else:
+        tls["ca_cert"] = None
 
     # client cert
     path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
@@ -84,6 +86,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["client_cert"], ok = ensure_path("source.tls.client_cert", path)
         is_success &= ok
+    else:
+        tls["client_cert"] = None
 
     # client key
     path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
@@ -93,6 +97,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["client_key"], ok = ensure_path("source.tls.client_key", path)
         is_success &= ok
+    else:
+        tls["client_key"] = None
 
     return tls if is_success else {}
 
@@ -158,19 +164,19 @@ def parse_path(name: str, spec: Union[str, Dict[str, str]]) -> Optional[SecretPa
         idx = spec.find("#")
         if 0 < idx < len(spec) - 1:
             path = spec[:idx]
-            key = spec[idx + 1 :]
-            return SecretPath(path, key)
+            field = spec[idx + 1 :]
+            return SecretPath(path, field)
 
         fail_msg = f"Failed to parse string '<data>{trimmed_str(spec)}</data>'"
 
     elif isinstance(spec, dict):
         # dict input: {"path": "foo", "key": "bar"}
         path = spec.get("path")
-        key = spec.get("key")
-        if isinstance(path, str) and isinstance(key, str):
-            return SecretPath(path, key)
+        field = spec.get("field")
+        if isinstance(path, str) and isinstance(field, str):
+            return SecretPath(path, field)
 
-        fail_msg = "Missing required key <mark>path</mark> or <mark>key</mark>"
+        fail_msg = "Missing required key <mark>path</mark> or <mark>field</mark>"
 
     logger.warning(
         "Target secret <data>%s</data> is invalid. %s. Skip this variable.",
