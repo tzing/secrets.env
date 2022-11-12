@@ -45,7 +45,7 @@ Use environment variable for Vault information:
     export SECRETS_ENV_METHOD='token'
     export SECRETS_ENV_TOKEN='example-token'
 
-And list the desired secret path and key in a config file:
+And list the desired secret path and field in a config file:
 
 .. tabs::
 
@@ -55,14 +55,14 @@ And list the desired secret path and key in a config file:
       secrets:
         VAR1:
           path: secrets/default
-          key: example-1
+          field: example-1
         VAR2: secrets/default#example-2
 
    .. code-tab:: toml
 
       # file: .secrets-env.toml
       [secrets]
-      VAR1 = {path = "secrets/default", key = "example-1"}
+      VAR1 = {path = "secrets/default", field = "example-1"}
       VAR2 = "secrets/default#example-2"
 
 Read :doc:`configure` for more details.
