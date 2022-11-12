@@ -217,6 +217,7 @@ def create_client(
 
     params = {
         "base_url": base_url,
+        "http2": True,
     }
 
     if ca_cert:
