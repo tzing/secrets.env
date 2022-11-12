@@ -75,6 +75,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["ca_cert"], ok = ensure_path("source.tls.ca_cert", path)
         is_success &= ok
+    else:
+        tls["ca_cert"] = None
 
     # client cert
     path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
@@ -84,6 +86,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["client_cert"], ok = ensure_path("source.tls.client_cert", path)
         is_success &= ok
+    else:
+        tls["client_cert"] = None
 
     # client key
     path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
@@ -93,6 +97,8 @@ def parse_section_tls(data: T_ConfigData) -> Optional[TLSConfig]:
     if path:
         tls["client_key"], ok = ensure_path("source.tls.client_key", path)
         is_success &= ok
+    else:
+        tls["client_key"] = None
 
     return tls if is_success else {}
 

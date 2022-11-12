@@ -38,6 +38,7 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
     assert cfg.tls == {
         "ca_cert": Path("/path/ca.cert"),
         "client_cert": Path("/path/client.cert"),
+        "client_key": None,
     }
     assert cfg.secret_specs == {
         "VAR1": SecretPath("example", "val1"),
@@ -81,13 +82,19 @@ class TestParseSectionTLS:
 
         # test standalone
         assert t.parse_section_tls({"ca_cert": "/data/ca.cert"}) == {
-            "ca_cert": Path("/data/ca.cert")
+            "ca_cert": Path("/data/ca.cert"),
+            "client_cert": None,
+            "client_key": None,
         }
         assert t.parse_section_tls({"client_cert": "/data/client.cert"}) == {
-            "client_cert": Path("/data/client.cert")
+            "ca_cert": None,
+            "client_cert": Path("/data/client.cert"),
+            "client_key": None,
         }
         assert t.parse_section_tls({"client_key": "/data/client.pub"}) == {
-            "client_key": Path("/data/client.pub")
+            "ca_cert": None,
+            "client_cert": None,
+            "client_key": Path("/data/client.pub"),
         }
 
     def test_path_not_exist(self):
