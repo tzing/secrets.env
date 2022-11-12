@@ -240,8 +240,8 @@ token
 
    * ⛔️ From config file
    * ✅ From environment variable: any of ``SECRETS_ENV_TOKEN``, ``VAULT_TOKEN``
-   * ✅ From keyring: ``token/:token``
    * ✅ From `token helper`_ [#token-helper]_
+   * ✅ From keyring: ``token/:token``
 
 .. _token helper: https://www.vaultproject.io/docs/commands/token-helper
 .. [#token-helper] Vault CLI stores the generated token in the ``~/.vault-token`` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
