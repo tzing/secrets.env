@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.14.1"
+version = "0.15.0"
 description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "MIT"
 readme = "Readme.md"
 repository = "https://github.com/tzing/secrets.env"
+documentation = "https://tzing.github.io/secrets.env/"
 keywords = ["vault", "environment variables"]
 classifiers = [
     "Development Status :: 3 - Alpha",

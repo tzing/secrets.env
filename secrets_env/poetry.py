@@ -38,8 +38,9 @@ class SecretsEnvPlugin(ApplicationPlugin):
         logger.debug("Start secrets.env poetry plugin.")
 
         secrets = secrets_env.load_secrets()
-        for key, value in secrets.items():
-            os.environ[key] = value
+        for env_var, value in secrets.items():
+            if value:
+                os.environ[env_var] = value
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.

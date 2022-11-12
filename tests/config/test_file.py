@@ -16,7 +16,7 @@ def _patch_warned_format(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.fixture()
 def example_path(repo_path: Path) -> Path:
-    return repo_path / "example"
+    return repo_path / "tests" / "fixtures"
 
 
 def test_import_any():

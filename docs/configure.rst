@@ -22,7 +22,7 @@ This app accepts configs in various format (with some optional dependency), here
       secrets:
         VAR1:
          path: kv/default
-         key: example.to.value
+         field: example.to.value
         VAR2: "kv/default#example.to.value"
 
    .. code-tab:: toml
@@ -40,7 +40,7 @@ This app accepts configs in various format (with some optional dependency), here
       client_key = "/path/client.key"
 
       [secrets]
-      VAR1 = {path = "kv/default", key = "example.to.value"}
+      VAR1 = {path = "kv/default", field = "example.to.value"}
       VAR2 = "kv/default#example.to.value"
 
    .. code-tab:: json
@@ -62,7 +62,7 @@ This app accepts configs in various format (with some optional dependency), here
           "VAR1": "kv/default#example",
           "VAR2": {
             "path": "kv/default",
-            "key": "example"
+            "field": "example"
           }
         }
       }
@@ -131,7 +131,7 @@ Vault connection information could be set in ``source`` section, or using enviro
 
 url
    *(Required)* URL to Vault.
-   Could be overwritten by environment variable ``SECRETS_ENV_ADDR``.
+   Could be overwritten by environment variable ``SECRETS_ENV_ADDR`` / ``VAULT_ADDR``.
 
 auth
    *(Required)* Authentication information. Read `Authentication` section below.
@@ -143,12 +143,12 @@ tls
    Configurations in this section includes:
 
    * Server side certificate ``ca_cert`` for verifying responses.
-     Could be overwritten by environment variable ``SECRETS_ENV_CA_CERT``.
+     Could be overwritten by environment variable ``SECRETS_ENV_CA_CERT`` / ``VAULT_CACERT``.
    * Client side certificate ``client_cert`` for communicating with vault server.
-     Could be overwritten by environment variable ``SECRETS_ENV_CLIENT_CERT``.
+     Could be overwritten by environment variable ``SECRETS_ENV_CLIENT_CERT`` / ``VAULT_CLIENT_CERT``.
    * Client key ``client_key``.
      If you're using some format and the client key is included in client cert, then just uses *client_cert*.
-     Could be overwritten by environment variable ``SECRETS_ENV_CLIENT_KEY``.
+     Could be overwritten by environment variable ``SECRETS_ENV_CLIENT_KEY`` / ``VAULT_CLIENT_KEY``.
 
 
 Authentication
@@ -240,8 +240,8 @@ token
 
    * ⛔️ From config file
    * ✅ From environment variable: any of ``SECRETS_ENV_TOKEN``, ``VAULT_TOKEN``
-   * ✅ From keyring: ``token/:token``
    * ✅ From `token helper`_ [#token-helper]_
+   * ✅ From keyring: ``token/:token``
 
 .. _token helper: https://www.vaultproject.io/docs/commands/token-helper
 .. [#token-helper] Vault CLI stores the generated token in the ``~/.vault-token`` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
@@ -280,15 +280,15 @@ The ``secrets`` section is a required section which must be written in the confi
       secrets:
         VAR1:
          path: kv/default
-         key: example.to.value
+         field: example.to.value
 
-        VAR2: "kv/default#example.to.value"  # shortcut: path#key
+        VAR2: "kv/default#example.to.value"  # shortcut: path#field
 
    .. code-tab:: toml
 
       [secrets]
-      VAR1 = {path = "kv/default", key = "example.to.value"}
-      VAR2 = "kv/default#example.to.value"  # shortcut: path#key
+      VAR1 = {path = "kv/default", field = "example.to.value"}
+      VAR2 = "kv/default#example.to.value"  # shortcut: path#field
 
 name
    The name on left side (``VAR1``, ``VAR2``) would be the destination environment variable name after the secrets is loaded.
@@ -296,5 +296,5 @@ name
 path
    Path to read secret from vault.
 
-key
-   Key is the field name to identify which value to extract. For nested structure, join the keys with dots.
+field
+   Field name to identify which value to extract. For nested structure, join the fields with dots.

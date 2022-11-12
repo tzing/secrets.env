@@ -28,7 +28,7 @@ class TestLoadConfig:
         # fixtures
         def find_config_file():
             return ConfigFileMetadata(
-                filename, spec, True, repo_path / "example" / filename
+                filename, spec, True, repo_path / "tests" / "fixtures" / filename
             )
 
         monkeypatch.setattr(t, "find_config_file", find_config_file)
@@ -60,7 +60,7 @@ class TestLoadConfig:
     ):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
 
-        path = repo_path / "example" / filename
+        path = repo_path / "tests" / "fixtures" / filename
         cfg = t.load_config(path)
 
         assert isinstance(cfg, Config)

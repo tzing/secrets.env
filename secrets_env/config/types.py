@@ -25,7 +25,7 @@ class ConfigFileMetadata(NamedTuple):
 
 class SecretPath(NamedTuple):
     path: str
-    key: str
+    field: str
 
 
 class TLSConfig(TypedDict):
