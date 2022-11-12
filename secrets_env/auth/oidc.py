@@ -68,7 +68,7 @@ class OpenIDConnectAuth(Auth):
             "<!important>"
             "Waiting for response from OpenID connect provider...\n"
             "If browser does not open automatically, open the link:\n"
-            f"  {auth_url}"
+            f"  <link>{auth_url}</link>"
         )
         webbrowser.open(auth_url)
 

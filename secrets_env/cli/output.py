@@ -87,31 +87,33 @@ class ClickHandler(logging.Handler):
 class ColorFormatter(logging.Formatter):
     """Add colors based on log level."""
 
-    C_RED = "\033[31m"
-    C_GREEN = "\033[32m"
-    C_YELLOW = "\033[33m"
-    C_CYAN = "\033[36m"
-    C_WHITE = "\033[37m"
-    C_RESET = "\033[39m"
+    SGR_FORE_RED = "\033[31m"
+    SGR_FORE_GREEN = "\033[32m"
+    SGR_FORE_YELLOW = "\033[33m"
+    SGR_FORE_CYAN = "\033[36m"
+    SGR_FORE_WHITE = "\033[37m"
+    SGR_FORE_RESET = "\033[39m"
 
-    S_BRIGHT = "\033[1m"
-    S_DIM = "\033[2m"
-    S_RESET = "\033[0m"
+    SGR_BRIGHT = "\033[1m"
+    SGR_DIM = "\033[2m"
+    SGR_UNDERLINE = "\033[4m"
+    SGR_UNDERLINE_RESET = "\033[24m"
+    SGR_RESET_ALL = "\033[0m"
 
     def get_color(self, level: int):
         if level >= logging.ERROR:
-            return self.C_RED
+            return self.SGR_FORE_RED
         elif level >= logging.WARNING:
-            return self.C_YELLOW
+            return self.SGR_FORE_YELLOW
         elif level <= logging.DEBUG:
-            return self.C_WHITE
+            return self.SGR_FORE_WHITE
         return ""
 
     def get_style(self, level: int):
         if level >= logging.WARNING:
-            return self.S_BRIGHT
+            return self.SGR_BRIGHT
         elif level <= logging.DEBUG:
-            return self.S_DIM
+            return self.SGR_DIM
         return ""
 
     def format(self, record: logging.LogRecord) -> str:
@@ -122,7 +124,7 @@ class ColorFormatter(logging.Formatter):
         style = self.get_style(record.levelno)
 
         if color or style:
-            msg = f"{style}{color}{msg}{self.S_RESET}"
+            msg = f"{style}{color}{msg}{self.SGR_RESET_ALL}"
 
         # add package name as prefix
         logger_name, *_ = record.name.split(".", 1)
@@ -140,16 +142,19 @@ class SecretsEnvFormatter(ColorFormatter):
         msg = super().format(record)
 
         # add color based on internal expressions
-        reset_code = self.get_color(record.levelno) or self.C_RESET
+        reset_code = self.get_color(record.levelno) or self.SGR_FORE_RESET
 
-        msg = msg.replace("<mark>", self.C_CYAN)
+        msg = msg.replace("<mark>", self.SGR_FORE_CYAN)
         msg = msg.replace("</mark>", reset_code)
 
-        msg = msg.replace("<data>", self.C_GREEN)
+        msg = msg.replace("<data>", self.SGR_FORE_GREEN)
         msg = msg.replace("</data>", reset_code)
 
-        msg = msg.replace("<error>", self.C_RED)
+        msg = msg.replace("<error>", self.SGR_FORE_RED)
         msg = msg.replace("</error>", reset_code)
+
+        msg = msg.replace("<link>", self.SGR_UNDERLINE)
+        msg = msg.replace("</link>", self.SGR_UNDERLINE_RESET)
 
         return msg
 
