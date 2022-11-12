@@ -81,7 +81,13 @@ class KVReader:
         )
 
         # get token
-        token = self.auth.login(client)
+        try:
+            token = self.auth.login(client)
+        except httpx.HTTPError as e:
+            if not (reason := _reason_httpx_error(e)):
+                raise
+            raise AuthenticationError("{} during get token", reason)
+
         if not token:
             raise AuthenticationError("Token is not populated")
 
