@@ -33,7 +33,7 @@ class TestOpenIDConnectAuthLogin:
     def test_login_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             t,
-            "get_oidc_authorization_url",
+            "get_authorization_url",
             lambda _1, _2, _3, _4: "https://auth.example.com",
         )
         monkeypatch.setattr(
@@ -50,20 +50,20 @@ class TestOpenIDConnectAuthLogin:
             return "sample-token"
 
         monkeypatch.setattr("webbrowser.open", mock_open)
-        monkeypatch.setattr(t, "get_client_token", mock_get_token)
+        monkeypatch.setattr(t, "request_token", mock_get_token)
 
         assert self.auth.login(self.client) == "sample-token"
 
     def test_login_error_1(self, monkeypatch: pytest.MonkeyPatch):
         # Failed to get auth URL
-        monkeypatch.setattr(t, "get_oidc_authorization_url", lambda *_: None)
+        monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
         with pytest.raises(AuthenticationError):
             self.auth.login(self.client)
 
     def test_login_error_2(self, monkeypatch: pytest.MonkeyPatch):
         # Failed to get auth code
         monkeypatch.setattr(
-            t, "get_oidc_authorization_url", lambda *_: "https://auth.example.com"
+            t, "get_authorization_url", lambda *_: "https://auth.example.com"
         )
         monkeypatch.setattr(
             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
@@ -76,7 +76,7 @@ class TestOpenIDConnectAuthLogin:
     def test_login_error_3(self, monkeypatch: pytest.MonkeyPatch):
         # Failed to get client token
         monkeypatch.setattr(
-            t, "get_oidc_authorization_url", lambda *_: "https://auth.example.com"
+            t, "get_authorization_url", lambda *_: "https://auth.example.com"
         )
         monkeypatch.setattr(
             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
@@ -86,7 +86,7 @@ class TestOpenIDConnectAuthLogin:
             object.__setattr__(self.auth, "authorization_code", "auth-code")
 
         monkeypatch.setattr("webbrowser.open", mock_open)
-        monkeypatch.setattr(t, "get_client_token", lambda *_: None)
+        monkeypatch.setattr(t, "request_token", lambda *_: None)
 
         with pytest.raises(AuthenticationError):
             self.auth.login(self.client)
