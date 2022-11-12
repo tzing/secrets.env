@@ -27,7 +27,7 @@ def test_parse_config(monkeypatch: pytest.MonkeyPatch):
             },
             "secrets": {
                 "VAR1": "example#val1",
-                "VAR2": {"path": "example", "key": "val2"},
+                "VAR2": {"path": "example", "field": "val2"},
                 "3VAR": "example#val3",  # name invalid
             },
         }

@@ -60,7 +60,7 @@ class TestLoadConfig:
     ):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
 
-        path = repo_path / "example" / filename
+        path = repo_path / "tests" / "fixtures" / filename
         cfg = t.load_config(path)
 
         assert isinstance(cfg, Config)
