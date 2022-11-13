@@ -19,10 +19,10 @@ def example_path(repo_path: Path) -> Path:
     return repo_path / "tests" / "fixtures"
 
 
-def test_import_any():
-    assert t.import_any("json")
-    assert t.import_any("module-not-exists", "json")
-    assert t.import_any("module-not-exists") is None
+def test_check_installed():
+    assert t.check_installed("json") is True
+    assert t.check_installed("module-not-exists", "json") is True
+    assert t.check_installed("module-not-exists") is False
 
 
 class TestIsSupportted:

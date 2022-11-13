@@ -9,19 +9,16 @@ from typing import Any, Dict, Optional, Set
 from secrets_env.config.types import ConfigFileMetadata
 
 
-def import_any(*module):
-    """Import any of these modules if it exists."""
-    for name in module:
+def check_installed(*modules) -> bool:
+    """Check if any of listed module installed."""
+    for name in modules:
         if importlib.util.find_spec(name):
-            return importlib.import_module(name)
-    return None
+            return True
+    return False
 
 
-tomllib = import_any("tomllib", "tomli")
-yaml = import_any("yaml")
-
-__has_lib_toml = tomllib is not None
-__has_lib_yaml = yaml is not None
+__has_lib_toml = check_installed("tomllib", "tomli")
+__has_lib_yaml = check_installed("yaml")
 
 CONFIG_FILES = (
     ConfigFileMetadata(".secrets-env.toml", "toml", __has_lib_toml),
@@ -136,6 +133,11 @@ def read_config_file(meta: ConfigFileMetadata) -> Optional[Dict[str, Any]]:
 
 
 def read_toml_file(path: Path) -> Optional[dict]:
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+
     with open(path, "rb") as fp:
         try:
             data = tomllib.load(fp)
@@ -146,6 +148,8 @@ def read_toml_file(path: Path) -> Optional[dict]:
 
 
 def read_yaml_file(path: Path) -> Optional[dict]:
+    import yaml
+
     with open(path, "rb") as fp:
         try:
             data = yaml.safe_load(fp)
