@@ -37,3 +37,7 @@ def test_read_keyring():
         assert t.read_keyring("foo") == "bar"
     with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
         assert t.read_keyring("foo") is None
+
+    # simulate import error
+    with patch.dict("sys.modules", {"keyring": None}):
+        assert t.read_keyring("foo") is None
