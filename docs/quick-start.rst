@@ -23,6 +23,7 @@ Some functionalities are not enabled by default. Following extras are available:
 * ``all`` - *install everything below*
 * ``yaml`` - supporting YAML config
 * ``toml`` - supporting TOML config, includes ``pyproject.toml`` [\*]
+* ``keyring`` - enable :ref:`keyring-integration`
 
 .. note::
 
