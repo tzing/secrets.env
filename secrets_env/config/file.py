@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Set
 from secrets_env.config.types import ConfigFileMetadata
 
 
-def has_lib(*modules) -> bool:
+def check_installed(*modules) -> bool:
     """Check if any of listed module installed."""
     for name in modules:
         if importlib.util.find_spec(name):
@@ -17,18 +17,8 @@ def has_lib(*modules) -> bool:
     return False
 
 
-def import_any(*module):
-    """Import any of these modules if it exists."""
-    for name in module:
-        if importlib.util.find_spec(name):
-            return importlib.import_module(name)
-    return None
-
-
-yaml = import_any("yaml")
-
-__has_lib_toml = has_lib("tomllib", "tomli")
-__has_lib_yaml = has_lib("yaml", "ruamel.yaml")
+__has_lib_toml = check_installed("tomllib", "tomli")
+__has_lib_yaml = check_installed("yaml")
 
 CONFIG_FILES = (
     ConfigFileMetadata(".secrets-env.toml", "toml", __has_lib_toml),
@@ -158,6 +148,8 @@ def read_toml_file(path: Path) -> Optional[dict]:
 
 
 def read_yaml_file(path: Path) -> Optional[dict]:
+    import yaml
+
     with open(path, "rb") as fp:
         try:
             data = yaml.safe_load(fp)
