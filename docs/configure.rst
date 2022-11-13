@@ -1,5 +1,5 @@
-Configure
-=========
+Configurations
+==============
 
 This app accepts configs in various format (with some optional dependency), here's an example config:
 
@@ -213,20 +213,15 @@ environment variable
    In most cases, environment variable could be used to overwrite the values from config file.
 
 keyring
-   We're using `keyring`_ package to read the values from system keyring (e.g. macOS `Keychain`_). For saving a value into keyring, use its `command line utility`_ with the system name ``secrets.env``:
+   This source requires :ref:`keyring-integration`. It stores and reads the credentials from system keyring.
 
-   .. code-block:: bash
-
-      keyring get secrets.env token/:token
-      keyring set secrets.env okta/test@example.com
-
-.. _keyring: https://keyring.readthedocs.io/en/latest/
-.. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
-.. _command line utility: https://keyring.readthedocs.io/en/latest/#command-line-utility
+   This source is always ignored when the optional dependency is not installed. And you can disable it by setting environment variable ``SECRETS_ENV_NO_KEYRING=True``.
 
 prompt
    If no data found in all other sources, it prompts user for input. You can disable it by setting environment variable ``SECRETS_ENV_NO_PROMPT=True``.
 
+
+.. _authentication-methods:
 
 Supported methods
 """""""""""""""""
