@@ -8,21 +8,22 @@ This app is available on PyPI as `secrets-env <https://pypi.org/project/secrets-
 
 Install from pip:
 
-.. code-block:: python
+.. code-block:: bash
 
-    pip install secrets.env -E all
+    pip install 'secrets.env[all]'
 
 Or you can add it as `poetry <https://python-poetry.org/>`_ plugin:
 
-.. code-block:: python
+.. code-block:: bash
 
-    poetry self add secrets.env -E toml
+    poetry self add secrets.env --extras toml
 
 Some functionalities are not enabled by default. Following extras are available:
 
 * ``all`` - *install everything below*
 * ``yaml`` - supporting YAML config
 * ``toml`` - supporting TOML config, includes ``pyproject.toml`` [\*]
+* ``keyring`` - enable :ref:`keyring-integration`
 
 .. note::
 

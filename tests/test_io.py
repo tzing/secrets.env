@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import patch
 
 import click
@@ -32,8 +33,19 @@ class TestPrompt:
             assert t.prompt("test") is None
 
 
-def test_read_keyring():
-    with patch("keyring.get_password", return_value="bar"):
-        assert t.read_keyring("foo") == "bar"
-    with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
-        assert t.read_keyring("foo") is None
+class TestKeyring:
+    def test_success(self):
+        with patch("keyring.get_password", return_value="bar"):
+            assert t.read_keyring("test") == "bar"
+
+    def test_error(self):
+        with patch("keyring.get_password", side_effect=keyring.errors.NoKeyringError()):
+            assert t.read_keyring("test") is None
+
+    def test_disable(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_NO_KEYRING", "True")
+        assert t.read_keyring("test") is None
+
+    def test_not_install(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setitem(sys.modules, "keyring", None)
+        assert t.read_keyring("test") is None
