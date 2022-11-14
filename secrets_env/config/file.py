@@ -21,7 +21,7 @@ class ConfigFileSpec:
 
     @property
     def lang(self) -> str:
-        return self.__LANGUAGE.get(self.format)
+        return self.__LANGUAGE[self.format]
 
 
 @dataclass
