@@ -128,7 +128,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
+# editor
+.vscode/
 .idea/
 
 # secrets.env config

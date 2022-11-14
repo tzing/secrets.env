@@ -11,10 +11,11 @@ class Auth(abc.ABC):
 
     @abc.abstractclassmethod
     def method(cls) -> str:
-        """Returns authentication name."""
+        """Returns authentication method name."""
+        raise NotImplementedError()
 
     @abc.abstractmethod
-    def login(self, client: "httpx.Client") -> str:
+    def login(self, client: "httpx.Client") -> Optional[str]:
         """Login and get token."""
 
     @abc.abstractclassmethod

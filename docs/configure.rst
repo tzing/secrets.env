@@ -69,7 +69,7 @@ This app accepts configs in various format (with some optional dependency), here
 
 .. note::
 
-   This app also reads config from ``pyproject.toml`` in PEP-621 style.
+   This app also reads config from ``pyproject.toml`` in `PEP-518 <https://peps.python.org/pep-0518/>`_ style.
    To use this format, use the template in TOML format and add the prefix ``tool.secrets-env`` to each section
    (e.g. change ``[secrets]`` to ``[tool.secrets-env.secrets]``).
 

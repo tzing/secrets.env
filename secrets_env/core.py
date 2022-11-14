@@ -3,7 +3,7 @@ import os
 import re
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
 import httpx
 
@@ -153,12 +153,14 @@ class KVReader:
 
         return value
 
-    def read_values(self, pairs: List[Tuple[str, str]]):
+    def read_values(
+        self, pairs: Iterable[Tuple[str, str]]
+    ) -> Dict[Tuple[str, str], Optional[str]]:
         """Get multiple secret values.
 
         Parameters
         ----------
-        pairs : List[Tuple[str,str]]
+        pairs : Iterable[Tuple[str,str]]
             Pairs of secret path and field name.
 
         Returns
@@ -168,6 +170,8 @@ class KVReader:
             field name, and its value is the secret value. The value could be
             none on query error.
         """
+        pairs = tuple(pairs)
+
         # read secrets
         secrets = {}
         for path, _ in pairs:
@@ -262,7 +266,9 @@ def is_authenticated(client: httpx.Client, token: str):
     return True
 
 
-def get_mount_point(client: httpx.Client, path: str) -> Tuple[str, int]:
+def get_mount_point(
+    client: httpx.Client, path: str
+) -> Tuple[Optional[str], Literal[1, 2, None]]:
     """Get mount point and KV engine version to a secret.
 
     Returns
@@ -337,7 +343,7 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
 
     if version == 1:
         url = f"/v1/{path}"
-    elif version == 2:
+    else:
         subpath = _remove_prefix(path, mount_point)
         url = f"/v1/{mount_point}data/{subpath}"
 
@@ -434,7 +440,7 @@ def _get_field(secret: dict, name: str) -> Optional[str]:
     for n in split_field(name):
         if not isinstance(secret, dict):
             return None
-        secret = secret.get(n)
+        secret = secret.get(n)  # type: ignore
 
     if not isinstance(secret, str):
         return None
