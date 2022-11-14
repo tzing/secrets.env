@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class Verbosity(enum.IntEnum):
+    levelno_internal: int
+    levelno_others: int
+
     def __new__(
         cls, value: int, levelno_internal: int, levelno_others: int
     ) -> "Verbosity":
