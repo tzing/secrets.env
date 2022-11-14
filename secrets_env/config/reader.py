@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from secrets_env.config.finder import ConfigFile
+
 
 logger = logging.getLogger(__name__)
 
