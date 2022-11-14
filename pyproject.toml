@@ -91,3 +91,6 @@ exclude_lines = [
     "pragma: no cover",
     "if typing.TYPE_CHECKING",
 ]
+
+[tool.pyright]
+include = ["secrets_env"]

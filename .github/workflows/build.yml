@@ -119,7 +119,7 @@ jobs:
 
       - name: Type check
         run: |
-          poetry run pyright secrets_env
+          poetry run pyright
 
   publish:
     name: Release package to PyPI
