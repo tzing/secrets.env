@@ -1,7 +1,6 @@
 import importlib
 import importlib.util
 import itertools
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -84,6 +83,11 @@ def find_config_file(cwd: Optional[Path] = None) -> Optional[ConfigFile]:
 
 def get_config_file_metadata(path: Path) -> Optional[ConfigFile]:
     """Add required internal metadata to the file path."""
+    # ensure file exist
+    if not path.is_file():
+        logger.error("Config file <data>%s</data> not exists", path)
+        return None
+
     # guess file format
     assume_format = None
 
@@ -107,7 +111,7 @@ def get_config_file_metadata(path: Path) -> Optional[ConfigFile]:
     )
 
     if not is_supportted(metadata.lang):
-        logger.warning("Failed to parse <data>%s</data>.", path)
+        logger.warning("Failed to read <data>%s</data>.", path.name)
         return None
 
     return metadata
