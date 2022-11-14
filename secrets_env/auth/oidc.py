@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from secrets_env.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
@@ -169,7 +169,7 @@ class OpenIDConnectCallbackService(threading.Thread):
         class Server(HTTPServer):
             def __init__(
                 self,
-                server_address: tuple[str, int],
+                server_address: Tuple[str, int],
                 timeout: float,
             ) -> None:
                 super().__init__(server_address, OpenIDConnectCallbackHandler)
