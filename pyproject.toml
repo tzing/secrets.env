@@ -94,3 +94,6 @@ exclude_lines = [
 
 [tool.pyright]
 include = ["secrets_env"]
+exclude = [
+    "secrets_env/config/",  # fix it later
+]
