@@ -28,7 +28,7 @@ class OpenIDConnectAuth(Auth):
     """Role.
     """
 
-    authorization_code: str = field(repr=False, default=None)
+    authorization_code: Optional[str] = field(repr=False, default=None)
     """Authorization code from server response."""
 
     def __init__(self, role: Optional[str] = None) -> None:
@@ -123,7 +123,7 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
             return
 
         # save token
-        self.server.auth_token = code
+        setattr(self.server, "auth_token", code)
 
         # response
         pkg_dir = Path(__file__).resolve().parent.parent
@@ -160,13 +160,20 @@ class OpenIDConnectCallbackService(threading.Thread):
         logger.debug("Start listening port %d for OIDC callback", self.port)
 
         # serve until stop event is set
-        with HTTPServer(
-            server_address=("localhost", self.port),
-            RequestHandlerClass=OpenIDConnectCallbackHandler,
-        ) as srv:
-            srv.timeout = self.SERVER_LOOP_TIMEOUT
-            srv.auth_token = None
+        class Server(HTTPServer):
+            def __init__(
+                self,
+                server_address: tuple[str, int],
+                timeout: float,
+            ) -> None:
+                super().__init__(server_address, OpenIDConnectCallbackHandler)
+                self.timeout = timeout
+                self.auth_token: Optional[str] = None
 
+        with Server(
+            server_address=("localhost", self.port),
+            timeout=self.SERVER_LOOP_TIMEOUT,
+        ) as srv:
             while not srv.auth_token and not self._stop_event.is_set():
                 srv.handle_request()
 
