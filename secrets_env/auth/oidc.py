@@ -123,7 +123,8 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
             return
 
         # save token
-        setattr(self.server, "auth_token", code)
+        self.server: _OpenIDConnectCallbackServer
+        self.server.auth_token = code
 
         # response
         pkg_dir = Path(__file__).resolve().parent.parent
@@ -144,6 +145,11 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
             self.log_date_time_string(),
             fmt % args,
         )
+
+
+class _OpenIDConnectCallbackServer(HTTPServer):
+    # a class to cheat type checker
+    auth_token: Optional[str]
 
 
 class OpenIDConnectCallbackService(threading.Thread):
@@ -170,10 +176,13 @@ class OpenIDConnectCallbackService(threading.Thread):
                 self.timeout = timeout
                 self.auth_token: Optional[str] = None
 
-        with Server(
+        with _OpenIDConnectCallbackServer(
             server_address=("localhost", self.port),
-            timeout=self.SERVER_LOOP_TIMEOUT,
+            RequestHandlerClass=OpenIDConnectCallbackHandler,
         ) as srv:
+            srv.timeout = self.SERVER_LOOP_TIMEOUT
+            srv.auth_token = None
+
             while not srv.auth_token and not self._stop_event.is_set():
                 srv.handle_request()
 
