@@ -65,3 +65,17 @@ def test_is_supportted(
     assert t.is_supportted("test-lang") is False
     assert t.is_supportted("test-lang") is False
     assert len(caplog.records) == 1
+
+
+class TestReadFileErrors:
+    def test_toml(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"["))
+        assert t.read_toml_file("mocked") is None
+
+    def test_yaml(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b":\x0a"))
+        assert t.read_yaml_file("mocked") is None
+
+    def test_json(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"{"))
+        assert t.read_json_file("mocked") is None

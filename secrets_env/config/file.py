@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
 import itertools
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -129,3 +130,40 @@ def is_supportted(lang: str) -> bool:
         )
 
     return False
+
+
+def read_toml_file(path: Path) -> Optional[dict]:
+    try:
+        import tomllib  # pyright: ignore[reportMissingImports]
+    except ImportError:
+        import tomli as tomllib
+
+    with open(path, "rb") as fp:
+        try:
+            data = tomllib.load(fp)
+        except (tomllib.TOMLDecodeError, UnicodeDecodeError):
+            logger.exception("Failed to load TOML file: %s", path)
+            return None
+    return data
+
+
+def read_yaml_file(path: Path) -> Optional[dict]:
+    import yaml
+
+    with open(path, "rb") as fp:
+        try:
+            data = yaml.safe_load(fp)
+        except (yaml.error.YAMLError, UnicodeDecodeError):
+            logger.exception("Failed to load YAML file: %s", path)
+            return None
+    return data
+
+
+def read_json_file(path: Path) -> Optional[dict]:
+    with open(path, "rb") as fp:
+        try:
+            data = json.load(fp)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            logger.exception("Failed to load JSON file: %s", path)
+            return None
+    return data
