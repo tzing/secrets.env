@@ -6,7 +6,7 @@ from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from secrets_env.auth.base import Auth
-from secrets_env.exception import TypeError
+from secrets_env.exception import AuthenticationError, TypeError
 from secrets_env.io import get_env_var, prompt, read_keyring
 
 if typing.TYPE_CHECKING:
@@ -125,10 +125,9 @@ class OktaAuth(UserPasswordAuth):
         )
 
         if resp.status_code != HTTPStatus.OK:
-            logger.error("Failed to login Okta")
             logger.debug(
                 "Okta login failed. Code= %d. Msg= %s", resp.status_code, resp.text
             )
-            return
+            raise AuthenticationError("Failed to login Okta")
 
         return resp.json()["auth"]["client_token"]
