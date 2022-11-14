@@ -15,7 +15,7 @@ class Auth(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def login(self, client: "httpx.Client") -> str:
+    def login(self, client: "httpx.Client") -> Optional[str]:
         """Login and get token."""
 
     @abc.abstractclassmethod
