@@ -107,7 +107,7 @@ class OktaAuth(UserPasswordAuth):
         """
         super().__init__(username, password)
 
-    def login(self, client: "httpx.Client") -> str:
+    def login(self, client: "httpx.Client") -> Optional[str]:
         logger.info(
             "<!important>Login to <mark>Okta</mark> with user <data>%s</data>. "
             "Waiting for 2FA proceeded...",

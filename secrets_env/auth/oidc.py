@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from secrets_env.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
@@ -28,7 +28,7 @@ class OpenIDConnectAuth(Auth):
     """Role.
     """
 
-    authorization_code: str = field(repr=False, default=None)
+    authorization_code: Optional[str] = field(repr=False, default=None)
     """Authorization code from server response."""
 
     def __init__(self, role: Optional[str] = None) -> None:
@@ -123,6 +123,7 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
             return
 
         # save token
+        self.server: _OpenIDConnectCallbackServer
         self.server.auth_token = code
 
         # response
@@ -146,6 +147,11 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
         )
 
 
+class _OpenIDConnectCallbackServer(HTTPServer):
+    # a class to cheat type checker
+    auth_token: Optional[str]
+
+
 class OpenIDConnectCallbackService(threading.Thread):
     SERVER_LOOP_TIMEOUT = 0.08
 
@@ -160,7 +166,17 @@ class OpenIDConnectCallbackService(threading.Thread):
         logger.debug("Start listening port %d for OIDC callback", self.port)
 
         # serve until stop event is set
-        with HTTPServer(
+        class Server(HTTPServer):
+            def __init__(
+                self,
+                server_address: Tuple[str, int],
+                timeout: float,
+            ) -> None:
+                super().__init__(server_address, OpenIDConnectCallbackHandler)
+                self.timeout = timeout
+                self.auth_token: Optional[str] = None
+
+        with _OpenIDConnectCallbackServer(
             server_address=("localhost", self.port),
             RequestHandlerClass=OpenIDConnectCallbackHandler,
         ) as srv:
