@@ -5,12 +5,13 @@ import pytest
 
 import secrets_env.config as t
 from secrets_env.auth.token import TokenAuth
-from secrets_env.config.types import Config, ConfigFileMetadata, SecretPath
+from secrets_env.config.finder import ConfigFile
+from secrets_env.config.types import Config, SecretPath
 
 
 class TestLoadConfig:
     @pytest.mark.parametrize(
-        ("filename", "spec"),
+        ("filename", "format_"),
         [
             (".secrets-env.json", "json"),
             (".secrets-env.toml", "toml"),
@@ -23,12 +24,12 @@ class TestLoadConfig:
         monkeypatch: pytest.MonkeyPatch,
         repo_path: Path,
         filename: str,
-        spec: str,
+        format_: str,
     ):
         # fixtures
         def find_config_file():
-            return ConfigFileMetadata(
-                filename, spec, True, repo_path / "tests" / "fixtures" / filename
+            return ConfigFile(
+                filename, format_, repo_path / "tests" / "fixtures" / filename
             )
 
         monkeypatch.setattr(t, "find_config_file", find_config_file)
