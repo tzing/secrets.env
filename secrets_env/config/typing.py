@@ -16,8 +16,8 @@ def ensure_type(
     type_name: str,
     expect_type: Type[T],
     cast: bool,
-    default: Literal[None],
-) -> Union[Tuple[T, TL_True], Tuple[Literal[None], TL_False]]:
+    default: T,
+) -> Union[Tuple[T, TL_True], Tuple[T, TL_False]]:
     ...
 
 
@@ -28,8 +28,7 @@ def ensure_type(
     type_name: str,
     expect_type: Type[T],
     cast: bool,
-    default: T,
-) -> Union[Tuple[T, TL_True], Tuple[T, TL_False]]:
+) -> Union[Tuple[T, TL_True], Tuple[Literal[None], TL_False]]:
     ...
 
 
@@ -39,7 +38,7 @@ def ensure_type(
     type_name: str,
     expect_type: Type[T],
     cast: bool,
-    default: Optional[T],
+    default: Optional[T] = None,
 ) -> Union[Tuple[T, TL_True], Tuple[Optional[T], TL_False]]:
     """Check if the given value is the expected type, fallback to default value
     when false."""
@@ -67,7 +66,7 @@ def ensure_type(
 
 
 def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
-    return ensure_type(name, s, "str", str, False, None)
+    return ensure_type(name, s, "str", str, False)
 
 
 def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
@@ -78,7 +77,7 @@ def ensure_path(
     name: str, p: Any, is_file: bool = True
 ) -> Union[Tuple[Path, TL_True], Tuple[None, TL_False]]:
     path: Optional[Path]
-    path, _ = ensure_type(name, p, "path", Path, True, None)
+    path, _ = ensure_type(name, p, "path", Path, True)
     if not path:
         return None, False
 
