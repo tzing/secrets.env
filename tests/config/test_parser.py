@@ -28,7 +28,7 @@ class TestGetURL:
 
 
 class TestGetAuth:
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def _patch_get_auth(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get_auth(method: str, _):
             assert method == "test"
@@ -36,19 +36,33 @@ class TestGetAuth:
 
         monkeypatch.setattr(secrets_env.auth, "get_auth", mock_get_auth)
 
+    @pytest.mark.usefixtures("_patch_get_auth")
     def test_from_data(self):
         assert isinstance(t.get_auth({"method": "test"}), Auth)
 
+    @pytest.mark.usefixtures("_patch_get_auth")
     def test_from_env(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_METHOD", "test")
         assert isinstance(t.get_auth({}), Auth)
 
+    @pytest.mark.usefixtures("_patch_get_auth")
     def test_syntax_sugar(self):
         assert isinstance(t.get_auth("test"), Auth)
 
-    def test_no_method(self, caplog: pytest.LogCaptureFixture):
-        assert t.get_auth({}) is None
-        assert "Missing required config <mark>auth method</mark>." in caplog.text
-
     def test_type_error(self):
         assert t.get_auth({"method": 1234}) is None
+
+    def test_default_method(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        def mock_get_auth(method: str, _):
+            assert method == "token"
+            return Mock(spec=Auth)
+
+        monkeypatch.setattr(secrets_env.auth, "get_auth", mock_get_auth)
+
+        assert isinstance(t.get_auth({}), Auth)
+        assert (
+            "Missing required config <mark>auth method</mark>. "
+            "Use default method <data>token</data>"
+        ) in caplog.text

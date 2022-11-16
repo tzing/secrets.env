@@ -11,6 +11,8 @@ if typing.TYPE_CHECKING:
 
     from secrets_env.auth import Auth
 
+DEFAULT_AUTH_METHOD = "token"
+
 logger = logging.getLogger(__name__)
 
 
@@ -93,12 +95,12 @@ def get_auth(data: dict) -> Optional["Auth"]:
         method = data.get("method")
 
     if not method:
-        logger.error(
+        method = DEFAULT_AUTH_METHOD
+        logger.warning(
             "Missing required config <mark>auth method</mark>. "
-            "Please provide from config file (<mark>source.auth.method</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_METHOD</mark>)."
+            "Use default method <data>%s</data>",
+            DEFAULT_AUTH_METHOD,
         )
-        return None
 
     method, _ = ensure_str("auth method", method)
     if not method:

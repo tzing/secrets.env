@@ -184,9 +184,10 @@ Format
 Method
 """"""
 
-Secrets.env adapts several authentication methods. You MUST specify the method by either config file or the environment variable ``SECRETS_ENV_METHOD``.
+Secrets.env adapts several authentication methods. You should specify the method by either config file or the environment variable ``SECRETS_ENV_METHOD``.
+When ``method`` is not set, it tries to use ``token`` as the default method.
 
-If you do not need to store arguments in config file, then you can drop ``method`` keyword, as a shortcut:
+If you do not need to store other arguments in config file, then you can drop ``method`` keyword, as a shortcut:
 
 .. tabs::
 
@@ -234,6 +235,7 @@ Vault token
 :method: ``token``
 
 Token is the most basic method to get authentication from Vault.
+This is also the default method applied when ``method`` is not set.
 
 token
    Vault token
