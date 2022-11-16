@@ -74,16 +74,64 @@ class TestReadConfigFile:
         with pytest.raises(UnsupportedError):
             t.read_config_file(spec)
 
+    def test_malformed(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "read_json_file", lambda _: "a string")
+        spec = Mock(spec=ConfigFile, lang="json", format="json", path=Mock(spec=Path))
+        assert t.read_config_file(spec) == {}
 
-class TestReadFile:
-    def test_toml(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"["))
-        assert t.read_toml_file("mocked") is None
 
-    def test_yaml(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(builtins, "open", mock_open(read_data=b":\x0a"))
-        assert t.read_yaml_file("mocked") is None
+@pytest.mark.parametrize(
+    ("parsed", "source"),
+    [
+        # success
+        (
+            {"test": {"foo": "bar"}},
+            b"""\
+            [test]
+            foo = "bar"
+            """,
+        ),
+        # exception
+        (None, b"["),
+    ],
+)
+def test_read_toml_file(monkeypatch: pytest.MonkeyPatch, source: bytes, parsed: dict):
+    monkeypatch.setattr(builtins, "open", mock_open(read_data=source))
+    path = Mock(spec=Path)
+    assert t.read_toml_file(path) == parsed
 
-    def test_json(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(builtins, "open", mock_open(read_data=b"{"))
-        assert t.read_json_file("mocked") is None
+
+@pytest.mark.parametrize(
+    ("parsed", "source"),
+    [
+        # success
+        (
+            {"test": {"foo": "bar"}},
+            b"""
+            test:
+                foo: bar
+            """,
+        ),
+        # exception
+        (None, b":\x0a"),
+    ],
+)
+def test_read_yaml_file(monkeypatch: pytest.MonkeyPatch, source: bytes, parsed: dict):
+    monkeypatch.setattr(builtins, "open", mock_open(read_data=source))
+    path = Mock(spec=Path)
+    assert t.read_yaml_file(path) == parsed
+
+
+@pytest.mark.parametrize(
+    ("parsed", "source"),
+    [
+        # success
+        ({"foo": "bar"}, b'{"foo": "bar"}'),
+        # exception
+        (None, b"{"),
+    ],
+)
+def test_read_json_file(monkeypatch: pytest.MonkeyPatch, source: bytes, parsed: dict):
+    monkeypatch.setattr(builtins, "open", mock_open(read_data=source))
+    path = Mock(spec=Path)
+    assert t.read_json_file(path) == parsed
