@@ -5,11 +5,6 @@ import pytest
 import secrets_env.config.finder as t
 
 
-@pytest.fixture()
-def fixture_dir(repo_path: Path) -> Path:
-    return repo_path / "tests" / "fixtures"
-
-
 class TestConfigFile:
     @pytest.mark.parametrize(
         ("filename", "format_"),
