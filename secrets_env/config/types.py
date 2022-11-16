@@ -1,26 +1,10 @@
 import typing
-from typing import Dict, Literal, NamedTuple, Optional, TypedDict
+from typing import Dict, NamedTuple, TypedDict
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
     from secrets_env.auth import Auth
-
-
-class ConfigFileMetadata(NamedTuple):
-    filename: str
-    spec: Literal["json", "yaml", "toml", "pyproject.toml"]
-    enable: bool
-    path: Optional["Path"] = None
-
-    @property
-    def lang(self) -> str:
-        return {
-            "json": "JSON",
-            "yaml": "YAML",
-            "toml": "TOML",
-            "pyproject.toml": "TOML",
-        }.get(self.spec)
 
 
 class SecretPath(NamedTuple):
