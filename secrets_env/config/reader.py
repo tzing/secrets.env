@@ -1,8 +1,11 @@
 import json
 import logging
-from typing import TYPE_CHECKING, Optional
+import typing
+from typing import Optional
 
-if TYPE_CHECKING:
+from secrets_env.exception import UnsupportedError
+
+if typing.TYPE_CHECKING:
     from pathlib import Path
 
     from secrets_env.config.finder import ConfigFile
@@ -11,27 +14,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def read_config_file(spec: "ConfigFile") -> Optional[dict]:
+def read_config_file(spec: "ConfigFile") -> dict:
     """Read the file."""
-    if spec.lang == "TOML":
+    if spec.lang == "toml":
         data = read_toml_file(spec.path)
-    elif spec.lang == "YAML":
+    elif spec.lang == "yaml":
         data = read_yaml_file(spec.path)
-    elif spec.lang == "JSON":
+    elif spec.lang == "json":
         data = read_json_file(spec.path)
     else:
-        raise RuntimeError(f"Unexpected format: {spec.format}")
+        raise UnsupportedError(f"Unexpected format: {spec.format}")
 
     if data and not isinstance(data, dict):
         logger.warning("Config should be key value pairs. Got %s.", type(data).__name__)
-        return None
+        return {}
 
     data = data or {}
 
     if spec.format == "pyproject.toml":
         data = data.get("tool", {}).get("secrets-env", {})
 
-    return data
+    return data or {}
 
 
 def read_toml_file(path: "Path") -> Optional[dict]:
