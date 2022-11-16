@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any, Optional, Tuple, TypeVar
 
 T = TypeVar("T")
@@ -45,6 +46,24 @@ def ensure_str(name: str, s: Any) -> Tuple[Optional[str], bool]:
 
 def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
     return ensure_type(name, d, "dict", dict, False, {})
+
+
+def ensure_path(name: str, p: Any, is_file: bool = True) -> Tuple[Optional[Path], bool]:
+    path: Optional[Path]
+    path, _ = ensure_type(name, p, "path", Path, True, None)
+    if not path:
+        return None, False
+
+    if is_file and not path.is_file():
+        logger.warning(
+            "Expect valid path for config <mark>%s</mark>: "
+            "file <data>%s</data> not exists",
+            name,
+            path,
+        )
+        return None, False
+
+    return path, True
 
 
 def trimmed_str(o: Any) -> str:
