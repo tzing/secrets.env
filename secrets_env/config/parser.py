@@ -80,12 +80,16 @@ def parse_section_source(data: dict) -> Optional[ClientConfig]:
         is_success = False
 
     # tls
-    if ca_cert := get_tls_ca_cert(data):
+    data_tls = data.get("tls", {})
+
+    ca_cert, ok = get_tls_ca_cert(data_tls)
+    is_success &= ok
+    if ok and ca_cert:
         output["ca_cert"] = ca_cert
 
-    client_cert, ok = get_tls_client_cert(data)
+    client_cert, ok = get_tls_client_cert(data_tls)
     is_success &= ok
-    if ok:
+    if ok and client_cert:
         output["client_cert"] = client_cert
 
     return output if is_success else None  # pyright: ignore[reportGeneralTypeIssues]
@@ -139,16 +143,15 @@ def get_auth(data: dict) -> Optional["Auth"]:
     return secrets_env.auth.get_auth(method, data)
 
 
-def get_tls_ca_cert(data: dict) -> Optional["Path"]:
+def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
     path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
     if not path:
         path = data.get("ca_cert")
 
     if path:
-        ca_cert, _ = ensure_path("TLS server certificate (CA cert)", path)
-        return ca_cert
+        return ensure_path("TLS server certificate (CA cert)", path)
 
-    return None
+    return None, True
 
 
 def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
@@ -184,8 +187,8 @@ def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
     elif client_key:
         logger.error(
             "Missing config <mark>client_cert</mark>. "
-            "Please provide from config file (<mark>source.url</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_ADDR</mark>)."
+            "Please provide from config file (<mark>source.tls.client_cert</mark>) "
+            "or environment variable (<mark>SECRETS_ENV_CLIENT_CERT</mark>)."
         )
         return None, False
 
