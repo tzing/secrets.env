@@ -16,6 +16,8 @@ DEFAULT_AUTH_METHOD = "token"
 
 logger = logging.getLogger(__name__)
 
+__regex_var_name = None
+
 CertTypes = Union[
     # cert file
     "Path",
@@ -200,18 +202,24 @@ def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
 
 
 def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretMapping:
-    # global
+    global __regex_var_name
+    if not __regex_var_name:
+        __regex_var_name = re.compile(
+            r"[a-z_][a-z0-9_]*", re.RegexFlag.ASCII | re.RegexFlag.IGNORECASE
+        )
 
     secrets = {}
-
     for name, path_spec in data.items():
-        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
+        if not __regex_var_name.fullmatch(name):
             logger.warning(
                 "Invalid environment variable name <data>%s</data>. "
                 "Skipping this variable.",
                 name,
             )
             continue
+
+        if src := get_secret_source(name, path_spec):
+            secrets[name] = src
 
     return secrets
 
