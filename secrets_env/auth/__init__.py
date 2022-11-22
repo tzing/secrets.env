@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 
-import secrets_env.auth.base
 from secrets_env.auth.base import Auth
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,8 @@ def get_auth(name: str, data: dict) -> Optional[Auth]:
         from secrets_env.auth.oidc import OpenIDConnectAuth
         return OpenIDConnectAuth.load(data)
     elif name_ =='null':
-        return secrets_env.auth.base.NoAuth.load(data)
+        from secrets_env.auth.null import NoAuth
+        return NoAuth.load(data)
     # fmt: on
 
     logger.error("Unknown auth method: <data>%s</data>", name)

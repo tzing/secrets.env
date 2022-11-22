@@ -5,7 +5,7 @@ import pytest
 
 import secrets_env.config.parser as t
 from secrets_env.auth import Auth
-from secrets_env.auth.base import NoAuth
+from secrets_env.auth.null import NoAuth
 
 
 class TestParseSource:

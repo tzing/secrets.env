@@ -29,7 +29,7 @@ class TestGetAuth:
         assert get_auth("oidc", {}) is self.mock_auth
 
     def test_success_no_auth(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("secrets_env.auth.base.NoAuth.load", self.mock_load)
+        monkeypatch.setattr("secrets_env.auth.null.NoAuth.load", self.mock_load)
         assert get_auth("null", {}) is self.mock_auth
 
     def test_fail(self, caplog: pytest.LogCaptureFixture):
