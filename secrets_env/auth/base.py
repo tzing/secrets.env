@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import typing
 from typing import Any, Dict, Optional
 
@@ -24,6 +25,7 @@ class Auth(abc.ABC):
         or internally load the secrets from the system."""
 
 
+@dataclasses.dataclass
 class NoAuth(Auth):
     """No authentication.
 
