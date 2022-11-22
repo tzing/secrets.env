@@ -219,7 +219,9 @@ class TestGetSecretSource:
             ("foo#", "Missing secret field"),
             # malformed dict
             ({"field": "bar"}, "Missing secret path"),
+            ({"path": "foo", "field": 1234}, "Invalid type of field"),
             ({"path": "foo"}, "Missing secret field"),
+            ({"path": 1234, "field": "bar"}, "Invalid type of path"),
             # other
             (1234, "Invalid type"),
         ],

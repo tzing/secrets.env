@@ -200,6 +200,8 @@ def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
 
 
 def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretMapping:
+    # global
+
     secrets = {}
 
     for name, path_spec in data.items():
@@ -222,26 +224,15 @@ def get_secret_source(
 
     elif isinstance(path_spec, str):
         # string input: path#key
-        idx = path_spec.find("#")
-        if idx == -1:
-            err_msg = "Missing delimiter '#'"
-        elif idx == 0:
-            err_msg = "Missing secret path"
-        elif idx == len(path_spec) - 1:
-            err_msg = "Missing secret field"
-        else:
-            path = path_spec[:idx]
-            field = path_spec[idx + 1 :]
-            return SecretSource(path, field)
+        src, err_msg = get_secret_source_str(path_spec)
+        if src:
+            return src
 
     elif isinstance(path_spec, dict):
         # dict input: {"path": "foo", "key": "bar"}
-        if not ((path := path_spec.get("path")) and isinstance(path, str)):
-            err_msg = "Missing secret path"
-        elif not ((field := path_spec.get("field")) and isinstance(field, str)):
-            err_msg = "Missing secret field"
-        else:
-            return SecretSource(path, field)
+        src, err_msg = get_secret_source_dict(path_spec)
+        if src:
+            return src
 
     else:
         err_msg = "Invalid type"
@@ -253,3 +244,33 @@ def get_secret_source(
     )
 
     return None
+
+
+def get_secret_source_str(spec: str) -> Tuple[Optional[SecretSource], Optional[str]]:
+    idx = spec.find("#")
+    if idx == -1:
+        return None, "Missing delimiter '#'"
+    elif idx == 0:
+        return None, "Missing secret path"
+    elif idx == len(spec) - 1:
+        return None, "Missing secret field"
+
+    path = spec[:idx]
+    field = spec[idx + 1 :]
+    return SecretSource(path, field), None
+
+
+def get_secret_source_dict(spec: dict) -> Tuple[Optional[SecretSource], Optional[str]]:
+    path = spec.get("path")
+    if not path:
+        return None, "Missing secret path"
+    elif not isinstance(path, str):
+        return None, "Invalid type of path"
+
+    field = spec.get("field")
+    if not field:
+        return None, "Missing secret field"
+    elif not isinstance(field, str):
+        return None, "Invalid type of field"
+
+    return SecretSource(path, field), None
