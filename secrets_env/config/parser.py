@@ -214,5 +214,42 @@ def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretM
     return secrets
 
 
-def get_secret_source(path_spec: Union[str, Dict[str, str]]) -> Optional[SecretSource]:
-    ...
+def get_secret_source(
+    name: str, path_spec: Union[str, Dict[str, str]]
+) -> Optional[SecretSource]:
+    if not path_spec:
+        err_msg = "Empty input"
+
+    elif isinstance(path_spec, str):
+        # string input: path#key
+        idx = path_spec.find("#")
+        if idx == -1:
+            err_msg = "Missing delimiter '#'"
+        elif idx == 0:
+            err_msg = "Missing secret path"
+        elif idx == len(path_spec) - 1:
+            err_msg = "Missing secret field"
+        else:
+            path = path_spec[:idx]
+            field = path_spec[idx + 1 :]
+            return SecretSource(path, field)
+
+    elif isinstance(path_spec, dict):
+        # dict input: {"path": "foo", "key": "bar"}
+        if not ((path := path_spec.get("path")) and isinstance(path, str)):
+            err_msg = "Missing secret path"
+        elif not ((field := path_spec.get("field")) and isinstance(field, str)):
+            err_msg = "Missing secret field"
+        else:
+            return SecretSource(path, field)
+
+    else:
+        err_msg = "Invalid type"
+
+    logger.warning(
+        "Target secret <data>%s</data> is invalid. %s. Skip this variable.",
+        name,
+        err_msg,
+    )
+
+    return None

@@ -191,3 +191,40 @@ class TestGetTLS:
                 "client_cert": "/data/no-this-file",
             }
         ) == (None, False)
+
+
+class TestGetSecretSource:
+    def test_success(self):
+        # str
+        assert t.get_secret_source("test", "foo#bar") == ("foo", "bar")
+        assert t.get_secret_source("test", "foo#b") == ("foo", "b")
+        assert t.get_secret_source("test", "f#bar") == ("f", "bar")
+
+        # dict
+        assert t.get_secret_source(
+            "test",
+            {"path": "foo", "field": "bar"},
+        ) == ("foo", "bar")
+
+    @pytest.mark.parametrize(
+        ("input_", "err_msg"),
+        [
+            # empty
+            ("", "Empty input"),
+            (None, "Empty input"),
+            ({}, "Empty input"),
+            # malformed str
+            ("foo", "Missing delimiter '#'"),
+            ("#bar", "Missing secret path"),
+            ("foo#", "Missing secret field"),
+            # malformed dict
+            ({"field": "bar"}, "Missing secret path"),
+            ({"path": "foo"}, "Missing secret field"),
+            # other
+            (1234, "Invalid type"),
+        ],
+    )
+    def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):
+        assert t.get_secret_source("test", input_) is None
+        assert "Target secret <data>test</data> is invalid." in caplog.text
+        assert err_msg in caplog.text
