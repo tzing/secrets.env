@@ -1,6 +1,6 @@
 import logging
 import typing
-from typing import Any, Dict, NamedTuple, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, Optional, Tuple
 
 import secrets_env.auth
 from secrets_env.config.typing import ensure_dict, ensure_path, ensure_str
@@ -15,7 +15,7 @@ DEFAULT_AUTH_METHOD = "token"
 
 logger = logging.getLogger(__name__)
 
-CertTypes = Union[
+CertTypes = typing.Union[
     # cert file
     "Path",
     # client file, key file
@@ -23,7 +23,7 @@ CertTypes = Union[
 ]
 
 
-class ClientConfig(TypedDict):
+class ClientConfig(typing.TypedDict):
     url: str
     auth: "Auth"
 
@@ -32,7 +32,7 @@ class ClientConfig(TypedDict):
     client_cert: CertTypes
 
 
-class SecretSource(NamedTuple):
+class SecretSource(typing.NamedTuple):
     path: str
     field: str
 
@@ -40,7 +40,7 @@ class SecretSource(NamedTuple):
 SecretMapping = Dict[str, SecretSource]
 
 
-class Config(TypedDict):
+class Config(typing.TypedDict):
     client: ClientConfig
     secrets: SecretMapping
 
