@@ -1,6 +1,7 @@
 import logging
+import re
 import typing
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.auth
 from secrets_env.config.typing import ensure_dict, ensure_path, ensure_str
@@ -15,7 +16,7 @@ DEFAULT_AUTH_METHOD = "token"
 
 logger = logging.getLogger(__name__)
 
-CertTypes = typing.Union[
+CertTypes = Union[
     # cert file
     "Path",
     # client file, key file
@@ -23,7 +24,7 @@ CertTypes = typing.Union[
 ]
 
 
-class ClientConfig(typing.TypedDict):
+class ClientConfig(TypedDict):
     url: str
     auth: "Auth"
 
@@ -40,7 +41,7 @@ class SecretSource(typing.NamedTuple):
 SecretMapping = Dict[str, SecretSource]
 
 
-class Config(typing.TypedDict):
+class Config(TypedDict):
     client: ClientConfig
     secrets: SecretMapping
 
@@ -51,9 +52,12 @@ def parse_config(data: dict) -> Config:
     output = {}
 
     # `source` section
-    section_source = data.get("source", {})
-    section_source, ok = ensure_dict("source", section_source)
+    data_source = data.get("source", {})
+    data_source, ok = ensure_dict("source", data_source)
     is_success &= ok
+
+    if not (config_source := parse_section_source(data_source)):
+        is_success = False
 
     # `secrets` section
     section_secrets = data.get("secrets", {})
@@ -193,3 +197,22 @@ def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
         return None, False
 
     return None, True
+
+
+def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretMapping:
+    secrets = {}
+
+    for name, path_spec in data.items():
+        if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
+            logger.warning(
+                "Invalid environment variable name <data>%s</data>. "
+                "Skipping this variable.",
+                name,
+            )
+            continue
+
+    return secrets
+
+
+def get_secret_source(path_spec: Union[str, Dict[str, str]]) -> Optional[SecretSource]:
+    ...
