@@ -1,6 +1,6 @@
 [tool.secrets-env.source]
 url = "https://example.com/"
-auth = {method = "token"}
+auth = {method = "null"}
 
 [tool.secrets-env.secrets]
 VAR1 = {path = "kv/default", field = "example"}

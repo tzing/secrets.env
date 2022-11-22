@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config as t
-from secrets_env.auth.token import TokenAuth
+from secrets_env.auth.base import NoAuth
 from secrets_env.config.finder import ConfigFile
 from secrets_env.config.types import Config, SecretPath
 
@@ -33,7 +33,6 @@ class TestLoadConfig:
             )
 
         monkeypatch.setattr(t, "find_config_file", find_config_file)
-        monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
 
         # run
         cfg = t.load_config()
@@ -41,7 +40,7 @@ class TestLoadConfig:
         # test
         assert isinstance(cfg, Config)
         assert cfg.url == "https://example.com/"
-        assert cfg.auth == TokenAuth("ex@mp1e")
+        assert cfg.auth == NoAuth()
         assert cfg.secret_specs == {
             "VAR1": SecretPath("kv/default", "example"),
             "VAR2": SecretPath("kv/default", "example"),
@@ -56,17 +55,13 @@ class TestLoadConfig:
             "pyproject.toml",
         ],
     )
-    def test_success_2(
-        self, monkeypatch: pytest.MonkeyPatch, repo_path: Path, filename: str
-    ):
-        monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
-
+    def test_success_2(self, repo_path: Path, filename: str):
         path = repo_path / "tests" / "fixtures" / filename
         cfg = t.load_config(path)
 
         assert isinstance(cfg, Config)
         assert cfg.url == "https://example.com/"
-        assert cfg.auth == TokenAuth("ex@mp1e")
+        assert cfg.auth == NoAuth()
         assert cfg.secret_specs == {
             "VAR1": SecretPath("kv/default", "example"),
             "VAR2": SecretPath("kv/default", "example"),
