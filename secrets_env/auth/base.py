@@ -22,3 +22,23 @@ class Auth(abc.ABC):
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         """Initialize an instance of this class using the provided config data
         or internally load the secrets from the system."""
+
+
+class NoAuth(Auth):
+    """No authentication.
+
+    Vault always require authentication. secrets.env core checks for a valid
+    token before loading secrets. This class could only be used for testing and
+    debugging.
+    """
+
+    @classmethod
+    def method(cls) -> str:
+        return "no-authentication"
+
+    def login(self, client: "httpx.Client") -> None:
+        return None
+
+    @classmethod
+    def load(cls, data: Dict[str, Any]) -> Optional[Auth]:
+        return cls()

@@ -1,21 +1,36 @@
+from unittest.mock import Mock
+
 import pytest
 
 from secrets_env.auth import get_auth
+from secrets_env.auth.base import Auth
 
 
 class TestGetAuth:
-    def test_success_token(self, monkeypatch: pytest.MonkeyPatch):
-        from secrets_env.auth.token import TokenAuth
+    def setup_method(self):
+        self.mock_auth = Mock(spec=Auth)
 
-        monkeypatch.setenv("SECRETS_ENV_TOKEN", "ex@mp1e")
-        assert get_auth("TOKEN", {"method": "TOKEN"}) == TokenAuth("ex@mp1e")
+    def mock_load(self, data: dict) -> Auth:
+        assert isinstance(data, dict)
+        return self.mock_auth
+
+    def test_success_token(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.auth.token.TokenAuth.load", self.mock_load)
+        assert get_auth("TOKEN", {}) is self.mock_auth
 
     def test_success_okta(self, monkeypatch: pytest.MonkeyPatch):
-        from secrets_env.auth.userpass import OktaAuth
+        monkeypatch.setattr("secrets_env.auth.userpass.OktaAuth.load", self.mock_load)
+        assert get_auth("okta", {}) is self.mock_auth
 
-        monkeypatch.setenv("SECRETS_ENV_USERNAME", "foo")
-        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "bar")
-        assert get_auth("okta", {}) == OktaAuth("foo", "bar")
+    def test_success_oidc(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.auth.oidc.OpenIDConnectAuth.load", self.mock_load
+        )
+        assert get_auth("oidc", {}) is self.mock_auth
+
+    def test_success_no_auth(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.auth.base.NoAuth.load", self.mock_load)
+        assert get_auth("null", {}) is self.mock_auth
 
     def test_fail(self, caplog: pytest.LogCaptureFixture):
         assert get_auth("no-this-method", {}) is None
