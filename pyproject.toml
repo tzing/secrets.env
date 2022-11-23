@@ -88,8 +88,3 @@ exclude_lines = [
 
 [tool.pyright]
 include = ["secrets_env"]
-exclude = [
-    # fix it later
-    "secrets_env/config/parse.py",
-    "secrets_env/config/types.py",
-]
