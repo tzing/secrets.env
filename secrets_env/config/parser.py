@@ -48,10 +48,14 @@ class Config(TypedDict):
     secrets: SecretMapping
 
 
-def parse_config(data: dict) -> Config:
+def parse_config(data: dict) -> Optional[Config]:
     """Parse and validate configs, build it into structured object."""
+    # stop parse config when there's no target
+    if not data.get("secrets"):
+        logger.debug("No target specificied.")
+        return None
+
     is_success = True
-    output = {}
 
     # `source` section
     data_source = data.get("source", {})
@@ -62,14 +66,24 @@ def parse_config(data: dict) -> Config:
         is_success = False
 
     # `secrets` section
-    section_secrets = data.get("secrets", {})
-    section_secrets, ok = ensure_dict("secrets", section_secrets)
+    data_secrets = data.get("secrets", {})
+    data_secrets, ok = ensure_dict("secrets", data_secrets)
     is_success &= ok
 
-    raise NotImplementedError()
+    if not (config_secrets := parse_section_secret(data_secrets)):
+        is_success = False
+
+    # output
+    if not is_success:
+        return None
+
+    return {
+        "client": config_source,
+        "secrets": config_secrets,
+    }  # pyright: ignore[reportGeneralTypeIssues]
 
 
-def parse_section_source(data: dict) -> Optional[ClientConfig]:
+def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
     output: Dict[str, Any] = {}
     is_success = True
 
@@ -98,7 +112,7 @@ def parse_section_source(data: dict) -> Optional[ClientConfig]:
     if ok and client_cert:
         output["client_cert"] = client_cert
 
-    return output if is_success else None  # pyright: ignore[reportGeneralTypeIssues]
+    return output if is_success else None
 
 
 def get_url(data: dict) -> Optional[str]:
