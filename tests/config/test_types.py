@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-import secrets_env.config.typing as t
+import secrets_env.config.types as t
 
 
 class TestEnsureType:

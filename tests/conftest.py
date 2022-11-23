@@ -21,7 +21,7 @@ def _disable_ensure_path_exist_check(monkeypatch):
     def ensure_path(_, path):
         return Path(path), True
 
-    monkeypatch.setattr("secrets_env.config.typing.ensure_path", ensure_path)
+    monkeypatch.setattr("secrets_env.config.types.ensure_path", ensure_path)
     monkeypatch.setattr("secrets_env.config.parser.ensure_path", ensure_path)
 
 

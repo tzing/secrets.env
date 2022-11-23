@@ -5,7 +5,6 @@ import pytest
 
 import secrets_env
 from secrets_env.auth.token import TokenAuth
-from secrets_env.config.types import Config, SecretPath
 from secrets_env.exception import AuthenticationError
 
 
