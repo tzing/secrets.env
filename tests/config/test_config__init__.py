@@ -8,7 +8,7 @@ from secrets_env.auth.null import NoAuth
 from secrets_env.config.finder import ConfigFile
 
 
-class NTestLoadConfig:
+class TestLoadConfig:
     @pytest.mark.parametrize(
         ("filename", "format_"),
         [
@@ -25,7 +25,8 @@ class NTestLoadConfig:
         filename: str,
         format_: str,
     ):
-        # fixtures
+        """Auto config finding"""
+        # setup
         def find_config_file():
             return ConfigFile(
                 filename, format_, repo_path / "tests" / "fixtures" / filename
@@ -37,33 +38,37 @@ class NTestLoadConfig:
         cfg = t.load_config()
 
         # test
-        assert isinstance(cfg, Config)
-        assert cfg.url == "https://example.com/"
-        assert cfg.auth == NoAuth()
-        assert cfg.secret_specs == {
-            "VAR1": SecretPath("kv/default", "example"),
-            "VAR2": SecretPath("kv/default", "example"),
-        }
+        self.assert_config_format(cfg)
 
     @pytest.mark.parametrize(
-        "filename",
+        ("source", "rename"),
         [
-            ".secrets-env.json",
-            ".secrets-env.toml",
-            ".secrets-env.yaml",
-            "pyproject.toml",
+            (".secrets-env.json", "sample.json"),
+            (".secrets-env.toml", "sample.toml"),
+            (".secrets-env.yaml", "sample.yml"),
+            ("pyproject.toml", "pyproject.toml"),
         ],
     )
-    def test_success_2(self, repo_path: Path, filename: str):
-        path = repo_path / "tests" / "fixtures" / filename
-        cfg = t.load_config(path)
+    def test_success_2(self, tmp_path: Path, repo_path: Path, source: str, rename: str):
+        """Manual given file"""
+        # setup
+        src_path = repo_path / "tests" / "fixtures" / source
+        dst_path = tmp_path / rename
+        dst_path.write_bytes(src_path.read_bytes())
 
-        assert isinstance(cfg, Config)
-        assert cfg.url == "https://example.com/"
-        assert cfg.auth == NoAuth()
-        assert cfg.secret_specs == {
-            "VAR1": SecretPath("kv/default", "example"),
-            "VAR2": SecretPath("kv/default", "example"),
+        # run
+        cfg = t.load_config(src_path)
+
+        # test
+        self.assert_config_format(cfg)
+
+    def assert_config_format(self, cfg: dict):
+        assert isinstance(cfg, dict)
+        assert cfg["client"]["url"] == "https://example.com/"
+        assert cfg["client"]["auth"] == NoAuth()
+        assert cfg["secrets"] == {
+            "VAR1": ("kv/default", "example"),
+            "VAR2": ("kv/default", "example"),
         }
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
