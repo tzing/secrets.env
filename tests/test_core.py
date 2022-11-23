@@ -32,8 +32,6 @@ class TestKVReader:
             t.KVReader("https://example.com", auth, ca_cert="/path/cert")
         with pytest.raises(TypeError):
             t.KVReader("https://example.com", auth, client_cert="/path/cert")
-        with pytest.raises(TypeError):
-            t.KVReader("https://example.com", auth, client_key="/path/cert")
 
     def test_client(self):
         auth = Mock(spec=secrets_env.auth.Auth)
@@ -105,20 +103,18 @@ class TestCreateClient:
         path = Path("/data/fake.pem")
 
         # no error could be enough
-        t.create_client("http://example.com", None, None, None)
-        t.create_client("http://example.com", path, None, None)
-        t.create_client("http://example.com", path, path, None)
-        t.create_client("http://example.com", path, path, path)
+        t.create_client("http://example.com", None, None)
+        t.create_client("http://example.com", path, None)
+        t.create_client("http://example.com", path, path)
+        t.create_client("http://example.com", path, (path, path))
 
     def test_type_error(self):
         with pytest.raises(TypeError):
-            t.create_client(1234, None, None, None)
+            t.create_client(1234, None, None)
         with pytest.raises(TypeError):
-            t.create_client("http://example.com", 1234, None, None)
+            t.create_client("http://example.com", 1234, None)
         with pytest.raises(TypeError):
-            t.create_client("http://example.com", None, 1234, None)
-        with pytest.raises(TypeError):
-            t.create_client("http://example.com", None, None, 1234)
+            t.create_client("http://example.com", None, 1234)
 
 
 def test_is_authenticated():
