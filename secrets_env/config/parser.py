@@ -260,7 +260,7 @@ def get_secret_source(
         err_msg = "Invalid type"
 
     logger.warning(
-        "Target secret <data>%s</data> is invalid. %s. Skip this variable.",
+        "Target secret <data>%s</data> is invalid. %s. Discard this variable.",
         name,
         err_msg,
     )
