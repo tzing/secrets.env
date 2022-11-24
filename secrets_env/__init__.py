@@ -12,7 +12,9 @@ import secrets_env.exception
 logger = logging.getLogger(__name__)
 
 
-def load_secrets(config_file: Optional[pathlib.Path]) -> Dict[str, Optional[str]]:
+def load_secrets(
+    config_file: Optional[pathlib.Path] = None,
+) -> Dict[str, Optional[str]]:
     """Load secrets from vault and put them to environment variable."""
     # parse config
     config = secrets_env.config.load_config(config_file)

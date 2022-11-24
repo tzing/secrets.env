@@ -41,7 +41,7 @@ def test_success(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixtu
         },
     )
 
-    assert secrets_env.load_secrets(None) == {
+    assert secrets_env.load_secrets() == {
         "VAR1": "secret-1",
         "VAR2": "secret-2",
     }
@@ -61,7 +61,7 @@ def test_partial_loaded(
         },
     )
 
-    assert secrets_env.load_secrets(None) == {
+    assert secrets_env.load_secrets() == {
         "VAR1": "secret-1",
         "VAR2": None,
     }
@@ -70,7 +70,7 @@ def test_partial_loaded(
 
 def test_no_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("secrets_env.config.load_config", lambda _: None)
-    assert secrets_env.load_secrets(None) == {}
+    assert secrets_env.load_secrets() == {}
 
 
 @pytest.mark.usefixtures("_patch_load_config")
@@ -78,5 +78,5 @@ def test_auth_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFi
     monkeypatch.setattr(
         KVReader, "read_values", Mock(side_effect=AuthenticationError("test error"))
     )
-    assert secrets_env.load_secrets(None) == {}
+    assert secrets_env.load_secrets() == {}
     assert "Authentication error: test error" in caplog.text
