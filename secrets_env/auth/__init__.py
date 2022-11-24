@@ -20,7 +20,7 @@ def get_auth(name: str, data: dict) -> Optional[Auth]:
     elif name_ == "oidc":
         from secrets_env.auth.oidc import OpenIDConnectAuth
         return OpenIDConnectAuth.load(data)
-    elif name_ =='null':
+    elif name_ == "null":
         from secrets_env.auth.null import NoAuth
         return NoAuth.load(data)
     # fmt: on
