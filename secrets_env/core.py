@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import typing
 from http import HTTPStatus
 from pathlib import Path
 from typing import Dict, Iterable, List, Literal, Optional, Tuple
@@ -9,6 +10,9 @@ import httpx
 
 from secrets_env.auth import Auth
 from secrets_env.exception import AuthenticationError, TypeError
+
+if typing.TYPE_CHECKING:
+    from secrets_env.config.parser import CertTypes
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +25,7 @@ class KVReader:
         url: str,
         auth: Auth,
         ca_cert: Optional["Path"] = None,
-        client_cert: Optional["Path"] = None,
-        client_key: Optional["Path"] = None,
+        client_cert: Optional["CertTypes"] = None,
     ) -> None:
         """
         Parameters
@@ -33,10 +36,8 @@ class KVReader:
             Authentication method and credentials.
         ca_cert : Path
             Path to server certificate.
-        client_cert : Path
+        client_cert : Path | Tuple[Path, Path]
             Path to client side certificate file.
-        client_key : Path
-            Path to client key.
         """
         if not isinstance(url, str):
             raise TypeError("Expect str for url, got {}", type(url).__name__)
@@ -44,22 +45,17 @@ class KVReader:
             raise TypeError(
                 "Expect Auth instance for auth, got {}", type(auth).__name__
             )
-        if ca_cert and not isinstance(ca_cert, Path):
+        if ca_cert and not isinstance(ca_cert, os.PathLike):
             raise TypeError("Expect path for ca_cert, got {}", type(ca_cert).__name__)
-        if client_cert and not isinstance(client_cert, Path):
+        if client_cert and not isinstance(client_cert, (os.PathLike, tuple)):
             raise TypeError(
                 "Expect path for client_cert, got {}", type(client_cert).__name__
-            )
-        if client_key and not isinstance(client_key, Path):
-            raise TypeError(
-                "Expect path for client_key, got {}", type(client_key).__name__
             )
 
         self.url = url
         self.auth = auth
         self.ca_cert = ca_cert
         self.client_cert = client_cert
-        self.client_key = client_key
 
         self._client: Optional[httpx.Client] = None
 
@@ -76,9 +72,7 @@ class KVReader:
         )
 
         # initialize client
-        client = create_client(
-            self.url, self.ca_cert, self.client_cert, self.client_key
-        )
+        client = create_client(self.url, self.ca_cert, self.client_cert)
 
         # get token
         try:
@@ -198,23 +192,16 @@ class KVReader:
 
 
 def create_client(
-    base_url: str,
-    ca_cert: Optional["Path"],
-    client_cert: Optional["Path"],
-    client_key: Optional["Path"],
+    base_url: str, ca_cert: Optional["Path"], client_cert: Optional["CertTypes"]
 ):
     """Initialize a client."""
     if not isinstance(base_url, str):
         raise TypeError("Expect str for base_url, got {}", type(base_url).__name__)
     if ca_cert is not None and not isinstance(ca_cert, os.PathLike):
         raise TypeError("Expect path-like for ca_cert, got {}", type(ca_cert).__name__)
-    if client_cert is not None and not isinstance(client_cert, os.PathLike):
+    if client_cert is not None and not isinstance(client_cert, (os.PathLike, tuple)):
         raise TypeError(
             "Expect path-like for client_cert, got {}", type(client_cert).__name__
-        )
-    if client_key is not None and not isinstance(client_key, os.PathLike):
-        raise TypeError(
-            "Expect path-like for client_key, got {}", type(client_key).__name__
         )
 
     logger.debug("Creating client to %s", base_url)
@@ -226,17 +213,10 @@ def create_client(
 
     if ca_cert:
         logger.debug("CA installed: %s", ca_cert)
-        params["verify"] = str(ca_cert)
-    if client_cert and client_key:
-        logger.debug(
-            "Client side certificate pair installed: %s, %s",
-            client_cert,
-            client_key,
-        )
-        params["cert"] = (str(client_cert), str(client_key))
+        params["verify"] = ca_cert
     elif client_cert:
         logger.debug("Client side certificate file installed: %s", client_cert)
-        params["cert"] = str(client_cert)
+        params["cert"] = client_cert
 
     return httpx.Client(**params)
 

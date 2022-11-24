@@ -4,7 +4,9 @@ import itertools
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional, Set
+from typing import Literal, Optional
+
+__warned_formats = None
 
 
 @dataclass
@@ -120,13 +122,15 @@ def get_config_file_metadata(path: Path) -> Optional[ConfigFile]:
 def is_supportted(lang: str) -> bool:
     """Check if this config file is supportted. Show the warning message when
     dependency is not installed."""
+    global __warned_formats
+    if __warned_formats is None:
+        __warned_formats = set()
+
     if LANGUAGE_ENABLED[lang]:
         return True
 
-    internal_vars = vars(is_supportted)
-    warned_formats: Set[str] = internal_vars.setdefault("warned_formats", set())
-    if lang not in warned_formats:
-        warned_formats.add(lang)
+    if lang not in __warned_formats:
+        __warned_formats.add(lang)
         logger.warning(
             "This app currently cannot parse <mark>%s</mark> file: "
             "dependency not satisfied.",
