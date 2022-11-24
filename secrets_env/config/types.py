@@ -18,7 +18,7 @@ def ensure_type(
     cast: bool,
     default: T,
 ) -> Union[Tuple[T, TL_True], Tuple[T, TL_False]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
@@ -29,7 +29,7 @@ def ensure_type(
     expect_type: Type[T],
     cast: bool,
 ) -> Union[Tuple[T, TL_True], Tuple[Literal[None], TL_False]]:
-    ...
+    ...  # pragma: no cover
 
 
 def ensure_type(
