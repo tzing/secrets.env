@@ -97,49 +97,83 @@ class TestUserPasswordAuth:
             r.assert_any_call("MOCK/password")
 
 
+@pytest.fixture()
+def login_success_response() -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "lease_id": "",
+            "renewable": False,
+            "lease_duration": 0,
+            "data": None,
+            "warnings": None,
+            "auth": {
+                "client_token": "64d2a8f2-2a2f-5688-102b-e6088b76e344",
+                "accessor": "18bb8f89-826a-56ee-c65b-1736dc5ea27d",
+                "policies": ["default"],
+                "metadata": {"username": "fred", "policies": "default"},
+                "lease_duration": 7200,
+                "renewable": True,
+            },
+        },
+    )
+
+
+class TestBasicAuth:
+    def setup_method(self):
+        self.authobj = t.BasicAuth("user@example.com", "pass")
+
+    def test_method(self):
+        assert t.BasicAuth.method() == "basic"
+
+    def test_login_success(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        login_success_response: httpx.Response,
+    ):
+        unittest_respx.post("/v1/auth/userpass/login/user%40example.com").mock(
+            return_value=login_success_response
+        )
+        assert (
+            self.authobj.login(unittest_client)
+            == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
+        )
+
+    def test_login_fail(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.post("/v1/auth/userpass/login/user%40example.com").mock(
+            return_value=httpx.Response(400)
+        )
+        assert self.authobj.login(unittest_client) is None
+
+
 class TestOktaAuth:
     def setup_method(self):
-        self.authobj = t.OktaAuth("user", "pass")
-
-    def test__init__(self):
-        assert self.authobj.username == "user"
-        assert self.authobj.password == "pass"
-
-    def test__repr__(self):
-        assert repr(self.authobj) == "OktaAuth(username='user')"
+        self.authobj = t.OktaAuth("user@example.com", "pass")
 
     def test_method(self):
         assert t.OktaAuth.method() == "okta"
 
-    def test_login_success(self, respx_mock: respx.MockRouter):
-        respx_mock.post("http://example.com/v1/auth/okta/login/user").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
-                    "data": None,
-                    "warnings": None,
-                    "auth": {
-                        "client_token": "64d2a8f2-2a2f-5688-102b-e6088b76e344",
-                        "accessor": "18bb8f89-826a-56ee-c65b-1736dc5ea27d",
-                        "policies": ["default"],
-                        "metadata": {"username": "fred", "policies": "default"},
-                        "lease_duration": 7200,
-                        "renewable": True,
-                    },
-                },
-            )
+    def test_login_success(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        login_success_response: httpx.Response,
+    ):
+        unittest_respx.post("/v1/auth/okta/login/user%40example.com").mock(
+            return_value=login_success_response
+        )
+        assert (
+            self.authobj.login(unittest_client)
+            == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
         )
 
-        client = httpx.Client(base_url="http://example.com")
-        assert self.authobj.login(client) == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
-
-    def test_login_fail(self, respx_mock: respx.MockRouter):
-        respx_mock.post("http://example.com/v1/auth/okta/login/user").mock(
+    def test_login_fail(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.post("/v1/auth/okta/login/user%40example.com").mock(
             return_value=httpx.Response(403)
         )
-
-        client = httpx.Client(base_url="http://example.com")
-        assert self.authobj.login(client) is None
+        assert self.authobj.login(unittest_client) is None

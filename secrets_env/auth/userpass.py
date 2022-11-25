@@ -12,6 +12,8 @@ from secrets_env.io import get_env_var, prompt, read_keyring
 if typing.TYPE_CHECKING:
     import httpx
 
+OKTA_TIMEOUT = 60.0
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,23 +91,39 @@ class UserPasswordAuth(Auth):
 
 
 @dataclass(frozen=True)
+class BasicAuth(UserPasswordAuth):
+    """Login to Vault using user name and password."""
+
+    @classmethod
+    def method(cls):
+        return "basic"
+
+    def login(self, client: "httpx.Client") -> Optional[str]:
+        username = urllib.parse.quote(self.username)
+        resp = client.post(
+            f"/v1/auth/userpass/login/{username}",
+            json={
+                "password": self.password,
+            },
+        )
+
+        if resp.status_code != HTTPStatus.OK:
+            logger.error("Failed to login Vault")
+            logger.debug(
+                "Vault login failed. Code= %d. Msg= %s", resp.status_code, resp.text
+            )
+            return
+
+        return resp.json()["auth"]["client_token"]
+
+
+@dataclass(frozen=True)
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
     @classmethod
     def method(cls):
         return "okta"
-
-    def __init__(self, username: str, password: str) -> None:
-        """
-        Parameters
-        ----------
-        username : str
-            User name to login to Okta.
-        password : str
-            Password to login to Okta.
-        """
-        super().__init__(username, password)
 
     def login(self, client: "httpx.Client") -> Optional[str]:
         logger.info(
@@ -122,6 +140,7 @@ class OktaAuth(UserPasswordAuth):
                 "username": self.username,
                 "password": self.password,
             },
+            timeout=OKTA_TIMEOUT,
         )
 
         if resp.status_code != HTTPStatus.OK:
