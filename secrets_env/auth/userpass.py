@@ -43,7 +43,7 @@ class UserPasswordAuth(Auth):
             )
             return None
 
-        password = cls._load_password(username)
+        password = cls._load_password()
         if not isinstance(password, str) or not password:
             logger.error(
                 "Missing password for %s auth. Stop loading secrets.",
@@ -65,24 +65,24 @@ class UserPasswordAuth(Auth):
             return username
 
         method = cls.method()
-        username = read_keyring(f"{method}/:username")
+        username = read_keyring(f"{method}/username")
         if username:
-            logger.debug("Found username from keyring")
+            logger.debug("Found username in keyring")
             return username
 
         return prompt(f"Username for {method} auth")
 
     @classmethod
-    def _load_password(cls, username: str) -> Optional[str]:
+    def _load_password(cls) -> Optional[str]:
         password = get_env_var("SECRETS_ENV_PASSWORD")
         if password:
             logger.debug("Found password from environment variable.")
             return password
 
         method = cls.method()
-        password = read_keyring(f"{method}/{username}")
+        password = read_keyring(f"{method}/password")
         if password:
-            logger.debug("Found password from keyring")
+            logger.debug("Found password in keyring")
             return password
 
         return prompt("Password", hide_input=True)

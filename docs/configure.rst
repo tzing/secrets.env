@@ -260,7 +260,7 @@ username
 
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
    * ✅ From config file: ``username``
-   * ✅ From keyring: ``okta/:username``
+   * ✅ From keyring: ``okta/username``
    * ✅ A prompt would be displayed when none of the above are provided
 
 password
@@ -268,7 +268,7 @@ password
 
    * ⛔️ From config file
    * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
-   * ✅ From keyring: ``okta/YOUR_USER_NAME``
+   * ✅ From keyring: ``okta/password``
    * ✅ A prompt would be displayed when none of the above are provided
 
 OpenID Connect

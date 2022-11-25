@@ -29,7 +29,7 @@ class TestUserPasswordAuth:
 
     def test_load_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: "user")
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: "P@ssw0rd")
+        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda: "P@ssw0rd")
 
         obj = t.UserPasswordAuth.load({})
         assert obj == t.UserPasswordAuth("user", "P@ssw0rd")
@@ -78,23 +78,23 @@ class TestUserPasswordAuth:
         # keyring
         with patch.object(t, "read_keyring", return_value="foo") as r:
             assert t.UserPasswordAuth._load_username({}) == "foo"
-            r.assert_any_call("MOCK/:username")
+            r.assert_any_call("MOCK/username")
 
     def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
         # env var
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_PASSWORD", "bar")
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
+            assert t.UserPasswordAuth._load_password() == "bar"
 
         # prompt
         with patch.object(t, "prompt", return_value="bar") as p:
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
+            assert t.UserPasswordAuth._load_password() == "bar"
             p.assert_any_call("Password", hide_input=True)
 
         # keyring
         with patch.object(t, "read_keyring", return_value="bar") as r:
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
-            r.assert_any_call("MOCK/foo")
+            assert t.UserPasswordAuth._load_password() == "bar"
+            r.assert_any_call("MOCK/password")
 
 
 class TestOktaAuth:
