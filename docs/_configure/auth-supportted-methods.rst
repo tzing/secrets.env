@@ -36,7 +36,7 @@ username
 
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
    * ✅ From config file: ``username``
-   * ✅ From keyring: ``basic/username``
+   * ✅ From keyring: ``userpass/:username``
    * ✅ A prompt would be displayed when none of the above are provided
 
 password
@@ -44,7 +44,7 @@ password
 
    * ⛔️ From config file
    * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
-   * ✅ From keyring: ``basic/password``
+   * ✅ From keyring: ``userpass/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
 
 
@@ -60,7 +60,7 @@ username
 
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
    * ✅ From config file: ``username``
-   * ✅ From keyring: ``ldap/username``
+   * ✅ From keyring: ``ldap/:username``
    * ✅ A prompt would be displayed when none of the above are provided
 
 password
@@ -68,7 +68,7 @@ password
 
    * ⛔️ From config file
    * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
-   * ✅ From keyring: ``ldap/password``
+   * ✅ From keyring: ``ldap/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
 
 
@@ -84,7 +84,7 @@ username
 
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
    * ✅ From config file: ``username``
-   * ✅ From keyring: ``okta/username``
+   * ✅ From keyring: ``okta/:username``
    * ✅ A prompt would be displayed when none of the above are provided
 
 password
@@ -92,7 +92,7 @@ password
 
    * ⛔️ From config file
    * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
-   * ✅ From keyring: ``okta/password``
+   * ✅ From keyring: ``okta/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
 
 
@@ -125,7 +125,7 @@ username
 
    * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
    * ✅ From config file: ``username``
-   * ✅ From keyring: ``radius/username``
+   * ✅ From keyring: ``radius/:username``
    * ✅ A prompt would be displayed when none of the above are provided
 
 password
@@ -133,5 +133,5 @@ password
 
    * ⛔️ From config file
    * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
-   * ✅ From keyring: ``radius/password``
+   * ✅ From keyring: ``radius/YOUR_USER_NAME``
    * ✅ A prompt would be displayed when none of the above are provided
