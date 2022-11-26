@@ -26,6 +26,9 @@ def get_auth(name: str, data: dict) -> Optional[Auth]:
     elif name_ == "okta":
         from secrets_env.auth.userpass import OktaAuth
         return OktaAuth.load(data)
+    elif name_ == "radius":
+        from secrets_env.auth.userpass import RADIUSAuth
+        return RADIUSAuth.load(data)
     elif name_ == "null":
         from secrets_env.auth.null import NoAuth
         return NoAuth.load(data)

@@ -108,3 +108,28 @@ role
 
    * ✅ From environment variable: ``SECRETS_ENV_ROLE``
    * ✅ From config file: ``role``
+
+
+RADIUS
+^^^^^^
+
+Authentication using an existing `RADIUS`_ server that accepts the `PAP authentication scheme`_.
+
+.. _RADIUS: https://en.wikipedia.org/wiki/RADIUS
+.. _PAP authentication scheme: https://en.wikipedia.org/wiki/Password_Authentication_Protocol
+
+username
+   User name to login
+
+   * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
+   * ✅ From config file: ``username``
+   * ✅ From keyring: ``radius/username``
+   * ✅ A prompt would be displayed when none of the above are provided
+
+password
+   User password to login
+
+   * ⛔️ From config file
+   * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
+   * ✅ From keyring: ``radius/password``
+   * ✅ A prompt would be displayed when none of the above are provided
