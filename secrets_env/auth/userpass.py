@@ -154,3 +154,13 @@ class OktaAuth(UserPasswordAuth):
     @classmethod
     def method(cls):
         return "okta"
+
+
+class RADIUSAuth(UserPasswordAuth):
+    """RADIUS authentication with PAP authentication scheme."""
+
+    _PATH = "radius"
+
+    @classmethod
+    def method(cls):
+        return "radius"

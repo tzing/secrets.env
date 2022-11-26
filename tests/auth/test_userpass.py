@@ -153,13 +153,10 @@ class TestUserPasswordAuth:
 
 
 class TestBasicAuth:
-    def setup_method(self):
-        self.authobj = t.BasicAuth("user@basic.example.com", "pass")
-
     def test_method(self):
         assert t.BasicAuth.method() == "basic"
 
-    def test_login_success(
+    def test_login(
         self,
         unittest_respx: respx.MockRouter,
         unittest_client: httpx.Client,
@@ -168,17 +165,20 @@ class TestBasicAuth:
         unittest_respx.post("/v1/auth/userpass/login/user%40basic.example.com").mock(
             return_value=login_success_response
         )
-        assert self.authobj.login(unittest_client) == "client-token"
+        authobj = t.BasicAuth("user@basic.example.com", "pass")
+        assert authobj.login(unittest_client) == "client-token"
+
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "user")
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
+        assert t.BasicAuth.load({}) == t.BasicAuth("user", "pass")
 
 
 class TestOktaAuth:
-    def setup_method(self):
-        self.authobj = t.OktaAuth("user@okta.example.com", "pass")
-
     def test_method(self):
         assert t.OktaAuth.method() == "okta"
 
-    def test_login_success(
+    def test_login(
         self,
         unittest_respx: respx.MockRouter,
         unittest_client: httpx.Client,
@@ -187,4 +187,54 @@ class TestOktaAuth:
         unittest_respx.post("/v1/auth/okta/login/user%40okta.example.com").mock(
             return_value=login_success_response
         )
-        assert self.authobj.login(unittest_client) == "client-token"
+        auth_obj = t.OktaAuth("user@okta.example.com", "pass")
+        assert auth_obj.login(unittest_client) == "client-token"
+
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "user@okta.example.com")
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
+        assert t.OktaAuth.load({}) == t.OktaAuth("user@okta.example.com", "pass")
+
+
+class TestLDAP:
+    def test_method(self):
+        assert t.LDAPAuth.method() == "ldap"
+
+    def test_login(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        login_success_response: httpx.Response,
+    ):
+        unittest_respx.post("/v1/auth/ldap/login/user%40ldap.example.com").mock(
+            return_value=login_success_response
+        )
+        auth_obj = t.LDAPAuth("user@ldap.example.com", "pass")
+        assert auth_obj.login(unittest_client) == "client-token"
+
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "user@ldap.example.com")
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
+        assert t.LDAPAuth.load({}) == t.LDAPAuth("user@ldap.example.com", "pass")
+
+
+class TestRADIUS:
+    def test_method(self):
+        assert t.RADIUSAuth.method() == "radius"
+
+    def test_login(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        login_success_response: httpx.Response,
+    ):
+        unittest_respx.post("/v1/auth/radius/login/user%40pap.example.com").mock(
+            return_value=login_success_response
+        )
+        auth_obj = t.RADIUSAuth("user@pap.example.com", "pass")
+        assert auth_obj.login(unittest_client) == "client-token"
+
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "user@pap.example.com")
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
+        assert t.RADIUSAuth.load({}) == t.RADIUSAuth("user@pap.example.com", "pass")
