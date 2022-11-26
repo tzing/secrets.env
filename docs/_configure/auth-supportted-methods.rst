@@ -113,6 +113,8 @@ role
 RADIUS
 ^^^^^^
 
+:method: ``radius``
+
 Authentication using an existing `RADIUS`_ server that accepts the `PAP authentication scheme`_.
 
 .. _RADIUS: https://en.wikipedia.org/wiki/RADIUS
