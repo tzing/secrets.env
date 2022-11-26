@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
 
-    TIMEOUT = None
+    _TIMEOUT = None
 
     username: str
     """User name."""
@@ -90,16 +90,23 @@ class UserPasswordAuth(Auth):
         return prompt("Password", hide_input=True)
 
     def login(self, client: "httpx.Client") -> Optional[str]:
+        # cheat pyright
+        self._PATH: str
+        self._TIMEOUT: Optional[float]
+        assert self._PATH
+
+        # build request
         username = urllib.parse.quote(self.username)
         resp = client.post(
-            f"/v1/auth/{self.PATH}/login/{username}",
+            f"/v1/auth/{self._PATH}/login/{username}",
             json={
                 "username": self.username,
                 "password": self.password,
             },
-            timeout=self.TIMEOUT,
+            timeout=self._TIMEOUT,
         )
 
+        # check response
         if resp.status_code != HTTPStatus.OK:
             logger.error("Failed to login with %s method", self.method())
             logger.debug(
@@ -117,7 +124,7 @@ class UserPasswordAuth(Auth):
 class BasicAuth(UserPasswordAuth):
     """Login to Vault using user name and password."""
 
-    PATH = "userpass"
+    _PATH = "userpass"
 
     @classmethod
     def method(cls):
@@ -125,13 +132,24 @@ class BasicAuth(UserPasswordAuth):
 
 
 @dataclass(frozen=True)
+class LDAPAuth(UserPasswordAuth):
+    """Login with LDAP credentials."""
+
+    _PATH = "ldap"
+
+    @classmethod
+    def method(cls):
+        return "ldap"
+
+
+@dataclass(frozen=True)
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
-    PATH = "okta"
+    _PATH = "okta"
 
     # Okta 2FA got triggerred within the api call, so needs a longer timeout
-    TIMEOUT = 60.0
+    _TIMEOUT = 60.0
 
     @classmethod
     def method(cls):

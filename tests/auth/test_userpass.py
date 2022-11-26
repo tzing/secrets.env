@@ -130,7 +130,7 @@ class TestUserPasswordAuth:
         )
 
         auth_obj = t.UserPasswordAuth("user@example.com", "password")
-        object.__setattr__(auth_obj, "PATH", "mock")
+        object.__setattr__(auth_obj, "_PATH", "mock")
 
         assert auth_obj.login(unittest_client) == "client-token"
 
@@ -145,7 +145,7 @@ class TestUserPasswordAuth:
         )
 
         auth_obj = t.UserPasswordAuth("user@example.com", "password")
-        object.__setattr__(auth_obj, "PATH", "mock")
+        object.__setattr__(auth_obj, "_PATH", "mock")
 
         assert auth_obj.login(unittest_client) is None
 
