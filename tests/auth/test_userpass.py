@@ -31,16 +31,19 @@ def login_success_response() -> httpx.Response:
 
 class TestUserPasswordAuth:
     @pytest.fixture(autouse=True)
-    def _patch_userpass(self, monkeypatch: pytest.MonkeyPatch):
+    def _unfreeze_userpass(self, monkeypatch: pytest.MonkeyPatch):
         # UserPasswordAuth does not implemented all the required methods so need
         # to patch __abstractmethods__ to skip TypeError raised by ABC
-        with patch.object(
-            t.UserPasswordAuth, "__abstractmethods__", set()
-        ), patch.object(
-            t.UserPasswordAuth, "method", return_value="MOCK"
-        ), patch.object(
-            t.UserPasswordAuth, "path", return_value="mock"
-        ):
+        monkeypatch.setattr(t.UserPasswordAuth, "__abstractmethods__", set())
+
+    @pytest.fixture()
+    def _patch_method(self):
+        with patch.object(t.UserPasswordAuth, "method", return_value="MOCK"):
+            yield
+
+    @pytest.fixture()
+    def _patch_path(self):
+        with patch.object(t.UserPasswordAuth, "path", return_value="mock"):
             yield
 
     def test___init__(self):
@@ -55,6 +58,10 @@ class TestUserPasswordAuth:
         with pytest.raises(TypeError):
             t.UserPasswordAuth("user@example.com", 1234)
 
+    def test_path(self):
+        with pytest.raises(NotImplementedError):
+            t.UserPasswordAuth.path()
+
     def test_load_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: "user")
         monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: "P@ssw0rd")
@@ -62,33 +69,31 @@ class TestUserPasswordAuth:
         obj = t.UserPasswordAuth.load({})
         assert obj == t.UserPasswordAuth("user", "P@ssw0rd")
 
+    @pytest.mark.usefixtures("_patch_method")
     @pytest.mark.parametrize(
-        ("username", "password"),
+        ("username", "password", "err_message"),
         [
-            ("user@example.com", ""),
-            ("", "P@ssw0rd"),
-            ("user@example.com", None),
-            (None, "P@ssw0rd"),
+            ("user@example.com", "", "Missing password for MOCK auth."),
+            ("", "P@ssw0rd", "Missing username for MOCK auth."),
+            ("user@example.com", None, "Missing password for MOCK auth."),
+            (None, "P@ssw0rd", "Missing username for MOCK auth."),
         ],
     )
     def test_load_fail(
         self,
+        monkeypatch: pytest.MonkeyPatch,
         username: str,
         password: str,
         caplog: pytest.LogCaptureFixture,
+        err_message: str,
     ):
-        with patch.object(
-            t.UserPasswordAuth, "_load_username", return_value=username
-        ), patch.object(t.UserPasswordAuth, "_load_password", return_value=password):
-            assert t.UserPasswordAuth.load({}) is None
+        monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: username)
+        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: password)
+        assert t.UserPasswordAuth.load({}) is None
+        assert err_message in caplog.text
 
-        assert any(
-            (
-                "Missing username for MOCK auth." in caplog.text,
-                "Missing password for MOCK auth." in caplog.text,
-            )
-        )
-
+    @pytest.mark.usefixtures("_patch_method")
+    @pytest.mark.usefixtures("_patch_path")
     def test__load_username(self, monkeypatch: pytest.MonkeyPatch):
         # config
         assert t.UserPasswordAuth._load_username({"username": "foo"}) == "foo"
@@ -108,6 +113,7 @@ class TestUserPasswordAuth:
             assert t.UserPasswordAuth._load_username({}) == "foo"
             r.assert_any_call("mock/:username")
 
+    @pytest.mark.usefixtures("_patch_path")
     def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
         # env var
         with monkeypatch.context() as m:
@@ -124,6 +130,7 @@ class TestUserPasswordAuth:
             assert t.UserPasswordAuth._load_password("foo") == "bar"
             r.assert_any_call("mock/foo")
 
+    @pytest.mark.usefixtures("_patch_path")
     def test_login_success(
         self,
         unittest_respx: respx.MockRouter,
@@ -137,6 +144,8 @@ class TestUserPasswordAuth:
         auth_obj = t.UserPasswordAuth("user@example.com", "password")
         assert auth_obj.login(unittest_client) == "client-token"
 
+    @pytest.mark.usefixtures("_patch_method")
+    @pytest.mark.usefixtures("_patch_path")
     def test_login_fail(
         self,
         unittest_respx: respx.MockRouter,
