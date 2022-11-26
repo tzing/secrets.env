@@ -248,8 +248,54 @@ token
 .. _token helper: https://www.vaultproject.io/docs/commands/token-helper
 .. [#token-helper] Vault CLI stores the generated token in the ``~/.vault-token`` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
 
-Okta login
+Basic auth
 ^^^^^^^^^^
+
+:method: ``basic``
+
+Use user name and password to get authentication.
+
+username
+   User name to login
+
+   * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
+   * ✅ From config file: ``username``
+   * ✅ From keyring: ``basic/username``
+   * ✅ A prompt would be displayed when none of the above are provided
+
+password
+   User password to login
+
+   * ⛔️ From config file
+   * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
+   * ✅ From keyring: ``basic/password``
+   * ✅ A prompt would be displayed when none of the above are provided
+
+LDAP
+^^^^
+
+:method: ``ldap``
+
+Login with LDAP credentials.
+
+username
+   User name to login
+
+   * ✅ From environment variable: ``SECRETS_ENV_USERNAME``
+   * ✅ From config file: ``username``
+   * ✅ From keyring: ``ldap/username``
+   * ✅ A prompt would be displayed when none of the above are provided
+
+password
+   User password to login
+
+   * ⛔️ From config file
+   * ✅ From environment variable: ``SECRETS_ENV_PASSWORD``
+   * ✅ From keyring: ``ldap/password``
+   * ✅ A prompt would be displayed when none of the above are provided
+
+Okta
+^^^^
 
 :method: ``okta``
 
