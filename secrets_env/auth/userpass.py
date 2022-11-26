@@ -72,13 +72,12 @@ class UserPasswordAuth(Auth):
         if username:
             return username
 
-        method = cls.method()
-        username = read_keyring(f"{method}/username")
+        username = read_keyring(f"{cls.path()}/:username")
         if username:
-            logger.debug("Found username in keyring")
+            logger.debug("Found username in pkeyring")
             return username
 
-        return prompt(f"Username for {method} auth")
+        return prompt(f"Username for {cls.method()} auth")
 
     @classmethod
     def _load_password(cls, username: str) -> Optional[str]:

@@ -106,7 +106,7 @@ class TestUserPasswordAuth:
         # keyring
         with patch.object(t, "read_keyring", return_value="foo") as r:
             assert t.UserPasswordAuth._load_username({}) == "foo"
-            r.assert_any_call("MOCK/username")
+            r.assert_any_call("mock/:username")
 
     def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
         # env var
