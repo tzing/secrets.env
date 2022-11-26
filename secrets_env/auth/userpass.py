@@ -12,14 +12,14 @@ from secrets_env.io import get_env_var, prompt, read_keyring
 if typing.TYPE_CHECKING:
     import httpx
 
-OKTA_TIMEOUT = 60.0
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
+
+    TIMEOUT = None
 
     username: str
     """User name."""
@@ -89,65 +89,50 @@ class UserPasswordAuth(Auth):
 
         return prompt("Password", hide_input=True)
 
+    def login(self, client: "httpx.Client") -> Optional[str]:
+        username = urllib.parse.quote(self.username)
+        resp = client.post(
+            f"/v1/auth/{self.PATH}/login/{username}",
+            json={
+                "username": self.username,
+                "password": self.password,
+            },
+            timeout=self.TIMEOUT,
+        )
+
+        if resp.status_code != HTTPStatus.OK:
+            logger.error("Failed to login with %s method", self.method())
+            logger.debug(
+                "Login failed. URL= %s, Code= %d. Msg= %s",
+                resp.url,
+                resp.status_code,
+                resp.text,
+            )
+            return
+
+        return resp.json()["auth"]["client_token"]
+
 
 @dataclass(frozen=True)
 class BasicAuth(UserPasswordAuth):
     """Login to Vault using user name and password."""
 
+    PATH = "userpass"
+
     @classmethod
     def method(cls):
         return "basic"
-
-    def login(self, client: "httpx.Client") -> Optional[str]:
-        username = urllib.parse.quote(self.username)
-        resp = client.post(
-            f"/v1/auth/userpass/login/{username}",
-            json={
-                "password": self.password,
-            },
-        )
-
-        if resp.status_code != HTTPStatus.OK:
-            logger.error("Failed to login Vault")
-            logger.debug(
-                "Vault login failed. Code= %d. Msg= %s", resp.status_code, resp.text
-            )
-            return
-
-        return resp.json()["auth"]["client_token"]
 
 
 @dataclass(frozen=True)
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
+    PATH = "okta"
+
+    # Okta 2FA got triggerred within the api call, so needs a longer timeout
+    TIMEOUT = 60.0
+
     @classmethod
     def method(cls):
         return "okta"
-
-    def login(self, client: "httpx.Client") -> Optional[str]:
-        logger.info(
-            "<!important>Login to <mark>Okta</mark> with user <data>%s</data>. "
-            "Waiting for 2FA proceeded...",
-            self.username,
-        )
-
-        # Okta 2FA got triggerred within this api call
-        username = urllib.parse.quote(self.username)
-        resp = client.post(
-            f"/v1/auth/okta/login/{username}",
-            json={
-                "username": self.username,
-                "password": self.password,
-            },
-            timeout=OKTA_TIMEOUT,
-        )
-
-        if resp.status_code != HTTPStatus.OK:
-            logger.error("Failed to login Okta")
-            logger.debug(
-                "Okta login failed. Code= %d. Msg= %s", resp.status_code, resp.text
-            )
-            return
-
-        return resp.json()["auth"]["client_token"]

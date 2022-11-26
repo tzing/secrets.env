@@ -7,13 +7,36 @@ import respx
 import secrets_env.auth.userpass as t
 
 
+@pytest.fixture()
+def login_success_response() -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "lease_id": "",
+            "renewable": False,
+            "lease_duration": 0,
+            "data": None,
+            "warnings": None,
+            "auth": {
+                "client_token": "client-token",
+                "accessor": "accessor-token",
+                "policies": ["default"],
+                "metadata": {"username": "fred", "policies": "default"},
+                "lease_duration": 7200,
+                "renewable": True,
+            },
+        },
+    )
+
+
 class TestUserPasswordAuth:
     @pytest.fixture(autouse=True)
     def _patch_userpass(self, monkeypatch: pytest.MonkeyPatch):
         # UserPasswordAuth does not implemented all the required methods so need
         # to patch __abstractmethods__ to skip TypeError raised by ABC
-        monkeypatch.setattr(t.UserPasswordAuth, "__abstractmethods__", set())
-        monkeypatch.setattr(t.UserPasswordAuth, "method", lambda: "MOCK")
+        with patch.object(t.UserPasswordAuth, "__abstractmethods__", set()):
+            with patch.object(t.UserPasswordAuth, "method", return_value="MOCK"):
+                yield
 
     def test___init__(self):
         # success
@@ -96,32 +119,42 @@ class TestUserPasswordAuth:
             assert t.UserPasswordAuth._load_password() == "bar"
             r.assert_any_call("MOCK/password")
 
+    def test_login_success(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        login_success_response: httpx.Response,
+    ):
+        unittest_respx.post("/v1/auth/mock/login/user%40example.com").mock(
+            return_value=login_success_response
+        )
 
-@pytest.fixture()
-def login_success_response() -> httpx.Response:
-    return httpx.Response(
-        200,
-        json={
-            "lease_id": "",
-            "renewable": False,
-            "lease_duration": 0,
-            "data": None,
-            "warnings": None,
-            "auth": {
-                "client_token": "64d2a8f2-2a2f-5688-102b-e6088b76e344",
-                "accessor": "18bb8f89-826a-56ee-c65b-1736dc5ea27d",
-                "policies": ["default"],
-                "metadata": {"username": "fred", "policies": "default"},
-                "lease_duration": 7200,
-                "renewable": True,
-            },
-        },
-    )
+        auth_obj = t.UserPasswordAuth("user@example.com", "password")
+        object.__setattr__(auth_obj, "PATH", "mock")
+
+        assert auth_obj.login(unittest_client) == "client-token"
+
+    def test_login_fail(
+        self,
+        unittest_respx: respx.MockRouter,
+        unittest_client: httpx.Client,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        unittest_respx.post("/v1/auth/mock/login/user%40example.com").mock(
+            return_value=httpx.Response(400)
+        )
+
+        auth_obj = t.UserPasswordAuth("user@example.com", "password")
+        object.__setattr__(auth_obj, "PATH", "mock")
+
+        assert auth_obj.login(unittest_client) is None
+
+        assert "Failed to login with MOCK method" in caplog.text
 
 
 class TestBasicAuth:
     def setup_method(self):
-        self.authobj = t.BasicAuth("user@example.com", "pass")
+        self.authobj = t.BasicAuth("user@basic.example.com", "pass")
 
     def test_method(self):
         assert t.BasicAuth.method() == "basic"
@@ -132,26 +165,15 @@ class TestBasicAuth:
         unittest_client: httpx.Client,
         login_success_response: httpx.Response,
     ):
-        unittest_respx.post("/v1/auth/userpass/login/user%40example.com").mock(
+        unittest_respx.post("/v1/auth/userpass/login/user%40basic.example.com").mock(
             return_value=login_success_response
         )
-        assert (
-            self.authobj.login(unittest_client)
-            == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
-        )
-
-    def test_login_fail(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/userpass/login/user%40example.com").mock(
-            return_value=httpx.Response(400)
-        )
-        assert self.authobj.login(unittest_client) is None
+        assert self.authobj.login(unittest_client) == "client-token"
 
 
 class TestOktaAuth:
     def setup_method(self):
-        self.authobj = t.OktaAuth("user@example.com", "pass")
+        self.authobj = t.OktaAuth("user@okta.example.com", "pass")
 
     def test_method(self):
         assert t.OktaAuth.method() == "okta"
@@ -162,18 +184,7 @@ class TestOktaAuth:
         unittest_client: httpx.Client,
         login_success_response: httpx.Response,
     ):
-        unittest_respx.post("/v1/auth/okta/login/user%40example.com").mock(
+        unittest_respx.post("/v1/auth/okta/login/user%40okta.example.com").mock(
             return_value=login_success_response
         )
-        assert (
-            self.authobj.login(unittest_client)
-            == "64d2a8f2-2a2f-5688-102b-e6088b76e344"
-        )
-
-    def test_login_fail(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/okta/login/user%40example.com").mock(
-            return_value=httpx.Response(403)
-        )
-        assert self.authobj.login(unittest_client) is None
+        assert self.authobj.login(unittest_client) == "client-token"
