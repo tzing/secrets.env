@@ -39,7 +39,7 @@ class OpenIDConnectAuth(Auth):
 
     @classmethod
     def method(cls) -> str:
-        return "oidc"
+        return "OIDC"
 
     def login(self, client: "httpx.Client") -> str:
         logger.debug("Applying ODIC auth")

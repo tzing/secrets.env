@@ -1,3 +1,4 @@
+import abc
 import logging
 import typing
 import urllib.parse
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
+
+    @abc.abstractclassmethod
+    def path(cls) -> str:
+        """Returns method name used by Vault."""
+        raise NotImplementedError()
 
     _TIMEOUT = None
 
@@ -82,7 +88,7 @@ class UserPasswordAuth(Auth):
             return password
 
         method = cls.method()
-        password = read_keyring(f"{method}/password")
+        password = read_keyring(f"{self._PATH}/password")
         if password:
             logger.debug("Found password in keyring")
             return password
@@ -90,15 +96,10 @@ class UserPasswordAuth(Auth):
         return prompt("Password", hide_input=True)
 
     def login(self, client: "httpx.Client") -> Optional[str]:
-        # cheat pyright
-        self._PATH: str
-        self._TIMEOUT: Optional[float]
-        assert self._PATH
-
         # build request
         username = urllib.parse.quote(self.username)
         resp = client.post(
-            f"/v1/auth/{self._PATH}/login/{username}",
+            f"/v1/auth/{self.path()}/login/{username}",
             json={
                 "username": self.username,
                 "password": self.password,
@@ -124,21 +125,25 @@ class UserPasswordAuth(Auth):
 class BasicAuth(UserPasswordAuth):
     """Login to Vault using user name and password."""
 
-    _PATH = "userpass"
-
     @classmethod
     def method(cls):
         return "basic"
+
+    @classmethod
+    def path(cls):
+        return "userpass"
 
 
 @dataclass(frozen=True)
 class LDAPAuth(UserPasswordAuth):
     """Login with LDAP credentials."""
 
-    _PATH = "ldap"
-
     @classmethod
     def method(cls):
+        return "LDAP"
+
+    @classmethod
+    def path(cls):
         return "ldap"
 
 
@@ -146,21 +151,25 @@ class LDAPAuth(UserPasswordAuth):
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
-    _PATH = "okta"
-
     # Okta 2FA got triggerred within the api call, so needs a longer timeout
     _TIMEOUT = 60.0
 
     @classmethod
     def method(cls):
+        return "Okta"
+
+    @classmethod
+    def path(cls):
         return "okta"
 
 
 class RADIUSAuth(UserPasswordAuth):
     """RADIUS authentication with PAP authentication scheme."""
 
-    _PATH = "radius"
-
     @classmethod
     def method(cls):
+        return "RADIUS"
+
+    @classmethod
+    def path(cls):
         return "radius"
