@@ -1,3 +1,4 @@
+import abc
 import logging
 import typing
 import urllib.parse
@@ -18,6 +19,13 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
+
+    @abc.abstractclassmethod
+    def path(cls) -> str:
+        """Returns method name used by Vault."""
+        raise NotImplementedError()
+
+    _TIMEOUT = None
 
     username: str
     """User name."""
@@ -64,13 +72,12 @@ class UserPasswordAuth(Auth):
         if username:
             return username
 
-        method = cls.method()
-        username = read_keyring(f"{method}/:username")
+        username = read_keyring(f"{cls.path()}/:username")
         if username:
-            logger.debug("Found username from keyring")
+            logger.debug("Found username in keyring")
             return username
 
-        return prompt(f"Username for {method} auth")
+        return prompt(f"Username for {cls.method()} auth")
 
     @classmethod
     def _load_password(cls, username: str) -> Optional[str]:
@@ -79,56 +86,88 @@ class UserPasswordAuth(Auth):
             logger.debug("Found password from environment variable.")
             return password
 
-        method = cls.method()
-        password = read_keyring(f"{method}/{username}")
+        password = read_keyring(f"{cls.path()}/{username}")
         if password:
-            logger.debug("Found password from keyring")
+            logger.debug("Found password in keyring")
             return password
 
-        return prompt("Password", hide_input=True)
+        return prompt(f"Password for {username}", hide_input=True)
+
+    def login(self, client: "httpx.Client") -> Optional[str]:
+        # build request
+        username = urllib.parse.quote(self.username)
+        resp = client.post(
+            f"/v1/auth/{self.path()}/login/{username}",
+            json={
+                "username": self.username,
+                "password": self.password,
+            },
+            timeout=self._TIMEOUT,
+        )
+
+        # check response
+        if resp.status_code != HTTPStatus.OK:
+            logger.error("Failed to login with %s method", self.method())
+            logger.debug(
+                "Login failed. URL= %s, Code= %d. Msg= %s",
+                resp.url,
+                resp.status_code,
+                resp.text,
+            )
+            return
+
+        return resp.json()["auth"]["client_token"]
+
+
+@dataclass(frozen=True)
+class BasicAuth(UserPasswordAuth):
+    """Login to Vault using user name and password."""
+
+    @classmethod
+    def method(cls):
+        return "basic"
+
+    @classmethod
+    def path(cls):
+        return "userpass"
+
+
+@dataclass(frozen=True)
+class LDAPAuth(UserPasswordAuth):
+    """Login with LDAP credentials."""
+
+    @classmethod
+    def method(cls):
+        return "LDAP"
+
+    @classmethod
+    def path(cls):
+        return "ldap"
 
 
 @dataclass(frozen=True)
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
+    # Okta 2FA got triggerred within the api call, so needs a longer timeout
+    _TIMEOUT = 60.0
+
     @classmethod
     def method(cls):
+        return "Okta"
+
+    @classmethod
+    def path(cls):
         return "okta"
 
-    def __init__(self, username: str, password: str) -> None:
-        """
-        Parameters
-        ----------
-        username : str
-            User name to login to Okta.
-        password : str
-            Password to login to Okta.
-        """
-        super().__init__(username, password)
 
-    def login(self, client: "httpx.Client") -> Optional[str]:
-        logger.info(
-            "<!important>Login to <mark>Okta</mark> with user <data>%s</data>. "
-            "Waiting for 2FA proceeded...",
-            self.username,
-        )
+class RADIUSAuth(UserPasswordAuth):
+    """RADIUS authentication with PAP authentication scheme."""
 
-        # Okta 2FA got triggerred within this api call
-        username = urllib.parse.quote(self.username)
-        resp = client.post(
-            f"/v1/auth/okta/login/{username}",
-            json={
-                "username": self.username,
-                "password": self.password,
-            },
-        )
+    @classmethod
+    def method(cls):
+        return "RADIUS"
 
-        if resp.status_code != HTTPStatus.OK:
-            logger.error("Failed to login Okta")
-            logger.debug(
-                "Okta login failed. Code= %d. Msg= %s", resp.status_code, resp.text
-            )
-            return
-
-        return resp.json()["auth"]["client_token"]
+    @classmethod
+    def path(cls):
+        return "radius"
