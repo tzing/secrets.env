@@ -74,7 +74,7 @@ class UserPasswordAuth(Auth):
 
         username = read_keyring(f"{cls.path()}/:username")
         if username:
-            logger.debug("Found username in pkeyring")
+            logger.debug("Found username in keyring")
             return username
 
         return prompt(f"Username for {cls.method()} auth")
