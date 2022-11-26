@@ -34,9 +34,14 @@ class TestUserPasswordAuth:
     def _patch_userpass(self, monkeypatch: pytest.MonkeyPatch):
         # UserPasswordAuth does not implemented all the required methods so need
         # to patch __abstractmethods__ to skip TypeError raised by ABC
-        with patch.object(t.UserPasswordAuth, "__abstractmethods__", set()):
-            with patch.object(t.UserPasswordAuth, "method", return_value="MOCK"):
-                yield
+        with patch.object(
+            t.UserPasswordAuth, "__abstractmethods__", set()
+        ), patch.object(
+            t.UserPasswordAuth, "method", return_value="MOCK"
+        ), patch.object(
+            t.UserPasswordAuth, "path", return_value="mock"
+        ):
+            yield
 
     def test___init__(self):
         # success
@@ -52,7 +57,7 @@ class TestUserPasswordAuth:
 
     def test_load_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: "user")
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda: "P@ssw0rd")
+        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: "P@ssw0rd")
 
         obj = t.UserPasswordAuth.load({})
         assert obj == t.UserPasswordAuth("user", "P@ssw0rd")
@@ -107,17 +112,17 @@ class TestUserPasswordAuth:
         # env var
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_PASSWORD", "bar")
-            assert t.UserPasswordAuth._load_password() == "bar"
+            assert t.UserPasswordAuth._load_password("foo") == "bar"
 
         # prompt
         with patch.object(t, "prompt", return_value="bar") as p:
-            assert t.UserPasswordAuth._load_password() == "bar"
-            p.assert_any_call("Password", hide_input=True)
+            assert t.UserPasswordAuth._load_password("foo") == "bar"
+            p.assert_any_call("Password for foo", hide_input=True)
 
         # keyring
         with patch.object(t, "read_keyring", return_value="bar") as r:
-            assert t.UserPasswordAuth._load_password() == "bar"
-            r.assert_any_call("MOCK/password")
+            assert t.UserPasswordAuth._load_password("foo") == "bar"
+            r.assert_any_call("mock/foo")
 
     def test_login_success(
         self,
@@ -130,8 +135,6 @@ class TestUserPasswordAuth:
         )
 
         auth_obj = t.UserPasswordAuth("user@example.com", "password")
-        object.__setattr__(auth_obj, "_PATH", "mock")
-
         assert auth_obj.login(unittest_client) == "client-token"
 
     def test_login_fail(
@@ -145,8 +148,6 @@ class TestUserPasswordAuth:
         )
 
         auth_obj = t.UserPasswordAuth("user@example.com", "password")
-        object.__setattr__(auth_obj, "_PATH", "mock")
-
         assert auth_obj.login(unittest_client) is None
 
         assert "Failed to login with MOCK method" in caplog.text
@@ -176,7 +177,7 @@ class TestBasicAuth:
 
 class TestOktaAuth:
     def test_method(self):
-        assert t.OktaAuth.method() == "okta"
+        assert t.OktaAuth.method() == "Okta"
 
     def test_login(
         self,
@@ -198,7 +199,7 @@ class TestOktaAuth:
 
 class TestLDAP:
     def test_method(self):
-        assert t.LDAPAuth.method() == "ldap"
+        assert t.LDAPAuth.method() == "LDAP"
 
     def test_login(
         self,
@@ -220,7 +221,7 @@ class TestLDAP:
 
 class TestRADIUS:
     def test_method(self):
-        assert t.RADIUSAuth.method() == "radius"
+        assert t.RADIUSAuth.method() == "RADIUS"
 
     def test_login(
         self,
