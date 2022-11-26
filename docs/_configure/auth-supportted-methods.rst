@@ -53,7 +53,9 @@ LDAP
 
 :method: ``ldap``
 
-Login with LDAP credentials.
+Login with `LDAP`_ credentials.
+
+.. _LDAP: https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol
 
 username
    User name to login
@@ -77,7 +79,9 @@ Okta
 
 :method: ``okta``
 
-Get authentication by login to Okta.
+Get authentication by login to `Okta`_.
+
+.. _Okta: https://www.okta.com/
 
 username
    User name to login Okta
@@ -101,7 +105,9 @@ OpenID Connect
 
 :method: ``oidc``
 
-Get authentication via configured OIDC provider using your web browser.
+Get authentication via configured `OpenID Connect`_ provider using your web browser.
+
+.. _OpenID Connect: https://openid.net/connect/
 
 role
    *(Optional)* OIDC role. Will use default role if not set.
