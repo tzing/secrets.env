@@ -77,10 +77,13 @@ def parse_config(data: dict) -> Optional[Config]:
     if not is_success:
         return None
 
-    return {
-        "client": config_source,
-        "secrets": config_secrets,
-    }  # pyright: ignore[reportGeneralTypeIssues]
+    return typing.cast(
+        Config,
+        {
+            "client": config_source,
+            "secrets": config_secrets,
+        },
+    )
 
 
 def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
