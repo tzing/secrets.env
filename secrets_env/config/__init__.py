@@ -28,8 +28,4 @@ def load_config(path: Optional["Path"] = None) -> Optional["Config"]:
     logger.info("Read secrets.env config from <data>%s</data>", file_metadata.path)
 
     data = read_config_file(file_metadata)
-    if not data:
-        logger.info("No content in the config file. Stop loading secrets.")
-        return None
-
     return parse_config(data)

@@ -52,7 +52,7 @@ def parse_config(data: dict) -> Optional[Config]:
     """Parse and validate configs, build it into structured object."""
     # stop parse config when there's no target
     if not data.get("secrets"):
-        logger.debug("No target specificied.")
+        logger.info("No target specificied. Stop loading secret.")
         return None
 
     is_success = True
