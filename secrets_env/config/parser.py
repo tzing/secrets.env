@@ -4,8 +4,8 @@ import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.auth
-from secrets_env.config.types import ensure_dict, ensure_path, ensure_str
 from secrets_env.io import get_env_var
+from secrets_env.utils import ensure_dict, ensure_path, ensure_str
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
