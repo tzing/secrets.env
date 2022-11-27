@@ -83,4 +83,4 @@ class TestLoadConfig:
             assert t.load_config(path) is None
 
         assert "Read secrets.env config from " in caplog.text
-        assert "No content in the config file." in caplog.text
+        assert "No target specificied." in caplog.text

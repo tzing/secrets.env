@@ -1,5 +1,5 @@
 __name__ = "secrets_env"
-__version__ = "0.22.0"
+__version__ = "0.22.1"
 
 import logging
 import pathlib

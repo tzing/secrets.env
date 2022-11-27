@@ -4,8 +4,8 @@ import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.auth
-from secrets_env.config.types import ensure_dict, ensure_path, ensure_str
 from secrets_env.io import get_env_var
+from secrets_env.utils import ensure_dict, ensure_path, ensure_str
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -52,7 +52,7 @@ def parse_config(data: dict) -> Optional[Config]:
     """Parse and validate configs, build it into structured object."""
     # stop parse config when there's no target
     if not data.get("secrets"):
-        logger.debug("No target specificied.")
+        logger.info("No target specificied. Stop loading secret.")
         return None
 
     is_success = True
@@ -77,10 +77,13 @@ def parse_config(data: dict) -> Optional[Config]:
     if not is_success:
         return None
 
-    return {
-        "client": config_source,
-        "secrets": config_secrets,
-    }  # pyright: ignore[reportGeneralTypeIssues]
+    return typing.cast(
+        Config,
+        {
+            "client": config_source,
+            "secrets": config_secrets,
+        },
+    )
 
 
 def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
