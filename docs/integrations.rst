@@ -34,3 +34,15 @@ Use the service name ``secrets.env`` and the keys listed in :ref:`authentication
 .. _keyring: https://keyring.readthedocs.io/en/latest/
 .. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
 .. _command line utility: https://keyring.readthedocs.io/en/latest/#command-line-utility
+
+
+Plugin system
+-------------
+
+Secrets.env is now integrated with `pluggy <https://pluggy.readthedocs.io/en/stable/>`_.
+You can use it to inject customized logics into secrets.env without modified the code base.
+
+Avaliable hooks
+^^^^^^^^^^^^^^^
+
+.. automethod:: secrets_env.plugins.HookSpec.add_extra_config

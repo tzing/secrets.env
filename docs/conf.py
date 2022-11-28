@@ -26,7 +26,15 @@ version = secrets_env.__version__
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx_code_tabs"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
+    "sphinx_code_tabs",
+]
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+}
 
 templates_path = ["_templates"]
 exclude_patterns = []
