@@ -4,6 +4,7 @@ import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.auth
+import secrets_env.plugins
 from secrets_env.io import get_env_var
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str
 
@@ -55,6 +56,11 @@ def parse_config(data: dict) -> Optional[Config]:
         logger.info("No target specificied. Stop loading secret.")
         return None
 
+    # call hook
+    hooks = secrets_env.plugins.get_hooks()
+    hooks.add_extra_config(data=data)
+
+    # shared flag
     is_success = True
 
     # `source` section
