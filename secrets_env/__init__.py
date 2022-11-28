@@ -8,8 +8,10 @@ from typing import Dict, Optional
 import secrets_env.config
 import secrets_env.core
 import secrets_env.exception
+import secrets_env.plugins
 
 logger = logging.getLogger(__name__)
+hookimpl = secrets_env.plugins.hookimpl
 
 
 def load_secrets(
