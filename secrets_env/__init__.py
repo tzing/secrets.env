@@ -25,7 +25,7 @@ def load_secrets(
         return {}
 
     # read secrets
-    reader = secrets_env.providers.vault.core.KVReader(**config["client"])
+    reader = secrets_env.providers.vault.core.VaultReader(**config["client"])
 
     try:
         secrets = reader.read_values(config["secrets"].values())

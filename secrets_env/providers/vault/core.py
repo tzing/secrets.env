@@ -17,7 +17,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class KVReader:
+class VaultReader:
     """Read secrets from Vault KV engine."""
 
     def __init__(

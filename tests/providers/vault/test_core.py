@@ -7,16 +7,16 @@ import pytest
 import respx
 
 import secrets_env.auth
-import secrets_env.core as t
+import secrets_env.providers.vault.core as t
 from secrets_env.exception import AuthenticationError
 
 
-class TestKVReader:
+class TestVaultReader:
     @pytest.fixture()
-    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.KVReader:
+    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.VaultReader:
         """Returns a reader that connects to real"""
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "!ntegr@t!0n-test")
-        return t.KVReader(
+        return t.VaultReader(
             "http://localhost:8200",
             secrets_env.auth.get_auth("token", {}),
         )
@@ -25,18 +25,18 @@ class TestKVReader:
         auth = Mock(spec=secrets_env.auth.Auth)
 
         with pytest.raises(TypeError):
-            t.KVReader(1234, auth)
+            t.VaultReader(1234, auth)
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", 1234)
+            t.VaultReader("https://example.com", 1234)
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", auth, ca_cert="/path/cert")
+            t.VaultReader("https://example.com", auth, ca_cert="/path/cert")
         with pytest.raises(TypeError):
-            t.KVReader("https://example.com", auth, client_cert="/path/cert")
+            t.VaultReader("https://example.com", auth, client_cert="/path/cert")
 
     def test_client(self):
         auth = Mock(spec=secrets_env.auth.Auth)
         auth.method.return_value = "mocked"
-        reader = t.KVReader(url="https://example.com/", auth=auth)
+        reader = t.VaultReader(url="https://example.com/", auth=auth)
 
         # fail
         auth.login.return_value = None
@@ -54,7 +54,7 @@ class TestKVReader:
             assert isinstance(reader.client, httpx.Client)
             assert isinstance(reader.client, httpx.Client)  # from cache
 
-    def test_read_secret(self, reader: t.KVReader):
+    def test_read_secret(self, reader: t.VaultReader):
         secret = reader.read_secret("kv1/test")
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello"
@@ -65,7 +65,7 @@ class TestKVReader:
 
         assert reader.read_secret("secret/no-this-secret") is None
 
-    def test_read_field(self, reader: t.KVReader):
+    def test_read_field(self, reader: t.VaultReader):
         assert reader.read_field("kv1/test", "foo") == "hello"
         assert reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
 
@@ -78,7 +78,7 @@ class TestKVReader:
         with pytest.raises(TypeError):
             reader.read_field("secret/test", 1234)
 
-    def test_read_values(self, reader: t.KVReader):
+    def test_read_values(self, reader: t.VaultReader):
         output = reader.read_values(
             [
                 ("kv1/test", "foo"),

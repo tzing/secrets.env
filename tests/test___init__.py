@@ -6,8 +6,8 @@ import pytest
 
 import secrets_env
 from secrets_env.auth.null import NoAuth
-from secrets_env.core import KVReader
 from secrets_env.exception import AuthenticationError
+from secrets_env.providers.vault.core import VaultReader
 
 
 @pytest.fixture()
@@ -33,7 +33,7 @@ def _patch_load_config(monkeypatch: pytest.MonkeyPatch):
 def test_success(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.INFO)
     monkeypatch.setattr(
-        KVReader,
+        VaultReader,
         "read_values",
         lambda _1, _2: {
             ("secrets/sample1", "foo"): "secret-1",
@@ -53,7 +53,7 @@ def test_partial_loaded(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
     monkeypatch.setattr(
-        KVReader,
+        VaultReader,
         "read_values",
         lambda _1, _2: {
             ("secrets/sample1", "foo"): "secret-1",
@@ -76,7 +76,7 @@ def test_no_config(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.usefixtures("_patch_load_config")
 def test_auth_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
     monkeypatch.setattr(
-        KVReader, "read_values", Mock(side_effect=AuthenticationError("test error"))
+        VaultReader, "read_values", Mock(side_effect=AuthenticationError("test error"))
     )
     assert secrets_env.load_secrets() == {}
     assert "Authentication error: test error" in caplog.text
