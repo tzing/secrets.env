@@ -3,7 +3,7 @@ import re
 import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
-import secrets_env.auth
+import secrets_env.providers.vault.auth
 import secrets_env.plugins
 from secrets_env.io import get_env_var
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str
@@ -11,7 +11,7 @@ from secrets_env.utils import ensure_dict, ensure_path, ensure_str
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
-    from secrets_env.auth import Auth
+    from secrets_env.providers.vault.auth import Auth
 
 DEFAULT_AUTH_METHOD = "token"
 
@@ -169,7 +169,7 @@ def get_auth(data: dict) -> Optional["Auth"]:
     if not method:
         return None
 
-    return secrets_env.auth.get_auth(method, data)
+    return secrets_env.providers.vault.auth.get_auth(method, data)
 
 
 def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:

@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env.config.parser as t
-from secrets_env.auth import Auth
-from secrets_env.auth.null import NoAuth
+from secrets_env.providers.vault.auth import Auth
+from secrets_env.providers.vault.auth.null import NoAuth
 
 
 class TestParseConfig:
@@ -162,7 +162,7 @@ class TestGetAuth:
             assert method == "test"
             return Mock(spec=Auth)
 
-        monkeypatch.setattr("secrets_env.auth.get_auth", mock_get_auth)
+        monkeypatch.setattr("secrets_env.providers.vault.auth.get_auth", mock_get_auth)
 
     @pytest.mark.usefixtures("_patch_get_auth")
     def test_from_data(self):
@@ -187,7 +187,7 @@ class TestGetAuth:
             assert method == "token"
             return Mock(spec=Auth)
 
-        monkeypatch.setattr("secrets_env.auth.get_auth", mock_get_auth)
+        monkeypatch.setattr("secrets_env.providers.vault.auth.get_auth", mock_get_auth)
 
         assert isinstance(t.get_auth({}), Auth)
         assert (

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config as t
-from secrets_env.auth.null import NoAuth
+from secrets_env.providers.vault.auth.null import NoAuth
 from secrets_env.config.finder import ConfigFile
 
 

@@ -11,7 +11,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from secrets_env.auth.base import Auth
+from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
 
@@ -127,8 +127,8 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
         self.server.auth_token = code
 
         # response
-        pkg_dir = Path(__file__).resolve().parent.parent
-        response_page = pkg_dir / "templates" / "oidc-success.html"
+        this_dir = Path(__file__).resolve().parent
+        response_page = this_dir / "templates" / "oidc-success.html"
         response_data = response_page.read_bytes()
 
         self.send_response(HTTPStatus.OK)
