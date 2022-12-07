@@ -6,7 +6,12 @@ from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 import secrets_env.plugins
 import secrets_env.providers.vault.auth
 from secrets_env.io import get_env_var
-from secrets_env.providers.vault.config import get_auth, get_url
+from secrets_env.providers.vault.config import (
+    get_auth,
+    get_tls_ca_cert,
+    get_tls_client_cert,
+    get_url,
+)
 from secrets_env.utils import ensure_dict, ensure_path
 
 if typing.TYPE_CHECKING:
@@ -121,58 +126,6 @@ def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
         output["client_cert"] = client_cert
 
     return output if is_success else None
-
-
-def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
-    path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
-    if not path:
-        path = data.get("ca_cert")
-
-    if path:
-        return ensure_path("TLS server certificate (CA cert)", path)
-
-    return None, True
-
-
-def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
-    client_cert, client_key = None, None
-    is_success = True
-
-    # certificate
-    path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
-    if not path:
-        path = data.get("client_cert")
-
-    if path:
-        client_cert, ok = ensure_path("TLS client-side certificate (client_cert)", path)
-        is_success &= ok
-
-    # private key
-    path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
-    if not path:
-        path = data.get("client_key")
-
-    if path:
-        client_key, ok = ensure_path("TLS private key (client_key)", path)
-        is_success &= ok
-
-    # build output
-    if not is_success:
-        return None, False
-
-    if client_cert and client_key:
-        return (client_cert, client_key), True
-    elif client_cert:
-        return client_cert, True
-    elif client_key:
-        logger.error(
-            "Missing config <mark>client_cert</mark>. "
-            "Please provide from config file (<mark>source.tls.client_cert</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_CLIENT_CERT</mark>)."
-        )
-        return None, False
-
-    return None, True
 
 
 def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretMapping:

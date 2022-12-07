@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -107,3 +108,64 @@ class TestGetAuthFactory:
             "secrets_env.providers.vault.auth.userpass.RADIUSAuth.load", self.mock_load
         )
         assert t.get_auth({"method": "radius"}) is self.mock_auth
+
+
+class TestGetTLS:
+    def test_get_tls_ca_cert(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        path = tmp_path / "ca.cert"
+        path.touch()
+
+        # success
+        with monkeypatch.context() as ctx:
+            ctx.setenv("SECRETS_ENV_CA_CERT", str(path))
+            assert t.get_tls_ca_cert({}) == (path, True)
+
+        assert t.get_tls_ca_cert({"ca_cert": str(path)}) == (path, True)
+
+        assert t.get_tls_ca_cert({}) == (None, True)
+
+        # fail
+        with monkeypatch.context() as ctx:
+            ctx.setenv("SECRETS_ENV_CA_CERT", "/data/no-this-file")
+            assert t.get_tls_ca_cert({}) == (None, False)
+
+    def test_get_tls_client_cert(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        client_cert = tmp_path / "client.pem"
+        client_cert.touch()
+
+        client_key = tmp_path / "client.key"
+        client_key.touch()
+
+        # success: from env var
+        with monkeypatch.context() as ctx:
+            ctx.setenv("SECRETS_ENV_CLIENT_CERT", str(client_cert))
+            assert t.get_tls_client_cert({}) == (client_cert, True)
+
+        # success: from config
+        assert t.get_tls_client_cert(
+            {
+                "client_cert": str(client_cert),
+                "client_key": str(client_key),
+            }
+        ) == ((client_cert, client_key), True)
+
+        # success: no data
+        assert t.get_tls_client_cert({}) == (None, True)
+
+        # fail: only key
+        with monkeypatch.context() as ctx:
+            ctx.setenv("SECRETS_ENV_CLIENT_KEY", str(client_key))
+            assert t.get_tls_client_cert({}) == (None, False)
+            assert "Missing config <mark>client_cert</mark>." in caplog.text
+
+        # fail: file not exist
+        assert t.get_tls_client_cert(
+            {
+                "client_cert": "/data/no-this-file",
+            }
+        ) == (None, False)
