@@ -5,39 +5,14 @@ from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.plugins
 import secrets_env.providers.vault.auth
-from secrets_env.io import get_env_var
 from secrets_env.providers.vault.config import (
-    get_auth,
-    get_tls_ca_cert,
-    get_tls_client_cert,
-    get_url,
+    get_connection_info as parse_section_source,
 )
-from secrets_env.utils import ensure_dict, ensure_path
-
-if typing.TYPE_CHECKING:
-    from pathlib import Path
-
-    from secrets_env.providers.vault.auth.base import Auth
+from secrets_env.utils import ensure_dict
 
 logger = logging.getLogger(__name__)
 
 __regex_var_name = None
-
-CertTypes = Union[
-    # cert file
-    "Path",
-    # client file, key file
-    Tuple["Path", "Path"],
-]
-
-
-class ClientConfig(TypedDict):
-    url: str
-    auth: "Auth"
-
-    # tls
-    ca_cert: "Path"
-    client_cert: CertTypes
 
 
 class SecretSource(typing.NamedTuple):
@@ -45,11 +20,12 @@ class SecretSource(typing.NamedTuple):
     field: str
 
 
+ConnectionInfo = Dict[str, Any]
 SecretMapping = Dict[str, SecretSource]
 
 
 class Config(TypedDict):
-    client: ClientConfig
+    client: ConnectionInfo
     secrets: SecretMapping
 
 
@@ -94,38 +70,6 @@ def parse_config(data: dict) -> Optional[Config]:
             "secrets": config_secrets,
         },
     )
-
-
-def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
-    output: Dict[str, Any] = {}
-    is_success = True
-
-    # url
-    if url := get_url(data):
-        output["url"] = url
-    else:
-        is_success = False
-
-    # auth
-    if auth := get_auth(data.get("auth", {})):
-        output["auth"] = auth
-    else:
-        is_success = False
-
-    # tls
-    data_tls = data.get("tls", {})
-
-    ca_cert, ok = get_tls_ca_cert(data_tls)
-    is_success &= ok
-    if ok and ca_cert:
-        output["ca_cert"] = ca_cert
-
-    client_cert, ok = get_tls_client_cert(data_tls)
-    is_success &= ok
-    if ok and client_cert:
-        output["client_cert"] = client_cert
-
-    return output if is_success else None
 
 
 def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretMapping:

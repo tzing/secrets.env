@@ -1,6 +1,3 @@
-from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
 import secrets_env.config.parser as t
@@ -69,69 +66,6 @@ class TestParseConfig:
             }
         )
         assert cfg is None
-
-
-class TestParseSectionSource:
-    def setup_method(self):
-        self.data = {"url": "https://example.com", "auth": "null", "tls": {}}
-
-    @pytest.mark.usefixtures("_disable_ensure_path_exist_check")
-    @pytest.mark.parametrize(
-        ("cfg_ca_cert", "ca_cert"),
-        [
-            ({}, None),
-            ({"ca_cert": "/data/ca.cert"}, Path("/data/ca.cert")),
-        ],
-    )
-    @pytest.mark.parametrize(
-        ("cfg_client_cert", "client_cert"),
-        [
-            ({}, None),
-            ({"client_cert": "/data/client.pem"}, Path("/data/client.pem")),
-            (
-                {"client_cert": "/data/client.pem", "client_key": "/data/client.key"},
-                (Path("/data/client.pem"), Path("/data/client.key")),
-            ),
-        ],
-    )
-    def test_success(self, cfg_ca_cert, ca_cert, cfg_client_cert, client_cert):
-        # setup
-        self.data["tls"].update(cfg_ca_cert)
-        self.data["tls"].update(cfg_client_cert)
-
-        # run
-        cfg = t.parse_section_source(self.data)
-
-        # test
-        assert isinstance(cfg, dict)
-        assert cfg["url"] == "https://example.com"
-        assert cfg["auth"] == NoAuth()
-
-        if ca_cert:
-            assert cfg["ca_cert"] == ca_cert
-        else:
-            assert "ca_cert" not in cfg
-
-        if client_cert:
-            assert cfg["client_cert"] == client_cert
-        else:
-            assert "client_cert" not in cfg
-
-    def test_fail(self):
-        with patch.object(t, "get_url", return_value=None):
-            assert t.parse_section_source(self.data) is None
-
-        with patch.object(t, "get_auth", return_value=None):
-            assert t.parse_section_source(self.data) is None
-
-        with patch.object(t, "get_tls_ca_cert", return_value=(None, False)):
-            assert t.parse_section_source(self.data) is None
-
-        with patch.object(t, "get_tls_client_cert", return_value=(None, False)):
-            assert t.parse_section_source(self.data) is None
-
-        # make sure the errors above are not caused by malformed data dict
-        assert isinstance(t.parse_section_source(self.data), dict)
 
 
 def test_parse_section_secret(caplog: pytest.LogCaptureFixture):
