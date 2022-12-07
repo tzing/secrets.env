@@ -6,9 +6,9 @@ import pathlib
 from typing import Dict, Optional
 
 import secrets_env.config
-import secrets_env.core
 import secrets_env.exception
 import secrets_env.plugins
+import secrets_env.providers.vault.core
 
 logger = logging.getLogger(__name__)
 hookimpl = secrets_env.plugins.hookimpl
@@ -25,7 +25,7 @@ def load_secrets(
         return {}
 
     # read secrets
-    reader = secrets_env.core.KVReader(**config["client"])
+    reader = secrets_env.providers.vault.core.KVReader(**config["client"])
 
     try:
         secrets = reader.read_values(config["secrets"].values())
