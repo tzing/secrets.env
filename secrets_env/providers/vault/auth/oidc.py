@@ -166,16 +166,6 @@ class OpenIDConnectCallbackService(threading.Thread):
         logger.debug("Start listening port %d for OIDC callback", self.port)
 
         # serve until stop event is set
-        class Server(HTTPServer):
-            def __init__(
-                self,
-                server_address: Tuple[str, int],
-                timeout: float,
-            ) -> None:
-                super().__init__(server_address, OpenIDConnectCallbackHandler)
-                self.timeout = timeout
-                self.auth_token: Optional[str] = None
-
         with _OpenIDConnectCallbackServer(
             server_address=("localhost", self.port),
             RequestHandlerClass=OpenIDConnectCallbackHandler,

@@ -6,7 +6,8 @@ import httpx._config
 import pytest
 import respx
 
-import secrets_env.providers.vault.auth
+import secrets_env.providers.vault.auth.base
+import secrets_env.providers.vault.auth.token
 import secrets_env.providers.vault.core as t
 from secrets_env.exception import AuthenticationError
 
@@ -15,14 +16,13 @@ class TestVaultReader:
     @pytest.fixture()
     def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.VaultReader:
         """Returns a reader that connects to real"""
-        monkeypatch.setenv("SECRETS_ENV_TOKEN", "!ntegr@t!0n-test")
         return t.VaultReader(
             "http://localhost:8200",
-            secrets_env.providers.vault.auth.get_auth("token", {}),
+            secrets_env.providers.vault.auth.token.TokenAuth("!ntegr@t!0n-test"),
         )
 
     def test___init__type_errors(self):
-        auth = Mock(spec=secrets_env.providers.vault.auth.Auth)
+        auth = Mock(spec=secrets_env.providers.vault.auth.base.Auth)
 
         with pytest.raises(TypeError):
             t.VaultReader(1234, auth)
@@ -34,7 +34,7 @@ class TestVaultReader:
             t.VaultReader("https://example.com", auth, client_cert="/path/cert")
 
     def test_client(self):
-        auth = Mock(spec=secrets_env.providers.vault.auth.Auth)
+        auth = Mock(spec=secrets_env.providers.vault.auth.base.Auth)
         auth.method.return_value = "mocked"
         reader = t.VaultReader(url="https://example.com/", auth=auth)
 
