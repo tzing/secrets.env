@@ -9,11 +9,11 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from secrets_env.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
+from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
@@ -127,8 +127,8 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
         self.server.auth_token = code
 
         # response
-        pkg_dir = Path(__file__).resolve().parent.parent
-        response_page = pkg_dir / "templates" / "oidc-success.html"
+        this_dir = Path(__file__).resolve().parent
+        response_page = this_dir / "templates" / "oidc-success.html"
         response_data = response_page.read_bytes()
 
         self.send_response(HTTPStatus.OK)
@@ -166,16 +166,6 @@ class OpenIDConnectCallbackService(threading.Thread):
         logger.debug("Start listening port %d for OIDC callback", self.port)
 
         # serve until stop event is set
-        class Server(HTTPServer):
-            def __init__(
-                self,
-                server_address: Tuple[str, int],
-                timeout: float,
-            ) -> None:
-                super().__init__(server_address, OpenIDConnectCallbackHandler)
-                self.timeout = timeout
-                self.auth_token: Optional[str] = None
-
         with _OpenIDConnectCallbackServer(
             server_address=("localhost", self.port),
             RequestHandlerClass=OpenIDConnectCallbackHandler,

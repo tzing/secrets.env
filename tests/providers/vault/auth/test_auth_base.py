@@ -1,6 +1,6 @@
 import pytest
 
-import secrets_env.auth.base as t
+import secrets_env.providers.vault.auth.base as t
 
 
 def test_auth_method():

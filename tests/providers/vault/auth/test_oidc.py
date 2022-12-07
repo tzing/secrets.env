@@ -7,7 +7,7 @@ import httpx
 import pytest
 import respx
 
-import secrets_env.auth.oidc as t
+import secrets_env.providers.vault.auth.oidc as t
 from secrets_env.exception import AuthenticationError
 
 

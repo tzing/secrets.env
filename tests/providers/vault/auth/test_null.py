@@ -1,4 +1,4 @@
-import secrets_env.auth.null as t
+import secrets_env.providers.vault.auth.null as t
 
 
 class TestNoAuth:

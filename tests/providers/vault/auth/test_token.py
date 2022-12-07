@@ -4,7 +4,7 @@ from unittest.mock import Mock, mock_open, patch
 import httpx
 import pytest
 
-import secrets_env.auth.token as t
+import secrets_env.providers.vault.auth.token as t
 
 
 class TestTokenAuth:

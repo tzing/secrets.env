@@ -5,7 +5,7 @@ import httpx
 import pytest
 import respx
 
-import secrets_env.auth.userpass as t
+import secrets_env.providers.vault.auth.userpass as t
 
 
 @pytest.fixture()
