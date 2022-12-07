@@ -3,9 +3,10 @@ import re
 import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
-import secrets_env.providers.vault.auth
 import secrets_env.plugins
+import secrets_env.providers.vault.auth
 from secrets_env.io import get_env_var
+from secrets_env.providers.vault.config import get_url
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str
 
 if typing.TYPE_CHECKING:
@@ -122,26 +123,6 @@ def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
         output["client_cert"] = client_cert
 
     return output if is_success else None
-
-
-def get_url(data: dict) -> Optional[str]:
-    url = get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR")
-    if not url:
-        url = data.get("url", None)
-
-    if not url:
-        logger.error(
-            "Missing required config <mark>url</mark>. "
-            "Please provide from config file (<mark>source.url</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_ADDR</mark>)."
-        )
-        return None
-
-    url, ok = ensure_str("source.url", url)
-    if not ok:
-        return None
-
-    return url
 
 
 def get_auth(data: dict) -> Optional["Auth"]:
