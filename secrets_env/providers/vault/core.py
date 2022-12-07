@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Literal, Optional, Tuple
 import httpx
 
 from secrets_env.exception import AuthenticationError, TypeError
-from secrets_env.providers.vault.auth import Auth
+from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:
     from secrets_env.config.parser import CertTypes

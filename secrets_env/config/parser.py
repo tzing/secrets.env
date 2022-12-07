@@ -6,15 +6,13 @@ from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 import secrets_env.plugins
 import secrets_env.providers.vault.auth
 from secrets_env.io import get_env_var
-from secrets_env.providers.vault.config import get_url
-from secrets_env.utils import ensure_dict, ensure_path, ensure_str
+from secrets_env.providers.vault.config import get_auth, get_url
+from secrets_env.utils import ensure_dict, ensure_path
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
-    from secrets_env.providers.vault.auth import Auth
-
-DEFAULT_AUTH_METHOD = "token"
+    from secrets_env.providers.vault.auth.base import Auth
 
 logger = logging.getLogger(__name__)
 
@@ -123,34 +121,6 @@ def parse_section_source(data: dict) -> Optional[Dict[str, Any]]:
         output["client_cert"] = client_cert
 
     return output if is_success else None
-
-
-def get_auth(data: dict) -> Optional["Auth"]:
-    # syntax sugar: `auth: <method>`
-    if isinstance(data, str):
-        data = {"method": data}
-
-    # type check
-    data, _ = ensure_dict("source.auth", data)
-
-    # extract auth method
-    method = get_env_var("SECRETS_ENV_METHOD")
-    if not method:
-        method = data.get("method")
-
-    if not method:
-        method = DEFAULT_AUTH_METHOD
-        logger.warning(
-            "Missing required config <mark>auth method</mark>. "
-            "Use default method <data>%s</data>",
-            DEFAULT_AUTH_METHOD,
-        )
-
-    method, _ = ensure_str("auth method", method)
-    if not method:
-        return None
-
-    return secrets_env.providers.vault.auth.get_auth(method, data)
 
 
 def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
