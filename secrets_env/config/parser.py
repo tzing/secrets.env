@@ -4,7 +4,6 @@ import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 import secrets_env.plugins
-import secrets_env.providers.vault.auth
 from secrets_env.providers.vault.config import (
     get_connection_info as parse_section_source,
 )

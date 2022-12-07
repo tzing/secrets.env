@@ -9,11 +9,11 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.exception import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
+from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx

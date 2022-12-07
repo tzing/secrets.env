@@ -12,7 +12,7 @@ from secrets_env.exception import AuthenticationError, TypeError
 from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:
-    from secrets_env.config.parser import CertTypes
+    from secrets_env.providers.vault.config import CertTypes
 
 logger = logging.getLogger(__name__)
 
