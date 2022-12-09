@@ -63,3 +63,11 @@ def test_trimmed_str():
     assert t.trimmed_str({"foo": "bar"}) == "{'foo': 'bar'}"
 
     assert t.trimmed_str("a very long long long item") == "a very long long ..."
+
+
+def test_get_httpx_error_reason(caplog):
+    caplog.set_level(10)
+    assert t.get_httpx_error_reason(Mock(spec=httpx.ProxyError)) == "proxy error"
+    assert (
+        t.get_httpx_error_reason(Mock(spec=httpx.TransportError)) == "connection error"
+    )

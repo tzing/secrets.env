@@ -107,3 +107,17 @@ def removeprefix(s: str, prefix: str):
     if s.startswith(prefix):
         return s[len(prefix) :]
     return s
+
+
+def get_httpx_error_reason(e: httpx.HTTPError):
+    """Returns a reason for those errors that should not breaks the program.
+    This is a helper function used in `expect` clause, and it would raise the
+    error again when `None` is returned."""
+    logger.debug("httpx error occurs. Type= %s", type(e).__name__, exc_info=True)
+
+    if isinstance(e, httpx.ProxyError):
+        return "proxy error"
+    elif isinstance(e, httpx.TransportError):
+        return "connection error"
+
+    return None
