@@ -24,3 +24,4 @@ User guide
    quick-start
    configure
    integrations
+   api/index
