@@ -42,7 +42,4 @@ Plugin system
 Secrets.env is now integrated with `pluggy <https://pluggy.readthedocs.io/en/stable/>`_.
 You can use it to inject customized logics into secrets.env without modified the code base.
 
-Avaliable hooks
-^^^^^^^^^^^^^^^
-
-- :py:meth:`~secrets_env.hooks.HookSpec.add_extra_config`
+Refer to API doc :doc:`api/hooks` for more details.
