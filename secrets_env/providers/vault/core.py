@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
 import httpx
 
-from secrets_env.exception import AuthenticationError, TypeError
+from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:

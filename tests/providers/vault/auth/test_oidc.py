@@ -8,7 +8,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.auth.oidc as t
-from secrets_env.exception import AuthenticationError
+from secrets_env.exceptions import AuthenticationError
 
 
 def test_auth__init__():

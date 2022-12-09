@@ -6,12 +6,12 @@ import pathlib
 from typing import Dict, Optional
 
 import secrets_env.config
-import secrets_env.exception
-import secrets_env.plugins
+import secrets_env.exceptions
+import secrets_env.hooks
 import secrets_env.providers.vault.core
 
 logger = logging.getLogger(__name__)
-hookimpl = secrets_env.plugins.hookimpl
+hookimpl = secrets_env.hooks.hookimpl
 
 
 def load_secrets(
@@ -29,7 +29,7 @@ def load_secrets(
 
     try:
         secrets = reader.read_values(config["secrets"].values())
-    except secrets_env.exception.AuthenticationError as e:
+    except secrets_env.exceptions.AuthenticationError as e:
         logger.error(
             "<!important>\u26D4 Authentication error: %s. No secret loaded.", e.args[0]
         )

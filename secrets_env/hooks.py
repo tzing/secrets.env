@@ -1,4 +1,5 @@
 import typing
+from typing import Any, Dict
 
 import pluggy
 
@@ -9,8 +10,10 @@ hookimpl = pluggy.HookimplMarker(APP_NAME)
 
 
 class HookSpec:
+    """All available hooks are listed in this class."""
+
     @hookspec
-    def add_extra_config(self, data: dict) -> None:
+    def add_extra_config(self, data: Dict[str, Any]) -> None:
         """Add extra configs into config data dict. Triggerred before parsing
         them into the structured object.
 

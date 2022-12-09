@@ -1,3 +1,7 @@
+"""All exception types that might be raised from secrets.env core.
+"""
+
+
 class SecretsEnvError(Exception):
     """Base error type for errors in this module"""
 
@@ -18,13 +22,13 @@ class SecretsEnvError(Exception):
         super().__init__(msg)
 
 
+class AuthenticationError(SecretsEnvError):
+    """Authentication failed."""
+
+
 class TypeError(SecretsEnvError, TypeError):
     """Inappropriate argument type."""
 
 
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
-
-
-class AuthenticationError(SecretsEnvError):
-    """Authentication failed."""
