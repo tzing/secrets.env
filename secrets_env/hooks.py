@@ -1,3 +1,7 @@
+"""
+Hooks that powered by `pluggy <https://pluggy.readthedocs.io/en/stable/>`_.
+All available hooks are listed in :py:class:`~secrets_env.hooks.HookSpec`.
+"""
 import typing
 from typing import Any, Dict
 

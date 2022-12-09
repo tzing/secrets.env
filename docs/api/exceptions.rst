@@ -1,9 +1,9 @@
 Exceptions
 ==========
 
-.. currentmodule:: secrets_env.exceptions
-
 .. automodule:: secrets_env.exceptions
+
+.. currentmodule:: secrets_env.exceptions
 
 .. autoexception:: SecretsEnvError
 

@@ -1,6 +1,8 @@
 Hooks
 =====
 
-All available hooks are listed in :py:class:`~secrets_env.hooks.HookSpec`.
+.. automodule:: secrets_env.hooks
 
-.. automethod:: secrets_env.hooks.HookSpec.add_extra_config
+.. currentmodule:: secrets_env.hooks
+
+.. automethod:: HookSpec.add_extra_config
