@@ -1,6 +1,9 @@
+import http
 import logging
 from pathlib import Path
 from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
+
+import httpx
 
 T = TypeVar("T")
 TL_True = Literal[True]
@@ -121,3 +124,24 @@ def get_httpx_error_reason(e: httpx.HTTPError):
         return "connection error"
 
     return None
+
+
+def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
+    try:
+        code_enum = http.HTTPStatus(resp.status_code)
+        code_name = code_enum.name
+    except ValueError:
+        code_name = "unknown"
+
+    try:
+        content = resp.text
+    except UnicodeDecodeError:
+        content = resp.content
+
+    logger_.debug(
+        "URL= %s; Status= %d (%s); Raw response= %s",
+        resp.url,
+        resp.status_code,
+        code_name,
+        content,
+    )
