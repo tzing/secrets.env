@@ -12,7 +12,7 @@ from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
 
-class TestVaultReader:
+class TestKVReader:
     @pytest.fixture(scope="class")
     def real_reader(self) -> t.KVReader:
         return t.KVReader("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
@@ -44,21 +44,45 @@ class TestVaultReader:
         ):
             mock_reader.client
 
+    def test_client_error_3(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.RequestError("test")
+        with pytest.raises(httpx.RequestError):
+            mock_reader.client
+
+    def test_client_error_4(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.ProxyError("test")
+        with pytest.raises(AuthenticationError):
+            mock_reader.client
+
+    def test_read_secret_v1(self, real_reader: t.KVReader):
+        secret_1 = real_reader.read_secret("kv1/test")
+        assert isinstance(secret_1, dict)
+        assert secret_1["foo"] == "hello"
+
+        secret_2 = real_reader.read_secret("kv1/test")
+        assert secret_1 is secret_2
+
+    def test_read_secret_v2(self, real_reader: t.KVReader):
+        secret = real_reader.read_secret("kv2/test")
+        assert isinstance(secret, dict)
+        assert secret["foo"] == "hello, world"
+
+    def test_read_secret_fail(self, real_reader: t.KVReader):
+        assert real_reader.read_secret("no-this-secret") is t.Marker.SecretNotExist
+
 
 class TestCreateClient:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        # disable cert format check
-        monkeypatch.setattr(
-            httpx._config.SSLConfig, "load_ssl_context_verify", lambda _: None
-        )
+    fake_pem = Path("/data/fake.pem")
 
-        path = Path("/data/fake.pem")
+    @pytest.mark.parametrize("ca_cert", [fake_pem, None])
+    @pytest.mark.parametrize("client_cert", [fake_pem, (fake_pem, fake_pem), None])
+    def test_success(self, ca_cert, client_cert):
+        with patch.object(
+            httpx._config.SSLConfig, "load_ssl_context_verify", return_value=None
+        ):
+            client = t.create_client("http://example.com", ca_cert, client_cert)
 
-        # no error could be enough
-        t.create_client("http://example.com", None, None)
-        t.create_client("http://example.com", path, None)
-        t.create_client("http://example.com", path, path)
-        t.create_client("http://example.com", path, (path, path))
+        assert isinstance(client, httpx.Client)
 
     def test_type_error(self):
         with pytest.raises(TypeError):

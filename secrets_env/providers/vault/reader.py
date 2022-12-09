@@ -1,3 +1,4 @@
+import enum
 import logging
 import os
 import re
@@ -18,7 +19,17 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-KVVersion = Literal[1, 2, None]
+
+class Marker(enum.Enum):
+    NoMatch = enum.auto()
+    SecretNotExist = enum.auto()
+
+
+KVVersion = Literal[1, 2]
+SecretNotExistMarker = Literal[Marker.SecretNotExist]
+VaultSecret = Dict[str, str]
+
+VaultSecretCached = Union[VaultSecret, SecretNotExistMarker]
 
 
 class KVReader(ReaderBase):
@@ -37,7 +48,7 @@ class KVReader(ReaderBase):
         self.client_cert = client_cert
 
         self._client: Optional[httpx.Client] = None
-        self._secrets: Dict[Tuple[str, str], Optional[str]] = {}
+        self._secrets: Dict[str, VaultSecretCached] = {}
 
     @property
     def client(self) -> httpx.Client:
@@ -74,13 +85,42 @@ class KVReader(ReaderBase):
         self._client = client
         return client
 
+    def read_secret(self, path: str) -> VaultSecretCached:
+        """Read secret from Vault.
+
+        Parameters
+        ----------
+        path : str
+            Secret path
+
+        Returns
+        -------
+        secret : dict
+            Secret data. Or 'SecretNotExist' marker when not found.
+        """
+        cached = self._secrets.get(path, Marker.NoMatch)
+        if cached != Marker.NoMatch:
+            return cached
+
+        if secret := read_secret(self.client, path):
+            result = secret
+            status = "succeed"
+        else:
+            result = Marker.SecretNotExist
+            status = "failed"
+
+        self._secrets[path] = result
+        logger.debug("Query for secret %s %s", path, status)
+
+        return result
+
     def get(self, spec: Union[Dict[str, str], str]) -> str:
         return super().get(spec)
 
 
 def create_client(
     base_url: str, ca_cert: Optional["Path"], client_cert: Optional["CertTypes"]
-):
+) -> httpx.Client:
     """Initialize a client."""
     if not isinstance(base_url, str):
         raise TypeError("Expect str for base_url, got {}", type(base_url).__name__)
@@ -101,14 +141,14 @@ def create_client(
     if ca_cert:
         logger.debug("CA installed: %s", ca_cert)
         params["verify"] = ca_cert
-    elif client_cert:
+    if client_cert:
         logger.debug("Client side certificate file installed: %s", client_cert)
         params["cert"] = client_cert
 
     return httpx.Client(**params)
 
 
-def is_authenticated(client: httpx.Client, token: str):
+def is_authenticated(client: httpx.Client, token: str) -> bool:
     """Check is a token is authenticated.
 
     See also
@@ -133,7 +173,9 @@ def is_authenticated(client: httpx.Client, token: str):
     return True
 
 
-def get_mount_point(client: httpx.Client, path: str) -> Tuple[Optional[str], KVVersion]:
+def get_mount_point(
+    client: httpx.Client, path: str
+) -> Tuple[Optional[str], Optional[KVVersion]]:
     """Get mount point and KV engine version to a secret.
 
     Returns
@@ -188,7 +230,7 @@ def get_mount_point(client: httpx.Client, path: str) -> Tuple[Optional[str], KVV
     return None, None
 
 
-def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
+def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
     """Read secret from Vault.
 
     See also
