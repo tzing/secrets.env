@@ -3,22 +3,22 @@
 
 
 class SecretsEnvError(Exception):
-    """Base error type for errors in this module"""
+    """Base error type for secrets.env."""
 
-    def __init__(self, msg: str, *args: object, **kwargs: object) -> None:
+    def __init__(self, fmt: str, *args: object, **kwargs: object) -> None:
         """
-        Constructor that applies `format()` to the message.
+        Constructor that applies :py:meth:`str.format` to message template.
 
         Parameters
         ----------
-        msg : str
-            Error message template
+        fmt : str
+            Error message template.
         args : Any
-            Unnamed values to substitute the `{}` in the message template
+            Unnamed values to substitute the ``{}`` in the message template
         kwargs : Any
-            Named values to substitute the `{name}` in the message template
+            Named values to substitute the ``{name}`` in the message template
         """
-        msg = msg.format(*args, **kwargs)
+        msg = fmt.format(*args, **kwargs)
         super().__init__(msg)
 
 

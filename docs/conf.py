@@ -29,6 +29,7 @@ version = secrets_env.__version__
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     "sphinx_code_tabs",
 ]
 
@@ -39,6 +40,7 @@ intersphinx_mapping = {
 templates_path = ["_templates"]
 exclude_patterns = []
 
+add_module_names = False
 
 # -- Options for HTML output -------------------------------------------------
 

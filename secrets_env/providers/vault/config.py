@@ -1,7 +1,7 @@
 import importlib
 import logging
 import typing
-from typing import Literal, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
 from secrets_env.io import get_env_var
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str
@@ -32,9 +32,6 @@ CertTypes = Union[
 
 
 class VaultConnectionInfo(TypedDict):
-    name: str
-    type: Literal["vault"]
-
     url: str
     auth: "Auth"
 
@@ -47,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
-    output = {}
+    output: Dict[str, Any] = {}
     is_success = True
 
     # url

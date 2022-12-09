@@ -1,3 +1,7 @@
+"""
+Hooks that powered by `pluggy <https://pluggy.readthedocs.io/en/stable/>`_.
+All available hooks are listed in :py:class:`~secrets_env.hooks.HookSpec`.
+"""
 import typing
 from typing import Any, Dict
 
@@ -14,11 +18,13 @@ class HookSpec:
 
     @hookspec
     def add_extra_config(self, data: Dict[str, Any]) -> None:
-        """Add extra configs into config data dict. Triggerred before parsing
-        them into the structured object.
+        """Add extra config values into config data dictionary. Triggerred before
+        parsing them into the structured object.
 
-        The input is the loaded dict object, and plugin developers could
-        directly modifed its content.
+        Parameters
+        ----------
+        data : dict
+            Loaded config data dict. The hook is allowed to modify its content.
         """
 
 
