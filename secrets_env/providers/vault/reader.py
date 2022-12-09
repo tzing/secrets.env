@@ -10,7 +10,7 @@ import httpx
 
 from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.reader import ReaderBase
-from secrets_env.utils import get_httpx_error_reason, log_httpx_response
+from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.vault.auth.base import Auth
@@ -186,3 +186,51 @@ def get_mount_point(client: httpx.Client, path: str) -> Tuple[Optional[str], KVV
     logger.error("Error occurred during checking metadata for %s", path)
     log_httpx_response(logger, resp)
     return None, None
+
+
+def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
+    """Read secret from Vault.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/secret/kv
+    """
+    if not isinstance(client, httpx.Client):
+        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+    if not isinstance(path, str):
+        raise TypeError("Expect str for path, got {}", type(path).__name__)
+
+    mount_point, version = get_mount_point(client, path)
+    if not mount_point:
+        return None
+
+    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
+
+    if version == 1:
+        url = f"/v1/{path}"
+    else:
+        subpath = removeprefix(path, mount_point)
+        url = f"/v1/{mount_point}data/{subpath}"
+
+    try:
+        resp = client.get(url)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during query secret %s: %s", path, reason)
+        return None
+
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json()
+        if version == 1:
+            return data["data"]
+        elif version == 2:
+            return data["data"]["data"]
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        logger.error("Secret <data>%s</data> not found", path)
+        return None
+
+    logger.error("Error occurred during query secret %s", path)
+    log_httpx_response(logger, resp)
+    return None

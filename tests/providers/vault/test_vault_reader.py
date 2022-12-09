@@ -211,3 +211,126 @@ class TestGetMountPoint:
             t.get_mount_point(1234, "secrets/test")
         with pytest.raises(TypeError):
             t.get_mount_point(Mock(spec=httpx.Client), 1234)
+
+
+class TestReadSecret:
+    @pytest.fixture()
+    def patch_get_mount_point(self):
+        with patch.object(t, "get_mount_point", return_value=("secrets/", 1)) as p:
+            yield p
+
+    @pytest.mark.usefixtures("patch_get_mount_point")
+    def test_kv1(self, respx_mock: respx.MockRouter, unittest_client: httpx.Client):
+        respx_mock.get("https://example.com/v1/secrets/test",).mock(
+            httpx.Response(
+                200,
+                json={
+                    "request_id": "a8f28d97-8a9d-c9dd-4d86-e815083b33ad",
+                    "lease_id": "",
+                    "renewable": False,
+                    "lease_duration": 2764800,
+                    "data": {"test": "mock"},
+                    "wrap_info": None,
+                    "warnings": None,
+                    "auth": None,
+                },
+            )
+        )
+
+        with patch.object(t, "get_mount_point", return_value=("secrets/", 1)):
+            assert t.read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+
+    def test_kv2(
+        self,
+        respx_mock: respx.MockRouter,
+        unittest_client: httpx.Client,
+        patch_get_mount_point: Mock,
+    ):
+        respx_mock.get("https://example.com/v1/secrets/data/test",).mock(
+            httpx.Response(
+                200,
+                json={
+                    "request_id": "9ababbb6-3749-cf2c-5a5b-85660e917e8e",
+                    "lease_id": "",
+                    "renewable": False,
+                    "lease_duration": 0,
+                    "data": {
+                        "data": {"test": "mock"},
+                        "metadata": {
+                            "created_time": "2022-09-20T15:57:45.143053836Z",
+                            "custom_metadata": None,
+                            "deletion_time": "",
+                            "destroyed": False,
+                            "version": 1,
+                        },
+                    },
+                    "wrap_info": None,
+                    "warnings": None,
+                    "auth": None,
+                },
+            )
+        )
+
+        patch_get_mount_point.return_value = ("secrets/", 2)
+        assert t.read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+
+    def test_get_mount_point_error(
+        self, unittest_client: httpx.Client, patch_get_mount_point: Mock
+    ):
+        patch_get_mount_point.return_value = (None, None)
+        assert t.read_secret(unittest_client, "secrets/test") is None
+
+    @pytest.mark.usefixtures("patch_get_mount_point")
+    def test_connection_error(
+        self,
+        respx_mock: respx.MockRouter,
+        unittest_client: httpx.Client,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        respx_mock.get("https://example.com/v1/secrets/test").mock(
+            side_effect=httpx.ProxyError
+        )
+
+        assert t.read_secret(unittest_client, "secrets/test") is None
+        assert (
+            "Error occurred during query secret secrets/test: proxy error"
+            in caplog.text
+        )
+
+    @pytest.mark.usefixtures("patch_get_mount_point")
+    def test_unhandled_exception(
+        self, respx_mock: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        respx_mock.get("https://example.com/v1/secrets/test").mock(
+            side_effect=httpx.DecodingError
+        )
+        with pytest.raises(httpx.DecodingError):
+            t.read_secret(unittest_client, "secrets/test")
+
+    @pytest.mark.usefixtures("patch_get_mount_point")
+    def test_not_found(
+        self,
+        respx_mock: respx.MockRouter,
+        unittest_client: httpx.Client,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        respx_mock.get("https://example.com/v1/secrets/test").mock(httpx.Response(404))
+        assert t.read_secret(unittest_client, "secrets/test") is None
+        assert "Secret <data>secrets/test</data> not found" in caplog.text
+
+    @pytest.mark.usefixtures("patch_get_mount_point")
+    def test_bad_request(
+        self,
+        respx_mock: respx.MockRouter,
+        unittest_client: httpx.Client,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        respx_mock.get("https://example.com/v1/secrets/test").mock(httpx.Response(499))
+        assert t.read_secret(unittest_client, "secrets/test") is None
+        assert "Error occurred during query secret secrets/test" in caplog.text
+
+    def test_type_error(self):
+        with pytest.raises(TypeError):
+            t.read_secret(1234, "secrets/test")
+        with pytest.raises(TypeError):
+            t.read_secret(Mock(spec=httpx.Client), 1234)
