@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 import secrets_env
-from secrets_env.exception import AuthenticationError
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.null import NoAuth
 from secrets_env.providers.vault.core import VaultReader
 

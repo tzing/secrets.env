@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from secrets_env.exception import TypeError
+from secrets_env.exceptions import TypeError
 from secrets_env.io import get_env_var, prompt, read_keyring
 from secrets_env.providers.vault.auth.base import Auth
 

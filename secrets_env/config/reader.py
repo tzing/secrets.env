@@ -3,7 +3,7 @@ import logging
 import typing
 from typing import Optional
 
-from secrets_env.exception import UnsupportedError
+from secrets_env.exceptions import UnsupportedError
 
 if typing.TYPE_CHECKING:
     from pathlib import Path

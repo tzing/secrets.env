@@ -11,7 +11,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from secrets_env.exception import AuthenticationError, TypeError
+from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
 from secrets_env.providers.vault.auth.base import Auth
 

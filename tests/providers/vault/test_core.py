@@ -9,7 +9,7 @@ import respx
 import secrets_env.providers.vault.auth.base
 import secrets_env.providers.vault.auth.token
 import secrets_env.providers.vault.core as t
-from secrets_env.exception import AuthenticationError
+from secrets_env.exceptions import AuthenticationError
 
 
 class TestVaultReader:

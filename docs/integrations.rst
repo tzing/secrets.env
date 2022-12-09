@@ -45,4 +45,5 @@ You can use it to inject customized logics into secrets.env without modified the
 Avaliable hooks
 ^^^^^^^^^^^^^^^
 
-.. automethod:: secrets_env.plugins.HookSpec.add_extra_config
+.. autoclass:: secrets_env.hooks.HookSpec
+   :members:

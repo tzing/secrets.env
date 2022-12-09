@@ -6,7 +6,7 @@ import pytest
 
 import secrets_env.config.reader as t
 from secrets_env.config.finder import ConfigFile
-from secrets_env.exception import UnsupportedError
+from secrets_env.exceptions import UnsupportedError
 
 
 class TestReadConfigFile:
