@@ -10,13 +10,15 @@ import httpx
 
 from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.reader import ReaderBase
-from secrets_env.utils import get_httpx_error_reason
+from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.vault.auth.base import Auth
     from secrets_env.providers.vault.config import CertTypes
 
 logger = logging.getLogger(__name__)
+
+KVVersion = Literal[1, 2, None]
 
 
 class KVReader(ReaderBase):
@@ -129,3 +131,58 @@ def is_authenticated(client: httpx.Client, token: str):
         )
         return False
     return True
+
+
+def get_mount_point(client: httpx.Client, path: str) -> Tuple[Optional[str], KVVersion]:
+    """Get mount point and KV engine version to a secret.
+
+    Returns
+    -------
+    mount_point : str
+        The path the secret engine mounted on.
+    version : int
+        The secret engine version
+
+    See also
+    --------
+    Vault HTTP API
+        https://developer.hashicorp.com/vault/api-docs/system/internal-ui-mounts
+    consul-template
+        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
+    """
+    if not isinstance(client, httpx.Client):
+        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+    if not isinstance(path, str):
+        raise TypeError("Expect str for path, got {}", type(path).__name__)
+
+    try:
+        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during checking metadata for %s: %s", path, reason)
+        return None, None
+
+    if resp.status_code == HTTPStatus.OK:
+        data = resp.json().get("data", {})
+
+        mount_point = data.get("path")
+        version = data.get("options", {}).get("version")
+
+        if version == "2" and data.get("type") == "kv":
+            return mount_point, 2
+        elif version == "1":
+            return mount_point, 1
+
+        logging.error("Unknown version %s for path %s", version, path)
+        logging.debug("Raw response: %s", resp)
+        return None, None
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        # 404 is expected on an older version of vault, default to version 1
+        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
+        return "", 1
+
+    logger.error("Error occurred during checking metadata for %s", path)
+    log_httpx_response(logger, resp)
+    return None, None
