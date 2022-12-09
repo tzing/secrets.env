@@ -5,7 +5,14 @@ Exceptions
 
 .. currentmodule:: secrets_env.exceptions
 
-.. autoexception:: SecretsEnvError
+Exceptions
+----------
 
 .. autoexception:: AuthenticationError
 .. autoexception:: UnsupportedError
+
+Base type
+---------
+
+.. autoclass:: SecretsEnvError
+   :special-members: __init__
