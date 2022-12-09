@@ -9,6 +9,8 @@ Exceptions
 ----------
 
 .. autoexception:: AuthenticationError
+.. autoexception:: ConfigError
+.. autoexception:: SecretNotFound
 .. autoexception:: UnsupportedError
 
 Base type

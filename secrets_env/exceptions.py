@@ -26,6 +26,15 @@ class AuthenticationError(SecretsEnvError):
     """Authentication failed."""
 
 
+class ConfigError(SecretsEnvError, ValueError):
+    """Configuration is malformed."""
+
+
+class SecretNotFound(SecretsEnvError, LookupError):
+    """A :py:exc:`LookupError` that indicates the requested secret does not exist
+    or you do not have enough permission to touch it."""
+
+
 class TypeError(SecretsEnvError, TypeError):
     """Inappropriate argument type."""
 
