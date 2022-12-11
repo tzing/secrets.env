@@ -34,7 +34,7 @@ class OpenIDConnectAuth(Auth):
     def __init__(self, role: Optional[str] = None) -> None:
         super().__init__()
         if role is not None and not isinstance(role, str):
-            raise TypeError("Expect str for role, got {}", type(role).__name__)
+            raise TypeError("role", str, role)
         object.__setattr__(self, "role", role)
 
     @classmethod

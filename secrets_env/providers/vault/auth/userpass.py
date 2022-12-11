@@ -35,9 +35,9 @@ class UserPasswordAuth(Auth):
 
     def __init__(self, username: str, password: str) -> None:
         if not isinstance(username, str):
-            raise TypeError("Expect str for username, got {}", type(username).__name__)
+            raise TypeError("username", str, username)
         if not isinstance(password, str):
-            raise TypeError("Expect str for password, got {}", type(password).__name__)
+            raise TypeError("password", str, password)
         object.__setattr__(self, "username", username)
         object.__setattr__(self, "password", password)
 

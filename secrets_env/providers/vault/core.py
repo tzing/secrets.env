@@ -40,17 +40,13 @@ class VaultReader:
             Path to client side certificate file.
         """
         if not isinstance(url, str):
-            raise TypeError("Expect str for url, got {}", type(url).__name__)
+            raise TypeError("url", str, url)
         if not isinstance(auth, Auth):
-            raise TypeError(
-                "Expect Auth instance for auth, got {}", type(auth).__name__
-            )
+            raise TypeError("auth", "Auth instance", auth)
         if ca_cert and not isinstance(ca_cert, os.PathLike):
-            raise TypeError("Expect path for ca_cert, got {}", type(ca_cert).__name__)
+            raise TypeError("ca_cert", "path-like object", ca_cert)
         if client_cert and not isinstance(client_cert, (os.PathLike, tuple)):
-            raise TypeError(
-                "Expect path for client_cert, got {}", type(client_cert).__name__
-            )
+            raise TypeError("client_cert", "path-like object", client_cert)
 
         self.url = url
         self.auth = auth
@@ -132,7 +128,7 @@ class VaultReader:
             The secret value (if matched), or None when value not found.
         """
         if not isinstance(field, str):
-            raise TypeError("Expect str for field, got {}", type(field).__name__)
+            raise TypeError("field", str, field)
 
         if not (secret := read_secret(self.client, path)):
             return None
@@ -196,13 +192,11 @@ def create_client(
 ):
     """Initialize a client."""
     if not isinstance(base_url, str):
-        raise TypeError("Expect str for base_url, got {}", type(base_url).__name__)
+        raise TypeError("base_url", str, base_url)
     if ca_cert is not None and not isinstance(ca_cert, os.PathLike):
-        raise TypeError("Expect path-like for ca_cert, got {}", type(ca_cert).__name__)
+        raise TypeError("ca_cert", "path-like", ca_cert)
     if client_cert is not None and not isinstance(client_cert, (os.PathLike, tuple)):
-        raise TypeError(
-            "Expect path-like for client_cert, got {}", type(client_cert).__name__
-        )
+        raise TypeError("client_cert", "path-like", client_cert)
 
     logger.debug("Creating client to %s", base_url)
 
@@ -229,9 +223,9 @@ def is_authenticated(client: httpx.Client, token: str):
     https://developer.hashicorp.com/vault/api-docs/auth/token
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+        raise TypeError("client", "httpx client", client)
     if not isinstance(token, str):
-        raise TypeError("Expect str for path, got {}", type(token).__name__)
+        raise TypeError("token", str, token)
 
     logger.debug("Validate token for %s", client.base_url)
 
@@ -266,9 +260,9 @@ def get_mount_point(
         https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+        raise TypeError("client", "httpx client", client)
     if not isinstance(path, str):
-        raise TypeError("Expect str for path, got {}", type(path).__name__)
+        raise TypeError("path", str, path)
 
     try:
         resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
@@ -311,9 +305,9 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
     https://developer.hashicorp.com/vault/api-docs/secret/kv
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("Expect httpx.Client for client, got {}", type(client).__name__)
+        raise TypeError("client", "httpx client", client)
     if not isinstance(path, str):
-        raise TypeError("Expect str for path, got {}", type(path).__name__)
+        raise TypeError("path", str, path)
 
     mount_point, version = get_mount_point(client, path)
     if not mount_point:

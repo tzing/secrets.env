@@ -29,7 +29,7 @@ class TokenAuth(Auth):
             Authentication token.
         """
         if not isinstance(token, str):
-            raise TypeError("Expect str for token, got {}", type(token).__name__)
+            raise TypeError("token", str, token)
         object.__setattr__(self, "token", token)
 
     @classmethod
