@@ -1,6 +1,6 @@
-import secrets_env.exceptions as t
-
 import pytest
+
+import secrets_env.exceptions as t
 
 
 def test_type_error():
