@@ -71,6 +71,24 @@ class TestKVReader:
         with pytest.raises(SecretNotFound):
             real_reader.read_secret("no-this-secret")
 
+    def test_read_field(self, real_reader: t.KVReader):
+        assert real_reader.read_field("kv1/test", "foo") == "hello"
+        assert (
+            real_reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
+        )
+
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("kv2/test", "foo.no-extra-level")
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("kv2/test", "test.no-this-key")
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("secret/no-this-secret", "test")
+
+        with pytest.raises(TypeError):
+            real_reader.read_field(1234, "foo")
+        with pytest.raises(TypeError):
+            real_reader.read_field("secret/test", 1234)
+
 
 class TestCreateClient:
     fake_pem = Path("/data/fake.pem")
@@ -359,3 +377,20 @@ class TestReadSecret:
             t.read_secret(1234, "secrets/test")
         with pytest.raises(TypeError):
             t.read_secret(Mock(spec=httpx.Client), 1234)
+
+
+def test_split_field():
+    assert t.split_field("aa") == ["aa"]
+    assert t.split_field("aa.bb") == ["aa", "bb"]
+    assert t.split_field('aa."bb.cc"') == ["aa", "bb.cc"]
+    assert t.split_field('"aa.bb".cc') == ["aa.bb", "cc"]
+    assert t.split_field('"aa.bb"') == ["aa.bb"]
+
+    with pytest.raises(ValueError, match=r"Failed to parse name: "):
+        t.split_field("")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field(".")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field("aa.")
+    with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
+        t.split_field(".aa")

@@ -99,22 +99,46 @@ class KVReader(ReaderBase):
         if not isinstance(path, str):
             raise TypeError("path", str, path)
 
+        # try cache
         result = self._secrets.get(path, Marker.NoMatch)
+
         if result == Marker.NoMatch:
+            # not found in cache - start query
             if secret := read_secret(self.client, path):
                 result = secret
-                status = "succeed"
             else:
                 result = Marker.SecretNotExist
-                status = "failed"
-
             self._secrets[path] = result
-            logger.debug("Query for secret %s %s", path, status)
 
+        # return
         if result == Marker.SecretNotExist:
             raise SecretNotFound("Secret {} not found", path)
-
         return result
+
+    def read_field(self, path: str, field: str) -> str:
+        """Read only one field from Vault.
+
+        Parameters
+        ----------
+        path : str
+            Secret path
+        field : str
+            Field name
+
+        Returns
+        -------
+        value : str
+            The secret value if matched
+        """
+        if not isinstance(field, str):
+            raise TypeError("field", str, field)
+
+        secret = self.read_secret(path)
+        value = get_field(secret, field)
+
+        if value is None:
+            raise SecretNotFound("Secret {}#{} not found", path, field)
+        return value
 
     def get(self, spec: Union[Dict[str, str], str]) -> str:
         return super().get(spec)
@@ -276,3 +300,46 @@ def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
     logger.error("Error occurred during query secret %s", path)
     log_httpx_response(logger, resp)
     return None
+
+
+def get_field(secret: dict, name: str) -> Optional[str]:
+    """Traverse the secret data to get the field along with the given name."""
+    for n in split_field(name):
+        if not isinstance(secret, dict):
+            return None
+        secret = secret.get(n)  # type: ignore
+
+    if not isinstance(secret, str):
+        return None
+
+    return secret
+
+
+def split_field(name: str) -> List[str]:
+    """Split a field name into subsequences. By default, this function splits
+    the name by dots, with supportting of preserving the quoted subpaths.
+    """
+    pattern_quoted = re.compile(r'"([^"]+)"')
+    pattern_simple = re.compile(r"([\w-]+)")
+
+    seq = []
+    pos = 0
+    while pos < len(name):
+        # try match pattern
+        if m := pattern_simple.match(name, pos):
+            pass
+        elif m := pattern_quoted.match(name, pos):
+            pass
+        else:
+            break
+
+        seq.append(m.group(1))
+
+        # check remaining part
+        # +1 for skipping the dot (if exists)
+        pos = m.end() + 1
+
+    if pos <= len(name):
+        raise ValueError(f"Failed to parse name: {name}")
+
+    return seq
