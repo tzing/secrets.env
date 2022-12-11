@@ -122,33 +122,3 @@ def get_secret_source(
     )
 
     return None
-
-
-def get_secret_source_str(spec: str) -> Tuple[Optional[SecretSource], Optional[str]]:
-    idx = spec.find("#")
-    if idx == -1:
-        return None, "Missing delimiter '#'"
-    elif idx == 0:
-        return None, "Missing secret path"
-    elif idx == len(spec) - 1:
-        return None, "Missing secret field"
-
-    path = spec[:idx]
-    field = spec[idx + 1 :]
-    return SecretSource(path, field), None
-
-
-def get_secret_source_dict(spec: dict) -> Tuple[Optional[SecretSource], Optional[str]]:
-    path = spec.get("path")
-    if not path:
-        return None, "Missing secret path"
-    elif not isinstance(path, str):
-        return None, "Invalid type of path"
-
-    field = spec.get("field")
-    if not field:
-        return None, "Missing secret field"
-    elif not isinstance(field, str):
-        return None, "Invalid type of field"
-
-    return SecretSource(path, field), None
