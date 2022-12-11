@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union
 
 import httpx
 
-from secrets_env.exceptions import AuthenticationError, TypeError
+from secrets_env.exceptions import AuthenticationError, SecretNotFound, TypeError
 from secrets_env.reader import ReaderBase
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
@@ -26,10 +26,8 @@ class Marker(enum.Enum):
 
 
 KVVersion = Literal[1, 2]
-SecretNotExistMarker = Literal[Marker.SecretNotExist]
 VaultSecret = Dict[str, str]
-
-VaultSecretCached = Union[VaultSecret, SecretNotExistMarker]
+VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
 
 
 class KVReader(ReaderBase):
@@ -48,7 +46,7 @@ class KVReader(ReaderBase):
         self.client_cert = client_cert
 
         self._client: Optional[httpx.Client] = None
-        self._secrets: Dict[str, VaultSecretCached] = {}
+        self._secrets: Dict[str, VaultSecretQueryResult] = {}
 
     @property
     def client(self) -> httpx.Client:
@@ -85,7 +83,7 @@ class KVReader(ReaderBase):
         self._client = client
         return client
 
-    def read_secret(self, path: str) -> VaultSecretCached:
+    def read_secret(self, path: str) -> VaultSecret:
         """Read secret from Vault.
 
         Parameters
@@ -98,19 +96,23 @@ class KVReader(ReaderBase):
         secret : dict
             Secret data. Or 'SecretNotExist' marker when not found.
         """
-        cached = self._secrets.get(path, Marker.NoMatch)
-        if cached != Marker.NoMatch:
-            return cached
+        if not isinstance(path, str):
+            raise TypeError("path", str, path)
 
-        if secret := read_secret(self.client, path):
-            result = secret
-            status = "succeed"
-        else:
-            result = Marker.SecretNotExist
-            status = "failed"
+        result = self._secrets.get(path, Marker.NoMatch)
+        if result == Marker.NoMatch:
+            if secret := read_secret(self.client, path):
+                result = secret
+                status = "succeed"
+            else:
+                result = Marker.SecretNotExist
+                status = "failed"
 
-        self._secrets[path] = result
-        logger.debug("Query for secret %s %s", path, status)
+            self._secrets[path] = result
+            logger.debug("Query for secret %s %s", path, status)
+
+        if result == Marker.SecretNotExist:
+            raise SecretNotFound("Secret {} not found", path)
 
         return result
 

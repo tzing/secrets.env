@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.reader as t
-from secrets_env.exceptions import AuthenticationError
+from secrets_env.exceptions import AuthenticationError, SecretNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
@@ -68,7 +68,8 @@ class TestKVReader:
         assert secret["foo"] == "hello, world"
 
     def test_read_secret_fail(self, real_reader: t.KVReader):
-        assert real_reader.read_secret("no-this-secret") is t.Marker.SecretNotExist
+        with pytest.raises(SecretNotFound):
+            real_reader.read_secret("no-this-secret")
 
 
 class TestCreateClient:
