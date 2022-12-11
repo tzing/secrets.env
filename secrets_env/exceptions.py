@@ -1,5 +1,7 @@
 """All exception types that might be raised from secrets.env core.
 """
+import builtins
+from typing import Any, Type, Union
 
 
 class SecretsEnvError(Exception):
@@ -26,8 +28,14 @@ class AuthenticationError(SecretsEnvError):
     """Authentication failed."""
 
 
-class TypeError(SecretsEnvError, TypeError):
+class TypeError(SecretsEnvError, builtins.TypeError):
     """Inappropriate argument type."""
+
+    def __init__(self, name: str, expect: Union[str, Type], got: Any) -> None:
+        self.name = name
+        self.expect = expect.__name__ if isinstance(expect, type) else str(expect)
+        self.got = type(got).__name__
+        super().__init__(f"Expect {self.expect} for {self.name}, got {self.got}")
 
 
 class UnsupportedError(SecretsEnvError):
