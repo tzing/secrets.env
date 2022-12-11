@@ -5,11 +5,16 @@ import re
 import typing
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import httpx
 
-from secrets_env.exceptions import AuthenticationError, SecretNotFound, TypeError
+from secrets_env.exceptions import (
+    AuthenticationError,
+    ConfigError,
+    SecretNotFound,
+    TypeError,
+)
 from secrets_env.reader import ReaderBase
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
@@ -23,6 +28,11 @@ logger = logging.getLogger(__name__)
 class Marker(enum.Enum):
     NoMatch = enum.auto()
     SecretNotExist = enum.auto()
+
+
+class SecretSource(typing.NamedTuple):
+    path: str
+    field: str
 
 
 KVVersion = Literal[1, 2]
@@ -83,6 +93,19 @@ class KVReader(ReaderBase):
         self._client = client
         return client
 
+    def get(self, spec: Union[Dict[str, str], str]) -> str:
+        if not spec:
+            raise ConfigError("Empty input")
+        if isinstance(spec, str):
+            # string input: path#key
+            src = get_secret_source_str(spec)
+        elif isinstance(spec, dict):
+            # dict input: {"path": "foo", "key": "bar"}
+            src = get_secret_source_dict(spec)
+        else:
+            raise TypeError("secret path spec", dict, spec)
+        return self.read_field(src.path, src.field)
+
     def read_secret(self, path: str) -> VaultSecret:
         """Read secret from Vault.
 
@@ -139,9 +162,6 @@ class KVReader(ReaderBase):
         if value is None:
             raise SecretNotFound("Secret {}#{} not found", path, field)
         return value
-
-    def get(self, spec: Union[Dict[str, str], str]) -> str:
-        return super().get(spec)
 
 
 def create_client(
@@ -343,3 +363,33 @@ def split_field(name: str) -> List[str]:
         raise ValueError(f"Failed to parse name: {name}")
 
     return seq
+
+
+def get_secret_source_str(spec: str) -> SecretSource:
+    idx = spec.find("#")
+    if idx == -1:
+        raise ConfigError("Missing delimiter '#'")
+    elif idx == 0:
+        raise ConfigError("Missing secret path part")
+    elif idx == len(spec) - 1:
+        raise ConfigError("Missing secret field part")
+
+    path = spec[:idx]
+    field = spec[idx + 1 :]
+    return SecretSource(path, field)
+
+
+def get_secret_source_dict(spec: dict) -> SecretSource:
+    path = spec.get("path")
+    if not path:
+        raise ConfigError("Missing secret path part")
+    elif not isinstance(path, str):
+        raise TypeError("secret path", str, path)
+
+    field = spec.get("field")
+    if not field:
+        raise ConfigError("Missing secret field part")
+    elif not isinstance(field, str):
+        raise TypeError("secret field", str, field)
+
+    return SecretSource(path, field)

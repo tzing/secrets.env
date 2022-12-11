@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.reader as t
-from secrets_env.exceptions import AuthenticationError, SecretNotFound
+from secrets_env.exceptions import AuthenticationError, SecretNotFound, ConfigError
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
@@ -53,6 +53,15 @@ class TestKVReader:
         mock_auth.login.side_effect = httpx.ProxyError("test")
         with pytest.raises(AuthenticationError):
             mock_reader.client
+
+    def test_get(self, real_reader: t.KVReader):
+        assert real_reader.get("kv1/test#foo") == "hello"
+        assert real_reader.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
+
+        with pytest.raises(ConfigError):
+            real_reader.get("")
+        with pytest.raises(TypeError):
+            real_reader.get(1234)
 
     def test_read_secret_v1(self, real_reader: t.KVReader):
         secret_1 = real_reader.read_secret("kv1/test")
@@ -394,3 +403,41 @@ def test_split_field():
         t.split_field("aa.")
     with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
         t.split_field(".aa")
+
+
+class TestGetSecretSourceStr:
+    def test_success(self):
+        assert t.get_secret_source_str("foo#bar") == ("foo", "bar")
+        assert t.get_secret_source_str("foo#b") == ("foo", "b")
+        assert t.get_secret_source_str("f#bar") == ("f", "bar")
+
+    @pytest.mark.parametrize(
+        ("input_", "err_msg"),
+        [
+            ("foo", "Missing delimiter '#'"),
+            ("#bar", "Missing secret path"),
+            ("foo#", "Missing secret field"),
+        ],
+    )
+    def test_fail(self, input_: str, err_msg: str):
+        with pytest.raises(ConfigError, match=err_msg):
+            t.get_secret_source_str(input_)
+
+
+class TestGetSecretSourceDict:
+    def test_success(self):
+        out = t.get_secret_source_dict({"path": "foo", "field": "bar"})
+        assert out == ("foo", "bar")
+
+    @pytest.mark.parametrize(
+        ("input_", "err_msg"),
+        [
+            ({"field": "bar"}, "Missing secret path"),
+            ({"path": "foo", "field": 1234}, "Expect str for secret field"),
+            ({"path": "foo"}, "Missing secret field"),
+            ({"path": 1234, "field": "bar"}, "Expect str for secret path"),
+        ],
+    )
+    def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):
+        with pytest.raises((ConfigError, TypeError), match=err_msg):
+            t.get_secret_source_dict(input_)
