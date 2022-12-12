@@ -34,7 +34,9 @@ def load_secrets(
     # build env var to secret mapping
     output = {}
     for name, spec in config["secrets"].items():
-        value = read1(reader, name, spec)
+        value = read1(
+            reader, name, spec  # pyright: ignore[reportGeneralTypeIssues]; TODO
+        )
         output[name] = value
         if value is not None:
             logger.debug("Loaded <data>$%s</data>", name)

@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.reader as t
-from secrets_env.exceptions import AuthenticationError, SecretNotFound, ConfigError
+from secrets_env.exceptions import AuthenticationError, ConfigError, SecretNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 

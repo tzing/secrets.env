@@ -1,7 +1,7 @@
 import logging
 import re
 import typing
-from typing import Any, Dict, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, Optional, TypedDict, Union
 
 import secrets_env.hooks
 from secrets_env.providers.vault.config import (
