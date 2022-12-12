@@ -3,20 +3,25 @@ __version__ = "0.23.0"
 
 import logging
 import pathlib
+import typing
 from typing import Dict, Optional
 
 import secrets_env.config
 import secrets_env.exceptions
 import secrets_env.hooks
-import secrets_env.providers.vault.core
+import secrets_env.providers.vault.reader
+import secrets_env.reader
+
+if typing.TYPE_CHECKING:
+    from secrets_env.reader import ReaderBase, SourceSpec
 
 logger = logging.getLogger(__name__)
 hookimpl = secrets_env.hooks.hookimpl
 
 
 def load_secrets(
-    config_file: Optional[pathlib.Path] = None,
-) -> Dict[str, Optional[str]]:
+    config_file: Optional[pathlib.Path] = None, strict: bool = True
+) -> Dict[str, str]:
     """Load secrets from vault and put them to environment variable."""
     # parse config
     config = secrets_env.config.load_config(config_file)
@@ -24,36 +29,67 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    # read secrets
-    reader = secrets_env.providers.vault.core.VaultReader(**config["client"])
-
-    try:
-        secrets = reader.read_values(config["secrets"].values())
-    except secrets_env.exceptions.AuthenticationError as e:
-        logger.error(
-            "<!important>\u26D4 Authentication error: %s. No secret loaded.", e.args[0]
-        )
-        return {}
+    reader = secrets_env.providers.vault.reader.KVReader(**config["client"])
 
     # build env var to secret mapping
     output = {}
-    num_loaded = 0
     for name, spec in config["secrets"].items():
-        if value := secrets.get(spec):
-            num_loaded += 1
-            logger.debug("Loaded <data>$%s</data>", name)
+        value = read_value(reader, name, spec)
         output[name] = value
+        if value is not None:
+            logger.debug("Loaded <data>$%s</data>", name)
 
-    if len(config["secrets"]) == num_loaded:
+    # report
+    num_expected = len(config["secrets"])
+    num_loaded = sum(1 for v in output.values() if v is not None)
+
+    if num_expected == num_loaded:
         logger.info(
-            "<!important>\U0001F511 <mark>%d</mark> secrets loaded", len(secrets)
+            "<!important>\U0001F511 <mark>%d</mark> secrets loaded", num_expected
         )
     else:
         logger.warning(
             # NOTE need extra whitespace after the modifier (\uFE0F)
             "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets loaded",
             num_loaded,
-            len(config["secrets"]),
+            num_expected,
         )
 
+        if strict:
+            return {}
+
     return output
+
+
+def read_value(reader: "ReaderBase", name: str, spec: "SourceSpec") -> Optional[str]:
+    """Wrap :py:meth:`~secrets_env.reader.ReaderBase.get`. Captured all exceptions."""
+    # type checking
+    if not isinstance(reader, secrets_env.reader.ReaderBase):
+        raise secrets_env.exceptions.TypeError("reader", "reader instance", reader)
+    if not isinstance(name, str):
+        raise secrets_env.exceptions.TypeError("name", str, name)
+    if not isinstance(spec, (str, dict)):
+        raise secrets_env.exceptions.TypeError("spec", dict, spec)
+
+    # run
+    try:
+        return reader.get(spec)
+    except secrets_env.exceptions.AuthenticationError as e:
+        logger.error(
+            "<!important>\u26D4 Authentication error: %s. No secret loaded.",
+            e.args[0],
+        )
+    except secrets_env.exceptions.ConfigError as e:
+        logger.warning("Config for %s is malformed: %s. Skip this variable.", name, e)
+    except secrets_env.exceptions.SecretNotFound:
+        logger.warning("Secret for %s not found. Skip this variable.", name)
+    except Exception as e:
+        logger.error("Error requesting secret for %s. Skip this variable.", name)
+        logger.debug(
+            "Requested path= %s, Error= %s, Msg= %s",
+            spec,
+            type(e).__name__,
+            e.args[0],
+            exc_info=True,
+        )
+    return None
