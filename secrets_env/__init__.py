@@ -34,7 +34,7 @@ def load_secrets(
     # build env var to secret mapping
     output = {}
     for name, spec in config["secrets"].items():
-        value = read_value(reader, name, spec)
+        value = read1(reader, name, spec)
         output[name] = value
         if value is not None:
             logger.debug("Loaded <data>$%s</data>", name)
@@ -61,8 +61,11 @@ def load_secrets(
     return output
 
 
-def read_value(reader: "ReaderBase", name: str, spec: "SourceSpec") -> Optional[str]:
-    """Wrap :py:meth:`~secrets_env.reader.ReaderBase.get`. Captured all exceptions."""
+def read1(reader: "ReaderBase", name: str, spec: "SourceSpec") -> Optional[str]:
+    """Read single value.
+
+    This function wraps :py:meth:`~secrets_env.reader.ReaderBase.get` and
+    captures all exceptions."""
     # type checking
     if not isinstance(reader, secrets_env.reader.ReaderBase):
         raise secrets_env.exceptions.TypeError("reader", "reader instance", reader)
