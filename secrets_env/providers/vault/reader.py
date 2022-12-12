@@ -72,6 +72,7 @@ class KVReader(ReaderBase):
 
         # initialize client
         client = create_client(self.url, self.ca_cert, self.client_cert)
+        self._client = client
 
         # get token
         try:
@@ -90,7 +91,6 @@ class KVReader(ReaderBase):
         else:
             raise AuthenticationError("Invalid token")
 
-        self._client = client
         return client
 
     def get(self, spec: Union[Dict[str, str], str]) -> str:
