@@ -6,107 +6,111 @@ import httpx._config
 import pytest
 import respx
 
-import secrets_env.providers.vault.auth.base
-import secrets_env.providers.vault.auth.token
-import secrets_env.providers.vault.core as t
-from secrets_env.exceptions import AuthenticationError
+import secrets_env.providers.vault.reader as t
+from secrets_env.exceptions import AuthenticationError, ConfigError, SecretNotFound
+from secrets_env.providers.vault.auth.base import Auth
+from secrets_env.providers.vault.auth.token import TokenAuth
 
 
-class TestVaultReader:
+class TestKVReader:
+    @pytest.fixture(scope="class")
+    def real_reader(self) -> t.KVReader:
+        return t.KVReader("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+
     @pytest.fixture()
-    def reader(self, monkeypatch: pytest.MonkeyPatch) -> t.VaultReader:
-        """Returns a reader that connects to real"""
-        return t.VaultReader(
-            "http://localhost:8200",
-            secrets_env.providers.vault.auth.token.TokenAuth("!ntegr@t!0n-test"),
-        )
-
-    def test___init__type_errors(self):
-        auth = Mock(spec=secrets_env.providers.vault.auth.base.Auth)
-
-        with pytest.raises(TypeError):
-            t.VaultReader(1234, auth)
-        with pytest.raises(TypeError):
-            t.VaultReader("https://example.com", 1234)
-        with pytest.raises(TypeError):
-            t.VaultReader("https://example.com", auth, ca_cert="/path/cert")
-        with pytest.raises(TypeError):
-            t.VaultReader("https://example.com", auth, client_cert="/path/cert")
-
-    def test_client(self):
-        auth = Mock(spec=secrets_env.providers.vault.auth.base.Auth)
+    def mock_auth(self):
+        auth = Mock(spec=Auth)
         auth.method.return_value = "mocked"
-        reader = t.VaultReader(url="https://example.com/", auth=auth)
+        return auth
 
-        # fail
-        auth.login.return_value = None
+    @pytest.fixture()
+    def mock_reader(self, mock_auth: Auth) -> t.KVReader:
+        return t.KVReader("https://example.com/", mock_auth)
+
+    def test_client_success(self, real_reader: t.KVReader):
+        with patch.object(t, "is_authenticated", return_value=True):
+            assert isinstance(real_reader.client, httpx.Client)
+            assert isinstance(real_reader.client, httpx.Client)  # from cache
+
+    def test_client_error_1(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.return_value = None
         with pytest.raises(AuthenticationError):
-            reader.client
+            mock_reader.client
 
-        auth.login.return_value = "test-token"
+    def test_client_error_2(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.return_value = "test-token"
         with pytest.raises(AuthenticationError), patch.object(
             t, "is_authenticated", return_value=False
         ):
-            reader.client
+            mock_reader.client
 
-        # success
-        with patch.object(t, "is_authenticated", return_value=True):
-            assert isinstance(reader.client, httpx.Client)
-            assert isinstance(reader.client, httpx.Client)  # from cache
+    def test_client_error_3(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.RequestError("test")
+        with pytest.raises(httpx.RequestError):
+            mock_reader.client
 
-    def test_read_secret(self, reader: t.VaultReader):
-        secret = reader.read_secret("kv1/test")
-        assert isinstance(secret, dict)
-        assert secret["foo"] == "hello"
+    def test_client_error_4(self, mock_reader: t.KVReader, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.ProxyError("test")
+        with pytest.raises(AuthenticationError):
+            mock_reader.client
 
-        secret = reader.read_secret("kv2/test")
+    def test_get(self, real_reader: t.KVReader):
+        assert real_reader.get("kv1/test#foo") == "hello"
+        assert real_reader.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
+
+        with pytest.raises(ConfigError):
+            real_reader.get("")
+        with pytest.raises(TypeError):
+            real_reader.get(1234)
+
+    def test_read_secret_v1(self, real_reader: t.KVReader):
+        secret_1 = real_reader.read_secret("kv1/test")
+        assert isinstance(secret_1, dict)
+        assert secret_1["foo"] == "hello"
+
+        secret_2 = real_reader.read_secret("kv1/test")
+        assert secret_1 is secret_2
+
+    def test_read_secret_v2(self, real_reader: t.KVReader):
+        secret = real_reader.read_secret("kv2/test")
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello, world"
 
-        assert reader.read_secret("secret/no-this-secret") is None
+    def test_read_secret_fail(self, real_reader: t.KVReader):
+        with pytest.raises(SecretNotFound):
+            real_reader.read_secret("no-this-secret")
 
-    def test_read_field(self, reader: t.VaultReader):
-        assert reader.read_field("kv1/test", "foo") == "hello"
-        assert reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
-
-        assert reader.read_field("kv2/test", "foo.no-extra-level") is None
-        assert reader.read_field("kv2/test", "test.no-this-key") is None
-        assert reader.read_field("secret/no-this-secret", "test") is None
-
-        with pytest.raises(TypeError):
-            reader.read_field(1234, "foo")
-        with pytest.raises(TypeError):
-            reader.read_field("secret/test", 1234)
-
-    def test_read_values(self, reader: t.VaultReader):
-        output = reader.read_values(
-            [
-                ("kv1/test", "foo"),
-                ("kv2/test", "foo"),
-                ("kv2/no-this-path", "foo"),
-                ("kv2/test", "no-this-value"),
-            ]
+    def test_read_field(self, real_reader: t.KVReader):
+        assert real_reader.read_field("kv1/test", "foo") == "hello"
+        assert (
+            real_reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
         )
-        assert output["kv1/test", "foo"] == "hello"
-        assert output["kv2/test", "foo"] == "hello, world"
-        assert output["kv2/no-this-path", "foo"] is None
-        assert output["kv2/test", "no-this-value"] is None
+
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("kv2/test", "foo.no-extra-level")
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("kv2/test", "test.no-this-key")
+        with pytest.raises(SecretNotFound):
+            real_reader.read_field("secret/no-this-secret", "test")
+
+        with pytest.raises(TypeError):
+            real_reader.read_field(1234, "foo")
+        with pytest.raises(TypeError):
+            real_reader.read_field("secret/test", 1234)
 
 
 class TestCreateClient:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        # disable cert format check
-        monkeypatch.setattr(
-            httpx._config.SSLConfig, "load_ssl_context_verify", lambda _: None
-        )
+    fake_pem = Path("/data/fake.pem")
 
-        path = Path("/data/fake.pem")
+    @pytest.mark.parametrize("ca_cert", [fake_pem, None])
+    @pytest.mark.parametrize("client_cert", [fake_pem, (fake_pem, fake_pem), None])
+    def test_success(self, ca_cert, client_cert):
+        with patch.object(
+            httpx._config.SSLConfig, "load_ssl_context_verify", return_value=None
+        ):
+            client = t.create_client("http://example.com", ca_cert, client_cert)
 
-        # no error could be enough
-        t.create_client("http://example.com", None, None)
-        t.create_client("http://example.com", path, None)
-        t.create_client("http://example.com", path, path)
-        t.create_client("http://example.com", path, (path, path))
+        assert isinstance(client, httpx.Client)
 
     def test_type_error(self):
         with pytest.raises(TypeError):
@@ -401,6 +405,39 @@ def test_split_field():
         t.split_field(".aa")
 
 
-def test_remove_prefix():
-    assert t._remove_prefix("foobar", "foo") == "bar"
-    assert t._remove_prefix("foobar", "bar") == "foobar"
+class TestGetSecretSourceStr:
+    def test_success(self):
+        assert t.get_secret_source_str("foo#bar") == ("foo", "bar")
+        assert t.get_secret_source_str("foo#b") == ("foo", "b")
+        assert t.get_secret_source_str("f#bar") == ("f", "bar")
+
+    @pytest.mark.parametrize(
+        ("input_", "err_msg"),
+        [
+            ("foo", "Missing delimiter '#'"),
+            ("#bar", "Missing secret path"),
+            ("foo#", "Missing secret field"),
+        ],
+    )
+    def test_fail(self, input_: str, err_msg: str):
+        with pytest.raises(ConfigError, match=err_msg):
+            t.get_secret_source_str(input_)
+
+
+class TestGetSecretSourceDict:
+    def test_success(self):
+        out = t.get_secret_source_dict({"path": "foo", "field": "bar"})
+        assert out == ("foo", "bar")
+
+    @pytest.mark.parametrize(
+        ("input_", "err_msg"),
+        [
+            ({"field": "bar"}, "Missing secret path"),
+            ({"path": "foo", "field": 1234}, "Expect str for secret field"),
+            ({"path": "foo"}, "Missing secret field"),
+            ({"path": 1234, "field": "bar"}, "Expect str for secret path"),
+        ],
+    )
+    def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):
+        with pytest.raises((ConfigError, TypeError), match=err_msg):
+            t.get_secret_source_dict(input_)

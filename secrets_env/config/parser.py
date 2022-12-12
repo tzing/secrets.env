@@ -1,7 +1,7 @@
 import logging
 import re
 import typing
-from typing import Any, Dict, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, Optional, TypedDict, Union
 
 import secrets_env.hooks
 from secrets_env.providers.vault.config import (
@@ -88,67 +88,21 @@ def parse_section_secret(data: Dict[str, Union[str, Dict[str, str]]]) -> SecretM
             )
             continue
 
-        if src := get_secret_source(name, path_spec):
-            secrets[name] = src
+        if not path_spec:
+            logger.warning(
+                "No source spec for variable <data>%s</data>. Skipping this variable.",
+                name,
+            )
+            continue
+
+        if not isinstance(path_spec, (str, dict)):
+            logger.warning(
+                "Invalid source spec type for variable <data>%s</data>. "
+                "Skipping this variable.",
+                name,
+            )
+            continue
+
+        secrets[name] = path_spec
 
     return secrets
-
-
-def get_secret_source(
-    name: str, path_spec: Union[str, Dict[str, str]]
-) -> Optional[SecretSource]:
-    if not path_spec:
-        err_msg = "Empty input"
-
-    elif isinstance(path_spec, str):
-        # string input: path#key
-        src, err_msg = get_secret_source_str(path_spec)
-        if src:
-            return src
-
-    elif isinstance(path_spec, dict):
-        # dict input: {"path": "foo", "key": "bar"}
-        src, err_msg = get_secret_source_dict(path_spec)
-        if src:
-            return src
-
-    else:
-        err_msg = "Invalid type"
-
-    logger.warning(
-        "Target secret <data>%s</data> is invalid. %s. Discard this variable.",
-        name,
-        err_msg,
-    )
-
-    return None
-
-
-def get_secret_source_str(spec: str) -> Tuple[Optional[SecretSource], Optional[str]]:
-    idx = spec.find("#")
-    if idx == -1:
-        return None, "Missing delimiter '#'"
-    elif idx == 0:
-        return None, "Missing secret path"
-    elif idx == len(spec) - 1:
-        return None, "Missing secret field"
-
-    path = spec[:idx]
-    field = spec[idx + 1 :]
-    return SecretSource(path, field), None
-
-
-def get_secret_source_dict(spec: dict) -> Tuple[Optional[SecretSource], Optional[str]]:
-    path = spec.get("path")
-    if not path:
-        return None, "Missing secret path"
-    elif not isinstance(path, str):
-        return None, "Invalid type of path"
-
-    field = spec.get("field")
-    if not field:
-        return None, "Missing secret field"
-    elif not isinstance(field, str):
-        return None, "Invalid type of field"
-
-    return SecretSource(path, field), None

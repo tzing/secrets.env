@@ -67,8 +67,8 @@ class TestLoadConfig:
         assert cfg["client"]["url"] == "https://example.com/"
         assert cfg["client"]["auth"] == NoAuth()
         assert cfg["secrets"] == {
-            "VAR1": ("kv/default", "example"),
-            "VAR2": ("kv/default", "example"),
+            "VAR1": {"path": "kv/default", "field": "example"},
+            "VAR2": "kv/default#example",
         }
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):

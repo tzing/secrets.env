@@ -1,5 +1,8 @@
+import logging
 from pathlib import Path
+from unittest.mock import Mock
 
+import httpx
 import pytest
 
 import secrets_env.utils as t
@@ -63,3 +66,49 @@ def test_trimmed_str():
     assert t.trimmed_str({"foo": "bar"}) == "{'foo': 'bar'}"
 
     assert t.trimmed_str("a very long long long item") == "a very long long ..."
+
+
+def test_get_httpx_error_reason():
+    assert t.get_httpx_error_reason(Mock(spec=httpx.ProxyError)) == "proxy error"
+    assert (
+        t.get_httpx_error_reason(Mock(spec=httpx.TransportError)) == "connection error"
+    )
+
+
+class TestLogHttpxResponse:
+    @pytest.fixture(autouse=True)
+    def _use_debug(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG)
+
+    def setup_method(self):
+        self.request = httpx.Request("GET", "https://example.com/")
+        self.logger = logging.getLogger(__name__)
+
+    def test_plain(self, caplog: pytest.LogCaptureFixture):
+        resp = httpx.Response(200, request=self.request, content=b"sample response")
+
+        t.log_httpx_response(self.logger, resp)
+
+        assert "URL= https://example.com/;" in caplog.text
+        assert "Status= 200 (OK);" in caplog.text
+        assert "Raw response= sample response" in caplog.text
+
+    def test_json(self, caplog: pytest.LogCaptureFixture):
+        resp = httpx.Response(403, request=self.request, json={"foo": "bar"})
+
+        t.log_httpx_response(self.logger, resp)
+
+        assert "URL= https://example.com/;" in caplog.text
+        assert "Status= 403 (FORBIDDEN);" in caplog.text
+        assert 'Raw response= {"foo": "bar"}' in caplog.text
+
+    def test_error(self, caplog: pytest.LogCaptureFixture):
+        resp = httpx.Response(
+            999, request=self.request, content=b"\0xa undecodable bytes"
+        )
+
+        t.log_httpx_response(self.logger, resp)
+
+        assert "URL= https://example.com/;" in caplog.text
+        assert "Status= 999 (unknown);" in caplog.text
+        assert "Raw response= \x00xa undecodable bytes" in caplog.text

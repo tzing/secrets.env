@@ -1,59 +1,62 @@
+import enum
 import logging
 import os
 import re
 import typing
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, Iterable, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import httpx
 
-from secrets_env.exceptions import AuthenticationError, TypeError
-from secrets_env.providers.vault.auth.base import Auth
+from secrets_env.exceptions import (
+    AuthenticationError,
+    ConfigError,
+    SecretNotFound,
+    TypeError,
+)
+from secrets_env.reader import ReaderBase
+from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
+    from secrets_env.providers.vault.auth.base import Auth
     from secrets_env.providers.vault.config import CertTypes
 
 logger = logging.getLogger(__name__)
 
 
-class VaultReader:
+class Marker(enum.Enum):
+    NoMatch = enum.auto()
+    SecretNotExist = enum.auto()
+
+
+class SecretSource(typing.NamedTuple):
+    path: str
+    field: str
+
+
+KVVersion = Literal[1, 2]
+VaultSecret = Dict[str, str]
+VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
+
+
+class KVReader(ReaderBase):
     """Read secrets from Vault KV engine."""
 
     def __init__(
         self,
         url: str,
-        auth: Auth,
+        auth: "Auth",
         ca_cert: Optional["Path"] = None,
         client_cert: Optional["CertTypes"] = None,
     ) -> None:
-        """
-        Parameters
-        ----------
-        url : str
-            Vault URL.
-        auth : Auth
-            Authentication method and credentials.
-        ca_cert : Path
-            Path to server certificate.
-        client_cert : Path | Tuple[Path, Path]
-            Path to client side certificate file.
-        """
-        if not isinstance(url, str):
-            raise TypeError("url", str, url)
-        if not isinstance(auth, Auth):
-            raise TypeError("auth", "Auth instance", auth)
-        if ca_cert and not isinstance(ca_cert, os.PathLike):
-            raise TypeError("ca_cert", "path-like object", ca_cert)
-        if client_cert and not isinstance(client_cert, (os.PathLike, tuple)):
-            raise TypeError("client_cert", "path-like object", client_cert)
-
         self.url = url
         self.auth = auth
         self.ca_cert = ca_cert
         self.client_cert = client_cert
 
         self._client: Optional[httpx.Client] = None
+        self._secrets: Dict[str, VaultSecretQueryResult] = {}
 
     @property
     def client(self) -> httpx.Client:
@@ -69,12 +72,13 @@ class VaultReader:
 
         # initialize client
         client = create_client(self.url, self.ca_cert, self.client_cert)
+        self._client = client
 
         # get token
         try:
             token = self.auth.login(client)
         except httpx.HTTPError as e:
-            if not (reason := _reason_httpx_error(e)):
+            if not (reason := get_httpx_error_reason(e)):
                 raise
             raise AuthenticationError("{} during get token", reason)
 
@@ -87,10 +91,22 @@ class VaultReader:
         else:
             raise AuthenticationError("Invalid token")
 
-        self._client = client
         return client
 
-    def read_secret(self, path: str) -> Optional[Dict[str, str]]:
+    def get(self, spec: Union[Dict[str, str], str]) -> str:
+        if not spec:
+            raise ConfigError("Empty input")
+        if isinstance(spec, str):
+            # string input: path#key
+            src = get_secret_source_str(spec)
+        elif isinstance(spec, dict):
+            # dict input: {"path": "foo", "key": "bar"}
+            src = get_secret_source_dict(spec)
+        else:
+            raise TypeError("secret path spec", dict, spec)
+        return self.read_field(src.path, src.field)
+
+    def read_secret(self, path: str) -> VaultSecret:
         """Read secret from Vault.
 
         Parameters
@@ -101,18 +117,28 @@ class VaultReader:
         Returns
         -------
         secret : dict
-            Secret data. Or None when not found.
+            Secret data. Or 'SecretNotExist' marker when not found.
         """
-        secret = read_secret(self.client, path)
-        logger.debug(
-            "Query for secret %s %s",
-            path,
-            "succeed" if secret is not None else "failed",
-        )
+        if not isinstance(path, str):
+            raise TypeError("path", str, path)
 
-        return secret
+        # try cache
+        result = self._secrets.get(path, Marker.NoMatch)
 
-    def read_field(self, path: str, field: str) -> Optional[str]:
+        if result == Marker.NoMatch:
+            # not found in cache - start query
+            if secret := read_secret(self.client, path):
+                result = secret
+            else:
+                result = Marker.SecretNotExist
+            self._secrets[path] = result
+
+        # return
+        if result == Marker.SecretNotExist:
+            raise SecretNotFound("Secret {} not found", path)
+        return result
+
+    def read_field(self, path: str, field: str) -> str:
         """Read only one field from Vault.
 
         Parameters
@@ -125,71 +151,22 @@ class VaultReader:
         Returns
         -------
         value : str
-            The secret value (if matched), or None when value not found.
+            The secret value if matched
         """
         if not isinstance(field, str):
             raise TypeError("field", str, field)
 
-        if not (secret := read_secret(self.client, path)):
-            return None
+        secret = self.read_secret(path)
+        value = get_field(secret, field)
 
-        value = _get_field(secret, field)
-        logger.debug(
-            "Query for field %s#%s %s",
-            path,
-            field,
-            "succeed" if value is not None else "failed",
-        )
-
+        if value is None:
+            raise SecretNotFound("Secret {}#{} not found", path, field)
         return value
-
-    def read_values(
-        self, pairs: Iterable[Tuple[str, str]]
-    ) -> Dict[Tuple[str, str], Optional[str]]:
-        """Get multiple secret values.
-
-        Parameters
-        ----------
-        pairs : Iterable[Tuple[str,str]]
-            Pairs of secret path and field name.
-
-        Returns
-        -------
-        values : Dict[Tuple[str,str], str]
-            The secret values. The dictionary key is the given secret path and
-            field name, and its value is the secret value. The value could be
-            none on query error.
-        """
-        pairs = tuple(pairs)
-
-        # read secrets
-        secrets = {}
-        for path, _ in pairs:
-            if path in secrets:
-                continue
-            secrets[path] = read_secret(self.client, path)
-
-        # extract values
-        outputs = {}
-        for path, field in pairs:
-            secret = secrets[path]
-            value = _get_field(secret, field)
-
-            logger.debug(
-                "Query for field %s#%s %s",
-                path,
-                field,
-                "succeed" if value is not None else "failed",
-            )
-
-            outputs[path, field] = value
-
-        return outputs
 
 
 def create_client(
     base_url: str, ca_cert: Optional["Path"], client_cert: Optional["CertTypes"]
-):
+) -> httpx.Client:
     """Initialize a client."""
     if not isinstance(base_url, str):
         raise TypeError("base_url", str, base_url)
@@ -208,14 +185,14 @@ def create_client(
     if ca_cert:
         logger.debug("CA installed: %s", ca_cert)
         params["verify"] = ca_cert
-    elif client_cert:
+    if client_cert:
         logger.debug("Client side certificate file installed: %s", client_cert)
         params["cert"] = client_cert
 
     return httpx.Client(**params)
 
 
-def is_authenticated(client: httpx.Client, token: str):
+def is_authenticated(client: httpx.Client, token: str) -> bool:
     """Check is a token is authenticated.
 
     See also
@@ -242,7 +219,7 @@ def is_authenticated(client: httpx.Client, token: str):
 
 def get_mount_point(
     client: httpx.Client, path: str
-) -> Tuple[Optional[str], Literal[1, 2, None]]:
+) -> Tuple[Optional[str], Optional[KVVersion]]:
     """Get mount point and KV engine version to a secret.
 
     Returns
@@ -267,7 +244,7 @@ def get_mount_point(
     try:
         resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
     except httpx.HTTPError as e:
-        if not (reason := _reason_httpx_error(e)):
+        if not (reason := get_httpx_error_reason(e)):
             raise
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
         return None, None
@@ -293,11 +270,11 @@ def get_mount_point(
         return "", 1
 
     logger.error("Error occurred during checking metadata for %s", path)
-    _log_response(resp)
+    log_httpx_response(logger, resp)
     return None, None
 
 
-def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
+def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
     """Read secret from Vault.
 
     See also
@@ -318,13 +295,13 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
     if version == 1:
         url = f"/v1/{path}"
     else:
-        subpath = _remove_prefix(path, mount_point)
+        subpath = removeprefix(path, mount_point)
         url = f"/v1/{mount_point}data/{subpath}"
 
     try:
         resp = client.get(url)
     except httpx.HTTPError as e:
-        if not (reason := _reason_httpx_error(e)):
+        if not (reason := get_httpx_error_reason(e)):
             raise
         logger.error("Error occurred during query secret %s: %s", path, reason)
         return None
@@ -341,8 +318,21 @@ def read_secret(client: httpx.Client, path: str) -> Optional[Dict[str, str]]:
         return None
 
     logger.error("Error occurred during query secret %s", path)
-    _log_response(resp)
+    log_httpx_response(logger, resp)
     return None
+
+
+def get_field(secret: dict, name: str) -> Optional[str]:
+    """Traverse the secret data to get the field along with the given name."""
+    for n in split_field(name):
+        if not isinstance(secret, dict):
+            return None
+        secret = secret.get(n)  # type: ignore
+
+    if not isinstance(secret, str):
+        return None
+
+    return secret
 
 
 def split_field(name: str) -> List[str]:
@@ -375,48 +365,31 @@ def split_field(name: str) -> List[str]:
     return seq
 
 
-def _reason_httpx_error(e: httpx.HTTPError):
-    logger.debug("Connection error occurs. Type= %s", type(e).__name__, exc_info=True)
+def get_secret_source_str(spec: str) -> SecretSource:
+    idx = spec.find("#")
+    if idx == -1:
+        raise ConfigError("Missing delimiter '#'")
+    elif idx == 0:
+        raise ConfigError("Missing secret path part")
+    elif idx == len(spec) - 1:
+        raise ConfigError("Missing secret field part")
 
-    if isinstance(e, httpx.ProxyError):
-        return "proxy error"
-    elif isinstance(e, httpx.TransportError):
-        return "connection error"
-
-    return None
-
-
-def _log_response(r: httpx.Response):
-    try:
-        code_enum = HTTPStatus(r.status_code)
-        code_name = code_enum.name
-    except ValueError:
-        code_name = "unknown"
-
-    logger.debug(
-        "URL= %s. Status= %d (%s). Raw response= %s",
-        r.url,
-        r.status_code,
-        code_name,
-        r.text,
-    )
+    path = spec[:idx]
+    field = spec[idx + 1 :]
+    return SecretSource(path, field)
 
 
-def _remove_prefix(s: str, prefix: str) -> str:
-    """Remove prefix if it exists."""
-    if s.startswith(prefix):
-        return s[len(prefix) :]
-    return s
+def get_secret_source_dict(spec: dict) -> SecretSource:
+    path = spec.get("path")
+    if not path:
+        raise ConfigError("Missing secret path part")
+    elif not isinstance(path, str):
+        raise TypeError("secret path", str, path)
 
+    field = spec.get("field")
+    if not field:
+        raise ConfigError("Missing secret field part")
+    elif not isinstance(field, str):
+        raise TypeError("secret field", str, field)
 
-def _get_field(secret: dict, name: str) -> Optional[str]:
-    """Traverse the secret data to get the field along with the given name."""
-    for n in split_field(name):
-        if not isinstance(secret, dict):
-            return None
-        secret = secret.get(n)  # type: ignore
-
-    if not isinstance(secret, str):
-        return None
-
-    return secret
+    return SecretSource(path, field)
