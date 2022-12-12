@@ -68,19 +68,32 @@ class TestParseConfig:
         assert cfg is None
 
 
-def test_parse_section_secret(caplog: pytest.LogCaptureFixture):
-    assert t.parse_section_secret(
-        {
+class TestParseSectionSecret:
+    def test_success(self):
+        assert t.parse_section_secret(
+            {
+                "var1": "foo#bar",
+                "_VAR2": {"path": "foo", "field": "bar"},
+            }
+        ) == {
             "var1": "foo#bar",
             "_VAR2": {"path": "foo", "field": "bar"},
-            "var3:invalid_name": "foo#bar",
         }
-    ) == {
-        "var1": ("foo", "bar"),
-        "_VAR2": ("foo", "bar"),
-    }
 
-    assert (
-        "Invalid environment variable name <data>var3:invalid_name</data>."
-        in caplog.text
-    )
+    def test_empty(self, caplog: pytest.LogCaptureFixture):
+        assert t.parse_section_secret(
+            {
+                "EXAMPLE": "foo#bar",
+                "TEST": "",
+            }
+        ) == {"EXAMPLE": "foo#bar"}
+        assert "No source spec for variable <data>TEST</data>." in caplog.text
+
+    def test_type(self, caplog: pytest.LogCaptureFixture):
+        assert t.parse_section_secret(
+            {
+                "EXAMPLE": "foo#bar",
+                "TEST": 1234,
+            }
+        ) == {"EXAMPLE": "foo#bar"}
+        assert "Invalid source spec type for variable <data>TEST</data>." in caplog.text
