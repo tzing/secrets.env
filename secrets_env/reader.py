@@ -1,6 +1,8 @@
 import abc
 from typing import Dict, Union
 
+SourceSpec = Union[Dict[str, str], str]
+
 
 class ReaderBase(abc.ABC):
     """Abstract base class for secret reader. All secret provider must implement
@@ -8,7 +10,7 @@ class ReaderBase(abc.ABC):
     """
 
     @abc.abstractmethod
-    def get(self, spec: Union[Dict[str, str], str]) -> str:
+    def get(self, spec: SourceSpec) -> str:
         """Get secret value.
 
         Parameters
