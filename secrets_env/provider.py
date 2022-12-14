@@ -5,7 +5,7 @@ SourceSpec = Union[Dict[str, str], str]
 
 
 class ProviderBase(abc.ABC):
-    """Abstract base class for secret reader. All secret provider must implement
+    """Abstract base class for secret provider. All secret provider must implement
     this interface.
     """
 

@@ -63,14 +63,14 @@ def load_secrets(
     return output
 
 
-def read1(reader: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[str]:
+def read1(provider: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[str]:
     """Read single value.
 
-    This function wraps :py:meth:`~secrets_env.reader.ReaderBase.get` and
+    This function wraps :py:meth:`~secrets_env.provider.ProviderBase.get` and
     captures all exceptions."""
     # type checking
-    if not isinstance(reader, secrets_env.provider.ProviderBase):
-        raise secrets_env.exceptions.TypeError("reader", "reader instance", reader)
+    if not isinstance(provider, secrets_env.provider.ProviderBase):
+        raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
     if not isinstance(name, str):
         raise secrets_env.exceptions.TypeError("name", str, name)
     if not isinstance(spec, (str, dict)):
@@ -78,7 +78,7 @@ def read1(reader: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[str
 
     # run
     try:
-        return reader.get(spec)
+        return provider.get(spec)
     except secrets_env.exceptions.AuthenticationError as e:
         logger.error(
             "<!important>\u26D4 Authentication error: %s. No secret loaded.",
