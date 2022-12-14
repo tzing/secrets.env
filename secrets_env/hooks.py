@@ -15,11 +15,13 @@ APP_NAME = "secrets_env"
 hookspec = pluggy.HookspecMarker(APP_NAME)
 hookimpl = pluggy.HookimplMarker(APP_NAME)
 
+_manager = None
+
 
 class HookSpec:
     """All available hooks are listed in this class."""
 
-    @hookspec
+    @hookspec()
     def add_extra_config(self, data: Dict[str, Any]) -> None:
         """Add extra config values into config data dictionary. Triggerred before
         parsing them into the structured object.
@@ -30,15 +32,16 @@ class HookSpec:
             Loaded config data dict. The hook is allowed to modify its content.
         """
 
-    @hookspec
+    @hookspec(firstresult=True)
     def get_reader(self, type: str, data: Dict[str, Any]) -> Optional["ReaderBase"]:
-        """Parse the config data and return reader.
+        """Parse the config data and return reader. This hook is only called
+        when ``type`` not matches any of built-in providers.
 
         Parameters
         ----------
         type : str
-            Reader type to be built. This value is same as the one extracted
-            from ``data``.
+            Unique provider name in lower case. This value should be the same as
+            ``type`` field extracted from ``data``.
         data : dict
             Part of config data dict.
 
@@ -59,8 +62,9 @@ class HookSpec:
 
 
 def get_hooks() -> HookSpec:
-    manager = pluggy.PluginManager(APP_NAME)
-    manager.load_setuptools_entrypoints(APP_NAME)
-    manager.add_hookspecs(HookSpec)
-
-    return typing.cast(HookSpec, manager.hook)
+    global _manager
+    if not _manager:
+        _manager = pluggy.PluginManager(APP_NAME)
+        _manager.load_setuptools_entrypoints(APP_NAME)
+        _manager.add_hookspecs(HookSpec)
+    return typing.cast(HookSpec, _manager.hook)
