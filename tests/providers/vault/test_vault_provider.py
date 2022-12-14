@@ -6,16 +6,18 @@ import httpx._config
 import pytest
 import respx
 
-import secrets_env.providers.vault.reader as t
+import secrets_env.providers.vault.provider as t
 from secrets_env.exceptions import AuthenticationError, ConfigError, SecretNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
 
-class TestKVReader:
-    @pytest.fixture(scope="class")
-    def real_reader(self) -> t.KVReader:
-        return t.KVReader("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+class TestKvProvider1:
+    """Unit tests for KvProvider"""
+
+    @pytest.fixture()
+    def provider(self, mock_auth: Auth) -> t.KvProvider:
+        return t.KvProvider("https://example.com/", mock_auth)
 
     @pytest.fixture()
     def mock_auth(self):
@@ -23,80 +25,82 @@ class TestKVReader:
         auth.method.return_value = "mocked"
         return auth
 
-    @pytest.fixture()
-    def mock_reader(self, mock_auth: Auth) -> t.KVReader:
-        return t.KVReader("https://example.com/", mock_auth)
-
-    def test_client_success(self, real_reader: t.KVReader):
-        with patch.object(t, "is_authenticated", return_value=True):
-            assert isinstance(real_reader.client, httpx.Client)
-            assert isinstance(real_reader.client, httpx.Client)  # from cache
-
-    def test_client_error_1(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_1(self, provider: t.KvProvider, mock_auth: Auth):
         mock_auth.login.return_value = None
         with pytest.raises(AuthenticationError):
-            mock_reader.client
+            provider.client
 
-    def test_client_error_2(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_2(self, provider: t.KvProvider, mock_auth: Auth):
         mock_auth.login.return_value = "test-token"
         with pytest.raises(AuthenticationError), patch.object(
             t, "is_authenticated", return_value=False
         ):
-            mock_reader.client
+            provider.client
 
-    def test_client_error_3(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_3(self, provider: t.KvProvider, mock_auth: Auth):
         mock_auth.login.side_effect = httpx.RequestError("test")
         with pytest.raises(httpx.RequestError):
-            mock_reader.client
+            provider.client
 
-    def test_client_error_4(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_4(self, provider: t.KvProvider, mock_auth: Auth):
         mock_auth.login.side_effect = httpx.ProxyError("test")
         with pytest.raises(AuthenticationError):
-            mock_reader.client
+            provider.client
 
-    def test_get(self, real_reader: t.KVReader):
-        assert real_reader.get("kv1/test#foo") == "hello"
-        assert real_reader.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
+
+class TestKvProvider2:
+    """Integration tests for KvProvider"""
+
+    @pytest.fixture(scope="class")
+    def provider(self) -> t.KvProvider:
+        return t.KvProvider("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+
+    def test_client_success(self, provider: t.KvProvider):
+        with patch.object(t, "is_authenticated", return_value=True):
+            assert isinstance(provider.client, httpx.Client)
+            assert isinstance(provider.client, httpx.Client)  # from cache
+
+    def test_get(self, provider: t.KvProvider):
+        assert provider.get("kv1/test#foo") == "hello"
+        assert provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
 
         with pytest.raises(ConfigError):
-            real_reader.get("")
+            provider.get("")
         with pytest.raises(TypeError):
-            real_reader.get(1234)
+            provider.get(1234)
 
-    def test_read_secret_v1(self, real_reader: t.KVReader):
-        secret_1 = real_reader.read_secret("kv1/test")
+    def test_read_secret_v1(self, provider: t.KvProvider):
+        secret_1 = provider.read_secret("kv1/test")
         assert isinstance(secret_1, dict)
         assert secret_1["foo"] == "hello"
 
-        secret_2 = real_reader.read_secret("kv1/test")
+        secret_2 = provider.read_secret("kv1/test")
         assert secret_1 is secret_2
 
-    def test_read_secret_v2(self, real_reader: t.KVReader):
-        secret = real_reader.read_secret("kv2/test")
+    def test_read_secret_v2(self, provider: t.KvProvider):
+        secret = provider.read_secret("kv2/test")
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello, world"
 
-    def test_read_secret_fail(self, real_reader: t.KVReader):
+    def test_read_secret_fail(self, provider: t.KvProvider):
         with pytest.raises(SecretNotFound):
-            real_reader.read_secret("no-this-secret")
+            provider.read_secret("no-this-secret")
 
-    def test_read_field(self, real_reader: t.KVReader):
-        assert real_reader.read_field("kv1/test", "foo") == "hello"
-        assert (
-            real_reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
-        )
+    def test_read_field(self, provider: t.KvProvider):
+        assert provider.read_field("kv1/test", "foo") == "hello"
+        assert provider.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
 
         with pytest.raises(SecretNotFound):
-            real_reader.read_field("kv2/test", "foo.no-extra-level")
+            provider.read_field("kv2/test", "foo.no-extra-level")
         with pytest.raises(SecretNotFound):
-            real_reader.read_field("kv2/test", "test.no-this-key")
+            provider.read_field("kv2/test", "test.no-this-key")
         with pytest.raises(SecretNotFound):
-            real_reader.read_field("secret/no-this-secret", "test")
+            provider.read_field("secret/no-this-secret", "test")
 
         with pytest.raises(TypeError):
-            real_reader.read_field(1234, "foo")
+            provider.read_field(1234, "foo")
         with pytest.raises(TypeError):
-            real_reader.read_field("secret/test", 1234)
+            provider.read_field("secret/test", 1234)
 
 
 class TestCreateClient:

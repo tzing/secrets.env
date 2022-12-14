@@ -4,8 +4,8 @@ from typing import Dict, Union
 SourceSpec = Union[Dict[str, str], str]
 
 
-class ReaderBase(abc.ABC):
-    """Abstract base class for secret reader. All secret provider must implement
+class ProviderBase(abc.ABC):
+    """Abstract base class for secret provider. All secret provider must implement
     this interface.
     """
 
