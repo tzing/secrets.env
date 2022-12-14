@@ -15,7 +15,7 @@ from secrets_env.exceptions import (
     SecretNotFound,
     TypeError,
 )
-from secrets_env.reader import ReaderBase
+from secrets_env.provider import ProviderBase
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
@@ -40,7 +40,7 @@ VaultSecret = Dict[str, str]
 VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
 
 
-class KVReader(ReaderBase):
+class KVReader(ProviderBase):
     """Read secrets from Vault KV engine."""
 
     def __init__(
