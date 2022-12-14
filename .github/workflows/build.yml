@@ -111,7 +111,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install poetry
-          poetry install --no-root --all-extras --only lint
+
+          poetry install --no-root --all-extras --only main,lint
+          poetry run pip install poetry  # `poetry` is a special dependency
 
       - name: Coding style check
         run: |
@@ -197,7 +199,7 @@ jobs:
 
       - name: Build doc
         run: |
-          poetry run sphinx-build -b html docs build 2> stderr.txt
+          poetry run sphinx-build -b html docs build 2> stderr.txt || true
 
           if [[ -s stderr.txt ]]; then
             echo ====================
