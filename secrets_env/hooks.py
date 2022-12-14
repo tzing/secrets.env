@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import pluggy
 
 if typing.TYPE_CHECKING:
-    from secrets_env.reader import ReaderBase
+    from secrets_env.provider import ProviderBase
 
 APP_NAME = "secrets_env"
 
@@ -33,9 +33,9 @@ class HookSpec:
         """
 
     @hookspec(firstresult=True)
-    def get_reader(self, type: str, data: Dict[str, Any]) -> Optional["ReaderBase"]:
-        """Parse the config data and return reader. This hook is only called
-        when ``type`` not matches any of built-in providers.
+    def get_provider(self, type: str, data: Dict[str, Any]) -> Optional["ProviderBase"]:
+        """Parse the config data and return provider. This hook is only called
+        when ``type`` not matches any of builtin providers.
 
         Parameters
         ----------
@@ -47,12 +47,13 @@ class HookSpec:
 
         Returns
         -------
-        reader : ReaderBase | None
-            If ``type`` matches this provider, returns an reader instance. Or
+        reader : ProviderBase | None
+            If ``type`` matches this provider, returns an provider instance. Or
             returns :py:obj:`None` otherwise.
 
-            It is suggested to make the time-consuming steps (e.g. connection
-            establishment) lazy evaluated.
+            It is suggested not to proceed the time-consuming steps (e.g.
+            connection establishment) in this hook. Postponed those actions to
+            :py:meth:`~secrets_env.provider.ProviderBase.get`.
 
         Raises
         ------
