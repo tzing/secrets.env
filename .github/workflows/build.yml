@@ -203,8 +203,10 @@ jobs:
             echo ====================
             echo stderr:
             cat stderr.txt
-            false
           fi
+
+          sed -i "/html_static_path entry '_static' does not exist/d" stderr.txt
+          [[ -s stderr.txt ]] && false
 
       - name: Deploy to Github pages
         uses: peaceiris/actions-gh-pages@v3
