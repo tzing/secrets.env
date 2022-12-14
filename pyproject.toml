@@ -75,7 +75,7 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=secrets_env --cov-report=term-missing"
+addopts = "--cov-report xml --cov=secrets_env --cov-report=term-missing "
 filterwarnings = [
     "ignore::pytest.PytestDeprecationWarning:pytest_cov"
 ]
