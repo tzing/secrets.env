@@ -4,14 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import datetime
-import pathlib
-import sys
-
-docdir = pathlib.Path(__file__).resolve().parent
-repodir = docdir.parent
-sys.path.insert(0, str(repodir))
-
-import secrets_env  # noqa: E402
+import importlib.metadata
 
 # -- Project information -----------------------------------------------------
 
@@ -20,7 +13,7 @@ this_year = datetime.date.today().year
 project = "secrets.env"
 copyright = f"{this_year}, tzing"
 author = "tzing"
-version = secrets_env.__version__
+version = importlib.metadata.version(project)
 
 
 # -- General configuration ---------------------------------------------------
