@@ -197,14 +197,14 @@ jobs:
           python -m pip install poetry
           poetry install --only main,doc
 
-      - name: Build doc
+      - name: Check sphinx build error
         run: |
-          poetry run sphinx-build -b html docs build 2> stderr.txt
-
-          # second time for catch stdout
           poetry run sphinx-build -b html docs build > /dev/null 2> stderr.txt
-          sed --in-place "/'_static' does not exist/d" stderr.txt
+          # sed --in-place "/'_static' does not exist/d" stderr.txt
           [[ ! -s stderr-stripped.txt ]]
+
+      - name: Build doc
+        run: poetry run sphinx-build -b html docs build
 
       - name: Deploy to Github pages
         uses: peaceiris/actions-gh-pages@v3
