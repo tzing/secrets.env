@@ -49,7 +49,7 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.cache/pypoetry/virtualenvs
+            ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
 
       - name: Get vault
@@ -85,7 +85,7 @@ jobs:
         run: |
           pip install -U pip  # https://github.com/pypa/pip/issues/11352
           pip install poetry
-          poetry install --no-root --all-extras --only main,test
+          poetry install --all-extras --only main,test
 
       - name: Run pytest
         run: |
@@ -105,14 +105,14 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.cache/pypoetry/virtualenvs
+            ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ env.MAIN_PYTHON_VERSION }}-poetry-${{ hashFiles('poetry.lock') }}
 
       - name: Install dependencies
         run: |
           python -m pip install poetry
 
-          poetry install --no-root --all-extras --only main,lint
+          poetry install --all-extras --only main,lint
           poetry run pip install poetry  # `poetry` is a special dependency
 
       - name: Coding style check
@@ -146,7 +146,7 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.cache/pypoetry/virtualenvs
+            ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
 
       - name: Install dependencies
@@ -189,24 +189,20 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.cache/pypoetry/virtualenvs
+            ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
 
       - name: Install dependencies
         run: |
           python -m pip install poetry
-          poetry install --no-root --only main,doc
+          poetry install --only main,doc
 
       - name: Build doc
         run: |
-          poetry run sphinx-build -b html docs build 2> stderr.txt || true
+          poetry run sphinx-build -b html docs build 2> stderr.txt
 
-          if [[ -s stderr.txt ]]; then
-            echo ====================
-            echo stderr:
-            cat stderr.txt
-          fi
-
+          # second time for catch stdout
+          poetry run sphinx-build -b html docs build > /dev/null 2> stderr.txt
           sed --in-place "/'_static' does not exist/d" stderr.txt
           [[ ! -s stderr-stripped.txt ]]
 
