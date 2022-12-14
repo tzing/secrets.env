@@ -206,8 +206,7 @@ jobs:
           fi
 
           sed --in-place "/'_static' does not exist/d" stderr.txt
-          tr --delete '[:space:]' < stderr.txt > stderr-stripped.txt
-          [[ -z stderr-stripped.txt ]] && false
+          [[ -s stderr-stripped.txt ]] && false
 
       - name: Deploy to Github pages
         uses: peaceiris/actions-gh-pages@v3
