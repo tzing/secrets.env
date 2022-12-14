@@ -200,7 +200,7 @@ jobs:
       - name: Check sphinx build error
         run: |
           poetry run sphinx-build -b html docs build > /dev/null 2> stderr.txt
-          # sed --in-place "/'_static' does not exist/d" stderr.txt
+          sed --in-place "/'_static' does not exist/d" stderr.txt
           [[ ! -s stderr.txt ]]
 
       - name: Build doc
