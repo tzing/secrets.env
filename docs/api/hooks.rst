@@ -16,7 +16,7 @@ Available hooks
 Related base classes
 --------------------
 
-.. currentmodule:: secrets_env.reader
+.. currentmodule:: secrets_env.provider
 
-.. autoclass:: ReaderBase
+.. autoclass:: ProviderBase
    :members:

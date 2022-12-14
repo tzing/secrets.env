@@ -9,11 +9,11 @@ from typing import Dict, Optional
 import secrets_env.config
 import secrets_env.exceptions
 import secrets_env.hooks
-import secrets_env.providers.vault.reader
-import secrets_env.reader
+import secrets_env.provider
+import secrets_env.providers.vault.provider
 
 if typing.TYPE_CHECKING:
-    from secrets_env.reader import ReaderBase, SourceSpec
+    from secrets_env.provider import ProviderBase, SourceSpec
 
 logger = logging.getLogger(__name__)
 hookimpl = secrets_env.hooks.hookimpl
@@ -29,7 +29,7 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    reader = secrets_env.providers.vault.reader.KVReader(**config["client"])
+    reader = secrets_env.providers.vault.provider.KvProvider(**config["client"])
 
     # build env var to secret mapping
     output = {}
@@ -63,14 +63,14 @@ def load_secrets(
     return output
 
 
-def read1(reader: "ReaderBase", name: str, spec: "SourceSpec") -> Optional[str]:
+def read1(provider: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[str]:
     """Read single value.
 
-    This function wraps :py:meth:`~secrets_env.reader.ReaderBase.get` and
+    This function wraps :py:meth:`~secrets_env.provider.ProviderBase.get` and
     captures all exceptions."""
     # type checking
-    if not isinstance(reader, secrets_env.reader.ReaderBase):
-        raise secrets_env.exceptions.TypeError("reader", "reader instance", reader)
+    if not isinstance(provider, secrets_env.provider.ProviderBase):
+        raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
     if not isinstance(name, str):
         raise secrets_env.exceptions.TypeError("name", str, name)
     if not isinstance(spec, (str, dict)):
@@ -78,7 +78,7 @@ def read1(reader: "ReaderBase", name: str, spec: "SourceSpec") -> Optional[str]:
 
     # run
     try:
-        return reader.get(spec)
+        return provider.get(spec)
     except secrets_env.exceptions.AuthenticationError as e:
         logger.error(
             "<!important>\u26D4 Authentication error: %s. No secret loaded.",
