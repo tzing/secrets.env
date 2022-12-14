@@ -196,7 +196,15 @@ jobs:
           poetry install --no-root --with doc
 
       - name: Build doc
-        run: poetry run sphinx-build -b html docs build
+        run: |
+          poetry run sphinx-build -b html docs build 2> stderr.txt
+
+          if [[ -s stderr.txt ]]; then
+            echo ====================
+            echo stderr:
+            cat stderr.txt
+            false
+          fi
 
       - name: Deploy to Github pages
         uses: peaceiris/actions-gh-pages@v3
