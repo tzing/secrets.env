@@ -85,7 +85,7 @@ jobs:
         run: |
           pip install -U pip  # https://github.com/pypa/pip/issues/11352
           pip install poetry
-          poetry install --no-root --all-extras --only main,dev,test
+          poetry install --no-root --all-extras --only main,test
 
       - name: Run pytest
         run: |
@@ -193,7 +193,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install poetry
-          poetry install --no-root --only doc
+          poetry install --no-root --only main,doc
 
       - name: Build doc
         run: |
