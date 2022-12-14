@@ -6,7 +6,7 @@ import httpx._config
 import pytest
 import respx
 
-import secrets_env.providers.vault.reader as t
+import secrets_env.providers.vault.provider as t
 from secrets_env.exceptions import AuthenticationError, ConfigError, SecretNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
@@ -14,8 +14,8 @@ from secrets_env.providers.vault.auth.token import TokenAuth
 
 class TestKVReader:
     @pytest.fixture(scope="class")
-    def real_reader(self) -> t.KVReader:
-        return t.KVReader("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+    def real_reader(self) -> t.KvProvider:
+        return t.KvProvider("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
 
     @pytest.fixture()
     def mock_auth(self):
@@ -24,37 +24,37 @@ class TestKVReader:
         return auth
 
     @pytest.fixture()
-    def mock_reader(self, mock_auth: Auth) -> t.KVReader:
-        return t.KVReader("https://example.com/", mock_auth)
+    def mock_reader(self, mock_auth: Auth) -> t.KvProvider:
+        return t.KvProvider("https://example.com/", mock_auth)
 
-    def test_client_success(self, real_reader: t.KVReader):
+    def test_client_success(self, real_reader: t.KvProvider):
         with patch.object(t, "is_authenticated", return_value=True):
             assert isinstance(real_reader.client, httpx.Client)
             assert isinstance(real_reader.client, httpx.Client)  # from cache
 
-    def test_client_error_1(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_1(self, mock_reader: t.KvProvider, mock_auth: Auth):
         mock_auth.login.return_value = None
         with pytest.raises(AuthenticationError):
             mock_reader.client
 
-    def test_client_error_2(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_2(self, mock_reader: t.KvProvider, mock_auth: Auth):
         mock_auth.login.return_value = "test-token"
         with pytest.raises(AuthenticationError), patch.object(
             t, "is_authenticated", return_value=False
         ):
             mock_reader.client
 
-    def test_client_error_3(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_3(self, mock_reader: t.KvProvider, mock_auth: Auth):
         mock_auth.login.side_effect = httpx.RequestError("test")
         with pytest.raises(httpx.RequestError):
             mock_reader.client
 
-    def test_client_error_4(self, mock_reader: t.KVReader, mock_auth: Auth):
+    def test_client_error_4(self, mock_reader: t.KvProvider, mock_auth: Auth):
         mock_auth.login.side_effect = httpx.ProxyError("test")
         with pytest.raises(AuthenticationError):
             mock_reader.client
 
-    def test_get(self, real_reader: t.KVReader):
+    def test_get(self, real_reader: t.KvProvider):
         assert real_reader.get("kv1/test#foo") == "hello"
         assert real_reader.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
 
@@ -63,7 +63,7 @@ class TestKVReader:
         with pytest.raises(TypeError):
             real_reader.get(1234)
 
-    def test_read_secret_v1(self, real_reader: t.KVReader):
+    def test_read_secret_v1(self, real_reader: t.KvProvider):
         secret_1 = real_reader.read_secret("kv1/test")
         assert isinstance(secret_1, dict)
         assert secret_1["foo"] == "hello"
@@ -71,16 +71,16 @@ class TestKVReader:
         secret_2 = real_reader.read_secret("kv1/test")
         assert secret_1 is secret_2
 
-    def test_read_secret_v2(self, real_reader: t.KVReader):
+    def test_read_secret_v2(self, real_reader: t.KvProvider):
         secret = real_reader.read_secret("kv2/test")
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello, world"
 
-    def test_read_secret_fail(self, real_reader: t.KVReader):
+    def test_read_secret_fail(self, real_reader: t.KvProvider):
         with pytest.raises(SecretNotFound):
             real_reader.read_secret("no-this-secret")
 
-    def test_read_field(self, real_reader: t.KVReader):
+    def test_read_field(self, real_reader: t.KvProvider):
         assert real_reader.read_field("kv1/test", "foo") == "hello"
         assert (
             real_reader.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"

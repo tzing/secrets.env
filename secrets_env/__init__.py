@@ -10,7 +10,7 @@ import secrets_env.config
 import secrets_env.exceptions
 import secrets_env.hooks
 import secrets_env.provider
-import secrets_env.providers.vault.reader
+import secrets_env.providers.vault.provider
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase, SourceSpec
@@ -29,7 +29,7 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    reader = secrets_env.providers.vault.reader.KVReader(**config["client"])
+    reader = secrets_env.providers.vault.provider.KvProvider(**config["client"])
 
     # build env var to secret mapping
     output = {}

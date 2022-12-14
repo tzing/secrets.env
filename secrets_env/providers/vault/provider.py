@@ -40,7 +40,7 @@ VaultSecret = Dict[str, str]
 VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
 
 
-class KVReader(ProviderBase):
+class KvProvider(ProviderBase):
     """Read secrets from Vault KV engine."""
 
     def __init__(
