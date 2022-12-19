@@ -8,7 +8,8 @@ from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import TypeError
 from secrets_env.io import get_env_var, prompt, read_keyring
-from secrets_env.providers.vault.auth.base import Auth
+
+from .base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
