@@ -1,7 +1,7 @@
 import dataclasses
 import typing
 
-from secrets_env.providers.vault.auth.base import Auth
+from .base import Auth
 
 
 @dataclasses.dataclass
