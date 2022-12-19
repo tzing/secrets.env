@@ -1,8 +1,9 @@
 from typing import Optional
 
 from secrets_env.exceptions import ConfigError
-from secrets_env.providers.vault.config import get_connection_info
-from secrets_env.providers.vault.provider import KvProvider
+
+from .config import get_connection_info
+from .provider import KvProvider
 
 
 def get_provider(type_: str, data: dict) -> Optional[KvProvider]:
