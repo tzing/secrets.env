@@ -10,7 +10,7 @@ DEFAULT_PROVIDER = "vault"
 
 
 def get_provider(data: dict) -> typing.Optional["ProviderBase"]:
-    type_raw = data.get(data, DEFAULT_PROVIDER)
+    type_raw = data.get("type", DEFAULT_PROVIDER)
     type_ = type_raw.lower()
 
     # builtin first
