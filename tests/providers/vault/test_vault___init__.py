@@ -15,4 +15,5 @@ class TestGetProvider:
             t.get_provider("vault", {})
 
     def test_not_related(self):
-        assert t.get_provider("something-else", {}) is None
+        with pytest.raises(ConfigError):
+            t.get_provider("something-else", {})

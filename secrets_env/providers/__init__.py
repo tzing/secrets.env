@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
 DEFAULT_PROVIDER = "vault"
 
 
-def get_provider(data: dict) -> typing.Optional["ProviderBase"]:
+def get_provider(data: dict) -> "ProviderBase":
     type_raw = data.get("type", DEFAULT_PROVIDER)
     type_ = type_raw.lower()
 
