@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env.config.parser as t
-from secrets_env.provider import ProviderBase
 from secrets_env.exceptions import AuthenticationError
+from secrets_env.provider import ProviderBase
 
 
 class TestParseConfig:
