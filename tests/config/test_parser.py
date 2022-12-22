@@ -1,17 +1,20 @@
+from unittest.mock import Mock, patch
+
 import pytest
 
 import secrets_env.config.parser as t
-from secrets_env.providers.vault.auth.null import NoAuth
+from secrets_env.provider import ProviderBase
+from secrets_env.exceptions import AuthenticationError
 
 
 class TestParseConfig:
     @pytest.fixture()
-    def _patch_source_parser(self, monkeypatch: pytest.MonkeyPatch):
+    def _patch_get_provider(self, monkeypatch: pytest.MonkeyPatch):
         def mock_parser(data: dict):
             assert isinstance(data, dict)
-            return {"url": "https://example.com", "auth": NoAuth()}
+            return Mock(spec=ProviderBase)
 
-        monkeypatch.setattr(t, "parse_section_source", mock_parser)
+        monkeypatch.setattr("secrets_env.providers.get_provider", mock_parser)
 
     @pytest.fixture()
     def _patch_secrets_parser(self, monkeypatch: pytest.MonkeyPatch):
@@ -21,7 +24,7 @@ class TestParseConfig:
 
         monkeypatch.setattr(t, "parse_section_secret", mock_parser)
 
-    @pytest.mark.usefixtures("_patch_source_parser")
+    @pytest.mark.usefixtures("_patch_get_provider")
     @pytest.mark.usefixtures("_patch_secrets_parser")
     def test_success(self):
         cfg = t.parse_config(
@@ -31,7 +34,7 @@ class TestParseConfig:
             }
         )
         assert isinstance(cfg, dict)
-        assert cfg["client"] == {"url": "https://example.com", "auth": NoAuth()}
+        assert isinstance(cfg["client"], ProviderBase)
         assert cfg["secrets"] == {"TEST": ("foo", "bar")}
 
     def test_skip_parsing(self):
@@ -44,9 +47,21 @@ class TestParseConfig:
         assert cfg is None
 
     @pytest.mark.usefixtures("_patch_secrets_parser")
-    def test_invalid_source(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "parse_section_source", lambda _: None)
+    def test_auth_error(self):
+        with patch(
+            "secrets_env.providers.get_provider",
+            side_effect=AuthenticationError("test"),
+        ):
+            cfg = t.parse_config(
+                {
+                    "source": {"mock": "mock"},
+                    "secrets": {"TEST": "sample#foo"},
+                }
+            )
+        assert cfg is None
 
+    @pytest.mark.usefixtures("_patch_secrets_parser")
+    def test_config_error(self):
         cfg = t.parse_config(
             {
                 "source": {"arg": "invalid-input"},
@@ -55,10 +70,8 @@ class TestParseConfig:
         )
         assert cfg is None
 
-    @pytest.mark.usefixtures("_patch_source_parser")
-    def test_invalid_secret(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "parse_section_source", lambda _: None)
-
+    @pytest.mark.usefixtures("_patch_get_provider")
+    def test_invalid_secret(self):
         cfg = t.parse_config(
             {
                 "source": {"url": "https://example.com/"},
