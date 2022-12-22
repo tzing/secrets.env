@@ -5,7 +5,7 @@ import pytest
 
 import secrets_env.config as t
 from secrets_env.config.finder import ConfigFile
-from secrets_env.providers.vault.auth.null import NoAuth
+from secrets_env.provider import ProviderBase
 
 
 class TestLoadConfig:
@@ -64,8 +64,7 @@ class TestLoadConfig:
 
     def assert_config_format(self, cfg: dict):
         assert isinstance(cfg, dict)
-        assert cfg["client"]["url"] == "https://example.com/"
-        assert cfg["client"]["auth"] == NoAuth()
+        assert isinstance(cfg["client"], ProviderBase)
         assert cfg["secrets"] == {
             "VAR1": {"path": "kv/default", "field": "example"},
             "VAR2": "kv/default#example",
