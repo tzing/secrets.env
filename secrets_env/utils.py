@@ -133,15 +133,10 @@ def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
     except ValueError:
         code_name = "unknown"
 
-    try:
-        content = resp.text
-    except UnicodeDecodeError:
-        content = resp.content
-
     logger_.debug(
         "URL= %s; Status= %d (%s); Raw response= %s",
         resp.url,
         resp.status_code,
         code_name,
-        content,
+        resp.text,
     )

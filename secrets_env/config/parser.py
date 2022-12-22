@@ -1,13 +1,15 @@
 import logging
 import re
 import typing
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Dict, Optional, TypedDict, Union
 
+import secrets_env.exceptions
 import secrets_env.hooks
-from secrets_env.providers.vault.config import (
-    get_connection_info as parse_section_source,
-)
+import secrets_env.providers
 from secrets_env.utils import ensure_dict
+
+if typing.TYPE_CHECKING:
+    from secrets_env.provider import ProviderBase
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +21,11 @@ class SecretSource(typing.NamedTuple):
     field: str
 
 
-ConnectionInfo = Dict[str, Any]
 SecretMapping = Dict[str, SecretSource]
 
 
 class Config(TypedDict):
-    client: ConnectionInfo
+    client: "ProviderBase"
     secrets: SecretMapping
 
 
@@ -42,12 +43,18 @@ def parse_config(data: dict) -> Optional[Config]:
     # shared flag
     is_success = True
 
-    # `source` section
+    # get provider client
     data_source = data.get("source", {})
     data_source, ok = ensure_dict("source", data_source)
     is_success &= ok
 
-    if not (config_source := parse_section_source(data_source)):
+    try:
+        client = secrets_env.providers.get_provider(data_source)
+    except secrets_env.exceptions.AuthenticationError as e:
+        logger.error("Authentication error: %s", e)
+        is_success = False
+    except secrets_env.exceptions.ConfigError as e:
+        logger.error("Conifguration error: %s", e)
         is_success = False
 
     # `secrets` section
@@ -62,12 +69,9 @@ def parse_config(data: dict) -> Optional[Config]:
     if not is_success:
         return None
 
-    return typing.cast(
-        Config,
-        {
-            "client": config_source,
-            "secrets": config_secrets,
-        },
+    return Config(
+        client=client,  # pyright: ignore[reportUnboundVariable]
+        secrets=config_secrets,
     )
 
 

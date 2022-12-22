@@ -104,11 +104,11 @@ class TestLogHttpxResponse:
 
     def test_error(self, caplog: pytest.LogCaptureFixture):
         resp = httpx.Response(
-            999, request=self.request, content=b"\0xa undecodable bytes"
+            999, request=self.request, content=b"\xa0 undecodable bytes"
         )
 
         t.log_httpx_response(self.logger, resp)
 
         assert "URL= https://example.com/;" in caplog.text
         assert "Status= 999 (unknown);" in caplog.text
-        assert "Raw response= \x00xa undecodable bytes" in caplog.text
+        assert "Raw response= \ufffd undecodable bytes" in caplog.text

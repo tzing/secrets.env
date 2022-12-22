@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.23.1"
+version = "0.23.2"
 description = "Put secrets from Vault to environment variables"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
@@ -75,7 +75,7 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=secrets_env --cov-report=term-missing"
+addopts = "--cov-report xml --cov=secrets_env --cov-report=term-missing "
 filterwarnings = [
     "ignore::pytest.PytestDeprecationWarning:pytest_cov"
 ]

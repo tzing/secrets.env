@@ -1,5 +1,5 @@
 __name__ = "secrets_env"
-__version__ = "0.23.1"
+__version__ = "0.23.2"
 
 import logging
 import pathlib
@@ -29,13 +29,13 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    reader = secrets_env.providers.vault.provider.KvProvider(**config["client"])
-
     # build env var to secret mapping
     output = {}
     for name, spec in config["secrets"].items():
         value = read1(
-            reader, name, spec  # pyright: ignore[reportGeneralTypeIssues]; TODO
+            config["client"],
+            name,
+            spec,  # pyright: ignore[reportGeneralTypeIssues]; TODO
         )
         output[name] = value
         if value is not None:
