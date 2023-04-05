@@ -4,7 +4,6 @@ import typing
 from typing import Dict, Optional, TypedDict, Union
 
 import secrets_env.exceptions
-import secrets_env.hooks
 import secrets_env.providers
 from secrets_env.utils import ensure_dict
 
@@ -35,10 +34,6 @@ def parse_config(data: dict) -> Optional[Config]:
     if not data.get("secrets"):
         logger.info("No target specificied. Stop loading secret.")
         return None
-
-    # call hook
-    hooks = secrets_env.hooks.get_hooks()
-    hooks.add_extra_config(data=data)
 
     # shared flag
     is_success = True
