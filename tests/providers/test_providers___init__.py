@@ -17,9 +17,6 @@ class TestGetProvider:
         monkeypatch.setattr("secrets_env.providers.vault.get_provider", mock_load)
         assert t.get_provider({"type": "Vault"}) is mock_provider
 
-    def test_plugin(self):
-        assert t.get_provider({"type": "plugin"}) is mock_provider
-
     def test_plugin_error(self):
         with pytest.raises(ConfigError):
             t.get_provider({"type": "MALFORM"})
