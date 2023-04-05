@@ -1,5 +1,5 @@
 __name__ = "secrets_env"
-__version__ = "0.23.2"
+__version__ = "0.24.0"
 
 import logging
 import pathlib
@@ -8,7 +8,6 @@ from typing import Dict, Optional
 
 import secrets_env.config
 import secrets_env.exceptions
-import secrets_env.hooks
 import secrets_env.provider
 import secrets_env.providers.vault.provider
 
@@ -16,7 +15,6 @@ if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase, SourceSpec
 
 logger = logging.getLogger(__name__)
-hookimpl = secrets_env.hooks.hookimpl
 
 
 def load_secrets(

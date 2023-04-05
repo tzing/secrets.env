@@ -11,4 +11,3 @@ Modules
    :maxdepth: 1
 
    exceptions
-   hooks
