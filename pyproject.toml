@@ -64,9 +64,6 @@ keyring = ["keyring"]
 [tool.poetry.plugins."poetry.application.plugin"]
 poetry-secrets-env-plugin = "secrets_env.poetry:SecretsEnvPlugin"
 
-[tool.poetry_bumpversion.file]
-"secrets_env/__init__.py" = {}
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
