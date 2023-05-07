@@ -15,7 +15,8 @@ class ProviderBase(abc.ABC):
     this interface.
     """
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def type(self) -> str:
         """Provider name."""
 
