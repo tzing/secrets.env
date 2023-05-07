@@ -4,19 +4,19 @@ import pytest
 
 import secrets_env as t
 import secrets_env.exceptions as exps
-import secrets_env.types
+import secrets_env.provider
 
 
 class TestLoadSecrets:
     @pytest.fixture()
     def provider_1(self):
-        provider = Mock(spec=secrets_env.types.ProviderBase)
+        provider = Mock(spec=secrets_env.provider.ProviderBase)
         provider.get.return_value = "value-1"
         return provider
 
     @pytest.fixture()
     def provider_2(self):
-        provider = Mock(spec=secrets_env.types.ProviderBase)
+        provider = Mock(spec=secrets_env.provider.ProviderBase)
         provider.get.return_value = "value-2"
         return provider
 
@@ -75,7 +75,7 @@ class TestLoadSecrets:
 
 class TestRead1:
     def setup_method(self):
-        self.provider = Mock(spec=secrets_env.types.ProviderBase)
+        self.provider = Mock(spec=secrets_env.provider.ProviderBase)
         type(self.provider).name = PropertyMock(return_value="mock")
 
     def test_success(self):

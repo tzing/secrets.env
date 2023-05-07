@@ -5,7 +5,10 @@ from typing import Any, Type, Union
 
 
 class SecretsEnvError(Exception):
-    """Base error type for secrets.env."""
+    """Base error type for secrets.env.
+
+    :meta private:
+    """
 
     def __init__(self, fmt: str, *args: object, **kwargs: object) -> None:
         """
