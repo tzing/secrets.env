@@ -1,4 +1,4 @@
-"""This module contains types and abstract classes that is widely used in secrets.env.
+"""This module contains types and abstract classes for building provider.
 
 For secret provider implementations, see :py:mod:`secrets_env.providers`.
 """

@@ -10,5 +10,5 @@ Modules
 .. toctree::
    :maxdepth: 1
 
-   types
+   provider
    exceptions
