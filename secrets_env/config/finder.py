@@ -41,7 +41,7 @@ def check_installed(*modules) -> bool:
 
 LANGUAGE_ENABLED = {
     "json": True,
-    "yaml": check_installed("yaml"),
+    "yaml": check_installed("yaml", "ruamel.yaml"),
     "toml": check_installed("tomllib", "tomli"),
 }
 

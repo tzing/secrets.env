@@ -85,7 +85,7 @@ jobs:
         run: |
           pip install -U pip  # https://github.com/pypa/pip/issues/11352
           pip install poetry
-          poetry install --all-extras --only main,test
+          poetry install --all-extras
 
       - name: Run pytest
         run: |
@@ -111,9 +111,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install poetry
-
-          poetry install --all-extras --only main,lint
-          poetry run pip install poetry  # `poetry` is a special dependency
+          poetry install --all-extras --with lint
 
       - name: Coding style check
         run: |
@@ -195,12 +193,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install poetry
-          poetry install --only main,doc
+          poetry install --with doc
 
       - name: Check sphinx build error
         run: |
           poetry run sphinx-build -b html docs build > /dev/null 2> stderr.txt
-          sed --in-place "/'_static' does not exist/d" stderr.txt
+          cat stderr.txt
           [[ ! -s stderr.txt ]]
 
       - name: Build doc

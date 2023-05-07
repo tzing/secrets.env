@@ -53,12 +53,24 @@ def read_toml_file(path: "Path") -> Optional[dict]:
 
 
 def read_yaml_file(path: "Path") -> Optional[dict]:
-    import yaml
+    try:
+        import ruamel.yaml
+        import ruamel.yaml.error
+
+        loader = ruamel.yaml.YAML(typ="safe")
+        parser = loader.load
+        error = ruamel.yaml.error.YAMLError
+
+    except ImportError:
+        import yaml
+
+        parser = yaml.safe_load
+        error = yaml.error.YAMLError
 
     with open(path, "rb") as fp:
         try:
-            data = yaml.safe_load(fp)
-        except (yaml.error.YAMLError, UnicodeDecodeError):
+            data = parser(fp)
+        except (error, UnicodeDecodeError):
             logger.exception("Failed to load YAML file: %s", path)
             return None
     return data

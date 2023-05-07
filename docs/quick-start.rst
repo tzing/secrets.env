@@ -16,21 +16,13 @@ Or you can add it as `poetry <https://python-poetry.org/>`_ plugin:
 
 .. code-block:: bash
 
-    poetry self add secrets.env --extras toml
+    poetry self add secrets.env
 
 Certain features are not activated by default. Here are the dependency groups you can use:
 
 * ``all`` - *install everything below*
 * ``yaml`` - supporting YAML config
-* ``toml`` - supporting TOML config, includes ``pyproject.toml`` [\*]
 * ``keyring`` - enable :ref:`keyring-integration`
-
-.. note::
-
-   Since `tomllib <https://docs.python.org/3.11/library/tomllib.html>`_ is a
-   builtin library in python. TOML format would be natively supported when you
-   run secrets.env in python 3.11 and above.
-
 
 Create config
 -------------
@@ -38,6 +30,18 @@ Create config
 This app can receive configurations from different sources. Here's a simple example, and we'll provide you with additional information later.
 
 .. tabs::
+
+   .. code-tab:: toml
+
+      # file: .secrets-env.toml
+      [source]
+      type = "vault"
+      url = "https://example.com"
+      auth = "token"
+
+      [secrets]
+      VAR1 = {path = "secrets/default", field = "example-1"}
+      VAR2 = "secrets/default#example-2"
 
    .. code-tab:: yaml
 
@@ -52,18 +56,6 @@ This app can receive configurations from different sources. Here's a simple exam
           path: secrets/default
           field: example-1
         VAR2: secrets/default#example-2
-
-   .. code-tab:: toml
-
-      # file: .secrets-env.toml
-      [source]
-      type = "vault"
-      url = "https://example.com"
-      auth = "token"
-
-      [secrets]
-      VAR1 = {path = "secrets/default", field = "example-1"}
-      VAR2 = "secrets/default#example-2"
 
 This config directs secrets.env to read 2 values from the Vault and load them into ``VAR1`` and ``VAR2``, respectively.
 
