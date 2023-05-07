@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
 
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def path(cls) -> str:
         """Returns method name used by Vault."""
         raise NotImplementedError()

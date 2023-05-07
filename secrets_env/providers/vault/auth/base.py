@@ -9,7 +9,8 @@ if typing.TYPE_CHECKING:
 class Auth(abc.ABC):
     """Base class for authentication schemes."""
 
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def method(cls) -> str:
         """Returns authentication method name."""
         raise NotImplementedError()
@@ -18,7 +19,8 @@ class Auth(abc.ABC):
     def login(self, client: "httpx.Client") -> Optional[str]:
         """Login and get token."""
 
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
         """Initialize an instance of this class using the provided config data
         or internally load the secrets from the system."""
