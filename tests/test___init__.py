@@ -94,6 +94,7 @@ class TestRead1:
 
     def test_auth_error(self, caplog: pytest.LogCaptureFixture):
         self.provider.get.side_effect = exps.AuthenticationError("test")
+        self.provider.type = "mock"
 
         assert t.read1(self.provider, "test", "foo#bar") is None
         assert "Authentication error on mock" in caplog.text
