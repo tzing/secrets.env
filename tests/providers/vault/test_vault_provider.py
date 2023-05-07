@@ -277,7 +277,7 @@ class TestReadSecret:
 
     @pytest.mark.usefixtures("patch_get_mount_point")
     def test_kv1(self, respx_mock: respx.MockRouter, unittest_client: httpx.Client):
-        respx_mock.get("https://example.com/v1/secrets/test",).mock(
+        respx_mock.get("https://example.com/v1/secrets/test").mock(
             httpx.Response(
                 200,
                 json={
@@ -302,7 +302,7 @@ class TestReadSecret:
         unittest_client: httpx.Client,
         patch_get_mount_point: Mock,
     ):
-        respx_mock.get("https://example.com/v1/secrets/data/test",).mock(
+        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             httpx.Response(
                 200,
                 json={
