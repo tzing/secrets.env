@@ -1,7 +1,13 @@
+"""This module contains types and abstract classes that is widely used in secrets.env.
+
+For secret provider implementations, see :py:mod:`secrets_env.providers`.
+"""
 import abc
 from typing import Dict, Union
 
-SourceSpec = Union[Dict[str, str], str]
+RequestSpec = Union[Dict[str, str], str]
+""":py:class:`RequestSpec` represents a secret spec (name/path) to be loaded.
+"""
 
 
 class ProviderBase(abc.ABC):
@@ -9,8 +15,12 @@ class ProviderBase(abc.ABC):
     this interface.
     """
 
+    @abc.abstractproperty
+    def type(self) -> str:
+        """Provider name."""
+
     @abc.abstractmethod
-    def get(self, spec: SourceSpec) -> str:
+    def get(self, spec: RequestSpec) -> str:
         """Get secret value.
 
         Parameters
@@ -27,9 +37,9 @@ class ProviderBase(abc.ABC):
 
         Raises
         ------
-        ~secrets_env.exceptions.ConfigError
+        secrets_env.exceptions.ConfigError
             The path dict is malformed.
-        ~secrets_env.exceptions.SecretNotFound
+        secrets_env.exceptions.SecretNotFound
             The path dict is correct but the secret not exists.
 
         Note

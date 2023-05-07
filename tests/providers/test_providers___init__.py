@@ -4,12 +4,16 @@ import pytest
 
 import secrets_env.providers as t
 from secrets_env.exceptions import ConfigError
-from secrets_env.provider import ProviderBase
+from secrets_env.types import ProviderBase
 
 mock_provider = Mock(spec=ProviderBase)
 
 
 class TestGetProvider:
+    def test_null(self):
+        p = t.get_provider({"type": "NULL"})
+        assert p.get({}) == ""
+
     def test_vault(self, monkeypatch: pytest.MonkeyPatch):
         def mock_load(type_, data):
             return mock_provider

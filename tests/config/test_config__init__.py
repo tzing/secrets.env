@@ -4,71 +4,40 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config as t
-from secrets_env.config.finder import ConfigFile
-from secrets_env.provider import ProviderBase
+from secrets_env.types import ProviderBase
 
 
 class TestLoadConfig:
-    @pytest.mark.parametrize(
-        ("filename", "format_"),
-        [
-            (".secrets-env.json", "json"),
-            (".secrets-env.toml", "toml"),
-            (".secrets-env.yaml", "yaml"),
-            ("pyproject.toml", "pyproject.toml"),
-        ],
-    )
-    def test_success_1(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        repo_path: Path,
-        filename: str,
-        format_: str,
-    ):
-        """Auto config finding"""
-        # setup
-        def find_config_file():
-            return ConfigFile(
-                filename, format_, repo_path / "tests" / "fixtures" / filename
-            )
+    def test_auto_find(self, fixture_dir: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.chdir(fixture_dir)
 
-        monkeypatch.setattr(t, "find_config_file", find_config_file)
-
-        # run
         cfg = t.load_config()
-
-        # test
         self.assert_config_format(cfg)
 
     @pytest.mark.parametrize(
-        ("source", "rename"),
+        "filename",
         [
-            (".secrets-env.json", "sample.json"),
-            (".secrets-env.toml", "sample.toml"),
-            (".secrets-env.yaml", "sample.yml"),
-            ("pyproject.toml", "pyproject.toml"),
+            ".secrets-env.json",
+            ".secrets-env.toml",
+            ".secrets-env.yaml",
+            "pyproject.toml",
         ],
     )
-    def test_success_2(self, tmp_path: Path, repo_path: Path, source: str, rename: str):
-        """Manual given file"""
-        # setup
-        src_path = repo_path / "tests" / "fixtures" / source
-        dst_path = tmp_path / rename
-        dst_path.write_bytes(src_path.read_bytes())
-
-        # run
-        cfg = t.load_config(src_path)
-
-        # test
+    def test_assigned_file(self, fixture_dir: Path, filename: str):
+        cfg = t.load_config(fixture_dir / filename)
         self.assert_config_format(cfg)
 
     def assert_config_format(self, cfg: dict):
         assert isinstance(cfg, dict)
-        assert isinstance(cfg["client"], ProviderBase)
-        assert cfg["secrets"] == {
-            "VAR1": {"path": "kv/default", "field": "example"},
-            "VAR2": "kv/default#example",
-        }
+
+        for name, provider in cfg["providers"].items():
+            assert isinstance(name, str)
+            assert isinstance(provider, ProviderBase)
+
+        for request in cfg["requests"]:
+            assert isinstance(request["name"], str)
+            assert isinstance(request["provider"], str)
+            assert isinstance(request["spec"], (str, dict))
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "find_config_file", lambda: None)
@@ -82,4 +51,4 @@ class TestLoadConfig:
             assert t.load_config(path) is None
 
         assert "Read secrets.env config from " in caplog.text
-        assert "No target specificied." in caplog.text
+        assert "No request specificied." in caplog.text

@@ -4,22 +4,20 @@ __version__ = "0.24.0"
 import logging
 import pathlib
 import typing
-from typing import Dict, Optional
 
 import secrets_env.config
 import secrets_env.exceptions
-import secrets_env.provider
-import secrets_env.providers.vault.provider
+import secrets_env.types
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase, SourceSpec
+    from secrets_env.types import ProviderBase, RequestSpec
 
 logger = logging.getLogger(__name__)
 
 
 def load_secrets(
-    config_file: Optional[pathlib.Path] = None, strict: bool = True
-) -> Dict[str, str]:
+    config_file: typing.Optional[pathlib.Path] = None, strict: bool = True
+) -> typing.Dict[str, str]:
     """Load secrets from vault and put them to environment variable."""
     # parse config
     config = secrets_env.config.load_config(config_file)
@@ -27,20 +25,27 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    # build env var to secret mapping
+    # load secret
     output = {}
-    for name, spec in config["secrets"].items():
-        value = read1(
-            config["client"],
-            name,
-            spec,  # pyright: ignore[reportGeneralTypeIssues]; TODO
-        )
-        output[name] = value
-        if value is not None:
+    for request in config["requests"]:
+        name = request["name"]
+
+        provider = config["providers"].get(request["provider"])
+        if not provider:
+            logger.warning(
+                "Provider <data>%s</data> not exists. Skip %s.",
+                request["provider"],
+                request["name"],
+            )
+            output[name] = None
+            continue
+
+        output[name] = value = read1(provider, name, request["spec"])
+        if value:
             logger.debug("Loaded <data>$%s</data>", name)
 
     # report
-    num_expected = len(config["secrets"])
+    num_expected = len(config["requests"])
     num_loaded = sum(1 for v in output.values() if v is not None)
 
     if num_expected == num_loaded:
@@ -61,13 +66,15 @@ def load_secrets(
     return output
 
 
-def read1(provider: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[str]:
+def read1(
+    provider: "ProviderBase", name: str, spec: "RequestSpec"
+) -> typing.Optional[str]:
     """Read single value.
 
     This function wraps :py:meth:`~secrets_env.provider.ProviderBase.get` and
     captures all exceptions."""
     # type checking
-    if not isinstance(provider, secrets_env.provider.ProviderBase):
+    if not isinstance(provider, secrets_env.types.ProviderBase):
         raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
     if not isinstance(name, str):
         raise secrets_env.exceptions.TypeError("name", str, name)
@@ -79,7 +86,8 @@ def read1(provider: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[s
         return provider.get(spec)
     except secrets_env.exceptions.AuthenticationError as e:
         logger.error(
-            "<!important>\u26D4 Authentication error: %s. No secret loaded.",
+            "<!important>\u26D4 Authentication error on %s provider: %s.",
+            provider.type,
             e.args[0],
         )
     except secrets_env.exceptions.ConfigError as e:
@@ -92,7 +100,7 @@ def read1(provider: "ProviderBase", name: str, spec: "SourceSpec") -> Optional[s
             "Requested path= %s, Error= %s, Msg= %s",
             spec,
             type(e).__name__,
-            e.args[0],
+            e.args,
             exc_info=True,
         )
     return None

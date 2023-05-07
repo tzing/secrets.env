@@ -64,5 +64,5 @@ class TokenAuth(Auth):
             logger.debug("Found token from keyring")
             return cls(token)
 
-        logger.error("Missing auth information: token. Stop loading secrets.")
+        logger.error("Missing auth information: token.")
         return None
