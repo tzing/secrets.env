@@ -38,3 +38,8 @@ add_module_names = False
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "furo"
+
+html_static_path = ["_static"]
+html_css_files = [
+    "css/tab.css",
+]

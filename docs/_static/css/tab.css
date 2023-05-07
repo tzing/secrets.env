@@ -1,0 +1,11 @@
+.sphinx-tabs-tab {
+    font-family: var(--font-stack);
+}
+
+.sphinx-tabs-panel.code-tab {
+    padding: 0;
+}
+
+.sphinx-tabs-panel.code-tab>div[class^="highlight-"] {
+    margin: 0;
+}
