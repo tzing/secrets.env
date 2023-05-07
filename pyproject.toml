@@ -28,6 +28,7 @@ poetry = "^1.2.2"
 pytest = "^7.3.0"
 pytest-cov = "^4.0.0"
 respx = "^0.20.1"
+ruamel-yaml = "^0.17.24"
 
 [tool.poetry.group.lint]
 optional = true
@@ -40,7 +41,6 @@ flake8-cognitive-complexity = "^0.1.0"
 flake8-comprehensions = "^3.10.1"
 flake8-bugbear = "^22.10.27"
 pyright = "^1.1.281"
-ruamel-yaml = "^0.17.24"
 
 [tool.poetry.group.doc]
 optional = true
