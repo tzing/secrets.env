@@ -13,7 +13,7 @@ this_year = datetime.date.today().year
 project = "secrets.env"
 copyright = f"{this_year}, tzing"
 author = "tzing"
-version = importlib.metadata.version(project)
+release = importlib.metadata.version(project)
 
 
 # -- General configuration ---------------------------------------------------
@@ -37,16 +37,4 @@ add_module_names = False
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = "pydata_sphinx_theme"
-html_static_path = ["_static"]
-
-html_theme_options = {
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/tzing/secrets.env",
-            "icon": "fab fa-github-square",
-        }
-    ],
-    "show_toc_level": 1,
-}
+html_theme = "furo"

@@ -25,3 +25,10 @@ User guide
    configure
    integrations
    api/index
+
+.. toctree::
+   :caption: Links
+   :hidden:
+
+   PyPI page <https://pypi.org/project/secrets-env/>
+   GitHub repository <https://github.com/tzing/secrets.env/>

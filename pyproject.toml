@@ -41,8 +41,8 @@ pyright = "^1.1.281"
 
 [tool.poetry.group.doc.dependencies]
 Sphinx = "^5.3.0"
-pydata-sphinx-theme = "^0.10.1"
 sphinx-code-tabs = "^0.5.3"
+furo = "^2023.3.27"
 
 [tool.poetry.extras]
 all = [
