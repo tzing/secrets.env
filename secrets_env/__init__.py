@@ -7,10 +7,7 @@ import typing
 
 import secrets_env.config
 import secrets_env.exceptions
-import secrets_env.types
-
-if typing.TYPE_CHECKING:
-    from secrets_env.types import ProviderBase, RequestSpec
+from secrets_env.provider import ProviderBase, RequestSpec
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +63,12 @@ def load_secrets(
     return output
 
 
-def read1(
-    provider: "ProviderBase", name: str, spec: "RequestSpec"
-) -> typing.Optional[str]:
+def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> typing.Optional[str]:
     """Read single value.
 
-    This function wraps :py:meth:`~secrets_env.provider.ProviderBase.get` and
-    captures all exceptions."""
+    This function wraps :py:meth:`ProviderBase.get` and captures all exceptions."""
     # type checking
-    if not isinstance(provider, secrets_env.types.ProviderBase):
+    if not isinstance(provider, ProviderBase):
         raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
     if not isinstance(name, str):
         raise secrets_env.exceptions.TypeError("name", str, name)

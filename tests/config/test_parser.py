@@ -4,7 +4,7 @@ import pytest
 
 import secrets_env.config.parser as t
 from secrets_env.exceptions import AuthenticationError, ConfigError
-from secrets_env.types import ProviderBase
+from secrets_env.provider import ProviderBase
 
 
 @pytest.fixture()

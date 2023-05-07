@@ -1,9 +1,9 @@
 import typing
 
-from secrets_env.types import ProviderBase
+from secrets_env.provider import ProviderBase
 
 if typing.TYPE_CHECKING:
-    from secrets_env.types import RequestSpec
+    from secrets_env.provider import RequestSpec
 
 
 class NullProvider(ProviderBase):

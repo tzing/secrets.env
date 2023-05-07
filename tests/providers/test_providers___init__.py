@@ -4,7 +4,7 @@ import pytest
 
 import secrets_env.providers as t
 from secrets_env.exceptions import ConfigError
-from secrets_env.types import ProviderBase
+from secrets_env.provider import ProviderBase
 
 mock_provider = Mock(spec=ProviderBase)
 

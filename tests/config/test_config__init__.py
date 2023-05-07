@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config as t
-from secrets_env.types import ProviderBase
+from secrets_env.provider import ProviderBase
 
 
 class TestLoadConfig:

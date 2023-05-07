@@ -3,7 +3,7 @@ import typing
 import secrets_env.exceptions
 
 if typing.TYPE_CHECKING:
-    from secrets_env.types import ProviderBase
+    from secrets_env.provider import ProviderBase
 
 DEFAULT_PROVIDER = "vault"
 

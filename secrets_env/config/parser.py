@@ -6,11 +6,11 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict
 
 import secrets_env.exceptions
 import secrets_env.providers
-from secrets_env.types import RequestSpec
+from secrets_env.provider import RequestSpec
 from secrets_env.utils import ensure_dict, ensure_str
 
 if typing.TYPE_CHECKING:
-    from secrets_env.types import ProviderBase
+    from secrets_env.provider import ProviderBase
 
 DEFAULT_PROVIDER_NAME = "main"
 

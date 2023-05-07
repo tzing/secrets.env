@@ -15,7 +15,7 @@ from secrets_env.exceptions import (
     SecretNotFound,
     TypeError,
 )
-from secrets_env.types import ProviderBase, RequestSpec
+from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
