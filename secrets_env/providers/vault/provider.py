@@ -5,7 +5,7 @@ import re
 import typing
 from http import HTTPStatus
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import httpx
 
@@ -181,10 +181,7 @@ def create_client(
 
     logger.debug("Creating client to %s", base_url)
 
-    params = {
-        "base_url": base_url,
-        "http2": True,
-    }
+    params: dict[str, Any] = {"base_url": base_url}
 
     if ca_cert:
         logger.debug("CA installed: %s", ca_cert)
