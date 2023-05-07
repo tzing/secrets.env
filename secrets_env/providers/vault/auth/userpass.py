@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
 
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def path(cls) -> str:
         """Returns method name used by Vault."""
         raise NotImplementedError()
@@ -47,7 +48,7 @@ class UserPasswordAuth(Auth):
         username = cls._load_username(data)
         if not isinstance(username, str) or not username:
             logger.error(
-                "Missing username for %s auth. Stop loading secrets.",
+                "Missing username for %s auth.",
                 cls.method(),
             )
             return None
@@ -55,7 +56,7 @@ class UserPasswordAuth(Auth):
         password = cls._load_password(username)
         if not isinstance(password, str) or not password:
             logger.error(
-                "Missing password for %s auth. Stop loading secrets.",
+                "Missing password for %s auth.",
                 cls.method(),
             )
             return None

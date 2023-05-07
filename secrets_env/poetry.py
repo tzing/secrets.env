@@ -2,6 +2,7 @@ import logging
 import os
 import typing
 
+from cleo.events.console_command_event import ConsoleCommandEvent
 from cleo.events.console_events import COMMAND
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
@@ -13,7 +14,7 @@ import secrets_env
 from secrets_env.utils import removeprefix
 
 if typing.TYPE_CHECKING:
-    from cleo.events.console_command_event import ConsoleCommandEvent
+    from cleo.events.event import Event
     from cleo.events.event_dispatcher import EventDispatcher
     from cleo.io.outputs.output import Output
     from poetry.console.application import Application
@@ -23,14 +24,17 @@ logger = logging.getLogger(__name__)
 
 class SecretsEnvPlugin(ApplicationPlugin):
     def activate(self, application: "Application") -> None:
-        application.event_dispatcher.add_listener(COMMAND, self.load_secret)
+        if application.event_dispatcher:
+            application.event_dispatcher.add_listener(COMMAND, self.load_secret)
 
     def load_secret(
         self,
-        event: "ConsoleCommandEvent",
+        event: "Event",
         event_name: str,
         dispatcher: "EventDispatcher",
     ) -> None:
+        if not isinstance(event, ConsoleCommandEvent):
+            return
         if not isinstance(event.command, (RunCommand, ShellCommand)):
             return
 

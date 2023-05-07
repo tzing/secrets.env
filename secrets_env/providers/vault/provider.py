@@ -15,7 +15,7 @@ from secrets_env.exceptions import (
     SecretNotFound,
     TypeError,
 )
-from secrets_env.provider import ProviderBase
+from secrets_env.types import ProviderBase, RequestSpec
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
@@ -59,6 +59,10 @@ class KvProvider(ProviderBase):
         self._secrets: Dict[str, VaultSecretQueryResult] = {}
 
     @property
+    def type(self) -> str:
+        return "vault"
+
+    @property
     def client(self) -> httpx.Client:
         """Returns HTTP client."""
         if self._client:
@@ -93,7 +97,7 @@ class KvProvider(ProviderBase):
 
         return client
 
-    def get(self, spec: Union[Dict[str, str], str]) -> str:
+    def get(self, spec: RequestSpec) -> str:
         if not spec:
             raise ConfigError("Empty input")
         if isinstance(spec, str):
