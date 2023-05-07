@@ -66,7 +66,9 @@ def load_secrets(
 def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> typing.Optional[str]:
     """Read single value.
 
-    This function wraps :py:meth:`ProviderBase.get` and captures all exceptions."""
+    This function wraps :py:meth:`secrets_env.provider.ProviderBase.get` and
+    captures all exceptions.
+    """
     # type checking
     if not isinstance(provider, ProviderBase):
         raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)

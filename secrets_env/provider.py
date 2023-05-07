@@ -3,9 +3,15 @@
 For secret provider implementations, see :py:mod:`secrets_env.providers`.
 """
 import abc
+import sys
+import typing
 from typing import Dict, Union
 
-RequestSpec = Union[Dict[str, str], str]
+if typing.TYPE_CHECKING and sys.version_info >= (3, 10):
+    from typing import TypeAlias
+
+
+RequestSpec: "TypeAlias" = Union[Dict[str, str], str]
 """:py:class:`RequestSpec` represents a secret spec (name/path) to be loaded.
 """
 
