@@ -18,7 +18,7 @@ Or you can add it as `poetry <https://python-poetry.org/>`_ plugin:
 
     poetry self add secrets.env --extras toml
 
-Some functionalities are not enabled by default. Following extras are available:
+Certain features are not activated by default. Here are the dependency groups you can use:
 
 * ``all`` - *install everything below*
 * ``yaml`` - supporting YAML config
@@ -27,32 +27,26 @@ Some functionalities are not enabled by default. Following extras are available:
 
 .. note::
 
-   As `tomllib <https://docs.python.org/3.11/library/tomllib.html>`_ is now a
-   builtin library in python. TOML format would be natively supported if you run
-   secrets.env in python 3.11 and above.
+   Since `tomllib <https://docs.python.org/3.11/library/tomllib.html>`_ is a
+   builtin library in python. TOML format would be natively supported when you
+   run secrets.env in python 3.11 and above.
 
 
-Add config
-----------
+Create config
+-------------
 
-This app accepts various source and format as the config.
-It's using environment variable for Vault information and TOML format for target secrets, but this is not the only option.
-
-Use environment variable for Vault information:
-
-.. code-block:: bash
-
-    export SECRETS_ENV_ADDR='https://example.com'
-    export SECRETS_ENV_METHOD='token'
-    export SECRETS_ENV_TOKEN='example-token'
-
-And list the desired secret path and field in a config file:
+This app can receive configurations from different sources. Here's a simple example, and we'll provide you with additional information later.
 
 .. tabs::
 
    .. code-tab:: yaml
 
       # file: .secrets-env.yaml
+      source:
+        type: vault
+        url: https://example.com
+        auth: token
+
       secrets:
         VAR1:
           path: secrets/default
@@ -62,28 +56,38 @@ And list the desired secret path and field in a config file:
    .. code-tab:: toml
 
       # file: .secrets-env.toml
+      [source]
+      type = "vault"
+      url = "https://example.com"
+      auth = "token"
+
       [secrets]
       VAR1 = {path = "secrets/default", field = "example-1"}
       VAR2 = "secrets/default#example-2"
 
-Read :doc:`configure` for more details.
+This config directs secrets.env to read 2 values from the Vault and load them into ``VAR1`` and ``VAR2``, respectively.
 
+Note that credentials should never be included in the config file. Instead, you should set an environment variable for authentication in such case.
+
+.. code-block:: bash
+
+   export SECRETS_ENV_TOKEN=...
 
 Run
 ---
 
-This app could be used as a command line tool:
+You can use this app either as a command line tool or as a `poetry plugin <https://python-poetry.org/docs/master/plugins/)>`_:
 
-.. code-block:: bash
+.. tabs::
 
-   secrets.env run -- some-app-that-needs-secret --args foo bar
+   .. tab:: CLI
 
-It loads the secrets, run the command, then forget the secrets.
+      Loads secrets to environment variable then runs the command::
 
-Or use it as a `poetry plugin <https://python-poetry.org/docs/master/plugins/)>`_:
+         secrets.env run -- some-app-that-needs-secret --args foo bar
 
-.. code-block:: bash
+   .. tab:: Poetry Plugin
 
-   poetry run some-app-that-needs-secret --args foo bar
+      Pull secrets to environment variable on poetry command `run <https://python-poetry.org/docs/cli/#run>`_ and `shell <https://python-poetry.org/docs/cli/#shell>`_::
 
-This app will pull the secrets from vault on poetry command `run <https://python-poetry.org/docs/cli/#run>`_ and `shell <https://python-poetry.org/docs/cli/#shell>`_.
+         poetry run some-app-that-needs-secret --args foo bar
