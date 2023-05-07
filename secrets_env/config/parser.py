@@ -121,15 +121,8 @@ def get_requests(data: dict) -> List[Request]:
     # accept both keyword `secret(s)`
     raw = {}
 
-    def _get_data(key: str) -> None:
-        nonlocal data, raw
-        if d := data.get(key):
-            d, ok = ensure_dict(key, d)
-            if ok:
-                raw.update(d)
-
-    _get_data("secret")
-    _get_data("secrets")
+    raw.update(get_dict(data, "secret"))
+    raw.update(get_dict(data, "secrets"))
     logger.debug("%d raw secret requests extracted", len(raw))
 
     # validate and load
@@ -162,6 +155,14 @@ def get_requests(data: dict) -> List[Request]:
 
     logger.debug("%d valid secret request(s) parsed", len(output))
     return output
+
+
+def get_dict(data: dict, key: str) -> dict:
+    if d := data.get(key):
+        d, ok = ensure_dict(key, d)
+        if ok:
+            return d
+    return {}
 
 
 __regex_var_name = None
