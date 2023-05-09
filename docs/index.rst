@@ -1,8 +1,3 @@
-.. secrets.env documentation master file, created by
-   sphinx-quickstart on Wed Sep 21 21:24:44 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Secrets.env
 ===========
 
@@ -22,7 +17,7 @@ User guide
    :maxdepth: 1
 
    quick-start
-   configure
+   configurations
    integrations
    api/index
 
