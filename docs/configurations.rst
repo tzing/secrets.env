@@ -132,6 +132,7 @@ Secrets
 
 The "secrets" section lists key-value pairs where the keys correspond to the environment variable names in which the values will be stored.
 The specific format of the value depends on the secret provider being used.
+
 For example, in the case of Vault, the value could be either a string in the format of ``path#field``, or a table that includes the ``path`` and ``field`` fields.
 
 If multiple providers are installed, you must provide the source name for each of them:

@@ -22,6 +22,7 @@ Certain features are not activated by default. Here are the dependency groups yo
 
 * ``all`` - *install everything below*
 * ``yaml`` - supporting YAML config
+* ``keyring`` - enable :ref:`keyring-integration`
 
 Create config
 -------------
