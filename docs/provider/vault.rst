@@ -119,7 +119,14 @@ The authentication method is a required input, and can be set using the ``method
 If ``method`` is not specified, the default method is `Vault token`_.
 Additional inputs may be required depending on the selected method.
 
-The supportted authentication are: TODO
+The supportted authentication methods are:
+
+* `Vault token`_
+* `Basic auth`_
+* `LDAP`_
+* `Okta`_
+* `OpenID Connect`_
+* `RADIUS`_
 
 Keyring integration
 ^^^^^^^^^^^^^^^^^^^
@@ -201,4 +208,134 @@ For vault provider, secret values must be explicitly paired with both a path and
 Supported Authentication methods
 --------------------------------
 
-TODO
+Vault token
++++++++++++
+
+:method: ``token``
+
+Token is the most basic method to get authentication from Vault.
+This is also the default method applied when ``method`` is not set.
+It's parameters is:
+
+``token`` *(required)*
+   Vault token
+
+   * ⛔️ From config file
+   * 🆗 From environment variable: any of ``SECRETS_ENV_TOKEN``, ``VAULT_TOKEN``
+   * 🆗 From `token helper`_ [#token-helper]_
+   * 🆗 From keyring: ``token``
+
+.. _token helper: https://www.vaultproject.io/docs/commands/token-helper
+.. [#token-helper] Vault CLI stores the generated token in the ``~/.vault-token`` file after authenticated. This app reads the token from that file, but it do not create one on authenticating using this app.
+
+Basic auth
+++++++++++
+
+:method: ``basic``
+
+Use user name and password to get authentication.
+
+``username`` *(required)*
+   User name to login
+
+   * 🆗 From environment variable: ``SECRETS_ENV_USERNAME``
+   * 🆗 From config file: ``username``
+   * 🆗 Prompt
+
+``password`` *(required)*
+   User password to login
+
+   * ⛔️ From config file
+   * 🆗 From environment variable: ``SECRETS_ENV_PASSWORD``
+   * 🆗 From keyring: ``userpass/YOUR_USER_NAME``
+   * 🆗 Prompt
+
+LDAP
+++++
+
+:method: ``ldap``
+
+Login with `LDAP`_ credentials.
+
+.. _LDAP: https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol
+
+``username`` *(required)*
+   User name to login
+
+   * 🆗 From environment variable: ``SECRETS_ENV_USERNAME``
+   * 🆗 From config file: ``username``
+   * 🆗 Prompt
+
+``password`` *(required)*
+   User password to login
+
+   * ⛔️ From config file
+   * 🆗 From environment variable: ``SECRETS_ENV_PASSWORD``
+   * 🆗 From keyring: ``ldap/YOUR_USER_NAME``
+   * 🆗 Prompt
+
+Okta
+++++
+
+:method: ``okta``
+
+Get authentication by login to `Okta`_.
+
+.. _Okta: https://www.okta.com/
+
+``username`` *(required)*
+   User name to login Okta
+
+   * 🆗 From environment variable: ``SECRETS_ENV_USERNAME``
+   * 🆗 From config file: ``username``
+   * 🆗 Prompt
+
+``password`` *(required)*
+   User password to login Okta
+
+   * ⛔️ From config file
+   * 🆗 From environment variable: ``SECRETS_ENV_PASSWORD``
+   * 🆗 From keyring: ``okta/YOUR_USER_NAME``
+   * 🆗 Prompt
+
+
+OpenID Connect
+++++++++++++++
+
+:method: ``oidc``
+
+Get authentication via configured `OpenID Connect`_ provider using your web browser.
+
+.. _OpenID Connect: https://openid.net/connect/
+
+``role``
+   OIDC role. Will use default role if not set.
+
+   * 🆗 From environment variable: ``SECRETS_ENV_ROLE``
+   * 🆗 From config file: ``role``
+
+
+RADIUS
+++++++
+
+:method: ``radius``
+
+Authentication using an existing `RADIUS`_ server that accepts the `PAP authentication scheme`_.
+
+.. _RADIUS: https://en.wikipedia.org/wiki/RADIUS
+.. _PAP authentication scheme: https://en.wikipedia.org/wiki/Password_Authentication_Protocol
+
+``username`` *(required)*
+   User name to login
+
+   * 🆗 From environment variable: ``SECRETS_ENV_USERNAME``
+   * 🆗 From config file: ``username``
+   * 🆗 Prompt
+
+``password`` *(required)*
+   User password to login
+
+   * ⛔️ From config file
+   * 🆗 From environment variable: ``SECRETS_ENV_PASSWORD``
+   * 🆗 From keyring: ``radius/YOUR_USER_NAME``
+   * 🆗 Prompt
