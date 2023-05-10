@@ -59,7 +59,7 @@ class TokenAuth(Auth):
             return cls(token)
 
         # keyring
-        token = read_keyring("token/:token")
+        token = read_keyring("token")
         if token:
             logger.debug("Found token from keyring")
             return cls(token)
