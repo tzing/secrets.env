@@ -1,6 +1,8 @@
 Quick start
 ===========
 
+.. _installation:
+
 Installation
 ------------
 
@@ -76,10 +78,10 @@ You can use this app either as a command line tool or as a `poetry plugin <https
 
       Loads secrets to environment variable then runs the command::
 
-         secrets.env run -- some-app-that-needs-secret --args foo bar
+         secrets.env run -- your-app
 
    .. tab:: Poetry Plugin
 
       Pull secrets to environment variable on poetry command `run <https://python-poetry.org/docs/cli/#run>`_ and `shell <https://python-poetry.org/docs/cli/#shell>`_::
 
-         poetry run some-app-that-needs-secret --args foo bar
+         poetry run your-app
