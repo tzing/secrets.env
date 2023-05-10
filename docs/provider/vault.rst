@@ -205,6 +205,8 @@ For vault provider, secret values must be explicitly paired with both a path and
         SHORTCUT: "secret/default#example.to.value"  # shortcut: path#field
 
 
+.. _authentication-methods:
+
 Supported Authentication methods
 --------------------------------
 
