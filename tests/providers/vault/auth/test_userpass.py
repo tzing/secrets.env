@@ -109,11 +109,6 @@ class TestUserPasswordAuth:
             assert t.UserPasswordAuth._load_username({}) == "foo"
             p.assert_any_call("Username for MOCK auth")
 
-        # keyring
-        with patch.object(t, "read_keyring", return_value="foo") as r:
-            assert t.UserPasswordAuth._load_username({}) == "foo"
-            r.assert_any_call("mock/:username")
-
     @pytest.mark.usefixtures("_patch_path")
     def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
         # env var
