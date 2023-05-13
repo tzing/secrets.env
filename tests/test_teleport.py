@@ -38,3 +38,47 @@ class TestCallAppConfig:
         mock.returncode = 1
         with patch("subprocess.run", return_value=mock):
             assert t.call_app_config("test") == {}
+
+
+class TestRunCommand:
+    def test_command(self):
+        runner = t._RunCommand(["echo", "hello world"])
+        assert runner.command == ("echo", "hello world")
+
+    def test_run(self, caplog: pytest.LogCaptureFixture):
+        runner = t._RunCommand(
+            [
+                "sh",
+                "-c",
+                """
+                echo 'hello world'
+                echo 'hello stderr' > /dev/stderr
+                exit 36
+                """,
+            ]
+        )
+
+        with caplog.at_level(logging.DEBUG):
+            runner.start()
+            runner.join()
+
+        assert runner.return_code == 36
+        assert runner.stdout == "hello world\n"
+        assert runner.stderr == "hello stderr\n"
+        assert "< hello world" in caplog.text
+        assert "<[stderr] hello stderr" in caplog.text
+
+    def test_iter(self):
+        runner = t._RunCommand(
+            [
+                "sh",
+                "-c",
+                """
+                echo 'item 1'
+                echo 'item 2'
+                """,
+            ]
+        )
+
+        runner.start()
+        assert list(runner) == ["item 1", "item 2"]
