@@ -34,7 +34,7 @@ def call_app_config(app: str) -> Dict[str, str]:
     return json.loads(runner.stdout)
 
 
-class RunCommand(threading.Thread):
+class _RunCommand(threading.Thread):
     """An :py:class:`subprocess.Popen` wrapper that yields stdout in realtime."""
 
     def __init__(self, cmd: Iterable[str]) -> None:
@@ -118,10 +118,10 @@ class RunCommand(threading.Thread):
         return self._build_output(self._stderr_queue, self._stderrs)
 
 
-def run_teleport(args: Iterable[str]) -> RunCommand:
+def run_teleport(args: Iterable[str]) -> _RunCommand:
     """Run teleport command. Returns execution result."""
     cmd = [TELEPORT_APP_NAME, *args]
-    run = RunCommand(cmd)
+    run = _RunCommand(cmd)
     run.start()
     run.join()
     return run
