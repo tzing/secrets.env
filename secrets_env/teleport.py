@@ -21,40 +21,20 @@ TELEPORT_APP_NAME = "tsh"
 logger = logging.getLogger(__name__)
 
 
-def _command(*args: Iterable[str]) -> List[str]:
-    """Build command and log it"""
-    cmd = [TELEPORT_APP_NAME, *args]
-    logger.debug("$ %s", " ".join(cmd))
-    return cmd
-
-
 def call_version() -> bool:
     """Call version command and print it to log."""
-    res = subprocess.run(
-        _command("version"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        encoding="utf-8",
-    )
-    if res.returncode != 0:
-        return False
-    for line in res.stdout.splitlines():
-        logger.debug("< %s", line)
-    return True
+    runner = run_teleport(["version"])
+    return runner.return_code == 0
 
 
 def call_app_config(app: str) -> Dict[str, str]:
-    res = subprocess.run(
-        _command("app", "config", "--format=json", app),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-    )
-    if res.returncode != 0:
+    runner = run_teleport(["app", "config", "--format=json", app])
+    if runner.return_code != 0:
         return {}
-    return json.loads(res.stdout)
+    return json.loads(runner.stdout)
 
 
-class _RunCommand(threading.Thread):
+class RunCommand(threading.Thread):
     """An :py:class:`subprocess.Popen` wrapper that yields stdout in realtime."""
 
     def __init__(self, cmd: Iterable[str]) -> None:
@@ -77,9 +57,9 @@ class _RunCommand(threading.Thread):
         logger.debug("$ %s", " ".join(self.command))
 
         # flush output to queue and log it
-        def _flush(stream: IO[str], store: queue.Queue[str], prefix="<"):
+        def _flush(stream: IO[str], q: queue.Queue[str], prefix="<"):
             for line in iter(stream.readline, ""):
-                store.put(line)
+                q.put(line)
                 logger.debug("%s %s", prefix, line.rstrip())
 
         # run command
@@ -136,3 +116,12 @@ class _RunCommand(threading.Thread):
     @property
     def stderr(self) -> str:
         return self._build_output(self._stderr_queue, self._stderrs)
+
+
+def run_teleport(args: Iterable[str]) -> RunCommand:
+    """Run teleport command. Returns execution result."""
+    cmd = [TELEPORT_APP_NAME, *args]
+    run = RunCommand(cmd)
+    run.start()
+    run.join()
+    return run

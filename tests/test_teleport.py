@@ -19,34 +19,32 @@ class TestCallVersion:
         assert re.search(r"< Teleport v\d+\.\d+\.\d+", caplog.text)
 
     def test_fail(self):
-        mock = Mock(spec=subprocess.CompletedProcess)
+        mock = Mock(spec=t.RunCommand, return_code=1)
         mock.returncode = 1
-        with patch("subprocess.run", return_value=mock):
+        with patch.object(t, "call_teleport", return_value=mock):
             assert t.call_version() is False
 
 
 class TestCallAppConfig:
     def test_success(self):
-        mock = Mock(spec=subprocess.CompletedProcess)
-        mock.returncode = 0
+        mock = Mock(spec=t.RunCommand, return_code=0)
         mock.stdout = b'{"foo": "bar"}'
-        with patch("subprocess.run", return_value=mock):
+        with patch.object(t, "call_teleport", return_value=mock):
             assert t.call_app_config("test") == {"foo": "bar"}
 
     def test_fail(self):
-        mock = Mock(spec=subprocess.CompletedProcess)
-        mock.returncode = 1
-        with patch("subprocess.run", return_value=mock):
+        mock = Mock(spec=t.RunCommand, return_code=1)
+        with patch.object(t, "call_teleport", return_value=mock):
             assert t.call_app_config("test") == {}
 
 
 class TestRunCommand:
     def test_command(self):
-        runner = t._RunCommand(["echo", "hello world"])
+        runner = t.RunCommand(["echo", "hello world"])
         assert runner.command == ("echo", "hello world")
 
     def test_run(self, caplog: pytest.LogCaptureFixture):
-        runner = t._RunCommand(
+        runner = t.RunCommand(
             [
                 "sh",
                 "-c",
@@ -69,7 +67,7 @@ class TestRunCommand:
         assert "<[stderr] hello stderr" in caplog.text
 
     def test_iter(self):
-        runner = t._RunCommand(
+        runner = t.RunCommand(
             [
                 "sh",
                 "-c",
