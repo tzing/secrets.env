@@ -1,14 +1,67 @@
 import logging
 import re
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 import secrets_env.teleport as t
-from secrets_env.exceptions import AuthenticationError
+from secrets_env.exceptions import AuthenticationError, DependencyError, InternalError
 
 no_teleport_cli = shutil.which("tsh") is None
+
+
+class TestGetConnectionInfo:
+    @pytest.fixture()
+    def _patch_which(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: "/path/cmd")
+
+    @pytest.fixture()
+    def _patch_version(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "call_version", lambda: True)
+
+    @pytest.mark.usefixtures("_patch_which", "_patch_version")
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "call_app_login", lambda _: None)
+
+        with patch.object(
+            t,
+            "call_app_config",
+            side_effect=[
+                {},
+                {
+                    "uri": "https://example.com",
+                    "ca": "/no/this/file",
+                    "cert": __file__,
+                    "key": __file__,
+                },
+            ],
+        ):
+            assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
+                uri="https://example.com",
+                ca=None,
+                cert=Path(__file__),
+                key=Path(__file__),
+            )
+
+    def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: None)
+        with pytest.raises(DependencyError):
+            t.get_connection_info({"app": "test"})
+
+    @pytest.mark.usefixtures("_patch_which")
+    def test_internal_error(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "call_version", lambda: False)
+        with pytest.raises(InternalError):
+            t.get_connection_info({"app": "test"})
+
+    @pytest.mark.usefixtures("_patch_which", "_patch_version")
+    def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "call_app_login", lambda _: None)
+        monkeypatch.setattr(t, "call_app_config", lambda _: {})
+        with pytest.raises(AuthenticationError):
+            t.get_connection_info({"app": "test"})
 
 
 class TestCallVersion:

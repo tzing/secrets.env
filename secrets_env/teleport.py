@@ -29,6 +29,67 @@ class AppParameter(TypedDict):
     app: str
 
 
+@dataclasses.dataclass(frozen=True)
+class AppConnectionInfo:
+    """Teleport app connection information."""
+
+    uri: str
+    ca: Optional[Path]
+    cert: Path
+    key: Path
+
+
+def get_connection_info(params: AppParameter) -> AppConnectionInfo:
+    """Get app connection information from Teleport API.
+
+    Parameters
+    ----------
+    app : str
+        Teleport application name
+
+    Raises
+    ------
+    AuthenticationError
+        Failed to login to Teleport.
+    DependencyError
+        When Teleport CLI not installed.
+    """
+    # ensure teleport cli is installed
+    if not shutil.which(TELEPORT_APP_NAME):
+        raise DependencyError(
+            "Teleport CLI ({}) is required for teleport integration", TELEPORT_APP_NAME
+        )
+
+    logger.debug("Get connection information from Teleport for %s", params)
+
+    # log version before start
+    if not call_version():
+        raise InternalError("Internal error on accessing Teleport CLI")
+
+    # try to get config directly; when not available, loging and retry
+    logger.debug("Try to get config directly")
+    cfg = call_app_config(params["app"])
+
+    if not cfg:
+        call_app_login(params)
+        cfg = call_app_config(params["app"])
+
+    if not cfg:
+        raise AuthenticationError("Failed to get connection info from Teleport")
+
+    # CA is not always installed
+    path_ca = None
+    if ca := cfg.get("ca"):
+        path_ca = Path(ca)
+        if not path_ca.exists():
+            path_ca = None
+
+    cert_path = Path(cfg["cert"])
+    path_key = Path(cfg["key"])
+
+    return AppConnectionInfo(uri=cfg["uri"], ca=path_ca, cert=cert_path, key=path_key)
+
+
 def call_version() -> bool:
     """Call version command and print it to log."""
     runner = run_teleport(["version"])
