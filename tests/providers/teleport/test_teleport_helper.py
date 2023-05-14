@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-import secrets_env.teleport as t
+import secrets_env.providers.teleport.helper as t
 from secrets_env.exceptions import AuthenticationError, DependencyError, InternalError
 
 no_teleport_cli = shutil.which("tsh") is None
