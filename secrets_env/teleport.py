@@ -21,6 +21,14 @@ TELEPORT_APP_NAME = "tsh"
 logger = logging.getLogger(__name__)
 
 
+class AppParameter(TypedDict):
+    """Parameters used for retrieving app certificates."""
+
+    proxy: Optional[str]
+    user: Optional[str]
+    app: str
+
+
 def call_version() -> bool:
     """Call version command and print it to log."""
     runner = run_teleport(["version"])
@@ -32,6 +40,54 @@ def call_app_config(app: str) -> Dict[str, str]:
     if runner.return_code != 0:
         return {}
     return json.loads(runner.stdout)
+
+
+def call_app_login(params: AppParameter) -> None:
+    """Call `tsh app login`. Only returns on success.
+
+    Raises
+    ------
+    AuthenticationError
+        Login failed
+    """
+    app = params["app"]
+
+    # build arguments
+    cmd = [TELEPORT_APP_NAME, "app", "login"]
+    if proxy := params.get("proxy"):
+        cmd.append(f"--proxy={proxy}")
+    if user := params.get("user"):
+        cmd.append(f"--user={user}")
+    cmd.append(app)
+
+    # run
+    runner = _RunCommand(cmd)
+    runner.start()
+
+    auth_url_captured = False
+    for line in runner:
+        # early escape on detect 'success' message from stdout
+        if line.startswith(f"Logged into app {app}"):
+            logger.info("Successfully logged into app %s", app)
+            return None
+
+        # capture auth url from stdout
+        if not auth_url_captured and line.lstrip().startswith("http://127.0.0.1:"):
+            auth_url_captured = True
+            logger.info(
+                "<!important>"
+                "Waiting for response from Teleport...\n"
+                "If browser does not open automatically, open the link:\n"
+                f"  <link>{line}</link>"
+            )
+
+    if runner.return_code == 0:
+        return None
+
+    if f'app "{app}" not found' in runner.stderr:
+        raise AuthenticationError("Teleport app '{}' not found", app)
+
+    raise AuthenticationError("Teleport error: {}", runner.stderr)
 
 
 class _RunCommand(threading.Thread):
