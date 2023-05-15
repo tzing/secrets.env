@@ -5,6 +5,10 @@ Keyring integration
 
 This integration adopts `keyring`_ package to store and read the values from system keyring (e.g. macOS `Keychain`_).
 
+.. _keyring: https://keyring.readthedocs.io/en/latest/
+.. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
+
+
 Enable
 ------
 
@@ -14,17 +18,28 @@ You need to install secrets.env with extra ``keyring`` to enable this feature:
 
     pip install 'secrets.env[keyring]'
 
+
 Usage
 -----
 
-Currently we don't provide tool to save the credential. You need to use keyring's `command line utility`_ to add a value.
+Add value
++++++++++
 
-Use the service name ``secrets.env`` and the keys listed in :ref:`authentication-methods` section:
+Currently we don't provide tool to save the credential. Please use keyring's `command line utility`_ to manage values.
+
+Use the service name ``secrets.env`` and the keys listed in :ref:`authentication-methods` section.
 
 .. code-block:: bash
 
    keyring set secrets.env okta/test@example.com
 
-.. _keyring: https://keyring.readthedocs.io/en/latest/
-.. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
 .. _command line utility: https://keyring.readthedocs.io/en/latest/#command-line-utility
+
+Temporary disable
++++++++++++++++++
+
+By setting environment environment variable ``SECRETS_ENV_NO_KEYRING`` to ``FALSE``, ``NO`` or ``0`` (case insensitive), keyring integration would be disabled.
+
+.. code-block:: bash
+
+   export SECRETS_ENV_NO_KEYRING=False
