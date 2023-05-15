@@ -20,7 +20,7 @@ def test_get_adapter():
 def conn_info():
     return AppConnectionInfo(
         uri="https://example.com",
-        ca=None,
+        ca=Path(__file__),
         cert=Path(__file__),
         key=Path(__file__),
     )
@@ -34,6 +34,7 @@ def test_adapt_vault_provider(
             "url": "https://example.com",
             "auth": "oidc",
             "tls": {
+                "ca_cert": Path(__file__),
                 "client_cert": Path(__file__),
                 "client_key": Path(__file__),
             },
