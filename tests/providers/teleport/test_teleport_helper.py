@@ -117,9 +117,11 @@ class TestCallAppLogin:
         monkeypatch.setattr(t, "_RunCommand", mock_run_command)
 
         # run
-        params = t.AppParameter(proxy="proxy:3128", user="user", app="test")
         with caplog.at_level(logging.INFO):
-            assert t.call_app_login(params) is None
+            assert (
+                t.call_app_login({"proxy": "proxy:3128", "user": "user", "app": "test"})
+                is None
+            )
 
         # test
         assert "Waiting for response from Teleport..." in caplog.text

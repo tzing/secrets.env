@@ -11,22 +11,18 @@ import shutil
 import subprocess
 import threading
 import time
+import typing
 from pathlib import Path
-from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict
+from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from secrets_env.exceptions import AuthenticationError, DependencyError, InternalError
+
+if typing.TYPE_CHECKING:
+    from secrets_env.providers.teleport.config import AppParameter
 
 TELEPORT_APP_NAME = "tsh"
 
 logger = logging.getLogger(__name__)
-
-
-class AppParameter(TypedDict):
-    """Parameters used for retrieving app certificates."""
-
-    proxy: Optional[str]
-    user: Optional[str]
-    app: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -39,7 +35,7 @@ class AppConnectionInfo:
     key: Path
 
 
-def get_connection_info(params: AppParameter) -> AppConnectionInfo:
+def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     """Get app connection information from Teleport API.
 
     Parameters
@@ -103,7 +99,7 @@ def call_app_config(app: str) -> Dict[str, str]:
     return json.loads(runner.stdout)
 
 
-def call_app_login(params: AppParameter) -> None:
+def call_app_login(params: "AppParameter") -> None:
     """Call `tsh app login`. Only returns on success.
 
     Raises
