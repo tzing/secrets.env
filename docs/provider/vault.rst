@@ -131,7 +131,7 @@ The supportted authentication methods are:
 Keyring integration
 ^^^^^^^^^^^^^^^^^^^
 When :ref:`keyring-integration` is enabled, the provider reads the credentials from system keyring.
-You can disable it by setting environment variable ``SECRETS_ENV_NO_KEYRING=False``.
+You can disable it by setting environment variable ``SECRETS_ENV_NO_KEYRING=True``.
 
 Prompt input
 ^^^^^^^^^^^^

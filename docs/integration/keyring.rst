@@ -38,8 +38,8 @@ Use the service name ``secrets.env`` and the keys listed in :ref:`authentication
 Temporary disable
 +++++++++++++++++
 
-By setting environment environment variable ``SECRETS_ENV_NO_KEYRING`` to ``FALSE``, ``NO`` or ``0`` (case insensitive), keyring integration would be disabled.
+By setting environment environment variable ``SECRETS_ENV_NO_KEYRING`` to any of ``true`` /  ``t`` / ``yes`` / ``y`` / ``1`` (case insensitive), keyring integration would be disabled.
 
 .. code-block:: bash
 
-   export SECRETS_ENV_NO_KEYRING=False
+   export SECRETS_ENV_NO_KEYRING=True
