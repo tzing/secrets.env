@@ -18,7 +18,7 @@ User guide
 
    quick-start
    configurations
-   integrations
+   integration/index
    api/index
 
 .. toctree::
