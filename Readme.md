@@ -4,7 +4,9 @@
 ![Python version](https://img.shields.io/pypi/pyversions/secrets.env)
 [![test result](https://img.shields.io/github/actions/workflow/status/tzing/secrets.env/build.yml?branch=trunk)](https://github.com/tzing/secrets.env/actions/workflows/build.yml)
 
-Put secrets from [Vault](https://www.vaultproject.io/) KV engine to environment variables like a `.env` loader, without landing data on disk.
+Secrets.env is the bridge between [Vault](https://www.vaultproject.io/) and your app.
+
+It put values from [KV engine](https://developer.hashicorp.com/vault/docs/secrets/kv) to environment variables like a `.env` loader, without landing credentials on disk.
 
 ![screenshot](./docs/imgs/screenshot.png)
 
