@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "secrets.env"
 version = "0.25.0"
-description = "Put secrets from Vault to environment variables"
+description = "Bridge between Vault and your app"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
 readme = "Readme.pypi.rst"
