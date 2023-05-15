@@ -7,3 +7,4 @@ Secrets.env works best with some tools. Here's currently available integrations:
    :maxdepth: 1
 
    poetry
+   keyring
