@@ -43,7 +43,7 @@ class TestKeyring:
             assert t.read_keyring("test") is None
 
     def test_disable(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("SECRETS_ENV_ENABLE_KEYRING", "False")
+        monkeypatch.setenv("SECRETS_ENV_NO_KEYRING", "True")
         assert t.read_keyring("test") is None
 
     def test_not_install(self, monkeypatch: pytest.MonkeyPatch):

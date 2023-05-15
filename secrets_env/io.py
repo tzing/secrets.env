@@ -59,8 +59,8 @@ def read_keyring(name: str) -> Optional[str]:
     """Wrapped `keyring.get_password`. Do not raise error when there is no
     keyring backend enabled."""
     # skip prompt if the env var is set
-    env = os.getenv("SECRETS_ENV_ENABLE_KEYRING", "true")
-    if env.upper() in ("false", "f", "no", "n", "0"):
+    env = os.getenv("SECRETS_ENV_NO_KEYRING", "FALSE")
+    if env.upper() in ("TRUE", "T", "YES", "Y", "1"):
         return None
 
     # load optional dependency
