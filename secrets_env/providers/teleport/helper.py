@@ -56,7 +56,10 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
             "Teleport CLI ({}) is required for teleport integration", TELEPORT_APP_NAME
         )
 
-    logger.debug("Get connection information from Teleport for %s", params)
+    # it might take a while for teleport RPC. show the message to indicate it is not freeze
+    app = params["app"]
+    logger.info("<!important>Get connection information from Teleport for %s", app)
+    logger.debug("Teleport app parameters= %s", params)
 
     # log version before start
     if not call_version():
@@ -64,11 +67,11 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
 
     # try to get config directly; when not available, loging and retry
     logger.debug("Try to get config directly")
-    cfg = call_app_config(params["app"])
+    cfg = call_app_config(app)
 
     if not cfg:
         call_app_login(params)
-        cfg = call_app_config(params["app"])
+        cfg = call_app_config(app)
 
     if not cfg:
         raise AuthenticationError("Failed to get connection info from Teleport")
