@@ -1,7 +1,9 @@
 Secrets.env
 ===========
 
-Put secrets from `Vault <https://www.vaultproject.io/>`_ KV engine to environment variables like a ``.env`` loader, without landing data on disk.
+Secrets.env is the bridge between `Vault <https://www.vaultproject.io/>`_ and your app.
+
+It put values from Vault KV engine to environment variables like a ``.env`` loader, without landing credentials on disk.
 
 .. code-block:: bash
 
