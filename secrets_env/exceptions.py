@@ -5,21 +5,7 @@ from typing import Any, Type, Union
 
 
 class SecretsEnvError(Exception):
-    """Base error type for secrets.env.
-
-    Examples
-    --------
-
-    .. code-block:: python
-
-       exc = SecretsEnvError("Demo exception for {}", "testing", key="kwarg example")
-
-       print(exc)
-       # Demo exception for testing
-
-       print(f"{exc.key=}")
-       # exc.key='kwarg example'
-    """
+    """Base error type for secrets.env."""
 
     def __init__(self, fmt: str, *args: Any, **extras: Any) -> None:
         """
@@ -33,6 +19,19 @@ class SecretsEnvError(Exception):
             Unnamed values to substitute the ``{}`` in the message template
         extras : Any
             Extra attributes to be attached to this exception instance.
+
+        Example
+        -------
+
+        .. code-block:: python
+
+           exc = SecretsEnvError("Demo exception for {}", "testing", key="kwarg example")
+
+           print(exc)
+           # Demo exception for testing
+
+           print(f"{exc.key=}")
+           # exc.key='kwarg example'
         """
         msg = fmt.format(*args)
         super().__init__(msg)
