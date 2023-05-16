@@ -5,7 +5,10 @@ from typing import Any, Type, Union
 
 
 class SecretsEnvError(Exception):
-    """Base error type for secrets.env."""
+    """Base error type for secrets.env.
+
+    :meta private:
+    """
 
     def __init__(self, fmt: str, *args: Any, **extras: Any) -> None:
         """
@@ -44,12 +47,7 @@ class AuthenticationError(SecretsEnvError):
 
 
 class ConfigError(SecretsEnvError, builtins.ValueError):
-    """Configuration is malformed. This exception inherits :py:exc:`ValueError`."""
-
-
-class SecretNotFound(SecretsEnvError, builtins.LookupError):
-    """A :py:exc:`LookupError` that indicates the requested secret does not exist
-    or you do not have enough permission to touch it."""
+    """Configuration is malformed."""
 
 
 class TypeError(SecretsEnvError, builtins.TypeError):
@@ -67,3 +65,8 @@ class TypeError(SecretsEnvError, builtins.TypeError):
 
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
+
+
+class ValueNotFound(SecretsEnvError, builtins.LookupError):
+    """Requested value does not exist, or the user does not have permission to
+    read it."""
