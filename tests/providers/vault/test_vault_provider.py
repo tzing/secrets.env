@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.provider as t
-from secrets_env.exceptions import AuthenticationError, ConfigError, SecretNotFound
+from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
@@ -83,18 +83,18 @@ class TestKvProvider2:
         assert secret["foo"] == "hello, world"
 
     def test_read_secret_fail(self, provider: t.KvProvider):
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(ValueNotFound):
             provider.read_secret("no-this-secret")
 
     def test_read_field(self, provider: t.KvProvider):
         assert provider.read_field("kv1/test", "foo") == "hello"
         assert provider.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
 
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(ValueNotFound):
             provider.read_field("kv2/test", "foo.no-extra-level")
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(ValueNotFound):
             provider.read_field("kv2/test", "test.no-this-key")
-        with pytest.raises(SecretNotFound):
+        with pytest.raises(ValueNotFound):
             provider.read_field("secret/no-this-secret", "test")
 
         with pytest.raises(TypeError):

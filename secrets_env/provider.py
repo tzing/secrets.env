@@ -46,7 +46,7 @@ class ProviderBase(abc.ABC):
         ------
         secrets_env.exceptions.ConfigError
             The path dict is malformed.
-        secrets_env.exceptions.SecretNotFound
+        secrets_env.exceptions.ValueNotFound
             The path dict is correct but the secret not exists.
 
         Note

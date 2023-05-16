@@ -12,8 +12,8 @@ import httpx
 from secrets_env.exceptions import (
     AuthenticationError,
     ConfigError,
-    SecretNotFound,
     TypeError,
+    ValueNotFound,
 )
 from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
@@ -139,7 +139,7 @@ class KvProvider(ProviderBase):
 
         # return
         if result == Marker.SecretNotExist:
-            raise SecretNotFound("Secret {} not found", path)
+            raise ValueNotFound("Secret {} not found", path)
         return result
 
     def read_field(self, path: str, field: str) -> str:
@@ -164,7 +164,7 @@ class KvProvider(ProviderBase):
         value = get_field(secret, field)
 
         if value is None:
-            raise SecretNotFound("Secret {}#{} not found", path, field)
+            raise ValueNotFound("Secret {}#{} not found", path, field)
         return value
 
 
