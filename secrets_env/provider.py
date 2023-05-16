@@ -7,8 +7,11 @@ import sys
 import typing
 from typing import Dict, Union
 
-if typing.TYPE_CHECKING and sys.version_info >= (3, 10):
-    from typing import TypeAlias
+if typing.TYPE_CHECKING:
+    from secrets_env.exceptions import ConfigError, ValueNotFound  # noqa: F401
+
+    if sys.version_info >= (3, 10):
+        from typing import TypeAlias
 
 
 RequestSpec: "TypeAlias" = Union[Dict[str, str], str]
@@ -44,9 +47,9 @@ class ProviderBase(abc.ABC):
 
         Raises
         ------
-        secrets_env.exceptions.ConfigError
+        ConfigError
             The path dict is malformed.
-        secrets_env.exceptions.ValueNotFound
+        ValueNotFound
             The path dict is correct but the secret not exists.
 
         Note
