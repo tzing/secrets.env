@@ -106,7 +106,7 @@ class TestRead1:
         assert "Config for test is malformed" in caplog.text
 
     def test_not_found(self, caplog: pytest.LogCaptureFixture):
-        self.provider.get.side_effect = exps.SecretNotFound("test")
+        self.provider.get.side_effect = exps.ValueNotFound("test")
 
         assert t.read1(self.provider, "test", "foo#bar") is None
         assert "Secret for test not found" in caplog.text

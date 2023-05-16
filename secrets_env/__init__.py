@@ -1,5 +1,5 @@
 __name__ = "secrets_env"
-__version__ = "0.25.2"
+__version__ = "0.25.3"
 
 import logging
 import pathlib
@@ -88,7 +88,7 @@ def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> typing.Option
         )
     except secrets_env.exceptions.ConfigError as e:
         logger.warning("Config for %s is malformed: %s. Skip this variable.", name, e)
-    except secrets_env.exceptions.SecretNotFound:
+    except secrets_env.exceptions.ValueNotFound:
         logger.warning("Secret for %s not found. Skip this variable.", name)
     except Exception as e:
         logger.error("Error requesting secret for %s. Skip this variable.", name)
