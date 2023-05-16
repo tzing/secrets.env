@@ -32,7 +32,7 @@ class AuthenticationError(SecretsEnvError):
 
 
 class ConfigError(SecretsEnvError, ValueError):
-    """Configuration is malformed."""
+    """Configuration is malformed. This exception inherits :py:exc:`ValueError`."""
 
 
 class SecretNotFound(SecretsEnvError, LookupError):
