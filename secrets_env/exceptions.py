@@ -7,10 +7,21 @@ from typing import Any, Type, Union
 class SecretsEnvError(Exception):
     """Base error type for secrets.env.
 
-    :meta private:
+    Examples
+    --------
+
+    .. code-block:: python
+
+       exc = SecretsEnvError("Demo exception for {}", "testing", key="kwarg example")
+
+       print(exc)
+       # Demo exception for testing
+
+       print(f"{exc.key=}")
+       # exc.key='kwarg example'
     """
 
-    def __init__(self, fmt: str, *args: object, **kwargs: object) -> None:
+    def __init__(self, fmt: str, *args: Any, **extras: Any) -> None:
         """
         Constructor that applies :py:meth:`str.format` to message template.
 
@@ -20,28 +31,33 @@ class SecretsEnvError(Exception):
             Error message template.
         args : Any
             Unnamed values to substitute the ``{}`` in the message template
-        kwargs : Any
-            Named values to substitute the ``{name}`` in the message template
+        extras : Any
+            Extra attributes to be attached to this exception instance.
         """
-        msg = fmt.format(*args, **kwargs)
+        msg = fmt.format(*args)
         super().__init__(msg)
+        for name, value in extras.items():
+            setattr(self, name, value)
 
 
 class AuthenticationError(SecretsEnvError):
     """Authentication failed."""
 
 
-class ConfigError(SecretsEnvError, ValueError):
+class ConfigError(SecretsEnvError, builtins.ValueError):
     """Configuration is malformed. This exception inherits :py:exc:`ValueError`."""
 
 
-class SecretNotFound(SecretsEnvError, LookupError):
+class SecretNotFound(SecretsEnvError, builtins.LookupError):
     """A :py:exc:`LookupError` that indicates the requested secret does not exist
     or you do not have enough permission to touch it."""
 
 
 class TypeError(SecretsEnvError, builtins.TypeError):
-    """Inappropriate argument type."""
+    """Inappropriate argument type.
+
+    :meta private:
+    """
 
     def __init__(self, name: str, expect: Union[str, Type], got: Any) -> None:
         self.name = name
