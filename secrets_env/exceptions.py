@@ -40,7 +40,7 @@ class DependencyError(SecretsEnvError):
 
 
 class InternalError(SecretsEnvError):
-    """Mystery."""
+    """*Mystery, don't want this*."""
 
 
 class SecretNotFound(SecretsEnvError, LookupError):
