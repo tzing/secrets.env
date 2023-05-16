@@ -15,7 +15,11 @@ import typing
 from pathlib import Path
 from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple
 
-from secrets_env.exceptions import AuthenticationError, DependencyError, InternalError
+from secrets_env.exceptions import (
+    AuthenticationError,
+    SecretsEnvError,
+    UnsupportedError,
+)
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.teleport.config import AppParameter
@@ -47,12 +51,12 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     ------
     AuthenticationError
         Failed to login to Teleport.
-    DependencyError
+    UnsupportedError
         When Teleport CLI not installed.
     """
     # ensure teleport cli is installed
     if not shutil.which(TELEPORT_APP_NAME):
-        raise DependencyError(
+        raise UnsupportedError(
             "Teleport CLI ({}) is required for teleport integration", TELEPORT_APP_NAME
         )
 
@@ -63,7 +67,7 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
 
     # log version before start
     if not call_version():
-        raise InternalError("Internal error on accessing Teleport CLI")
+        raise SecretsEnvError("Internal error on accessing Teleport CLI")
 
     # try to get config directly; when not available, loging and retry
     logger.debug("Try to get config directly")

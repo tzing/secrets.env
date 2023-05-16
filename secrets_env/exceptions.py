@@ -47,14 +47,6 @@ class ConfigError(SecretsEnvError, builtins.ValueError):
     """Configuration is malformed. This exception inherits :py:exc:`ValueError`."""
 
 
-class DependencyError(SecretsEnvError):
-    """Missing dependency for this feature."""
-
-
-class InternalError(SecretsEnvError):
-    """*Mystery, don't want this*."""
-
-
 class SecretNotFound(SecretsEnvError, builtins.LookupError):
     """A :py:exc:`LookupError` that indicates the requested secret does not exist
     or you do not have enough permission to touch it."""

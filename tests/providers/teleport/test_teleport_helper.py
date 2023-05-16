@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 import secrets_env.providers.teleport.helper as t
-from secrets_env.exceptions import AuthenticationError, DependencyError, InternalError
+from secrets_env.exceptions import (
+    AuthenticationError,
+    SecretsEnvError,
+    UnsupportedError,
+)
 
 no_teleport_cli = shutil.which("tsh") is None
 
@@ -47,13 +51,13 @@ class TestGetConnectionInfo:
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda _: None)
-        with pytest.raises(DependencyError):
+        with pytest.raises(UnsupportedError):
             t.get_connection_info({"app": "test"})
 
     @pytest.mark.usefixtures("_patch_which")
     def test_internal_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "call_version", lambda: False)
-        with pytest.raises(InternalError):
+        with pytest.raises(SecretsEnvError):
             t.get_connection_info({"app": "test"})
 
     @pytest.mark.usefixtures("_patch_which", "_patch_version")
