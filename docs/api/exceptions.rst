@@ -2,19 +2,33 @@ Exceptions
 ==========
 
 .. automodule:: secrets_env.exceptions
+   :show-inheritance:
 
-.. currentmodule:: secrets_env.exceptions
+   Exceptions
+   ----------
 
-Exceptions
-----------
+   .. use `()` to hide signatures
 
-.. autoexception:: AuthenticationError
-.. autoexception:: ConfigError
-.. autoexception:: SecretNotFound
-.. autoexception:: UnsupportedError
+   .. autoexception:: AuthenticationError()
+      :show-inheritance:
 
-Base type
----------
+   .. autoexception:: ConfigError()
+      :show-inheritance:
 
-.. autoclass:: SecretsEnvError
-   :special-members: __init__
+   .. autoexception:: DependencyError()
+      :show-inheritance:
+
+   .. autoexception:: InternalError()
+      :show-inheritance:
+
+   .. autoexception:: SecretNotFound()
+      :show-inheritance:
+
+   .. autoexception:: UnsupportedError()
+      :show-inheritance:
+
+   Base type
+   ---------
+
+   .. autoclass:: SecretsEnvError
+      :special-members: __init__
