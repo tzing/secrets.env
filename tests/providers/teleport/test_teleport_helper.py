@@ -100,7 +100,7 @@ class TestCallAppLogin:
         self, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
     ):
         # setup mock
-        runner = MagicMock(spec=t._RunCommand)
+        runner = MagicMock(spec=t._RunCommand, return_code=0)
         runner.__iter__.return_value = [
             "If browser...",
             " http://127.0.0.1:12345/mock",

@@ -131,9 +131,8 @@ def call_app_login(params: "AppParameter") -> None:
     auth_url_captured = False
     for line in runner:
         # early escape on detect 'success' message from stdout
-        if line.startswith(f"Logged into app {app}"):
-            logger.info("Successfully logged into app %s", app)
-            return None
+        if line.startswith("Logged into app"):
+            break
 
         # capture auth url from stdout
         if not auth_url_captured and line.lstrip().startswith("http://127.0.0.1:"):
@@ -146,6 +145,7 @@ def call_app_login(params: "AppParameter") -> None:
             )
 
     if runner.return_code == 0:
+        logger.info("Successfully logged into app %s", app)
         return None
 
     if f'app "{app}" not found' in runner.stderr:

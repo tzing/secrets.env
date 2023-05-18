@@ -7,15 +7,15 @@ from . import adapters, config, helper
 if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase
 
-PREFIX = "teleport+"
+ADAPTER_PREFIX = "teleport+"
 
 
 def get_provider(type_: str, data: dict) -> "ProviderBase":
-    if not type_.startswith(PREFIX):
+    if not type_.startswith(ADAPTER_PREFIX):
         raise ConfigError("Not a Teleport integrated provider: {}", type_)
 
     # ensure the adopted provider type is supportted
-    adopted_type = type_[len(PREFIX) :]
+    adopted_type = type_[len(ADAPTER_PREFIX) :]
     adopter = adapters.get_adapter(adopted_type)
 
     # get connection parameter
