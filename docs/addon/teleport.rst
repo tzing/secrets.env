@@ -1,11 +1,11 @@
-.. _teleport-integration:
+.. _teleport-addon:
 
-Teleport integration
-====================
+Teleport
+========
 
 `Teleport`_ is an open-source tool for providing zero trust access to servers and cloud applications.
 
-This integration communicates with the Teleport client to obtain certificate for you when there are some requests need it.
+This addon communicates with the Teleport client to obtain certificate for you when there are some requests need it.
 
 .. _Teleport: https://goteleport.com/
 
@@ -13,7 +13,7 @@ This integration communicates with the Teleport client to obtain certificate for
 Enable
 ------
 
-This integration requires Teleport client (``tsh``).
+This addon requires Teleport client (``tsh``).
 
 For macOS users, you can get it from homebrew:
 
@@ -29,7 +29,7 @@ Use Teleport adapter
 
 Teleport uses short-lived certificates to authenticate users and services - including the secret manager.
 
-By adding the prefix ``teleport+`` to the type field in the provider configuration, the integration automatically retrieves the certificate from Teleport and applies the TLS configuration.
+By adding the prefix ``teleport+`` to the type field in the provider configuration, the addon automatically retrieves the certificate from Teleport and applies the TLS configuration.
 
 Example
 +++++++
