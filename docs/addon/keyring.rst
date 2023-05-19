@@ -1,7 +1,7 @@
 .. _keyring-integration:
 
-Keyring integration
-===================
+Keyring
+=======
 
 This integration adopts `keyring`_ package to store and read the values from system keyring (e.g. macOS `Keychain`_).
 

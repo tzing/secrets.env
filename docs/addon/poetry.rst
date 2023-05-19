@@ -1,5 +1,5 @@
-Poetry integration
-==================
+Poetry
+======
 
 `Poetry`_ is an awesome tool for dependency management.
 This app could be used as its `plugin`_, and loads the secrets into environment for you.
