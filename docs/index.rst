@@ -20,7 +20,7 @@ User guide
 
    quick-start
    configurations
-   integration/index
+   addon/index
    api/index
 
 .. toctree::
