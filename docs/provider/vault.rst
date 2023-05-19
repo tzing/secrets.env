@@ -1,3 +1,5 @@
+.. _vault-provider:
+
 Vault KV Provider
 =================
 
