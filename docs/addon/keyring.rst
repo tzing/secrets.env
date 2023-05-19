@@ -1,9 +1,9 @@
-.. _keyring-integration:
+.. _keyring-addon:
 
 Keyring
 =======
 
-This integration adopts `keyring`_ package to store and read the values from system keyring (e.g. macOS `Keychain`_).
+This addon adopts `keyring`_ package to store and read the values from system keyring (e.g. macOS `Keychain`_).
 
 .. _keyring: https://keyring.readthedocs.io/en/latest/
 .. _Keychain: https://en.wikipedia.org/wiki/Keychain_%28software%29
@@ -38,7 +38,7 @@ Use the service name ``secrets.env`` and the keys listed in :ref:`authentication
 Temporary disable
 +++++++++++++++++
 
-By setting environment environment variable ``SECRETS_ENV_NO_KEYRING`` to any of ``true`` /  ``t`` / ``yes`` / ``y`` / ``1`` (case insensitive), keyring integration would be disabled.
+By setting environment environment variable ``SECRETS_ENV_NO_KEYRING`` to any of ``true`` /  ``t`` / ``yes`` / ``y`` / ``1`` (case insensitive), keyring addon would be disabled.
 
 .. code-block:: bash
 
