@@ -34,8 +34,11 @@ class ConfigFile(ConfigFileSpec):
 def check_installed(*modules) -> bool:
     """Check if any of listed module installed."""
     for name in modules:
-        if importlib.util.find_spec(name):
-            return True
+        try:
+            if importlib.util.find_spec(name):
+                return True
+        except ModuleNotFoundError:
+            ...
     return False
 
 
