@@ -1,7 +1,7 @@
+import pytest
+
 import secrets_env.providers.teleport.config as t
 from secrets_env.exceptions import ConfigError
-
-import pytest
 
 
 class TestParseConfig:

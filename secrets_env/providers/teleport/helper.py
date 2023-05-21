@@ -60,7 +60,8 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
             "Teleport CLI ({}) is required for teleport integration", TELEPORT_APP_NAME
         )
 
-    # it might take a while for teleport RPC. show the message to indicate it is not freeze
+    # it might take a while for teleport RPC. show the message to indicate it
+    # is not freeze
     app = params["app"]
     logger.info("<!important>Get connection information from Teleport for %s", app)
     logger.debug("Teleport app parameters= %s", params)
