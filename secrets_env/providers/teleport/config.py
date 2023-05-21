@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, TypedDict
+from typing import Any, Dict, Optional, TypedDict
 
 from secrets_env.exceptions import ConfigError
 from secrets_env.utils import ensure_dict, ensure_str
@@ -15,7 +15,7 @@ class AppParameter(TypedDict):
     app: str
 
 
-def parse_config(data: dict[str, Any]) -> AppParameter:
+def parse_config(data: Dict[str, Any]) -> AppParameter:
     section = data.get("teleport")
     if not section:
         raise ConfigError("Missing 'teleport' config")
