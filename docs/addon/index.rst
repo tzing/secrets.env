@@ -8,3 +8,4 @@ Secrets.env works best with some tools. Here's currently available add-ons:
 
    poetry
    keyring
+   teleport

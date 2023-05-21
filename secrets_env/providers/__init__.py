@@ -14,6 +14,9 @@ def get_provider(data: dict) -> "ProviderBase":
 
     # builtin first
     # fmt: off
+    if type_.startswith("teleport+"):
+        from . import teleport
+        return teleport.get_provider(type_, data)
     if type_ == "null":
         from . import null
         return null.get_provider(type_, data)

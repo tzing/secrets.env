@@ -1,3 +1,5 @@
+.. _vault-provider:
+
 Vault KV Provider
 =================
 
@@ -7,6 +9,9 @@ Provider that retrieves value(s) from HashiCorp Vault's `KV secrets engine`_.
 
 type
    ``vault`` *or none*
+
+teleport integration
+   :ref:`yes <vault-teleport-integration>`
 
 .. hint::
 
@@ -341,3 +346,33 @@ Authentication using an existing `RADIUS`_ server that accepts the `PAP authenti
    * 🆗 From environment variable: ``SECRETS_ENV_PASSWORD``
    * 🆗 From keyring: ``radius/YOUR_USER_NAME``
    * 🆗 Prompt
+
+
+.. _vault-teleport-integration:
+
+Teleport integration
+--------------------
+
+Once the :ref:`Teleport add-on <teleport-addon>` is activated, we gain the ability to utilize this feature, which facilitates the retrieval of URL and TLS configurations from Teleport.
+
+To make use of this feature, you need to assign the value ``teleport+vault`` to the ``type`` field and introduce the ``teleport`` section for application information.
+For additional details, refer to the :ref:`use-teleport-addon` section.
+
+.. tabs::
+
+   .. code-tab:: toml
+
+      [source]
+      type = "teleport+vault"
+
+      [source.teleport]
+      proxy = "example.com"
+      app = "demo"
+
+   .. code-tab:: yaml
+
+      source:
+        type: teleport+vault
+        teleport:
+          proxy: example.com
+          app: demo
