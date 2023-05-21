@@ -23,6 +23,7 @@ For macOS users, you can get it from homebrew:
 
 For other users, please read `official document <https://goteleport.com/docs/installation/>`_ for the instructions.
 
+.. _use-teleport-addon:
 
 Use Teleport adapter
 --------------------
