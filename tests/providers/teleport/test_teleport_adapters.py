@@ -20,9 +20,9 @@ def test_get_adapter():
 def conn_info():
     return AppConnectionInfo(
         uri="https://example.com",
-        ca=Path(__file__),
-        cert=Path(__file__),
-        key=Path(__file__),
+        path_ca=Path(__file__),
+        path_cert=Path(__file__),
+        path_key=Path(__file__),
     )
 
 

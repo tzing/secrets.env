@@ -32,16 +32,16 @@ def adapt_vault_provider(type_: str, data: dict, conn_info: "AppConnectionInfo")
 
     # ca
     tls: dict = data.setdefault("tls", {})
-    if conn_info.ca:
-        tls["ca_cert"] = conn_info.ca
-        logger.debug("Set Vault CA to %s", conn_info.ca)
+    if conn_info.path_ca:
+        tls["ca_cert"] = conn_info.path_ca
+        logger.debug("Set Vault CA to %s", conn_info.path_ca)
 
     # cert
-    tls["client_cert"] = conn_info.cert
-    logger.debug("Set Vault client cert to %s", conn_info.cert)
+    tls["client_cert"] = conn_info.path_cert
+    logger.debug("Set Vault client cert to %s", conn_info.path_cert)
 
     # key
-    tls["client_key"] = conn_info.key
-    logger.debug("Set Vault client key to %s", conn_info.key)
+    tls["client_key"] = conn_info.path_key
+    logger.debug("Set Vault client key to %s", conn_info.path_key)
 
     return vault.get_provider(type_, data)

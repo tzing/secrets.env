@@ -34,9 +34,9 @@ class AppConnectionInfo:
     """Teleport app connection information."""
 
     uri: str
-    ca: Optional[Path]
-    cert: Path
-    key: Path
+    path_ca: Optional[Path]
+    path_cert: Path
+    path_key: Path
 
 
 def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
@@ -90,7 +90,12 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     cert_path = Path(cfg["cert"])
     path_key = Path(cfg["key"])
 
-    return AppConnectionInfo(uri=cfg["uri"], ca=path_ca, cert=cert_path, key=path_key)
+    return AppConnectionInfo(
+        uri=cfg["uri"],
+        path_ca=path_ca,
+        path_cert=cert_path,
+        path_key=path_key,
+    )
 
 
 def call_version() -> bool:

@@ -44,9 +44,9 @@ class TestGetConnectionInfo:
         ):
             assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
                 uri="https://example.com",
-                ca=None,
-                cert=Path(__file__),
-                key=Path(__file__),
+                path_ca=None,
+                path_cert=Path(__file__),
+                path_key=Path(__file__),
             )
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
