@@ -113,6 +113,7 @@ def test_check_installed():
     assert t.check_installed("json") is True
     assert t.check_installed("module-not-exists", "json") is True
     assert t.check_installed("module-not-exists") is False
+    assert t.check_installed("module-not-exists.nested") is False
 
 
 def test_is_supportted(
