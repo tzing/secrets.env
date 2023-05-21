@@ -6,13 +6,13 @@ information from it.
 import dataclasses
 import json
 import logging
+import queue
 import shutil
 import subprocess
 import threading
 import time
 import typing
 from pathlib import Path
-from queue import Queue
 from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from secrets_env.exceptions import (
@@ -169,9 +169,9 @@ class _RunCommand(threading.Thread):
 
         self._complete = threading.Event()
         self._return_code = None
-        self._stdout_queue: "Queue[str]" = Queue()
+        self._stdout_queue: queue.Queue[str] = queue.Queue()
         self._stdouts: List[str] = []
-        self._stderr_queue: "Queue[str]" = Queue()
+        self._stderr_queue: queue.Queue[str] = queue.Queue()
         self._stderrs: List[str] = []
 
     @property
@@ -183,7 +183,7 @@ class _RunCommand(threading.Thread):
         logger.debug("$ %s", " ".join(self.command))
 
         # flush output to queue and log it
-        def _flush(stream: IO[str], q: "Queue[str]", prefix="<"):
+        def _flush(stream: IO[str], q: queue.Queue[str], prefix="<"):
             for line in iter(stream.readline, ""):
                 q.put(line)
                 logger.debug("%s %s", prefix, line.rstrip())
@@ -229,7 +229,7 @@ class _RunCommand(threading.Thread):
         assert self._complete.is_set()
         return self._return_code  # type: ignore[reportOptionalMemberAccess]
 
-    def _build_output(self, queue_: "Queue[str]", store: List[str]) -> str:
+    def _build_output(self, queue_: queue.Queue[str], store: List[str]) -> str:
         assert self._complete.is_set()
         while not queue_.empty():
             store.append(queue_.get())
