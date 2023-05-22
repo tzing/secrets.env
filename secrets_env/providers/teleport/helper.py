@@ -28,8 +28,10 @@ if typing.TYPE_CHECKING:
 
     if sys.version_info >= (3, 9):
         StrQueue = queue.Queue[str]
+        StrPopen = subprocess.Popen[str]
     else:
         StrQueue = typing.TypeVar("StrQueue", bound=queue.Queue)
+        StrPopen = typing.TypeVar("StrPopen", bound=subprocess.Popen)
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -198,7 +200,7 @@ class _RunCommand(threading.Thread):
                 q.put(line)
                 logger.debug("%s %s", prefix, line.rstrip())
 
-        def _flush(proc: subprocess.Popen[str]):
+        def _flush(proc: "StrPopen"):
             stdout = typing.cast(IO[str], proc.stdout)
             stderr = typing.cast(IO[str], proc.stderr)
             _flush_output_to_queue(stdout, self._stdout_queue)
