@@ -21,6 +21,7 @@ from secrets_env.exceptions import (
     SecretsEnvError,
     UnsupportedError,
 )
+from secrets_env.utils import strip_ansi
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.teleport.config import AppParameter
@@ -186,13 +187,21 @@ class _RunCommand(threading.Thread):
 
     def run(self) -> None:
         """Runs subprocess in background thread in case the iter is early escaped."""
+        assert not self._complete.is_set()
         logger.debug("$ %s", " ".join(self.command))
 
         # flush output to queue and log it
-        def _flush(stream: IO[str], q: "StrQueue", prefix="<"):
+        def _flush_output_to_queue(stream: IO[str], q: "StrQueue", prefix="<"):
             for line in iter(stream.readline, ""):
+                line = strip_ansi(line)
                 q.put(line)
                 logger.debug("%s %s", prefix, line.rstrip())
+
+        def _flush(proc: subprocess.Popen[str]):
+            stdout = typing.cast(IO[str], proc.stdout)
+            stderr = typing.cast(IO[str], proc.stderr)
+            _flush_output_to_queue(stdout, self._stdout_queue)
+            _flush_output_to_queue(stderr, self._stderr_queue, "<[stderr]")
 
         # run command
         with subprocess.Popen(
@@ -207,13 +216,11 @@ class _RunCommand(threading.Thread):
 
             # realtime read outputs to queue
             while proc.poll() is None:
-                _flush(proc.stdout, self._stdout_queue)
-                _flush(proc.stderr, self._stderr_queue, "<[stderr]")
+                _flush(proc)
 
             # get exit code and remaning outputs
+            _flush(proc)
             self._return_code = proc.returncode
-            _flush(proc.stdout, self._stdout_queue)
-            _flush(proc.stderr, self._stderr_queue, "<[stderr]")
 
         self._complete.set()
 
