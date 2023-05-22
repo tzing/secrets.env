@@ -211,10 +211,6 @@ class _RunCommand(threading.Thread):
             stderr=subprocess.PIPE,
             encoding="utf-8",
         ) as proc:
-            # let type checker believe stdout & stderr is not none
-            assert proc.stdout
-            assert proc.stderr
-
             # realtime read outputs to queue
             while proc.poll() is None:
                 _flush(proc)
