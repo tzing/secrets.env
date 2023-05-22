@@ -1,5 +1,6 @@
 import http
 import logging
+import re
 from pathlib import Path
 from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
 
@@ -10,6 +11,8 @@ TL_True = Literal[True]
 TL_False = Literal[False]
 
 logger = logging.getLogger(__name__)
+
+_ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
 @overload
@@ -140,3 +143,7 @@ def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
         code_name,
         resp.text,
     )
+
+
+def strip_ansi(value: str) -> str:
+    return _ansi_re.sub("", value)

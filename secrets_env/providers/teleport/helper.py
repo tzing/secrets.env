@@ -21,14 +21,17 @@ from secrets_env.exceptions import (
     SecretsEnvError,
     UnsupportedError,
 )
+from secrets_env.utils import strip_ansi
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.teleport.config import AppParameter
 
     if sys.version_info >= (3, 9):
         StrQueue = queue.Queue[str]
+        StrPopen = subprocess.Popen[str]
     else:
         StrQueue = typing.TypeVar("StrQueue", bound=queue.Queue)
+        StrPopen = typing.TypeVar("StrPopen", bound=subprocess.Popen)
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -138,7 +141,6 @@ def call_app_login(params: "AppParameter") -> None:
 
     # run
     runner = _RunCommand(cmd)
-    runner.start()
 
     auth_url_captured = False
     for line in runner:
@@ -173,7 +175,6 @@ class _RunCommand(threading.Thread):
         super().__init__(daemon=True)
         self._command = tuple(cmd)
 
-        self._complete = threading.Event()
         self._return_code = None
         self._stdout_queue: "StrQueue" = queue.Queue()
         self._stdouts: List[str] = []
@@ -184,15 +185,26 @@ class _RunCommand(threading.Thread):
     def command(self) -> Tuple[str, ...]:
         return self._command
 
+    @property
+    def is_completed(self) -> bool:
+        return self.ident is not None and not self.is_alive()
+
     def run(self) -> None:
         """Runs subprocess in background thread in case the iter is early escaped."""
         logger.debug("$ %s", " ".join(self.command))
 
         # flush output to queue and log it
-        def _flush(stream: IO[str], q: "StrQueue", prefix="<"):
+        def _flush_output_to_queue(stream: IO[str], q: "StrQueue", prefix="<"):
             for line in iter(stream.readline, ""):
+                line = strip_ansi(line)
                 q.put(line)
                 logger.debug("%s %s", prefix, line.rstrip())
+
+        def _flush(proc: "StrPopen"):
+            stdout = typing.cast(IO[str], proc.stdout)
+            stderr = typing.cast(IO[str], proc.stderr)
+            _flush_output_to_queue(stdout, self._stdout_queue)
+            _flush_output_to_queue(stderr, self._stderr_queue, "<[stderr]")
 
         # run command
         with subprocess.Popen(
@@ -201,52 +213,49 @@ class _RunCommand(threading.Thread):
             stderr=subprocess.PIPE,
             encoding="utf-8",
         ) as proc:
-            # let type checker believe stdout & stderr is not none
-            assert proc.stdout
-            assert proc.stderr
-
             # realtime read outputs to queue
             while proc.poll() is None:
-                _flush(proc.stdout, self._stdout_queue)
-                _flush(proc.stderr, self._stderr_queue, "<[stderr]")
+                _flush(proc)
 
             # get exit code and remaning outputs
+            _flush(proc)
             self._return_code = proc.returncode
-            _flush(proc.stdout, self._stdout_queue)
-            _flush(proc.stderr, self._stderr_queue, "<[stderr]")
-
-        self._complete.set()
 
     def __iter__(self) -> Iterator[str]:
         """Yields stdouts"""
         QUERY_INTERVAL = 0.1
+
+        if self.ident is None:  # not started
+            self.start()
+
         while True:
             try:
                 line = self._stdout_queue.get_nowait()
                 self._stdouts.append(line)
                 yield line.rstrip()
             except queue.Empty:
-                if self._complete.is_set():
+                if not self.is_alive():
                     break
                 time.sleep(QUERY_INTERVAL)
 
     @property
     def return_code(self) -> int:
-        assert self._complete.is_set()
+        assert self.is_completed
         return self._return_code  # type: ignore[reportOptionalMemberAccess]
 
     def _build_output(self, queue_: "StrQueue", store: List[str]) -> str:
-        assert self._complete.is_set()
         while not queue_.empty():
             store.append(queue_.get())
         return "".join(store)
 
     @property
     def stdout(self) -> str:
+        assert self.is_completed
         return self._build_output(self._stdout_queue, self._stdouts)
 
     @property
     def stderr(self) -> str:
+        assert self.is_completed
         return self._build_output(self._stderr_queue, self._stderrs)
 
 
