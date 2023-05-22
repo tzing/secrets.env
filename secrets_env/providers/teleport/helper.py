@@ -174,7 +174,6 @@ class _RunCommand(threading.Thread):
         super().__init__(daemon=True)
         self._command = tuple(cmd)
 
-        self._complete = threading.Event()
         self._return_code = None
         self._stdout_queue: "StrQueue" = queue.Queue()
         self._stdouts: List[str] = []
@@ -187,7 +186,6 @@ class _RunCommand(threading.Thread):
 
     def run(self) -> None:
         """Runs subprocess in background thread in case the iter is early escaped."""
-        assert not self._complete.is_set()
         logger.debug("$ %s", " ".join(self.command))
 
         # flush output to queue and log it
@@ -222,8 +220,6 @@ class _RunCommand(threading.Thread):
             _flush(proc)
             self._return_code = proc.returncode
 
-        self._complete.set()
-
     def __iter__(self) -> Iterator[str]:
         """Yields stdouts"""
         QUERY_INTERVAL = 0.1
@@ -233,17 +229,17 @@ class _RunCommand(threading.Thread):
                 self._stdouts.append(line)
                 yield line.rstrip()
             except queue.Empty:
-                if self._complete.is_set():
+                if not self.is_alive():
                     break
                 time.sleep(QUERY_INTERVAL)
 
     @property
     def return_code(self) -> int:
-        assert self._complete.is_set()
+        assert not self.is_alive()
         return self._return_code  # type: ignore[reportOptionalMemberAccess]
 
     def _build_output(self, queue_: "StrQueue", store: List[str]) -> str:
-        assert self._complete.is_set()
+        assert not self.is_alive()
         while not queue_.empty():
             store.append(queue_.get())
         return "".join(store)
