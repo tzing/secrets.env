@@ -2,20 +2,22 @@ __name__ = "secrets_env"
 __version__ = "0.26.2"
 
 import logging
-import pathlib
 import typing
 
-import secrets_env.config
-import secrets_env.exceptions
-from secrets_env.provider import ProviderBase, RequestSpec
+if typing.TYPE_CHECKING:
+    from pathlib import Path
+
+    from secrets_env.provider import ProviderBase, RequestSpec
 
 logger = logging.getLogger(__name__)
 
 
 def load_secrets(
-    config_file: typing.Optional[pathlib.Path] = None, strict: bool = True
+    config_file: typing.Optional["Path"] = None, strict: bool = True
 ) -> typing.Dict[str, str]:
     """Load secrets from vault and put them to environment variable."""
+    import secrets_env.config
+
     # parse config
     config = secrets_env.config.load_config(config_file)
     if not config:
@@ -63,12 +65,17 @@ def load_secrets(
     return output
 
 
-def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> typing.Optional[str]:
+def read1(
+    provider: "ProviderBase", name: str, spec: "RequestSpec"
+) -> typing.Optional[str]:
     """Read single value.
 
     This function wraps :py:meth:`secrets_env.provider.ProviderBase.get` and
     captures all exceptions.
     """
+    import secrets_env.exceptions
+    from secrets_env.provider import ProviderBase
+
     # type checking
     if not isinstance(provider, ProviderBase):
         raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
