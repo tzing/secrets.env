@@ -139,7 +139,6 @@ def call_app_login(params: "AppParameter") -> None:
 
     # run
     runner = _RunCommand(cmd)
-    runner.start()
 
     auth_url_captured = False
     for line in runner:
@@ -184,6 +183,10 @@ class _RunCommand(threading.Thread):
     def command(self) -> Tuple[str, ...]:
         return self._command
 
+    @property
+    def is_completed(self) -> bool:
+        return self.ident is not None and not self.is_alive()
+
     def run(self) -> None:
         """Runs subprocess in background thread in case the iter is early escaped."""
         logger.debug("$ %s", " ".join(self.command))
@@ -223,6 +226,10 @@ class _RunCommand(threading.Thread):
     def __iter__(self) -> Iterator[str]:
         """Yields stdouts"""
         QUERY_INTERVAL = 0.1
+
+        if self.ident is None:  # not started
+            self.start()
+
         while True:
             try:
                 line = self._stdout_queue.get_nowait()
@@ -235,21 +242,22 @@ class _RunCommand(threading.Thread):
 
     @property
     def return_code(self) -> int:
-        assert not self.is_alive()
+        assert self.is_completed
         return self._return_code  # type: ignore[reportOptionalMemberAccess]
 
     def _build_output(self, queue_: "StrQueue", store: List[str]) -> str:
-        assert not self.is_alive()
         while not queue_.empty():
             store.append(queue_.get())
         return "".join(store)
 
     @property
     def stdout(self) -> str:
+        assert self.is_completed
         return self._build_output(self._stdout_queue, self._stdouts)
 
     @property
     def stderr(self) -> str:
+        assert self.is_completed
         return self._build_output(self._stderr_queue, self._stderrs)
 
 

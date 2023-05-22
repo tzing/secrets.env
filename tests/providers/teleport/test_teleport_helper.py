@@ -192,5 +192,4 @@ class TestRunCommand:
             ]
         )
 
-        runner.start()
         assert list(runner) == ["item 1", "item 2"]
