@@ -20,7 +20,7 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
     server: "HTTPServer"
 
     @abc.abstractmethod
-    def route(self, method: Literal["GET"], path: str) -> Optional[RouteHandler]:
+    def route(self, path: str) -> Optional[RouteHandler]:
         """Routing GET request to specific method."""
 
     def do_GET(self) -> None:
@@ -29,7 +29,7 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
         logger.debug('Receive "%s %s %s"', self.command, url.path, self.request_version)
 
         # check routes
-        func = self.route("GET", url.path)
+        func = self.route(url.path)
         if func is None:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
@@ -103,7 +103,7 @@ class HTTPServerThread(threading.Thread):
             logger.debug("HTTP server created. Waiting for setup...")
             srv.ready.wait()
 
-            logger.debug("Start listening %s:%d", srv.server_name, srv.server_port)
+            logger.debug("Start listening %s:%d", self.host, self.port)
             while not srv.stop.is_set():
                 srv.handle_request()
 
