@@ -3,6 +3,7 @@ import collections.abc
 import contextlib
 import http.server
 import logging
+import pathlib
 import socket
 import threading
 import typing
@@ -113,7 +114,14 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
             fmt % args,
         )
 
-    # TODO response template
+    def write_template(self, template: str):
+        """Write template data to response body."""
+        current_dir = pathlib.Path(__file__).resolve().parent
+        template_dir = current_dir / "templates"
+        template_file = template_dir / template
+
+        payload = template_file.read_bytes()
+        self.wfile.write(payload)
 
 
 class HTTPServer(http.server.ThreadingHTTPServer):
