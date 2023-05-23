@@ -1,4 +1,6 @@
 import abc
+import collections.abc
+import contextlib
 import http.server
 import logging
 import socket
@@ -6,19 +8,84 @@ import threading
 import typing
 import urllib.parse
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
-URLParam = Dict[str, List[str]]
-RouteHandler = Callable[[URLParam], None]
+if typing.TYPE_CHECKING:
+    URLParam = Dict[str, List[str]]
+    RouteHandler = Callable[[URLParam], None]
 
 logger = logging.getLogger(__name__)
+
+
+class RWLock:
+    def __init__(self) -> None:
+        self.write_lock = threading.Lock()
+        self._read_counter_lock = threading.Lock()
+        self._read_counter = 0
+
+    def read_lock_acquire(self):
+        with self._read_counter_lock:
+            self._read_counter += 1
+            if self._read_counter == 1:
+                self.write_lock.acquire()
+
+    def read_lock_release(self):
+        with self._read_counter_lock:
+            self._read_counter -= 1
+            if self._read_counter == 0:
+                self.write_lock.release()
+
+    @property
+    @contextlib.contextmanager
+    def read_lock(self):
+        self.read_lock_acquire()
+        try:
+            yield
+        finally:
+            self.read_lock_release()
+
+
+class SafeDict(collections.abc.MutableMapping[str, Any]):
+    """Dictionary with read write lock."""
+
+    def __init__(self) -> None:
+        self._lock = RWLock()
+        self._data: Dict = {}
+
+    def __repr__(self) -> str:
+        with self._lock.read_lock:
+            return repr(self._data)
+
+    def __getitem__(self, __key: str) -> Any:
+        with self._lock.read_lock:
+            return self._data.__getitem__(__key)
+
+    def __setitem__(self, __key: str, __value: Any) -> None:
+        with self._lock.write_lock:
+            return self._data.__setitem__(__key, __value)
+
+    def __delitem__(self, __key: str) -> None:
+        with self._lock.write_lock:
+            return self._data.__delitem__(__key)
+
+    def __iter__(self) -> Iterator[str]:
+        with self._lock.read_lock:
+            return iter(self._data)
+
+    def __len__(self) -> int:
+        with self._lock.read_lock:
+            return len(self._data)
+
+    def __contains__(self, __key: object) -> bool:
+        with self._lock.read_lock:
+            return __key in self._data
 
 
 class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
     server: "HTTPServer"
 
     @abc.abstractmethod
-    def route(self, path: str) -> Optional[RouteHandler]:
+    def route(self, path: str) -> Optional["RouteHandler"]:
         """Routing GET request to specific method."""
 
     def do_GET(self) -> None:
@@ -46,11 +113,13 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
             fmt % args,
         )
 
+    # TODO response template
+
 
 class HTTPServer(http.server.ThreadingHTTPServer):
     """A HTTP server with a shared context dict"""
 
-    context: Dict[str, Any]
+    context: SafeDict
     """A dictionary to share information among threads."""
 
     ready: threading.Event
@@ -68,7 +137,7 @@ class HTTPServer(http.server.ThreadingHTTPServer):
         the context object would be set after initialize.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
-        server.context = {}
+        server.context = SafeDict()
         server.ready = threading.Event()
         return server
 

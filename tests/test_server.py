@@ -8,6 +8,18 @@ import pytest
 import secrets_env.server as t
 
 
+def test_safe_dict():
+    d = t.SafeDict()
+    d["foo"] = "bar"
+    d.setdefault("bar", "baz")
+    assert len(d) == 2
+    assert repr(d) == "{'foo': 'bar', 'bar': 'baz'}"
+
+    assert d.pop("bar") == "baz"
+    assert "bar" not in d
+    assert list(d) == ["foo"]
+
+
 def test_server_control(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
