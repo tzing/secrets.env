@@ -11,9 +11,8 @@ import urllib.parse
 from http import HTTPStatus
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
-if typing.TYPE_CHECKING:
-    URLParam = Dict[str, List[str]]
-    RouteHandler = Callable[[URLParam], None]
+URLParams = Dict[str, List[str]]
+RouteHandler = Callable[[URLParams], None]
 
 logger = logging.getLogger(__name__)
 
@@ -145,9 +144,21 @@ class HTTPServer(http.server.ThreadingHTTPServer):
         the context object would be set after initialize.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
+
+        # HTTPServer property
+        server.allow_reuse_address = True
+
+        # customized
         server.context = SafeDict()
         server.ready = threading.Event()
+
         return server
+
+    @property
+    def server_uri(self):
+        host, port = self.server_address
+        self.server_name
+        return f"http://{host}:{port}"
 
 
 class HTTPServerThread(threading.Thread):
@@ -182,7 +193,7 @@ class HTTPServerThread(threading.Thread):
 
 def start_server(
     handler: typing.Type[HTTPRequestHandler],
-    host: str = "localhost",
+    host: str = "127.0.0.1",
     port: Optional[int] = None,
     need_prepare: bool = False,
 ) -> HTTPServer:

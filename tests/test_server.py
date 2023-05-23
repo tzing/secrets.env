@@ -76,21 +76,21 @@ class TestRequest:
             self.send_response(HTTPStatus.OK)
             self.end_headers()
 
-    @pytest.fixture(scope="class", autouse=True)
-    def _run_server(self):
-        server = t.start_server(self.Handler, port=56789)
-        yield
-        server.shutdown()
+    def setup_class(self):
+        self.server = t.start_server(self.Handler)
+
+    def teardown_class(self):
+        self.server.shutdown()
 
     @pytest.mark.parametrize(
         ("path", "code"),
         [
-            ("ok", 200),
-            ("not-found", 404),
+            ("/ok", 200),
+            ("/not-found", 404),
         ],
     )
     def test(self, path: str, code: int):
-        resp = httpx.get(f"http://localhost:56789/{path}")
+        resp = httpx.get(self.server.server_uri + path)
         assert resp.status_code == code
 
 
