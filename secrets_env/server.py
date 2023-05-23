@@ -6,7 +6,7 @@ import threading
 import typing
 import urllib.parse
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 DEFAULT_SERVER_LOOP_TIMEOUT = 0.08
 
@@ -103,11 +103,11 @@ class HTTPServerThread(threading.Thread):
             logger.debug("HTTP server created. Waiting for setup...")
             srv.ready.wait()
 
-            logger.debug("Start listening %s:%d", self.host, self.port)
+            logger.debug("Start listening %s", srv.server_address)
             while not srv.stop.is_set():
                 srv.handle_request()
 
-        logger.debug("Stop listen %s:%d", self.host, self.port)
+        logger.debug("Stop listen %s", srv.server_address)
 
 
 def start_server(

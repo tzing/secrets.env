@@ -26,14 +26,14 @@ def test_server_control(
 
         time.sleep(0.1)
         assert len(caplog.records) == 2
-        assert "Start listening localhost:" in caplog.text
+        assert "Start listening ('127.0.0.1', " in caplog.text
 
         # stop
         server.stop.set()
 
         time.sleep(0.1)
         assert len(caplog.records) == 3
-        assert "Stop listen localhost:" in caplog.text
+        assert "Stop listen ('127.0.0.1', " in caplog.text
 
 
 class TestRequest:
