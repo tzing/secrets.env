@@ -8,8 +8,6 @@ import urllib.parse
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional
 
-DEFAULT_SERVER_LOOP_TIMEOUT = 0.08
-
 URLParam = Dict[str, List[str]]
 RouteHandler = Callable[[URLParam], None]
 
@@ -49,14 +47,13 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
         )
 
 
-class HTTPServer(http.server.HTTPServer):
+class HTTPServer(http.server.ThreadingHTTPServer):
     """A HTTP server with a shared context dict"""
 
     context: Dict[str, Any]
     """A dictionary to share information among threads."""
 
     ready: threading.Event
-    stop: threading.Event
 
     @classmethod
     def create(
@@ -64,7 +61,6 @@ class HTTPServer(http.server.HTTPServer):
         host: str,
         port: int,
         handler: typing.Type[HTTPRequestHandler],
-        timeout=DEFAULT_SERVER_LOOP_TIMEOUT,
     ):
         """Create a :py:class:`http.server.HTTPServer` and add context dict.
 
@@ -72,10 +68,8 @@ class HTTPServer(http.server.HTTPServer):
         the context object would be set after initialize.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
-        server.timeout = timeout
         server.context = {}
         server.ready = threading.Event()
-        server.stop = threading.Event()
         return server
 
 
@@ -104,8 +98,7 @@ class HTTPServerThread(threading.Thread):
             srv.ready.wait()
 
             logger.debug("Start listening %s", srv.server_address)
-            while not srv.stop.is_set():
-                srv.handle_request()
+            srv.serve_forever()
 
         logger.debug("Stop listen %s", srv.server_address)
 

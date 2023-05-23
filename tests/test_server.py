@@ -29,7 +29,7 @@ def test_server_control(
         assert "Start listening ('127.0.0.1', " in caplog.text
 
         # stop
-        server.stop.set()
+        server.shutdown()
 
         time.sleep(0.1)
         assert len(caplog.records) == 3
@@ -50,7 +50,7 @@ class TestRequest:
     def _run_server(self):
         server = t.start_server(self.Handler, port=56789)
         yield
-        server.stop.set()
+        server.shutdown()
 
     @pytest.mark.parametrize(
         ("path", "code"),
