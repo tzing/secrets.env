@@ -1,3 +1,5 @@
+.. _poetry-addon:
+
 Poetry
 ======
 
@@ -10,6 +12,7 @@ This app could be used as its `plugin`_, and loads the secrets into environment 
 Enable
 ------
 
+This feature requires `Poetry >= 1.2 <https://python-poetry.org/blog/announcing-poetry-1.2.0/#plugin-support>`_.
 Run this command and poetry will install it:
 
 .. code-block:: sh
