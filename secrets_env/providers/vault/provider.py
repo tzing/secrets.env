@@ -84,16 +84,16 @@ class KvProvider(ProviderBase):
         except httpx.HTTPError as e:
             if not (reason := get_httpx_error_reason(e)):
                 raise
-            raise AuthenticationError("{} during get token", reason)
+            raise AuthenticationError("Encounter {} while retrieving token", reason)
 
         if not token:
-            raise AuthenticationError("Token is not populated")
+            raise AuthenticationError("Absence of token information")
 
         # verify token
         if is_authenticated(client, token):
             client.headers["X-Vault-Token"] = token
         else:
-            raise AuthenticationError("Invalid token")
+            raise AuthenticationError("Token is invalid")
 
         return client
 
