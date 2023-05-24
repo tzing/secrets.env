@@ -13,12 +13,16 @@ from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
+from secrets_env.server import HTTPRequestHandler, RouteHandler, start_server
 
 from .base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
 
+    from secrets_env.server import URLParams
+
+PATH_OIDC_CALLBACK = "/oidc/callback"
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +49,14 @@ class OpenIDConnectAuth(Auth):
     def login(self, client: "httpx.Client") -> str:
         logger.debug("Applying ODIC auth")
 
-        # prepare data for callback server
-        port = get_free_port()
-        client_nonce = uuid.uuid1().hex
+        # prepare server
+        server = start_server(OIDCRequestHandler, ready=False)
 
-        # request for auth url
+        # get auth url
+        client_nonce = uuid.uuid1().hex
         auth_url = get_authorization_url(
             client,
-            f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
+            f"{server.server_uri}{PATH_OIDC_CALLBACK}",
             self.role,
             client_nonce,
         )
@@ -60,24 +64,28 @@ class OpenIDConnectAuth(Auth):
         if not auth_url:
             raise AuthenticationError("Failed to get OIDC authorization URL")
 
-        # start callback server
-        server_thread = OpenIDConnectCallbackService(port, self)
-        server_thread.start()
+        server.context["auth_url"] = auth_url
 
-        # open the link
+        # create entrypoint
+        entrypoint = uuid.uuid1().hex
+        server.context["entrypoint"] = entrypoint
+
+        entrypoint_url = f"{server.server_uri}/{entrypoint}"
+
+        # start server
+        server.ready.set()
+
+        # open entrypoint
         logger.info(
             "<!important>"
             "Waiting for response from OpenID connect provider...\n"
             "If browser does not open automatically, open the link:\n"
-            f"  <link>{auth_url}</link>"
+            f"  <link>{entrypoint_url}</link>"
         )
         webbrowser.open(auth_url)
 
         # wait until callback
-        try:
-            server_thread.join()
-        finally:
-            server_thread.shutdown_server()
+        server.server_thread.join()
 
         if not self.authorization_code:
             raise AuthenticationError("OIDC Authorization code not received")
@@ -101,6 +109,25 @@ class OpenIDConnectAuth(Auth):
 
         logger.debug("Missing OIDC role. Use default.")
         return cls()
+
+
+class OIDCRequestHandler(HTTPRequestHandler):
+    def route(self, path: str) -> Optional[RouteHandler]:
+        if path == PATH_OIDC_CALLBACK:
+            return self.do_oidc_callback
+
+        entrypoint = self.server.context["entrypoint"]
+        path_entrypoint = "/" + entrypoint
+        if path == path_entrypoint:
+            return self.do_forward_auth_url
+
+    def do_forward_auth_url(self, params: "URLParams"):
+        """Forwards user to auth URL, which is very loooong."""
+        auth_url = self.server.context["auth_url"]
+        # TODO forward
+
+    def do_oidc_callback(self, params: "URLParams"):
+        ...
 
 
 class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
@@ -146,54 +173,6 @@ class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
             self.log_date_time_string(),
             fmt % args,
         )
-
-
-class _OpenIDConnectCallbackServer(HTTPServer):
-    # a class to cheat type checker
-    auth_token: Optional[str]
-
-
-class OpenIDConnectCallbackService(threading.Thread):
-    SERVER_LOOP_TIMEOUT = 0.08
-
-    def __init__(self, port: int, storage: OpenIDConnectAuth) -> None:
-        super().__init__(daemon=True)
-        self.port = port
-        self.storage = storage
-        self._stop_event = threading.Event()
-
-    def run(self) -> None:
-        """Run a http server in background thread."""
-        logger.debug("Start listening port %d for OIDC callback", self.port)
-
-        # serve until stop event is set
-        with _OpenIDConnectCallbackServer(
-            server_address=("localhost", self.port),
-            RequestHandlerClass=OpenIDConnectCallbackHandler,
-        ) as srv:
-            srv.timeout = self.SERVER_LOOP_TIMEOUT
-            srv.auth_token = None
-
-            while not srv.auth_token and not self._stop_event.is_set():
-                srv.handle_request()
-
-        logger.debug("Stopping OIDC callback server")
-
-        # finalize; set auth code
-        if srv.auth_token:
-            object.__setattr__(self.storage, "authorization_code", srv.auth_token)
-
-    def shutdown_server(self):
-        """Shutdown internal http server."""
-        logger.debug("Shutdown OIDC callback server")
-        self._stop_event.set()
-
-
-def get_free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("", 0))
-        _, port = s.getsockname()
-    return port
 
 
 def get_authorization_url(
