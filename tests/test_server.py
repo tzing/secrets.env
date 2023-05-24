@@ -45,11 +45,11 @@ def test_server_control(
 
     with caplog.at_level(logging.DEBUG, "secrets_env.server"):
         # create server
-        server = t.start_server(t.HTTPRequestHandler, need_prepare=True)
+        server = t.start_server(t.HTTPRequestHandler, ready=False)
 
         time.sleep(0.1)
         assert len(caplog.records) == 1
-        assert "HTTP server created." in caplog.text
+        assert "HTTP server thread created." in caplog.text
 
         # ready
         server.ready.set()
@@ -63,7 +63,7 @@ def test_server_control(
 
         time.sleep(0.1)
         assert len(caplog.records) == 3
-        assert "Stop listen ('127.0.0.1', " in caplog.text
+        assert "HTTP Server shutdown" in caplog.text
 
 
 class TestRequest:

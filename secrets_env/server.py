@@ -82,7 +82,7 @@ class SafeDict(collections.abc.MutableMapping[str, Any]):
 
 
 class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
-    server: "HTTPServer"
+    server: "ThreadingHTTPServer"
 
     @abc.abstractmethod
     def route(self, path: str) -> Optional["RouteHandler"]:
@@ -123,13 +123,18 @@ class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
         self.wfile.write(payload)
 
 
-class HTTPServer(http.server.ThreadingHTTPServer):
-    """A HTTP server with a shared context dict"""
+class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
+    """A HTTP server that runs in background thread, creates threads for every
+    response and provide a shared context storage."""
 
     context: SafeDict
     """A dictionary to share information among threads."""
 
     ready: threading.Event
+    """An event object to notify the background thread that setup is finished."""
+
+    server_thread: threading.Thread
+    """The thread that runs this server."""
 
     @classmethod
     def create(
@@ -138,21 +143,41 @@ class HTTPServer(http.server.ThreadingHTTPServer):
         port: int,
         handler: typing.Type[HTTPRequestHandler],
     ):
-        """Create a :py:class:`http.server.HTTPServer` and add context dict.
-
-        :py:class:`socketserver.TCPServer` says never override its constructor so
-        the context object would be set after initialize.
+        """Create a HTTP server that served in background thread.
+        The threads starts automatically but will not serve requests until
+        :py:attr:`ready` event is set.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
 
-        # HTTPServer property
-        server.allow_reuse_address = True
-
-        # customized
         server.context = SafeDict()
         server.ready = threading.Event()
+        server.server_thread = threading.Thread(target=server._worker, daemon=True)
 
+        server.server_thread.start()
         return server
+
+    def _worker(self):
+        """Background runner."""
+        logger.debug(
+            "HTTP server thread created. thread id= %s; address= %s",
+            threading.get_native_id(),
+            self.server_address,
+        )
+
+        # wait until setup finish
+        self.ready.wait()
+
+        # listening
+        logger.debug("Start listening %s", self.server_address)
+        with self:
+            self.serve_forever()
+
+        # finalize
+        logger.debug(
+            "HTTP Server shutdown. ident= %s; address= %s",
+            threading.get_native_id(),
+            self.server_address,
+        )
 
     @property
     def server_uri(self):
@@ -161,56 +186,19 @@ class HTTPServer(http.server.ThreadingHTTPServer):
         return f"http://{host}:{port}"
 
 
-class HTTPServerThread(threading.Thread):
-    def __init__(
-        self,
-        host: str,
-        port: int,
-        handler: typing.Type[HTTPRequestHandler],
-    ) -> None:
-        super().__init__(daemon=True)
-        self.host = host
-        self.port = port
-        self.handler = handler
-
-        self.server: Optional[HTTPServer] = None
-
-        self.initialized = threading.Event()
-
-    def run(self) -> None:
-        with HTTPServer.create(self.host, self.port, self.handler) as srv:
-            self.server = srv
-            self.initialized.set()
-
-            logger.debug("HTTP server created. Waiting for setup...")
-            srv.ready.wait()
-
-            logger.debug("Start listening %s", srv.server_address)
-            srv.serve_forever()
-
-        logger.debug("Stop listen %s", srv.server_address)
-
-
 def start_server(
     handler: typing.Type[HTTPRequestHandler],
     host: str = "127.0.0.1",
     port: Optional[int] = None,
-    need_prepare: bool = False,
-) -> HTTPServer:
+    *,
+    ready: bool = True,
+) -> ThreadingHTTPServer:
     if port is None:
         port = get_free_port()
 
-    # start background thread
-    thread = HTTPServerThread(host, port, handler)
-    thread.start()
+    server = ThreadingHTTPServer.create(host=host, port=port, handler=handler)
 
-    # get server instance
-    thread.initialized.wait()
-    assert thread.server
-    server = thread.server
-
-    # prepare
-    if not need_prepare:
+    if ready:
         server.ready.set()
 
     return server
