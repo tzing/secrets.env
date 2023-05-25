@@ -23,8 +23,9 @@ Or you can add it as `poetry <https://python-poetry.org/>`_ plugin:
 Certain features are not activated by default. Here are the dependency groups you can use:
 
 * ``all`` - *install everything below*
-* ``yaml`` - supporting YAML config
 * ``keyring`` - enable :ref:`keyring add-on <keyring-addon>`
+* ``teleport`` - to reduce some overhead in :ref:`Teleport add-on <teleport-addon>`
+* ``yaml`` - supporting YAML config
 
 Create config
 -------------

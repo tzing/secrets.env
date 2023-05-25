@@ -56,9 +56,9 @@ all = [
     "keyring",
     "PyYAML",
 ]
-yaml = ["PyYAML"]
 keyring = ["keyring"]
 teleport = ["cryptography"]
+yaml = ["PyYAML"]
 
 [tool.poetry.scripts]
 "secrets.env" = "secrets_env.cli:main"

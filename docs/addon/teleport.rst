@@ -23,6 +23,18 @@ For macOS users, you can get it from homebrew:
 
 For other users, please read `official document <https://goteleport.com/docs/installation/>`_ for the instructions.
 
+*(Optional)* Install this app with extras ``teleport`` for reuse the certificate in some communications:
+
+.. tabs::
+
+   .. code-tab:: bash pip
+
+      pip install 'secrets.env[teleport]'
+
+   .. code-tab:: bash poetry plugin
+
+      poetry self add secrets.env -E teleport
+
 .. _use-teleport-addon:
 
 Use Teleport adapter
