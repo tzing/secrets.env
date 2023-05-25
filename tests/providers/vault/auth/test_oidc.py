@@ -65,12 +65,17 @@ class TestOpenIDConnectAuth:
         auth = t.OpenIDConnectAuth()
         assert auth.login(Mock(spec=httpx.Client)) == "t0ken"
 
-    @pytest.mark.usefixtures("_patch_get_authorization_url", "patch_start_server")
-    def test_login_fail(self, monkeypatch: pytest.MonkeyPatch):
-        # patch webbrowser.open
-        monkeypatch.setattr("webbrowser.open", lambda _: None)
+    def test_login_fail_1(self, monkeypatch: pytest.MonkeyPatch):
+        # case: get auth url failed
+        monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
+        auth = t.OpenIDConnectAuth()
+        with pytest.raises(AuthenticationError):
+            auth.login(Mock(spec=httpx.Client))
 
-        # run
+    @pytest.mark.usefixtures("_patch_get_authorization_url", "patch_start_server")
+    def test_login_fail_2(self, monkeypatch: pytest.MonkeyPatch):
+        # case: not received the token
+        monkeypatch.setattr("webbrowser.open", lambda _: None)
         auth = t.OpenIDConnectAuth()
         with pytest.raises(AuthenticationError):
             auth.login(Mock(spec=httpx.Client))
@@ -163,7 +168,7 @@ class TestGetAuthorizationUrl:
         assert (
             t.get_authorization_url(
                 unittest_client,
-                "http://localhost/callback",
+                "http://127.0.0.1/callback",
                 None,
                 "test-nonce",
             )
@@ -175,13 +180,15 @@ class TestGetAuthorizationUrl:
     ):
         unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
 
-        with pytest.raises(AuthenticationError):
+        assert (
             t.get_authorization_url(
                 unittest_client,
                 "http://localhost/callback",
                 "test_role",
                 "test-nonce",
             )
+            is None
+        )
 
 
 class TestRequestToken:

@@ -57,6 +57,9 @@ class OpenIDConnectAuth(Auth):
             client_nonce,
         )
 
+        if not auth_url:
+            raise AuthenticationError("Failed to reterive OIDC authorization URL")
+
         # create entrypoint, setup context and start server
         entrypoint = f"/{uuid.uuid1()}"
         entrypoint_url = f"{server.server_uri}{entrypoint}"
@@ -144,7 +147,7 @@ class OIDCRequestHandler(HTTPRequestHandler):
 
 def get_authorization_url(
     client: "httpx.Client", redirect_uri: str, role: Optional[str], client_nonce: str
-) -> str:
+) -> Optional[str]:
     """Get OIDC authorization URL.
 
     See also
@@ -156,6 +159,11 @@ def get_authorization_url(
     AuthenticationError
         On requesting URL failed.
     """
+    if redirect_uri.startswith("http://127.0.0.1"):
+        # vault only accepts hostname from pre-configured acceptlist and `localhost`
+        # is always in the list
+        redirect_uri = redirect_uri.replace("http://127.0.0.1", "http://localhost", 1)
+
     payload = {
         "redirect_uri": redirect_uri,
         "client_nonce": client_nonce,
@@ -166,12 +174,14 @@ def get_authorization_url(
     resp = client.post("/v1/auth/oidc/oidc/auth_url", json=payload)
 
     if resp.status_code == HTTPStatus.OK:
+        # when `redirect_uri` is not accepted, it still response 200 but
+        # `auth_url` would be empty string
         data = resp.json()
         return data["data"]["auth_url"]
 
     logger.error("Error requesting authorization URL")
     logger.debug("Code= %d. Raw response= %s", resp.status_code, resp.text)
-    raise AuthenticationError("Failed to get OIDC authorization URL")
+    return None
 
 
 def request_token(

@@ -197,7 +197,6 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
     @property
     def server_uri(self):
         host, port = self.server_address
-        self.server_name
         return f"http://{host}:{port}"
 
 
