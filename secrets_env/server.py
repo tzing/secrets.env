@@ -232,7 +232,7 @@ def get_free_port() -> int:
     return port
 
 
-@functools.cache
+@functools.lru_cache(maxsize=None)
 def get_template(filename: str) -> string.Template:
     current_dir = pathlib.Path(__file__).resolve().parent
     template_dir = current_dir / "templates"
