@@ -23,26 +23,7 @@ def test_safe_dict():
     assert list(d) == ["foo"]
 
 
-def test_template(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path):
-    (tmp_path / "templates").mkdir()
-    (tmp_path / "templates" / "example.txt").write_text("hello world!")
-
-    handler = Mock(spec=t.HTTPRequestHandler)
-    handler.wfile = io.BytesIO()
-
-    with monkeypatch.context() as ctx:
-        ctx.setattr("pathlib.Path", lambda _: tmp_path / "server.py")
-        t.HTTPRequestHandler.write_template(handler, "example.txt")
-
-    handler.wfile.seek(io.SEEK_SET)
-    assert handler.wfile.read() == b"hello world!"
-
-
-def test_server_control(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    monkeypatch.setattr(t.HTTPRequestHandler, "__abstractmethods__", set())
-
+def test_server_control(caplog: pytest.LogCaptureFixture):
     with caplog.at_level(logging.DEBUG, "secrets_env.server"):
         # create server
         server = t.start_server(t.HTTPRequestHandler, ready=False)

@@ -1,4 +1,3 @@
-import abc
 import collections.abc
 import contextlib
 import http.server
@@ -81,10 +80,9 @@ class SafeDict(collections.abc.MutableMapping[str, Any]):
             return __key in self._data
 
 
-class HTTPRequestHandler(abc.ABC, http.server.SimpleHTTPRequestHandler):
+class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     server: "ThreadingHTTPServer"
 
-    @abc.abstractmethod
     def route(self, path: str) -> Optional["RouteHandler"]:
         """Routing GET request to specific method."""
 
