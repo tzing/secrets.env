@@ -1,9 +1,6 @@
-import io
 import logging
-import pathlib
 import time
 from http import HTTPStatus
-from unittest.mock import Mock
 
 import httpx
 import pytest
