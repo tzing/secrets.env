@@ -4,6 +4,8 @@ information from it.
 .. _Teleport CLI: https://goteleport.com/docs/reference/cli/
 """
 import dataclasses
+import datetime
+import importlib.util
 import json
 import logging
 import queue
@@ -80,8 +82,7 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
         raise SecretsEnvError("Internal error on accessing Teleport CLI")
 
     # try to get config directly; when not available, loging and retry
-    logger.debug("Try to get config directly")
-    cfg = call_app_config(app)
+    cfg = attempt_get_app_config(app)
 
     if not cfg:
         call_app_login(params)
@@ -106,6 +107,39 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
         path_cert=cert_path,
         path_key=path_key,
     )
+
+
+def attempt_get_app_config(app: str) -> Dict[str, str]:
+    """The certificate refreshing process takes a while so we'd like to directly
+    use the one stored on disk. Teleport sometimes responds the file path without
+    expiration check. Therefore we need to check it by ourself.
+    """
+    # need cryptography package to read cert file
+    if importlib.util.find_spec("cryptography"):
+        return {}
+
+    logger.debug("Try to get config directly")
+    config = call_app_config(app)
+    if not config:
+        # case: not login yet / teleport detect expired
+        return {}
+
+    if not is_certificate_valid(config["cert"]):
+        # case: detect expired by ourself
+        return {}
+
+    return config
+
+
+def is_certificate_valid(filepath: str) -> bool:
+    import cryptography.x509
+
+    with open(filepath, "rb") as fd:
+        data = fd.read()
+
+    cert = cryptography.x509.load_pem_x509_certificate(data)
+    now = datetime.datetime.utcnow()
+    return now < cert.not_valid_after
 
 
 def call_version() -> bool:

@@ -25,22 +25,24 @@ class TestGetConnectionInfo:
     def _patch_version(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "call_version", lambda: True)
 
-    @pytest.mark.usefixtures("_patch_which", "_patch_version")
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_login", lambda _: None)
+    @pytest.fixture()
+    def _patch_call_app_login(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_call_app_login(params):
+            ...
 
-        with patch.object(
+        monkeypatch.setattr(t, "call_app_login", mock_call_app_login)
+
+    @pytest.mark.usefixtures("_patch_which", "_patch_version", "_patch_call_app_login")
+    def test_success(self):
+        with patch.object(t, "attempt_get_app_config", return_value={}), patch.object(
             t,
             "call_app_config",
-            side_effect=[
-                {},
-                {
-                    "uri": "https://example.com",
-                    "ca": "/no/this/file",
-                    "cert": __file__,
-                    "key": __file__,
-                },
-            ],
+            return_value={
+                "uri": "https://example.com",
+                "ca": "/no/this/file",
+                "cert": __file__,
+                "key": __file__,
+            },
         ):
             assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
                 uri="https://example.com",
@@ -60,9 +62,8 @@ class TestGetConnectionInfo:
         with pytest.raises(SecretsEnvError):
             t.get_connection_info({"app": "test"})
 
-    @pytest.mark.usefixtures("_patch_which", "_patch_version")
+    @pytest.mark.usefixtures("_patch_which", "_patch_version", "_patch_call_app_login")
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_login", lambda _: None)
         monkeypatch.setattr(t, "call_app_config", lambda _: {})
         with pytest.raises(AuthenticationError):
             t.get_connection_info({"app": "test"})
