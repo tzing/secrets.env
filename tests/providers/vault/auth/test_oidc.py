@@ -1,7 +1,5 @@
+import re
 import threading
-import time
-from http import HTTPStatus
-from typing import Optional
 from unittest.mock import Mock
 
 import httpx
@@ -9,8 +7,8 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.auth.oidc as t
+import secrets_env.server
 from secrets_env.exceptions import AuthenticationError
-from secrets_env.server import start_server
 
 
 class TestOpenIDConnectAuth:
@@ -26,88 +24,57 @@ class TestOpenIDConnectAuth:
     def test_method(self):
         assert isinstance(t.OpenIDConnectAuth.method(), str)
 
-    def test_login_success(self, monkeypatch: pytest.MonkeyPatch):
-        # NOTE this function simulates server callback
-
-        # setup: control server port
-        def patch_start_server(handler, ready):
-            return start_server(handler, port=56789, ready=ready)
-
-        monkeypatch.setattr(t, "start_server", patch_start_server)
-
-        # setup: patch webbrowser.open for simulates callback
-        def patch_webbrowser_open(url):
-            assert url.startswith("http://127.0.0.1:56789/")
-            httpx.get("http://127.0.0.1:56789/oidc/callback", params={"code": "test"})
-
-        monkeypatch.setattr("webbrowser.open", patch_webbrowser_open)
-
-        # setup: patch get_authorization_url
+    @pytest.fixture()
+    def _patch_get_authorization_url(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get_authorization_url(client, redirect_uri, role, client_nonce):
             assert isinstance(client, httpx.Client)
-            assert redirect_uri == "http://127.0.0.1:56789/oidc/callback"
+            assert re.fullmatch(r"http://127\.0\.0\.1:\d+/oidc/callback", redirect_uri)
             assert isinstance(role, str) or role is None
             assert isinstance(client_nonce, str)
             return "https://example.com/auth"
 
         monkeypatch.setattr(t, "get_authorization_url", mock_get_authorization_url)
 
-        # setup: patch request_token
-        def patch_request_token(client, auth_url, auth_code, client_nonce):
-            assert isinstance(client, httpx.Client)
-            assert auth_url == "https://example.com/auth"
-            assert auth_code == "test"
-            assert isinstance(client_nonce, str)
-            return "t0ken"
+    @pytest.fixture()
+    def patch_start_server(self, monkeypatch: pytest.MonkeyPatch):
+        # don't start server
+        sever = Mock(
+            spec=secrets_env.server.ThreadingHTTPServer,
+            server_uri="http://127.0.0.1:0000",
+            ready=Mock(spec=threading.Event),
+            context={},
+            server_thread=Mock(spec=threading.Thread),
+        )
 
-        monkeypatch.setattr(t, "request_token", patch_request_token)
+        def patch_start_server(handler, ready):
+            return sever
+
+        monkeypatch.setattr(t, "start_server", patch_start_server)
+        return sever
+
+    @pytest.mark.usefixtures("_patch_get_authorization_url")
+    def test_login_success(self, monkeypatch: pytest.MonkeyPatch, patch_start_server):
+        # patch webbrowser.open for simulates callback result
+        def patch_webbrowser_open(entrypoint):
+            assert entrypoint.startswith("http://127.0.0.1:")
+            patch_start_server.context["token"] = "t0ken"
+
+        monkeypatch.setattr("webbrowser.open", patch_webbrowser_open)
 
         # run
-        client = Mock(spec=httpx.Client)
-
         auth = t.OpenIDConnectAuth()
-        assert auth.login(client) == "t0ken"
+        assert auth.login(Mock(spec=httpx.Client)) == "t0ken"
 
+    @pytest.mark.usefixtures("_patch_get_authorization_url", "patch_start_server")
+    def test_login_fail(self, monkeypatch: pytest.MonkeyPatch):
+        # patch webbrowser.open
+        monkeypatch.setattr("webbrowser.open", lambda _: None)
 
-#     def test_login_error_1(self, monkeypatch: pytest.MonkeyPatch):
-#         # Failed to get auth URL
-#         monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
-#         with pytest.raises(AuthenticationError):
-#             self.auth.login(self.client)
+        # run
+        auth = t.OpenIDConnectAuth()
+        with pytest.raises(AuthenticationError):
+            auth.login(Mock(spec=httpx.Client))
 
-#     def test_login_error_2(self, monkeypatch: pytest.MonkeyPatch):
-#         # Failed to get auth code
-#         monkeypatch.setattr(
-#             t, "get_authorization_url", lambda *_: "https://auth.example.com"
-#         )
-#         monkeypatch.setattr(
-#             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
-#         )
-#         monkeypatch.setattr("webbrowser.open", lambda _: None)
-
-#         with pytest.raises(AuthenticationError):
-#             self.auth.login(self.client)
-
-#     def test_login_error_3(self, monkeypatch: pytest.MonkeyPatch):
-#         # Failed to get client token
-#         monkeypatch.setattr(
-#             t, "get_authorization_url", lambda *_: "https://auth.example.com"
-#         )
-#         monkeypatch.setattr(
-#             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
-#         )
-
-#         def mock_open(url):
-#             object.__setattr__(self.auth, "authorization_code", "auth-code")
-
-#         monkeypatch.setattr("webbrowser.open", mock_open)
-#         monkeypatch.setattr(t, "request_token", lambda *_: None)
-
-#         with pytest.raises(AuthenticationError):
-#             self.auth.login(self.client)
-
-
-class TestOpenIDConnectAuthLoad:
     def test_load_default(self):
         auth = t.OpenIDConnectAuth.load({})
         assert isinstance(auth, t.OpenIDConnectAuth)
@@ -125,45 +92,53 @@ class TestOpenIDConnectAuthLoad:
         assert auth.role == "test"
 
 
-# def test_callback_service():
-#     auth = t.OpenIDConnectAuth("test")
+class TestOIDCRequestHandler:
+    def setup_method(self):
+        self.server = secrets_env.server.start_server(t.OIDCRequestHandler)
+        self.server.context.update(
+            entrypoint="/ffff-ffff",
+            client=Mock(spec=httpx.Client),
+            auth_url="https://example.com/auth",
+            client_nonce="0000-0000",
+        )
 
-#     thread = t.OpenIDConnectCallbackService(56789, auth)
-#     thread.start()
-#     assert isinstance(thread, threading.Thread)
+        self.client = httpx.Client(base_url=self.server.server_uri)
 
-#     # invalid calls - the thread should not stop
-#     resp = httpx.get("http://localhost:56789/invalid-path")
-#     assert resp.status_code == HTTPStatus.NOT_FOUND
+    def teardown_method(self):
+        self.server.shutdown()
 
-#     resp = httpx.get("http://localhost:56789/oidc/callback?param=invalid")
-#     assert resp.status_code == HTTPStatus.BAD_REQUEST
+    def test_do_forward_auth_url(self):
+        resp = self.client.get("/ffff-ffff")
+        assert resp.is_redirect
+        assert resp.next_request.url == "https://example.com/auth"
 
-#     assert thread.is_alive()
+    def test_do_oidc_callback_success(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_request_token(client, auth_url, auth_code, client_nonce):
+            return "t0ken"
 
-#     # valid call - the thread should stop
-#     resp = httpx.get("http://localhost:56789/oidc/callback?code=test")
-#     assert resp.status_code == HTTPStatus.OK
-#     assert resp.headers["Content-Type"].startswith("text/html")
-#     assert (
-#         "<p>OIDC authentication successful, you can close the browser now.</p>"
-#     ) in resp.text
+        monkeypatch.setattr(t, "request_token", mock_request_token)
 
-#     thread.join()
-#     assert auth.authorization_code == "test"
+        resp = self.client.get("/oidc/callback?code=blah")
+        assert resp.status_code == 200
+        assert self.server.context["token"] == "t0ken"
 
+        self.server.server_thread.join(1.0)
+        assert not self.server.server_thread.is_alive()
 
-# def test_stop_callback_service():
-#     thread = t.OpenIDConnectCallbackService(56789, None)
-#     thread.start()
-#     assert thread.is_alive() is True
+    def test_do_oidc_callback_fail(self, monkeypatch: pytest.MonkeyPatch):
+        self.server.context.update()
 
-#     thread.shutdown_server()
+        # missing auth code
+        resp = self.client.get("/oidc/callback")
+        assert resp.status_code == 400
 
-#     time.sleep(0.2)
-#     assert thread.is_alive() is False
+        # request token fail
+        def mock_request_token(client, auth_url, auth_code, client_nonce):
+            ...
 
-#     thread.shutdown_server()  # should be no error
+        monkeypatch.setattr(t, "request_token", mock_request_token)
+        resp = self.client.get("/oidc/callback?code=blah")
+        assert resp.status_code == 500
 
 
 class TestGetAuthorizationUrl:
@@ -209,67 +184,67 @@ class TestGetAuthorizationUrl:
             )
 
 
-def test_request_token_success(
-    unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-):
-    unittest_respx.get(
-        "/v1/auth/oidc/oidc/callback",
-        params={
-            "state": "sample-state",
-            "nonce": "sample-nonce",
-            "code": "test-code",
-            "client_nonce": "test-nonce",
-        },
-    ).mock(
-        httpx.Response(
-            200,
-            json={
-                "request_id": "18ce3b76-50c8-a10d-6660-b6d1554a17c7",
-                "lease_id": "",
-                "renewable": False,
-                "lease_duration": 0,
-                "data": None,
-                "wrap_info": None,
-                "warnings": [],
-                "auth": {
-                    "client_token": "sample-token",
-                    "accessor": "sample-accessor",
-                    "policies": ["default"],
-                    "token_policies": ["default"],
-                    "identity_policies": [],
-                    "metadata": {"role": "default"},
-                    "lease_duration": 3600,
-                    "renewable": True,
-                    "entity_id": "8731089d-55a2-5255-0d50-5fe539af9872",
-                    "token_type": "service",
-                    "orphan": True,
-                    "mfa_requirement": None,
-                    "num_uses": 0,
-                },
+class TestRequestToken:
+    def test_success(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.get(
+            "/v1/auth/oidc/oidc/callback",
+            params={
+                "state": "sample-state",
+                "nonce": "sample-nonce",
+                "code": "test-code",
+                "client_nonce": "test-nonce",
             },
+        ).mock(
+            httpx.Response(
+                200,
+                json={
+                    "request_id": "18ce3b76-50c8-a10d-6660-b6d1554a17c7",
+                    "lease_id": "",
+                    "renewable": False,
+                    "lease_duration": 0,
+                    "data": None,
+                    "wrap_info": None,
+                    "warnings": [],
+                    "auth": {
+                        "client_token": "sample-token",
+                        "accessor": "sample-accessor",
+                        "policies": ["default"],
+                        "token_policies": ["default"],
+                        "identity_policies": [],
+                        "metadata": {"role": "default"},
+                        "lease_duration": 3600,
+                        "renewable": True,
+                        "entity_id": "8731089d-55a2-5255-0d50-5fe539af9872",
+                        "token_type": "service",
+                        "orphan": True,
+                        "mfa_requirement": None,
+                        "num_uses": 0,
+                    },
+                },
+            )
         )
-    )
-    assert (
-        t.request_token(
-            unittest_client,
-            "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
-            "test-code",
-            "test-nonce",
+        assert (
+            t.request_token(
+                unittest_client,
+                "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
+                "test-code",
+                "test-nonce",
+            )
+            == "sample-token"
         )
-        == "sample-token"
-    )
 
-
-def test_request_token_error(
-    unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-):
-    unittest_respx.get("/v1/auth/oidc/oidc/callback") % 403
-    assert (
-        t.request_token(
-            unittest_client,
-            "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
-            "test-code",
-            "test-nonce",
+    def test_error(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.get("/v1/auth/oidc/oidc/callback") % 403
+        assert (
+            t.request_token(
+                unittest_client,
+                "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
+                "test-code",
+                "test-nonce",
+            )
+            is None
         )
-        is None
-    )
