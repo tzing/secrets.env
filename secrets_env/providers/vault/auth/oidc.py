@@ -1,24 +1,24 @@
 import logging
-import socket
-import threading
 import typing
 import urllib.parse
 import uuid
 import webbrowser
 from dataclasses import dataclass, field
 from http import HTTPStatus
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
+from secrets_env.server import HTTPRequestHandler, start_server
 
 from .base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
 
+    from secrets_env.server import RouteHandler, URLParams
+
+PATH_OIDC_CALLBACK = "/oidc/callback"
 
 logger = logging.getLogger(__name__)
 
@@ -45,45 +45,48 @@ class OpenIDConnectAuth(Auth):
     def login(self, client: "httpx.Client") -> str:
         logger.debug("Applying ODIC auth")
 
-        # prepare data for callback server
-        port = get_free_port()
-        client_nonce = uuid.uuid1().hex
+        # prepare server
+        server = start_server(OIDCRequestHandler, ready=False)
 
-        # request for auth url
+        # get auth url
+        client_nonce = uuid.uuid1().hex
         auth_url = get_authorization_url(
             client,
-            f"http://localhost:{port}{OpenIDConnectCallbackHandler.CALLBACK_PATH}",
+            f"{server.server_uri}{PATH_OIDC_CALLBACK}",
             self.role,
             client_nonce,
         )
 
         if not auth_url:
-            raise AuthenticationError("Failed to get OIDC authorization URL")
+            raise AuthenticationError("Failed to reterive OIDC authorization URL")
 
-        # start callback server
-        server_thread = OpenIDConnectCallbackService(port, self)
-        server_thread.start()
+        # create entrypoint, setup context and start server
+        entrypoint = f"/{uuid.uuid1()}"
+        entrypoint_url = f"{server.server_uri}{entrypoint}"
 
-        # open the link
+        server.context.update(
+            auth_url=auth_url,
+            client_nonce=client_nonce,
+            client=client,
+            entrypoint=entrypoint,
+        )
+
+        server.ready.set()
+
+        # open entrypoint
         logger.info(
             "<!important>"
             "Waiting for response from OpenID connect provider...\n"
             "If browser does not open automatically, open the link:\n"
-            f"  <link>{auth_url}</link>"
+            f"  <link>{entrypoint_url}</link>"
         )
-        webbrowser.open(auth_url)
+        webbrowser.open(entrypoint_url)
 
-        # wait until callback
-        try:
-            server_thread.join()
-        finally:
-            server_thread.shutdown_server()
+        # wait until finish
+        server.server_thread.join()
 
-        if not self.authorization_code:
-            raise AuthenticationError("OIDC Authorization code not received")
-
-        # get client token
-        token = request_token(client, auth_url, self.authorization_code, client_nonce)
+        # check result
+        token = server.context.get("token")
         if not token:
             raise AuthenticationError("Failed to fetch OIDC client token")
 
@@ -103,97 +106,43 @@ class OpenIDConnectAuth(Auth):
         return cls()
 
 
-class OpenIDConnectCallbackHandler(SimpleHTTPRequestHandler):
-    CALLBACK_PATH = "/oidc/callback"
+class OIDCRequestHandler(HTTPRequestHandler):
+    def route(self, path: str) -> Optional["RouteHandler"]:
+        if path == PATH_OIDC_CALLBACK:
+            return self.do_oidc_callback
+        if path == self.server.context["entrypoint"]:
+            return self.do_forward_auth_url
 
-    def do_GET(self) -> None:
-        # parse path
-        url = urllib.parse.urlsplit(self.path)
-        logger.debug('Receive "%s %s %s"', self.command, url.path, self.request_version)
-
-        # only accepts callback path
-        if url.path != self.CALLBACK_PATH:
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
-
-        # send http 400 if 'code' does not provided
-        params = urllib.parse.parse_qs(url.query)
-        code, *_ = params.get("code", [None])
-        if not code:
-            self.send_error(HTTPStatus.BAD_REQUEST)
-            return
-
-        # save token
-        self.server: _OpenIDConnectCallbackServer
-        self.server.auth_token = code
-
-        # response
-        this_dir = Path(__file__).resolve().parent
-        response_page = this_dir / "templates" / "oidc-success.html"
-        response_data = response_page.read_bytes()
-
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/html; charset=UTF-8")
+    def do_forward_auth_url(self, params: "URLParams"):
+        """Forwards user to auth URL, which is very loooong."""
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", self.server.context["auth_url"])
+        self.send_header("Cache-control", "no-store")
         self.end_headers()
-        self.wfile.write(response_data)
 
-    def log_message(self, fmt: str, *args: Any) -> None:
-        # builtin `log_message` directly writes data to stderr
-        # adopting them to logging
-        logger.debug(
-            "%s - - [%s] %s",
-            self.address_string(),
-            self.log_date_time_string(),
-            fmt % args,
+    def do_oidc_callback(self, params: "URLParams"):
+        # get authorization code
+        codes = params.get("code")
+        if not codes:
+            self.response_error(HTTPStatus.BAD_REQUEST)
+            return
+
+        code = codes[0]
+
+        # request token
+        token = request_token(
+            self.server.context["client"],
+            self.server.context["auth_url"],
+            code,
+            self.server.context["client_nonce"],
         )
+        if not token:
+            self.response_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
 
-
-class _OpenIDConnectCallbackServer(HTTPServer):
-    # a class to cheat type checker
-    auth_token: Optional[str]
-
-
-class OpenIDConnectCallbackService(threading.Thread):
-    SERVER_LOOP_TIMEOUT = 0.08
-
-    def __init__(self, port: int, storage: OpenIDConnectAuth) -> None:
-        super().__init__(daemon=True)
-        self.port = port
-        self.storage = storage
-        self._stop_event = threading.Event()
-
-    def run(self) -> None:
-        """Run a http server in background thread."""
-        logger.debug("Start listening port %d for OIDC callback", self.port)
-
-        # serve until stop event is set
-        with _OpenIDConnectCallbackServer(
-            server_address=("localhost", self.port),
-            RequestHandlerClass=OpenIDConnectCallbackHandler,
-        ) as srv:
-            srv.timeout = self.SERVER_LOOP_TIMEOUT
-            srv.auth_token = None
-
-            while not srv.auth_token and not self._stop_event.is_set():
-                srv.handle_request()
-
-        logger.debug("Stopping OIDC callback server")
-
-        # finalize; set auth code
-        if srv.auth_token:
-            object.__setattr__(self.storage, "authorization_code", srv.auth_token)
-
-    def shutdown_server(self):
-        """Shutdown internal http server."""
-        logger.debug("Shutdown OIDC callback server")
-        self._stop_event.set()
-
-
-def get_free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("", 0))
-        _, port = s.getsockname()
-    return port
+        self.server.context["token"] = token
+        self.response_html(HTTPStatus.OK, "oidc-success.html")
+        self.server.shutdown()
 
 
 def get_authorization_url(
@@ -204,7 +153,17 @@ def get_authorization_url(
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-authorization-url-request
+
+    Exceptions
+    ----------
+    AuthenticationError
+        On requesting URL failed.
     """
+    if redirect_uri.startswith("http://127.0.0.1"):
+        # vault only accepts hostname from pre-configured acceptlist and `localhost`
+        # is always in the list
+        redirect_uri = redirect_uri.replace("http://127.0.0.1", "http://localhost", 1)
+
     payload = {
         "redirect_uri": redirect_uri,
         "client_nonce": client_nonce,
@@ -215,6 +174,8 @@ def get_authorization_url(
     resp = client.post("/v1/auth/oidc/oidc/auth_url", json=payload)
 
     if resp.status_code == HTTPStatus.OK:
+        # when `redirect_uri` is not accepted, it still response 200 but
+        # `auth_url` would be empty string
         data = resp.json()
         return data["data"]["auth_url"]
 
@@ -225,7 +186,7 @@ def get_authorization_url(
 
 def request_token(
     client: "httpx.Client", auth_url: str, auth_code: str, client_nonce: str
-):
+) -> Optional[str]:
     """Exchange authorization code for client token.
 
     See also
