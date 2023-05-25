@@ -6,6 +6,7 @@ import logging
 import pathlib
 import socket
 import string
+import sys
 import threading
 import typing
 import urllib.parse
@@ -46,7 +47,13 @@ class RWLock:
             self.read_lock_release()
 
 
-class SafeDict(collections.abc.MutableMapping[str, Any]):
+if sys.version_info >= (3, 9):
+    _SafeDictBase = collections.abc.MutableMapping[str, Any]
+else:
+    _SafeDictBase = collections.abc.MutableMapping
+
+
+class SafeDict(_SafeDictBase):
     """Dictionary with read write lock."""
 
     def __init__(self) -> None:

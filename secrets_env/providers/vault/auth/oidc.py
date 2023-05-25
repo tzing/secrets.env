@@ -9,14 +9,14 @@ from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import AuthenticationError, TypeError
 from secrets_env.io import get_env_var
-from secrets_env.server import HTTPRequestHandler, RouteHandler, start_server
+from secrets_env.server import HTTPRequestHandler, start_server
 
 from .base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
 
-    from secrets_env.server import URLParams
+    from secrets_env.server import RouteHandler, URLParams
 
 PATH_OIDC_CALLBACK = "/oidc/callback"
 
@@ -107,7 +107,7 @@ class OpenIDConnectAuth(Auth):
 
 
 class OIDCRequestHandler(HTTPRequestHandler):
-    def route(self, path: str) -> Optional[RouteHandler]:
+    def route(self, path: str) -> Optional["RouteHandler"]:
         if path == PATH_OIDC_CALLBACK:
             return self.do_oidc_callback
         if path == self.server.context["entrypoint"]:
