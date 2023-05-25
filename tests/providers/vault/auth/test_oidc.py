@@ -26,7 +26,7 @@ class TestOpenIDConnectAuth:
     def test_method(self):
         assert isinstance(t.OpenIDConnectAuth.method(), str)
 
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+    def test_login_success(self, monkeypatch: pytest.MonkeyPatch):
         # NOTE this function simulates server callback
 
         # setup: control server port
@@ -166,48 +166,47 @@ class TestOpenIDConnectAuthLoad:
 #     thread.shutdown_server()  # should be no error
 
 
-def test_get_authorization_url_success(
-    unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-):
-    unittest_respx.post("/v1/auth/oidc/oidc/auth_url").mock(
-        httpx.Response(
-            200,
-            json={
-                "request_id": "d3a4b3df-efbe-e18e-65b1-b8fe372af0a9",
-                "lease_id": "",
-                "renewable": False,
-                "lease_duration": 0,
-                "data": {"auth_url": "https://auth.example.com/"},
-                "wrap_info": None,
-                "warnings": None,
-                "auth": None,
-            },
+class TestGetAuthorizationUrl:
+    def test_success(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.post("/v1/auth/oidc/oidc/auth_url").mock(
+            httpx.Response(
+                200,
+                json={
+                    "request_id": "d3a4b3df-efbe-e18e-65b1-b8fe372af0a9",
+                    "lease_id": "",
+                    "renewable": False,
+                    "lease_duration": 0,
+                    "data": {"auth_url": "https://auth.example.com/"},
+                    "wrap_info": None,
+                    "warnings": None,
+                    "auth": None,
+                },
+            )
         )
-    )
-    assert (
-        t.get_authorization_url(
-            unittest_client,
-            "http://localhost/callback",
-            None,
-            "test-nonce",
+        assert (
+            t.get_authorization_url(
+                unittest_client,
+                "http://localhost/callback",
+                None,
+                "test-nonce",
+            )
+            == "https://auth.example.com/"
         )
-        == "https://auth.example.com/"
-    )
 
+    def test_fail(
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
+    ):
+        unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
 
-def test_get_authorization_url_error(
-    unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-):
-    unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
-    assert (
-        t.get_authorization_url(
-            unittest_client,
-            "http://localhost/callback",
-            "test_role",
-            "test-nonce",
-        )
-        is None
-    )
+        with pytest.raises(AuthenticationError):
+            t.get_authorization_url(
+                unittest_client,
+                "http://localhost/callback",
+                "test_role",
+                "test-nonce",
+            )
 
 
 def test_request_token_success(

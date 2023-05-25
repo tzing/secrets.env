@@ -57,9 +57,6 @@ class OpenIDConnectAuth(Auth):
             client_nonce,
         )
 
-        if not auth_url:
-            raise AuthenticationError("Failed to get OIDC authorization URL")
-
         # create entrypoint, setup context and start server
         entrypoint = f"/{uuid.uuid1()}"
         entrypoint_url = f"{server.server_uri}{entrypoint}"
@@ -147,12 +144,17 @@ class OIDCRequestHandler(HTTPRequestHandler):
 
 def get_authorization_url(
     client: "httpx.Client", redirect_uri: str, role: Optional[str], client_nonce: str
-) -> Optional[str]:
+) -> str:
     """Get OIDC authorization URL.
 
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/jwt#oidc-authorization-url-request
+
+    Exceptions
+    ----------
+    AuthenticationError
+        On requesting URL failed.
     """
     payload = {
         "redirect_uri": redirect_uri,
@@ -169,7 +171,7 @@ def get_authorization_url(
 
     logger.error("Error requesting authorization URL")
     logger.debug("Code= %d. Raw response= %s", resp.status_code, resp.text)
-    return None
+    raise AuthenticationError("Failed to get OIDC authorization URL")
 
 
 def request_token(
