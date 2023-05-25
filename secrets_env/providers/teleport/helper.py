@@ -115,7 +115,7 @@ def attempt_get_app_config(app: str) -> Dict[str, str]:
     expiration check. Therefore we need to check it by ourself.
     """
     # need cryptography package to read cert file
-    if importlib.util.find_spec("cryptography"):
+    if not importlib.util.find_spec("cryptography"):
         return {}
 
     logger.debug("Try to get config directly")
