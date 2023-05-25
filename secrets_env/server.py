@@ -1,9 +1,11 @@
 import collections.abc
 import contextlib
+import functools
 import http.server
 import logging
 import pathlib
 import socket
+import string
 import threading
 import typing
 import urllib.parse
@@ -94,7 +96,7 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         # check routes
         func = self.route(url.path)
         if func is None:
-            self.send_error(HTTPStatus.NOT_FOUND)
+            self.response_error(HTTPStatus.NOT_FOUND)
             return
 
         # parse parameters and callback
@@ -111,14 +113,29 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             fmt % args,
         )
 
-    def write_template(self, template: str):
-        """Write template data to response body."""
-        current_dir = pathlib.Path(__file__).resolve().parent
-        template_dir = current_dir / "templates"
-        template_file = template_dir / template
+    def response_html(self, code: int, filename: str, mapping: Optional[dict] = None):
+        """Response from template."""
+        # render body
+        template = get_template(filename)
+        body = template.safe_substitute(mapping or {})
+        payload = body.encode(errors="replace")
 
-        payload = template_file.read_bytes()
+        # response
+        self.send_response(code)
+        self.send_header("Content-type", "text/html; charset=UTF-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+
         self.wfile.write(payload)
+
+    def response_error(self, code: int):
+        """Response error from template."""
+        status = HTTPStatus(code)
+        return self.response_html(
+            status.value,
+            "error.html",
+            {"title": status.phrase, "message": status.description},
+        )
 
 
 class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
@@ -207,3 +224,15 @@ def get_free_port() -> int:
         s.bind(("", 0))
         _, port = s.getsockname()
     return port
+
+
+@functools.cache
+def get_template(filename: str) -> string.Template:
+    current_dir = pathlib.Path(__file__).resolve().parent
+    template_dir = current_dir / "templates"
+    template_file = template_dir / filename
+
+    content = template_file.read_text()
+    template = string.Template(content)
+
+    return template
