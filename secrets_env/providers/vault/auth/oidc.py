@@ -47,7 +47,6 @@ class OpenIDConnectAuth(Auth):
 
         # prepare server
         server = start_server(OIDCRequestHandler, ready=False)
-        server.context["client"] = client
 
         # get auth url
         client_nonce = uuid.uuid1().hex
@@ -61,16 +60,17 @@ class OpenIDConnectAuth(Auth):
         if not auth_url:
             raise AuthenticationError("Failed to get OIDC authorization URL")
 
-        server.context["client_nonce"] = client_nonce
-        server.context["auth_url"] = auth_url
-
-        # create entrypoint
+        # create entrypoint, setup context and start server
         entrypoint = f"/{uuid.uuid1()}"
-        server.context["entrypoint"] = entrypoint
-
         entrypoint_url = f"{server.server_uri}{entrypoint}"
 
-        # start server
+        server.context.update(
+            auth_url=auth_url,
+            client_nonce=client_nonce,
+            client=client,
+            entrypoint=entrypoint,
+        )
+
         server.ready.set()
 
         # open entrypoint
@@ -80,9 +80,9 @@ class OpenIDConnectAuth(Auth):
             "If browser does not open automatically, open the link:\n"
             f"  <link>{entrypoint_url}</link>"
         )
-        webbrowser.open(auth_url)
+        webbrowser.open(entrypoint_url)
 
-        # wait until callback
+        # wait until finish
         server.server_thread.join()
 
         # check result
@@ -142,6 +142,7 @@ class OIDCRequestHandler(HTTPRequestHandler):
 
         self.server.context["token"] = token
         self.response_html(HTTPStatus.OK, "oidc-success.html")
+        self.server.shutdown()
 
 
 def get_authorization_url(

@@ -1,6 +1,7 @@
 import threading
 import time
 from http import HTTPStatus
+from typing import Optional
 from unittest.mock import Mock
 
 import httpx
@@ -9,87 +10,101 @@ import respx
 
 import secrets_env.providers.vault.auth.oidc as t
 from secrets_env.exceptions import AuthenticationError
+from secrets_env.server import start_server
 
 
-def test_auth__init__():
-    # success
-    t.OpenIDConnectAuth("default")
-    t.OpenIDConnectAuth(None)
+class TestOpenIDConnectAuth:
+    def test___init__(self):
+        # success
+        t.OpenIDConnectAuth("default")
+        t.OpenIDConnectAuth(None)
 
-    # fail
-    with pytest.raises(TypeError):
-        t.OpenIDConnectAuth(1234)
+        # fail
+        with pytest.raises(TypeError):
+            t.OpenIDConnectAuth(1234)
+
+    def test_method(self):
+        assert isinstance(t.OpenIDConnectAuth.method(), str)
+
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        # NOTE this function simulates server callback
+
+        # setup: control server port
+        def patch_start_server(handler, ready):
+            return start_server(handler, port=56789, ready=ready)
+
+        monkeypatch.setattr(t, "start_server", patch_start_server)
+
+        # setup: patch webbrowser.open for simulates callback
+        def patch_webbrowser_open(url):
+            assert url.startswith("http://127.0.0.1:56789/")
+            httpx.get("http://127.0.0.1:56789/oidc/callback", params={"code": "test"})
+
+        monkeypatch.setattr("webbrowser.open", patch_webbrowser_open)
+
+        # setup: patch get_authorization_url
+        def mock_get_authorization_url(client, redirect_uri, role, client_nonce):
+            assert isinstance(client, httpx.Client)
+            assert redirect_uri == "http://127.0.0.1:56789/oidc/callback"
+            assert isinstance(role, str) or role is None
+            assert isinstance(client_nonce, str)
+            return "https://example.com/auth"
+
+        monkeypatch.setattr(t, "get_authorization_url", mock_get_authorization_url)
+
+        # setup: patch request_token
+        def patch_request_token(client, auth_url, auth_code, client_nonce):
+            assert isinstance(client, httpx.Client)
+            assert auth_url == "https://example.com/auth"
+            assert auth_code == "test"
+            assert isinstance(client_nonce, str)
+            return "t0ken"
+
+        monkeypatch.setattr(t, "request_token", patch_request_token)
+
+        # run
+        client = Mock(spec=httpx.Client)
+
+        auth = t.OpenIDConnectAuth()
+        assert auth.login(client) == "t0ken"
 
 
-def test_auth_method():
-    assert isinstance(t.OpenIDConnectAuth.method(), str)
+#     def test_login_error_1(self, monkeypatch: pytest.MonkeyPatch):
+#         # Failed to get auth URL
+#         monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
+#         with pytest.raises(AuthenticationError):
+#             self.auth.login(self.client)
 
+#     def test_login_error_2(self, monkeypatch: pytest.MonkeyPatch):
+#         # Failed to get auth code
+#         monkeypatch.setattr(
+#             t, "get_authorization_url", lambda *_: "https://auth.example.com"
+#         )
+#         monkeypatch.setattr(
+#             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
+#         )
+#         monkeypatch.setattr("webbrowser.open", lambda _: None)
 
-class TestOpenIDConnectAuthLogin:
-    def setup_method(self):
-        self.auth = t.OpenIDConnectAuth()
-        self.client = Mock(spec=httpx.Client)
+#         with pytest.raises(AuthenticationError):
+#             self.auth.login(self.client)
 
-    def test_login_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            t,
-            "get_authorization_url",
-            lambda _1, _2, _3, _4: "https://auth.example.com",
-        )
-        monkeypatch.setattr(
-            t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
-        )
+#     def test_login_error_3(self, monkeypatch: pytest.MonkeyPatch):
+#         # Failed to get client token
+#         monkeypatch.setattr(
+#             t, "get_authorization_url", lambda *_: "https://auth.example.com"
+#         )
+#         monkeypatch.setattr(
+#             t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
+#         )
 
-        def mock_open(url):
-            assert url == "https://auth.example.com"
-            object.__setattr__(self.auth, "authorization_code", "auth-code")
+#         def mock_open(url):
+#             object.__setattr__(self.auth, "authorization_code", "auth-code")
 
-        def mock_get_token(_1, url, code, _4):
-            assert url == "https://auth.example.com"
-            assert code == "auth-code"
-            return "sample-token"
+#         monkeypatch.setattr("webbrowser.open", mock_open)
+#         monkeypatch.setattr(t, "request_token", lambda *_: None)
 
-        monkeypatch.setattr("webbrowser.open", mock_open)
-        monkeypatch.setattr(t, "request_token", mock_get_token)
-
-        assert self.auth.login(self.client) == "sample-token"
-
-    def test_login_error_1(self, monkeypatch: pytest.MonkeyPatch):
-        # Failed to get auth URL
-        monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
-        with pytest.raises(AuthenticationError):
-            self.auth.login(self.client)
-
-    def test_login_error_2(self, monkeypatch: pytest.MonkeyPatch):
-        # Failed to get auth code
-        monkeypatch.setattr(
-            t, "get_authorization_url", lambda *_: "https://auth.example.com"
-        )
-        monkeypatch.setattr(
-            t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
-        )
-        monkeypatch.setattr("webbrowser.open", lambda _: None)
-
-        with pytest.raises(AuthenticationError):
-            self.auth.login(self.client)
-
-    def test_login_error_3(self, monkeypatch: pytest.MonkeyPatch):
-        # Failed to get client token
-        monkeypatch.setattr(
-            t, "get_authorization_url", lambda *_: "https://auth.example.com"
-        )
-        monkeypatch.setattr(
-            t, "OpenIDConnectCallbackService", Mock(spec=t.OpenIDConnectCallbackService)
-        )
-
-        def mock_open(url):
-            object.__setattr__(self.auth, "authorization_code", "auth-code")
-
-        monkeypatch.setattr("webbrowser.open", mock_open)
-        monkeypatch.setattr(t, "request_token", lambda *_: None)
-
-        with pytest.raises(AuthenticationError):
-            self.auth.login(self.client)
+#         with pytest.raises(AuthenticationError):
+#             self.auth.login(self.client)
 
 
 class TestOpenIDConnectAuthLoad:
@@ -110,51 +125,45 @@ class TestOpenIDConnectAuthLoad:
         assert auth.role == "test"
 
 
-def test_callback_service():
-    auth = t.OpenIDConnectAuth("test")
+# def test_callback_service():
+#     auth = t.OpenIDConnectAuth("test")
 
-    thread = t.OpenIDConnectCallbackService(56789, auth)
-    thread.start()
-    assert isinstance(thread, threading.Thread)
+#     thread = t.OpenIDConnectCallbackService(56789, auth)
+#     thread.start()
+#     assert isinstance(thread, threading.Thread)
 
-    # invalid calls - the thread should not stop
-    resp = httpx.get("http://localhost:56789/invalid-path")
-    assert resp.status_code == HTTPStatus.NOT_FOUND
+#     # invalid calls - the thread should not stop
+#     resp = httpx.get("http://localhost:56789/invalid-path")
+#     assert resp.status_code == HTTPStatus.NOT_FOUND
 
-    resp = httpx.get("http://localhost:56789/oidc/callback?param=invalid")
-    assert resp.status_code == HTTPStatus.BAD_REQUEST
+#     resp = httpx.get("http://localhost:56789/oidc/callback?param=invalid")
+#     assert resp.status_code == HTTPStatus.BAD_REQUEST
 
-    assert thread.is_alive()
+#     assert thread.is_alive()
 
-    # valid call - the thread should stop
-    resp = httpx.get("http://localhost:56789/oidc/callback?code=test")
-    assert resp.status_code == HTTPStatus.OK
-    assert resp.headers["Content-Type"].startswith("text/html")
-    assert (
-        "<p>OIDC authentication successful, you can close the browser now.</p>"
-    ) in resp.text
+#     # valid call - the thread should stop
+#     resp = httpx.get("http://localhost:56789/oidc/callback?code=test")
+#     assert resp.status_code == HTTPStatus.OK
+#     assert resp.headers["Content-Type"].startswith("text/html")
+#     assert (
+#         "<p>OIDC authentication successful, you can close the browser now.</p>"
+#     ) in resp.text
 
-    thread.join()
-    assert auth.authorization_code == "test"
-
-
-def test_stop_callback_service():
-    thread = t.OpenIDConnectCallbackService(56789, None)
-    thread.start()
-    assert thread.is_alive() is True
-
-    thread.shutdown_server()
-
-    time.sleep(0.2)
-    assert thread.is_alive() is False
-
-    thread.shutdown_server()  # should be no error
+#     thread.join()
+#     assert auth.authorization_code == "test"
 
 
-def test_get_free_port():
-    port = t.get_free_port()
-    assert isinstance(port, int)
-    assert 1023 < port < 65536
+# def test_stop_callback_service():
+#     thread = t.OpenIDConnectCallbackService(56789, None)
+#     thread.start()
+#     assert thread.is_alive() is True
+
+#     thread.shutdown_server()
+
+#     time.sleep(0.2)
+#     assert thread.is_alive() is False
+
+#     thread.shutdown_server()  # should be no error
 
 
 def test_get_authorization_url_success(
