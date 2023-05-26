@@ -14,8 +14,17 @@ logger = logging.getLogger(__name__)
 
 def load_secrets(
     config_file: typing.Optional["Path"] = None, strict: bool = True
-) -> typing.Dict[str, str]:
-    """Load secrets from vault and put them to environment variable."""
+) -> typing.Optional[typing.Dict[str, str]]:
+    """Load secrets from vault and put them to environment variable.
+
+    Parameters
+    ----------
+    config_file : Path
+        Path to config file. It searchs for config file when not given.
+    strict : bool
+        Enable strict mode. Returns :py:obj:`None` when not all of the secrets
+        successfully loaded.
+    """
     import secrets_env.config
 
     # parse config
