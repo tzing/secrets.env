@@ -227,19 +227,20 @@ class TestRunCommand:
         assert "< hello world" in caplog.text
         assert "<[stderr] hello stderr" in caplog.text
 
-    def test_iter(self):
+    def test_iter_stderr(self):
         runner = t._RunCommand(
             [
                 "sh",
                 "-c",
                 """
                 echo 'item 1'
-                echo 'item 2'
+                echo 'item 2' > /dev/stderr
+                echo 'item 3' > /dev/stderr
                 """,
             ]
         )
 
-        assert list(runner) == ["item 1", "item 2"]
+        assert list(runner.iter_stderr()) == ["item 2", "item 3"]
 
 
 fake_cert = b"""
