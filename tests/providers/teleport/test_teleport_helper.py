@@ -1,9 +1,11 @@
+import datetime
 import logging
 import re
 import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
+import cryptography.x509
 import pytest
 
 import secrets_env.providers.teleport.helper as t
@@ -110,9 +112,21 @@ class TestAttemptGetAppConfig:
         assert t.attempt_get_app_config("test") == {}
 
 
-def test_is_certificate_valid(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("builtins.open", mock_open(read_data=fake_cert))
-    assert t.is_certificate_valid("test") is False
+class TestIsCertificateValid:
+    def test_true(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("builtins.open", mock_open())
+
+        mock_cert = Mock(spec=cryptography.x509.Certificate)
+        mock_cert.not_valid_after = datetime.datetime.now() + datetime.timedelta(30)
+        monkeypatch.setattr(
+            "cryptography.x509.load_pem_x509_certificate", lambda _: mock_cert
+        )
+
+        assert t.is_certificate_valid("test") is True
+
+    def test_false(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("builtins.open", mock_open(read_data=fake_cert))
+        assert t.is_certificate_valid("test") is False
 
 
 class TestCallVersion:
@@ -143,12 +157,20 @@ class TestCallAppConfig:
 
 
 class TestCallAppLogin:
+    @pytest.fixture()
+    def runner(self):
+        runner = Mock(spec=t._RunCommand, return_code=0)
+        runner.iter_stderr.return_value = []
+        return runner
+
     def test_success(
-        self, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        runner: t._RunCommand,
     ):
         # setup mock
-        runner = MagicMock(spec=t._RunCommand, return_code=0)
-        runner.__iter__.return_value = [
+        runner.iter_stderr.return_value = [
             "If browser...",
             " http://127.0.0.1:12345/mock",
             "Logged into app test",
@@ -178,8 +200,7 @@ class TestCallAppLogin:
         assert "Waiting for response from Teleport..." in caplog.text
         assert "Successfully logged into app test" in caplog.text
 
-    def test_app_not_found(self):
-        runner = MagicMock(spec=t._RunCommand)
+    def test_app_not_found(self, runner: t._RunCommand):
         runner.return_code = 1
         runner.stderr = 'ERROR: app "test" not found'
 
@@ -188,8 +209,7 @@ class TestCallAppLogin:
         ), patch.object(t, "_RunCommand", return_value=runner):
             assert t.call_app_login({"app": "test"}) is None
 
-    def test_other_error(self):
-        runner = MagicMock(spec=t._RunCommand)
+    def test_other_error(self, runner: t._RunCommand):
         runner.return_code = 1
         runner.stderr = "ERROR: mocked"
 
@@ -227,19 +247,20 @@ class TestRunCommand:
         assert "< hello world" in caplog.text
         assert "<[stderr] hello stderr" in caplog.text
 
-    def test_iter(self):
+    def test_iter_stderr(self):
         runner = t._RunCommand(
             [
                 "sh",
                 "-c",
                 """
                 echo 'item 1'
-                echo 'item 2'
+                echo 'item 2' > /dev/stderr
+                echo 'item 3' > /dev/stderr
                 """,
             ]
         )
 
-        assert list(runner) == ["item 1", "item 2"]
+        assert list(runner.iter_stderr()) == ["item 2", "item 3"]
 
 
 fake_cert = b"""

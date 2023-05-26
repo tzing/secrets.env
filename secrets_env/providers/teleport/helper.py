@@ -139,7 +139,13 @@ def is_certificate_valid(filepath: str) -> bool:
 
     cert = cryptography.x509.load_pem_x509_certificate(data)
     now = datetime.datetime.utcnow()
-    return now < cert.not_valid_after
+    if now > cert.not_valid_after:
+        logger.debug(
+            "Certificate expire at: %s < current time %s", cert.not_valid_after, now
+        )
+        return False
+
+    return True
 
 
 def call_version() -> bool:
@@ -176,21 +182,17 @@ def call_app_login(params: "AppParameter") -> None:
     # run
     runner = _RunCommand(cmd)
 
-    auth_url_captured = False
-    for line in runner:
-        # early escape on detect 'success' message from stdout
-        if line.startswith("Logged into app"):
-            break
-
-        # capture auth url from stdout
-        if not auth_url_captured and line.lstrip().startswith("http://127.0.0.1:"):
-            auth_url_captured = True
+    for line in runner.iter_stderr():
+        if line.lstrip().startswith("http://127.0.0.1:"):
             logger.info(
                 "<!important>"
                 "Waiting for response from Teleport...\n"
                 "If browser does not open automatically, open the link:\n"
                 f"  <link>{line}</link>"
             )
+            break
+
+    runner.join()
 
     if runner.return_code == 0:
         logger.info("Successfully logged into app %s", app)
@@ -255,8 +257,7 @@ class _RunCommand(threading.Thread):
             _flush(proc)
             self._return_code = proc.returncode
 
-    def __iter__(self) -> Iterator[str]:
-        """Yields stdouts"""
+    def _iter_output(self, queue_: "StrQueue", store: List[str]) -> Iterator[str]:
         QUERY_INTERVAL = 0.1
 
         if self.ident is None:  # not started
@@ -264,33 +265,37 @@ class _RunCommand(threading.Thread):
 
         while True:
             try:
-                line = self._stdout_queue.get_nowait()
-                self._stdouts.append(line)
+                line = queue_.get_nowait()
+                store.append(line)
                 yield line.rstrip()
             except queue.Empty:
                 if not self.is_alive():
                     break
                 time.sleep(QUERY_INTERVAL)
 
+    def _flush(self, queue_: "StrQueue", store: List[str]):
+        for _ in self._iter_output(queue_, store):
+            ...
+
+    def iter_stderr(self) -> Iterator[str]:
+        """Yields stderr in realtime"""
+        yield from self._iter_output(self._stderr_queue, self._stderrs)
+
     @property
     def return_code(self) -> int:
+        """Subprocess return code"""
         assert self.is_completed
         return self._return_code  # type: ignore[reportOptionalMemberAccess]
 
-    def _build_output(self, queue_: "StrQueue", store: List[str]) -> str:
-        while not queue_.empty():
-            store.append(queue_.get())
-        return "".join(store)
-
     @property
     def stdout(self) -> str:
-        assert self.is_completed
-        return self._build_output(self._stdout_queue, self._stdouts)
+        self._flush(self._stdout_queue, self._stdouts)
+        return "".join(self._stdouts)
 
     @property
     def stderr(self) -> str:
-        assert self.is_completed
-        return self._build_output(self._stderr_queue, self._stderrs)
+        self._flush(self._stderr_queue, self._stderrs)
+        return "".join(self._stderrs)
 
 
 def run_teleport(args: Iterable[str]) -> _RunCommand:
