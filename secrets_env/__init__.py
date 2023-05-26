@@ -24,8 +24,8 @@ def load_secrets(
         # skip logging. already show error in `load_config`
         return {}
 
-    # load secret
-    output = {}
+    # load values
+    output_values = {}
     for request in config["requests"]:
         name = request["name"]
 
@@ -36,16 +36,20 @@ def load_secrets(
                 request["provider"],
                 request["name"],
             )
-            output[name] = None
             continue
 
-        output[name] = value = read1(provider, name, request["spec"])
+        logger.debug("Read %s from %s", name, request["spec"])
+        value = read1(provider, name, request["spec"])
+
         if value:
-            logger.debug("Loaded <data>$%s</data>", name)
+            logger.debug("Read <data>$%s</data> successfully", name)
+            output_values[name] = value
+        else:
+            logger.warning("Failed to read <data>$%s</data>", name)
 
     # report
     num_expected = len(config["requests"])
-    num_loaded = sum(1 for v in output.values() if v is not None)
+    num_loaded = len(output_values)
 
     if num_expected == num_loaded:
         logger.info(
@@ -62,7 +66,7 @@ def load_secrets(
         if strict:
             return {}
 
-    return output
+    return output_values
 
 
 def read1(
