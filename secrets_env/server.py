@@ -96,11 +96,8 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Routing GET request to specific method."""
 
     def do_GET(self) -> None:
-        # parse path
-        url = urllib.parse.urlsplit(self.path)
-        logger.debug('Receive "%s %s %s"', self.command, url.path, self.request_version)
-
         # check routes
+        url = urllib.parse.urlsplit(self.path)
         func = self.route(url.path)
         if func is None:
             self.response_error(HTTPStatus.NOT_FOUND)
@@ -114,9 +111,9 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Redirect request logs to logging infrastructure, while the builtin
         implementation writes data to stderr."""
         logger.debug(
-            "%s - - [%s] %s",
-            self.address_string(),
+            "[%s] HTTP server: %s - %s",
             self.log_date_time_string(),
+            self.address_string(),
             fmt % args,
         )
 
