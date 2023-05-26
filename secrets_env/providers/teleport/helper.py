@@ -139,7 +139,13 @@ def is_certificate_valid(filepath: str) -> bool:
 
     cert = cryptography.x509.load_pem_x509_certificate(data)
     now = datetime.datetime.utcnow()
-    return now < cert.not_valid_after
+    if now > cert.not_valid_after:
+        logger.debug(
+            "Certificate expire at: %s < current time %s", cert.not_valid_after, now
+        )
+        return False
+
+    return True
 
 
 def call_version() -> bool:
