@@ -55,6 +55,17 @@ def load_secrets(
         logger.info(
             "<!important>\U0001F511 <mark>%d</mark> secrets loaded", num_expected
         )
+
+    elif strict:
+        logger.error(
+            # NOTE need extra whitespace after the modifier (\uFE0F)
+            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets read. "
+            "Not satisfied the requirement.",
+            num_loaded,
+            num_expected,
+        )
+        return None
+
     else:
         logger.warning(
             # NOTE need extra whitespace after the modifier (\uFE0F)
@@ -62,9 +73,6 @@ def load_secrets(
             num_loaded,
             num_expected,
         )
-
-        if strict:
-            return {}
 
     return output_values
 
