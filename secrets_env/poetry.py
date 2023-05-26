@@ -6,8 +6,6 @@ from cleo.events.console_command_event import ConsoleCommandEvent
 from cleo.events.console_events import COMMAND
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
-from poetry.console.commands.run import RunCommand
-from poetry.console.commands.shell import ShellCommand
 from poetry.plugins.application_plugin import ApplicationPlugin
 
 import secrets_env
@@ -35,16 +33,18 @@ class SecretsEnvPlugin(ApplicationPlugin):
     ) -> None:
         if not isinstance(event, ConsoleCommandEvent):
             return
-        if not isinstance(event.command, (RunCommand, ShellCommand)):
+        if event.command.name not in ("run", "shell"):
             return
 
         self.setup_output(event.io.output)
         logger.debug("Start secrets.env poetry plugin.")
 
         secrets = secrets_env.load_secrets()
-        for env_var, value in secrets.items():
-            if value:
-                os.environ[env_var] = value
+        if not secrets:
+            return
+
+        for name, value in secrets.items():
+            os.environ[name] = value
 
     def setup_output(self, output: "Output") -> None:
         """Forwards internal messages to cleo.
