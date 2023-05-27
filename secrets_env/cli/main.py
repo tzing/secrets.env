@@ -36,23 +36,27 @@ def main():
 )
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 @click.option(
-    "-f",
-    "--file",
+    "-c",
+    "--config",
     type=click.Path(
         exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path
     ),
     help="Specify an alternative configuration file.",
 )
+@click.option(
+    "--strict/--no-strict",
+    is_flag=True,
+    default=True,
+    show_default=True,
+    help="Use strict mode. Stop run when not all of the values loaded.",
+)
 @add_output_options
-def run(args: Tuple[str, ...], file: Path):
+def run(args: Tuple[str, ...], config: Path, strict: bool):
     """Loads secrets into environment variable then run the command."""
     # prepare environment variable set
-    secrets = {}
-    for name, value in secrets_env.load_secrets(file).items():
-        if value is None:
-            logger.warning("<!important>Stop running command")
-            sys.exit(128)
-        secrets[name] = value
+    secrets = secrets_env.read_values(config, strict)
+    if secrets is None:
+        sys.exit(128)
 
     environ = os.environ.copy()
     environ.update(secrets)

@@ -45,7 +45,7 @@ class TestParseConfig:
                 "secrets": {},
             }
         )
-        assert cfg is None
+        assert cfg == {"requests": []}
 
     def test_provider_error(self):
         with patch.object(t, "get_providers", return_value={}):

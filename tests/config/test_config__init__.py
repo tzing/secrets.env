@@ -48,7 +48,7 @@ class TestLoadConfig:
         path.write_text("{}")
 
         with caplog.at_level(logging.INFO):
-            assert t.load_config(path) is None
+            assert t.load_config(path) == {"requests": []}
 
         assert "Read secrets.env config from " in caplog.text
         assert "No request specificied." in caplog.text

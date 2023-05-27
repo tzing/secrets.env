@@ -25,6 +25,7 @@ class TestSecretsEnvPlugin:
 
         self.event = Mock(spec=cleo.events.console_command_event.ConsoleCommandEvent)
         self.event.command = Mock(spec=poetry.console.commands.run.RunCommand)
+        self.event.command.name = "run"
 
         self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
 
@@ -40,7 +41,7 @@ class TestSecretsEnvPlugin:
 
     @pytest.mark.usefixtures("patch_setup_output")
     def test_load_secret(self):
-        with patch("secrets_env.load_secrets", return_value={"VAR1": "test"}):
+        with patch("secrets_env.read_values", return_value={"VAR1": "test"}):
             self.plugin.load_secret(self.event, "test", self.dispatcher)
         assert os.getenv("VAR1") == "test"
 
