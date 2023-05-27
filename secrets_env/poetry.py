@@ -39,7 +39,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         self.setup_output(event.io.output)
         logger.debug("Start secrets.env poetry plugin.")
 
-        secrets = secrets_env.load_secrets()
+        secrets = secrets_env.read_values()
         if not secrets:
             return
 

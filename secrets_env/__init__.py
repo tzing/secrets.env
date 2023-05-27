@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def load_secrets(
+def read_values(
     config_file: typing.Optional["Path"] = None, strict: bool = False
 ) -> typing.Optional[typing.Dict[str, str]]:
     """Load secrets from vault and put them to environment variable.
@@ -30,7 +30,7 @@ def load_secrets(
     config = secrets_env.config.load_config(config_file)
     if not config:
         # skip logging. already show error in `load_config`
-        return {}
+        return None
 
     # load values
     output_values = secrets_env.collect.read_values(config)
