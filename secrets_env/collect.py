@@ -1,5 +1,6 @@
 import logging
 import typing
+from typing import Dict
 
 if typing.TYPE_CHECKING:
     from secrets_env.config.parser import Config
@@ -8,8 +9,31 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def read_values(config: "Config"):
-    ...
+def read_values(config: "Config") -> Dict[str, str]:
+    """Request values from providers."""
+    output_values = {}
+    for request in config["requests"]:
+        name = request["name"]
+
+        provider = config["providers"].get(request["provider"])
+        if not provider:
+            logger.warning(
+                "Provider <data>%s</data> not exists. Skip <data>$%s</data>.",
+                request["provider"],
+                request["name"],
+            )
+            continue
+
+        logger.debug("Read %s from %s", name, request["spec"])
+        value = read1(provider, name, request["spec"])
+
+        if value:
+            logger.debug("Read <data>$%s</data> successfully", name)
+            output_values[name] = value
+        else:
+            logger.warning("Failed to read <data>$%s</data>", name)
+
+    return output_values
 
 
 def read1(

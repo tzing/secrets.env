@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, PropertyMock
 
 import pytest
@@ -5,6 +6,46 @@ import pytest
 import secrets_env.collect as t
 import secrets_env.provider
 from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+
+
+def test_read_values(caplog: pytest.LogCaptureFixture):
+    def create_provider(return_value: str):
+        provider = Mock(spec=secrets_env.provider.ProviderBase)
+        provider.get.return_value = return_value
+        return provider
+
+    config = {
+        "providers": {
+            "main": create_provider("main"),
+            "p2": create_provider("source-2"),
+            "p3": create_provider(None),
+        },
+        "requests": [
+            {"name": "foo", "provider": "main", "spec": "mock"},
+            {"name": "bar", "provider": "p2", "spec": "mock"},
+            {"name": "baz", "provider": "no-this-provider", "spec": "mock"},
+            {"name": "qax", "provider": "main", "spec": "mock"},
+            {"name": "wax", "provider": "p3", "spec": "mock"},
+        ],
+    }
+
+    with caplog.at_level(logging.DEBUG):
+        assert t.read_values(config) == {
+            "foo": "main",
+            "bar": "source-2",
+            "qax": "main",
+        }
+
+    assert "Read <data>$foo</data> successfully" in caplog.text
+    assert "Read <data>$bar</data> successfully" in caplog.text
+    assert "Read <data>$qax</data> successfully" in caplog.text
+
+    assert "Failed to read <data>$wax</data>" in caplog.text
+
+    assert (
+        "Provider <data>no-this-provider</data> not exists. Skip <data>$baz</data>."
+        in caplog.text
+    )
 
 
 class TestRead1:
