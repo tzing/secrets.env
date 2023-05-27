@@ -38,7 +38,7 @@ def parse_config(data: dict) -> Optional[Config]:
     requests = get_requests(data)
     if not requests:
         logger.info("No request specificied.")
-        return None
+        return typing.cast(Config, {"requests": []})
 
     providers = get_providers(data)
     if not providers:
