@@ -7,13 +7,11 @@ import typing
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
-    from secrets_env.provider import ProviderBase, RequestSpec
-
 logger = logging.getLogger(__name__)
 
 
 def load_secrets(
-    config_file: typing.Optional["Path"] = None, strict: bool = True
+    config_file: typing.Optional["Path"] = None, strict: bool = False
 ) -> typing.Optional[typing.Dict[str, str]]:
     """Load secrets from vault and put them to environment variable.
 
@@ -25,6 +23,7 @@ def load_secrets(
         Enable strict mode. Returns :py:obj:`None` when not all of the secrets
         successfully loaded.
     """
+    import secrets_env.collect
     import secrets_env.config
 
     # parse config
@@ -34,27 +33,7 @@ def load_secrets(
         return {}
 
     # load values
-    output_values = {}
-    for request in config["requests"]:
-        name = request["name"]
-
-        provider = config["providers"].get(request["provider"])
-        if not provider:
-            logger.warning(
-                "Provider <data>%s</data> not exists. Skip %s.",
-                request["provider"],
-                request["name"],
-            )
-            continue
-
-        logger.debug("Read %s from %s", name, request["spec"])
-        value = read1(provider, name, request["spec"])
-
-        if value:
-            logger.debug("Read <data>$%s</data> successfully", name)
-            output_values[name] = value
-        else:
-            logger.warning("Failed to read <data>$%s</data>", name)
+    output_values = secrets_env.collect.read_values(config)
 
     # report
     num_expected = len(config["requests"])
