@@ -1,10 +1,12 @@
 import http
 import logging
 import re
+import typing
 from pathlib import Path
 from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
 
-import httpx
+if typing.TYPE_CHECKING:
+    import httpx
 
 T = TypeVar("T")
 TL_True = Literal[True]
@@ -115,10 +117,12 @@ def removeprefix(s: str, prefix: str):
     return s
 
 
-def get_httpx_error_reason(e: httpx.HTTPError):
+def get_httpx_error_reason(e: "httpx.HTTPError"):
     """Returns a reason for those errors that should not breaks the program.
     This is a helper function used in `expect` clause, and it would raise the
     error again when `None` is returned."""
+    import httpx
+
     logger.debug("httpx error occurs. Type= %s", type(e).__name__, exc_info=True)
 
     if isinstance(e, httpx.ProxyError):
@@ -129,7 +133,7 @@ def get_httpx_error_reason(e: httpx.HTTPError):
     return None
 
 
-def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
+def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
     try:
         code_enum = http.HTTPStatus(resp.status_code)
         code_name = code_enum.name
