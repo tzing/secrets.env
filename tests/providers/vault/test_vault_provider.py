@@ -12,18 +12,19 @@ from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
 
+@pytest.fixture()
+def mock_auth():
+    auth = Mock(spec=Auth)
+    auth.method.return_value = "mocked"
+    return auth
+
+
 class TestKvProvider1:
     """Unit tests for KvProvider"""
 
     @pytest.fixture()
     def provider(self, mock_auth: Auth) -> t.KvProvider:
         return t.KvProvider("https://example.com/", mock_auth)
-
-    @pytest.fixture()
-    def mock_auth(self):
-        auth = Mock(spec=Auth)
-        auth.method.return_value = "mocked"
-        return auth
 
     def test_client_error_1(self, provider: t.KvProvider, mock_auth: Auth):
         mock_auth.login.return_value = None
@@ -123,6 +124,50 @@ class TestCreateClient:
             t.create_client("http://example.com", 1234, None)
         with pytest.raises(TypeError):
             t.create_client("http://example.com", None, 1234)
+
+
+class TestGetToken:
+    @pytest.fixture()
+    def mock_client(self) -> httpx.Client:
+        return Mock(spec=httpx.Client)
+
+    def test_success(
+        self,
+        mock_client: httpx.Client,
+        mock_auth: Auth,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        mock_auth.login.return_value = "t0ken"
+        monkeypatch.setattr(t, "is_authenticated", lambda c, t: True)
+        assert t.get_token(mock_client, mock_auth) == "t0ken"
+
+    def test_no_token(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.return_value = None
+        with pytest.raises(AuthenticationError, match="Absence of token information"):
+            t.get_token(mock_client, mock_auth)
+
+    def test_not_authenticated(
+        self,
+        mock_client: httpx.Client,
+        mock_auth: Auth,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        mock_auth.login.return_value = "t0ken"
+        monkeypatch.setattr(t, "is_authenticated", lambda c, t: False)
+        with pytest.raises(AuthenticationError, match="Invalid token"):
+            t.get_token(mock_client, mock_auth)
+
+    def test_login_connection_error(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.ProxyError("test")
+        with pytest.raises(
+            AuthenticationError, match="Encounter proxy error while retrieving token"
+        ):
+            t.get_token(mock_client, mock_auth)
+
+    def test_login_exception(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.HTTPError("test")
+        with pytest.raises(httpx.HTTPError):
+            t.get_token(mock_client, mock_auth)
 
 
 def test_is_authenticated():

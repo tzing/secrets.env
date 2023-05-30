@@ -194,6 +194,25 @@ def create_client(
     return httpx.Client(**params)
 
 
+def get_token(client: httpx.Client, auth: "Auth") -> str:
+    # login
+    try:
+        token = auth.login(client)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        raise AuthenticationError("Encounter {} while retrieving token", reason)
+
+    if not token:
+        raise AuthenticationError("Absence of token information")
+
+    # verify
+    if not is_authenticated(client, token):
+        raise AuthenticationError("Invalid token")
+
+    return token
+
+
 def is_authenticated(client: httpx.Client, token: str) -> bool:
     """Check is a token is authenticated.
 
