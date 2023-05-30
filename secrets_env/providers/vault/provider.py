@@ -47,6 +47,7 @@ class KvProvider(ProviderBase):
         self,
         url: str,
         auth: "Auth",
+        *,
         ca_cert: Optional["Path"] = None,
         client_cert: Optional["CertTypes"] = None,
     ) -> None:
