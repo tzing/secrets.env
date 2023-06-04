@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import typing
-from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -208,7 +207,7 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     logger.debug("Validate token for %s", client.base_url)
 
     resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
-    if resp.status_code != HTTPStatus.OK:
+    if resp.is_success:
         logger.debug(
             "Token verification failed. Code= %d. Msg= %s",
             resp.status_code,
@@ -250,7 +249,7 @@ def get_mount_point(
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
         return None, None
 
-    if resp.status_code == HTTPStatus.OK:
+    if resp.is_success:
         data = resp.json().get("data", {})
 
         mount_point = data.get("path")
@@ -265,7 +264,7 @@ def get_mount_point(
         logging.debug("Raw response: %s", resp)
         return None, None
 
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
+    elif resp.is_client_error:
         # 404 is expected on an older version of vault, default to version 1
         # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
         return "", 1
@@ -307,14 +306,14 @@ def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
         logger.error("Error occurred during query secret %s: %s", path, reason)
         return None
 
-    if resp.status_code == HTTPStatus.OK:
+    if resp.is_success:
         data = resp.json()
         if version == 1:
             return data["data"]
         elif version == 2:
             return data["data"]["data"]
 
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
+    elif resp.is_client_error:
         logger.error("Secret <data>%s</data> not found", path)
         return None
 
