@@ -100,7 +100,7 @@ class UserPasswordAuth(Auth):
             timeout=self._TIMEOUT,
         )
 
-        if resp.is_success:
+        if not resp.is_success:
             logger.error("Failed to login with %s method", self.method())
             logger.debug(
                 "Login failed. URL= %s, Code= %d. Msg= %s",
