@@ -3,7 +3,6 @@ import logging
 import typing
 import urllib.parse
 from dataclasses import dataclass, field
-from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import TypeError
@@ -91,7 +90,6 @@ class UserPasswordAuth(Auth):
         return prompt(f"Password for {username}", hide_input=True)
 
     def login(self, client: "httpx.Client") -> Optional[str]:
-        # build request
         username = urllib.parse.quote(self.username)
         resp = client.post(
             f"/v1/auth/{self.path()}/login/{username}",
@@ -102,8 +100,7 @@ class UserPasswordAuth(Auth):
             timeout=self._TIMEOUT,
         )
 
-        # check response
-        if resp.status_code != HTTPStatus.OK:
+        if resp.is_success:
             logger.error("Failed to login with %s method", self.method())
             logger.debug(
                 "Login failed. URL= %s, Code= %d. Msg= %s",
