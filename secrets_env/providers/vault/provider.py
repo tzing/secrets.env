@@ -202,14 +202,15 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     logger.debug("Validate token for %s", client.base_url)
 
     resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
-    if resp.status_code != HTTPStatus.OK:
-        logger.debug(
-            "Token verification failed. Code= %d. Msg= %s",
-            resp.status_code,
-            resp.json(),
-        )
-        return False
-    return True
+    if resp.is_success:
+        return True
+
+    logger.debug(
+        "Token verification failed. Code= %d. Msg= %s",
+        resp.status_code,
+        resp.json(),
+    )
+    return False
 
 
 def get_mount_point(
@@ -244,7 +245,7 @@ def get_mount_point(
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
         return None, None
 
-    if resp.status_code == HTTPStatus.OK:
+    if resp.is_success:
         data = resp.json().get("data", {})
 
         mount_point = data.get("path")
@@ -301,7 +302,7 @@ def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
         logger.error("Error occurred during query secret %s: %s", path, reason)
         return None
 
-    if resp.status_code == HTTPStatus.OK:
+    if resp.is_success:
         data = resp.json()
         if version == 1:
             return data["data"]
