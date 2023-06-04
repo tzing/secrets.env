@@ -208,15 +208,15 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     logger.debug("Validate token for %s", client.base_url)
 
     resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
-    if not resp.is_success:
-        logger.debug(
-            "Token verification failed. Code= %d. Msg= %s",
-            resp.status_code,
-            resp.json(),
-        )
-        return False
+    if resp.is_success:
+        return True
 
-    return True
+    logger.debug(
+        "Token verification failed. Code= %d. Msg= %s",
+        resp.status_code,
+        resp.json(),
+    )
+    return False
 
 
 def get_mount_point(
@@ -251,12 +251,7 @@ def get_mount_point(
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
         return None, None
 
-    if resp.status_code == HTTPStatus.NOT_FOUND:
-        # 404 is expected on an older version of vault, default to version 1
-        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
-        return "", 1
-
-    elif not resp.is_success:
+    if resp.is_success:
         data = resp.json().get("data", {})
 
         mount_point = data.get("path")
@@ -270,6 +265,11 @@ def get_mount_point(
         logging.error("Unknown version %s for path %s", version, path)
         logging.debug("Raw response: %s", resp)
         return None, None
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        # 404 is expected on an older version of vault, default to version 1
+        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
+        return "", 1
 
     logger.error("Error occurred during checking metadata for %s", path)
     log_httpx_response(logger, resp)
@@ -315,7 +315,7 @@ def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
         elif version == 2:
             return data["data"]["data"]
 
-    elif resp.is_client_error:
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
         logger.error("Secret <data>%s</data> not found", path)
         return None
 
