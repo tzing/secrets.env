@@ -1,9 +1,9 @@
 import enum
-import http
 import logging
 import os
 import re
 import typing
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -251,7 +251,7 @@ def get_mount_point(
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
         return None, None
 
-    if resp.status_code == http.HTTPStatus.NOT_FOUND:
+    if resp.status_code == HTTPStatus.NOT_FOUND:
         # 404 is expected on an older version of vault, default to version 1
         # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
         return "", 1
