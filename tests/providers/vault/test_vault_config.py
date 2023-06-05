@@ -14,6 +14,13 @@ class TestGetConnectionInfo:
 
     @pytest.mark.usefixtures("_disable_ensure_path_exist_check")
     @pytest.mark.parametrize(
+        ("cfg_proxy", "proxy"),
+        [
+            ({}, None),
+            ({"proxy": "proxy.example.com"}, "proxy.example.com"),
+        ],
+    )
+    @pytest.mark.parametrize(
         ("cfg_ca_cert", "ca_cert"),
         [
             ({}, None),
@@ -31,8 +38,11 @@ class TestGetConnectionInfo:
             ),
         ],
     )
-    def test_success(self, cfg_ca_cert, ca_cert, cfg_client_cert, client_cert):
+    def test_success(
+        self, cfg_proxy, proxy, cfg_ca_cert, ca_cert, cfg_client_cert, client_cert
+    ):
         # setup
+        self.data.update(cfg_proxy)
         self.data["tls"].update(cfg_ca_cert)
         self.data["tls"].update(cfg_client_cert)
 
@@ -44,15 +54,15 @@ class TestGetConnectionInfo:
         assert cfg["url"] == "https://example.com"
         assert cfg["auth"] == NoAuth()
 
-        if ca_cert:
-            assert cfg["ca_cert"] == ca_cert
-        else:
-            assert "ca_cert" not in cfg
+        def _assert_key_equals(key: str, value):
+            if value:
+                assert cfg[key] == value
+            else:
+                assert key not in cfg
 
-        if client_cert:
-            assert cfg["client_cert"] == client_cert
-        else:
-            assert "client_cert" not in cfg
+        _assert_key_equals("proxy", proxy)
+        _assert_key_equals("ca_cert", ca_cert)
+        _assert_key_equals("client_cert", client_cert)
 
     def test_fail(self):
         with patch.object(t, "get_url", return_value=None):
@@ -171,6 +181,14 @@ class TestGetAuthFactory:
             "secrets_env.providers.vault.auth.userpass.RADIUSAuth.load", self.mock_load
         )
         assert t.get_auth({"method": "radius"}) is self.mock_auth
+
+
+def test_get_proxy():
+    assert t.get_proxy({"proxy": "test"}) == ("test", True)
+    assert t.get_proxy({}) == (None, True)
+    assert t.get_proxy({"proxy": None}) == (None, True)
+    assert t.get_proxy({"proxy": ""}) == (None, True)
+    assert t.get_proxy({"proxy": 1234}) == (None, False)
 
 
 class TestGetTLS:

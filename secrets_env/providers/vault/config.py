@@ -34,6 +34,7 @@ CertTypes = Union[
 class VaultConnectionInfo(TypedDict):
     url: str
     auth: "Auth"
+    proxy: str
 
     # tls
     ca_cert: "Path"
@@ -58,6 +59,12 @@ def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
         output["auth"] = auth
     else:
         is_success = False
+
+    # proxy
+    proxy, ok = get_proxy(data)
+    is_success &= ok
+    if ok and proxy:
+        output["proxy"] = proxy
 
     # tls
     data_tls = data.get("tls", {})
@@ -131,6 +138,13 @@ def get_auth(data: dict) -> Optional["Auth"]:
 
     # build auth object from data
     return class_.load(data)
+
+
+def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
+    proxy = data.get("proxy")
+    if not proxy:
+        return None, True
+    return ensure_str("source.proxy", proxy)
 
 
 def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
