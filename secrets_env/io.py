@@ -8,7 +8,9 @@ import click
 def get_env_var(*names: str) -> Optional[str]:
     """Get value from (any candidate) environment variable."""
     for name in names:
-        if var := os.getenv(name):
+        if var := os.getenv(name.upper()):
+            return var
+        if var := os.getenv(name.lower()):
             return var
     return None
 
