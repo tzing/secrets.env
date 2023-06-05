@@ -141,10 +141,23 @@ def get_auth(data: dict) -> Optional["Auth"]:
 
 
 def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
-    proxy = data.get("proxy")
+    # capture those (extra) env var to test for `http(s)://` prefix
+    # even we don't do so, they are adopted by httpx later
+    proxy = get_env_var("SECRETS_ENV_PROXY", "HTTP_PROXY", "HTTPS_PROXY")
+    if not proxy:
+        proxy = data.get("proxy")
     if not proxy:
         return None, True
-    return ensure_str("source.proxy", proxy)
+
+    proxy, ok = ensure_str("source.proxy", proxy)
+    if not ok or not proxy:
+        return None, False
+
+    if not proxy.lower().startswith(("http://", "https://")):
+        logger.warning("Proxy must specify 'http://' or 'https://' protocol")
+        return None, False
+
+    return proxy, True
 
 
 def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:

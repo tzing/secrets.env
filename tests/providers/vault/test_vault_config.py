@@ -17,7 +17,7 @@ class TestGetConnectionInfo:
         ("cfg_proxy", "proxy"),
         [
             ({}, None),
-            ({"proxy": "proxy.example.com"}, "proxy.example.com"),
+            ({"proxy": "http://proxy.example.com"}, "http://proxy.example.com"),
         ],
     )
     @pytest.mark.parametrize(
@@ -183,12 +183,21 @@ class TestGetAuthFactory:
         assert t.get_auth({"method": "radius"}) is self.mock_auth
 
 
-def test_get_proxy():
-    assert t.get_proxy({"proxy": "test"}) == ("test", True)
-    assert t.get_proxy({}) == (None, True)
-    assert t.get_proxy({"proxy": None}) == (None, True)
-    assert t.get_proxy({"proxy": ""}) == (None, True)
-    assert t.get_proxy({"proxy": 1234}) == (None, False)
+class TestGetProxy:
+    def test_success(self):
+        assert t.get_proxy({"proxy": "http://test"}) == ("http://test", True)
+
+    def test_empty(self):
+        assert t.get_proxy({}) == (None, True)
+        assert t.get_proxy({"proxy": None}) == (None, True)
+        assert t.get_proxy({"proxy": ""}) == (None, True)
+
+    def test_type_error(self):
+        assert t.get_proxy({"proxy": 1234}) == (None, False)
+
+    def test_value_error(self, caplog: pytest.LogCaptureFixture):
+        assert t.get_proxy({"proxy": "test"}) == (None, False)
+        assert "Proxy must specify 'http://' or 'https://' protocol" in caplog.text
 
 
 class TestGetTLS:
