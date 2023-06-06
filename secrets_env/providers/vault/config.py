@@ -34,6 +34,7 @@ CertTypes = Union[
 class VaultConnectionInfo(TypedDict):
     url: str
     auth: "Auth"
+    proxy: str
 
     # tls
     ca_cert: "Path"
@@ -58,6 +59,12 @@ def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
         output["auth"] = auth
     else:
         is_success = False
+
+    # proxy
+    proxy, ok = get_proxy(data)
+    is_success &= ok
+    if ok and proxy:
+        output["proxy"] = proxy
 
     # tls
     data_tls = data.get("tls", {})
@@ -131,6 +138,27 @@ def get_auth(data: dict) -> Optional["Auth"]:
 
     # build auth object from data
     return class_.load(data)
+
+
+def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
+    # (1) Vault prioritized `VAULT_PROXY_ADDR` before `VAULT_HTTP_PROXY`
+    #     https://developer.hashicorp.com/vault/docs/commands#environment-variables
+    # (2) Standard proxy variables are later captured by httpx
+    proxy = get_env_var("SECRETS_ENV_PROXY", "VAULT_PROXY_ADDR", "VAULT_HTTP_PROXY")
+    if not proxy:
+        proxy = data.get("proxy")
+    if not proxy:
+        return None, True
+
+    proxy, ok = ensure_str("source.proxy", proxy)
+    if not ok or not proxy:
+        return None, False
+
+    if not proxy.lower().startswith(("http://", "https://")):
+        logger.warning("Proxy must specify 'http://' or 'https://' protocol")
+        return None, False
+
+    return proxy, True
 
 
 def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:

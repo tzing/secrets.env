@@ -12,43 +12,61 @@ from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 
 
-class TestKvProvider1:
+@pytest.fixture()
+def mock_client() -> httpx.Client:
+    client = Mock(spec=httpx.Client)
+    client.headers = {}
+    return client
+
+
+@pytest.fixture()
+def mock_auth():
+    auth = Mock(spec=Auth)
+    auth.method.return_value = "mocked"
+    return auth
+
+
+class TestKvProvider:
     """Unit tests for KvProvider"""
 
     @pytest.fixture()
     def provider(self, mock_auth: Auth) -> t.KvProvider:
         return t.KvProvider("https://example.com/", mock_auth)
 
-    @pytest.fixture()
-    def mock_auth(self):
-        auth = Mock(spec=Auth)
-        auth.method.return_value = "mocked"
-        return auth
+    def test_type(self, provider: t.KvProvider):
+        assert provider.type == "vault"
 
-    def test_client_error_1(self, provider: t.KvProvider, mock_auth: Auth):
-        mock_auth.login.return_value = None
-        with pytest.raises(AuthenticationError):
-            provider.client
+    def test_client_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: t.KvProvider,
+        mock_client: httpx.Client,
+    ):
+        # setup
+        monkeypatch.setattr(t, "get_token", lambda c, a: "token")
 
-    def test_client_error_2(self, provider: t.KvProvider, mock_auth: Auth):
-        mock_auth.login.return_value = "test-token"
-        with pytest.raises(AuthenticationError), patch.object(
-            t, "is_authenticated", return_value=False
-        ):
-            provider.client
+        patch_client = Mock(return_value=mock_client)
+        monkeypatch.setattr("httpx.Client", patch_client)
 
-    def test_client_error_3(self, provider: t.KvProvider, mock_auth: Auth):
-        mock_auth.login.side_effect = httpx.RequestError("test")
-        with pytest.raises(httpx.RequestError):
-            provider.client
+        provider.proxy = "proxy"
+        provider.ca_cert = Mock(spec=Path)
+        provider.client_cert = Mock(spec=Path)
 
-    def test_client_error_4(self, provider: t.KvProvider, mock_auth: Auth):
-        mock_auth.login.side_effect = httpx.ProxyError("test")
-        with pytest.raises(AuthenticationError):
-            provider.client
+        # run twice for testing cache
+        assert provider.client is mock_client
+        assert provider.client is mock_client
+
+        # test
+        assert mock_client.headers["X-Vault-Token"] == "token"
+
+        _, kwargs = patch_client.call_args
+        assert kwargs["base_url"] == "https://example.com/"
+        assert kwargs["proxies"] == "proxy"
+        assert isinstance(kwargs["verify"], Path)
+        assert isinstance(kwargs["cert"], Path)
 
 
-class TestKvProvider2:
+class TestKvProviderUsingVaultConnection:
     """Integration tests for KvProvider"""
 
     @pytest.fixture(scope="class")
@@ -103,26 +121,44 @@ class TestKvProvider2:
             provider.read_field("secret/test", 1234)
 
 
-class TestCreateClient:
-    fake_pem = Path("/data/fake.pem")
+class TestGetToken:
+    def test_success(
+        self,
+        mock_client: httpx.Client,
+        mock_auth: Auth,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        mock_auth.login.return_value = "t0ken"
+        monkeypatch.setattr(t, "is_authenticated", lambda c, t: True)
+        assert t.get_token(mock_client, mock_auth) == "t0ken"
 
-    @pytest.mark.parametrize("ca_cert", [fake_pem, None])
-    @pytest.mark.parametrize("client_cert", [fake_pem, (fake_pem, fake_pem), None])
-    def test_success(self, ca_cert, client_cert):
-        with patch.object(
-            httpx._config.SSLConfig, "load_ssl_context_verify", return_value=None
+    def test_no_token(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.return_value = None
+        with pytest.raises(AuthenticationError, match="Absence of token information"):
+            t.get_token(mock_client, mock_auth)
+
+    def test_not_authenticated(
+        self,
+        mock_client: httpx.Client,
+        mock_auth: Auth,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        mock_auth.login.return_value = "t0ken"
+        monkeypatch.setattr(t, "is_authenticated", lambda c, t: False)
+        with pytest.raises(AuthenticationError, match="Invalid token"):
+            t.get_token(mock_client, mock_auth)
+
+    def test_login_connection_error(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.ProxyError("test")
+        with pytest.raises(
+            AuthenticationError, match="Encounter proxy error while retrieving token"
         ):
-            client = t.create_client("http://example.com", ca_cert, client_cert)
+            t.get_token(mock_client, mock_auth)
 
-        assert isinstance(client, httpx.Client)
-
-    def test_type_error(self):
-        with pytest.raises(TypeError):
-            t.create_client(1234, None, None)
-        with pytest.raises(TypeError):
-            t.create_client("http://example.com", 1234, None)
-        with pytest.raises(TypeError):
-            t.create_client("http://example.com", None, 1234)
+    def test_login_exception(self, mock_client: httpx.Client, mock_auth: Auth):
+        mock_auth.login.side_effect = httpx.HTTPError("test")
+        with pytest.raises(httpx.HTTPError):
+            t.get_token(mock_client, mock_auth)
 
 
 def test_is_authenticated():

@@ -28,6 +28,7 @@ Configuration template
 
       [source]
       url = "https://example.com/"
+      proxy = "http://proxy:3128"
 
       [source.auth]
       method = "okta"
@@ -51,17 +52,18 @@ Configuration template
           method: okta
           username: user@example.com
 
+        proxy: http://proxy:3128
         tls:
           ca_cert: /path/ca.cert
           client_cert: /path/client.cert
           client_key: /path/client.key
 
       secrets:
+        BRIEF: "secret/default#example.to.value"
+
         FULL:
          path: secret/default
          field: example.to.value
-
-        BRIEF: "secret/default#example.to.value"
 
    .. code-tab:: json
 
@@ -72,6 +74,7 @@ Configuration template
             "method": "okta",
             "username": "user@example.com"
           },
+          "proxy": "http://proxy:3128",
           "tls": {
             "ca_cert": "/path/ca.cert",
             "client_cert": "/path/client.cert",
@@ -79,11 +82,11 @@ Configuration template
           }
         },
         "secrets": {
+          "BRIEF": "secret/default#example.to.value",
           "FULL": {
             "path": "secret/default",
             "field": "example.to.value"
-          },
-          "BRIEF": "secret/default#example.to.value"
+          }
         }
       }
 
@@ -107,6 +110,17 @@ The parameters includes:
 
 ``auth`` *(required)*
    Authentication information. Read `Authentication`_ section below.
+
+``proxy``
+   Proxy location to be used to access Vault.
+   Could be set via environment variable ``SECRETS_ENV_PROXY``, ``VAULT_PROXY_ADDR``, ``VAULT_HTTP_PROXY`` or uses `standard proxy variables`_.
+
+   .. _standard proxy variables: https://www.python-httpx.org/environment_variables/#proxies
+
+   .. note::
+
+      You must specify protocol for proxy URL. A typical input could be ``http://proxy`` or ``http://proxy:3128``.
+      Further, the proxy URL for the ``https://`` addresses should still be ``http://`` scheme in most cases.
 
 ``tls``
    Transport layer security (TLS) configurations.

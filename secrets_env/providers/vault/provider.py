@@ -1,6 +1,5 @@
 import enum
 import logging
-import os
 import re
 import typing
 from http import HTTPStatus
@@ -47,11 +46,14 @@ class KvProvider(ProviderBase):
         self,
         url: str,
         auth: "Auth",
+        *,
+        proxy: Optional[str] = None,
         ca_cert: Optional["Path"] = None,
         client_cert: Optional["CertTypes"] = None,
     ) -> None:
         self.url = url
         self.auth = auth
+        self.proxy = proxy
         self.ca_cert = ca_cert
         self.client_cert = client_cert
 
@@ -75,27 +77,24 @@ class KvProvider(ProviderBase):
         )
 
         # initialize client
-        client = create_client(self.url, self.ca_cert, self.client_cert)
-        self._client = client
+        client_params: dict[str, Any] = {"base_url": self.url}
 
-        # get token
-        try:
-            token = self.auth.login(client)
-        except httpx.HTTPError as e:
-            if not (reason := get_httpx_error_reason(e)):
-                raise
-            raise AuthenticationError("Encounter {} while retrieving token", reason)
+        if self.proxy:
+            logger.debug("Use proxy: %s", self.proxy)
+            client_params["proxies"] = self.proxy
+        if self.ca_cert:
+            logger.debug("CA installed: %s", self.ca_cert)
+            client_params["verify"] = self.ca_cert
+        if self.client_cert:
+            logger.debug("Client side certificate file installed: %s", self.client_cert)
+            client_params["cert"] = self.client_cert
 
-        if not token:
-            raise AuthenticationError("Absence of token information")
+        self._client = httpx.Client(**client_params)
 
-        # verify token
-        if is_authenticated(client, token):
-            client.headers["X-Vault-Token"] = token
-        else:
-            raise AuthenticationError("Token is invalid")
+        # install token
+        self._client.headers["X-Vault-Token"] = get_token(self._client, self.auth)
 
-        return client
+        return self._client
 
     def get(self, spec: RequestSpec) -> str:
         if not spec:
@@ -168,29 +167,23 @@ class KvProvider(ProviderBase):
         return value
 
 
-def create_client(
-    base_url: str, ca_cert: Optional["Path"], client_cert: Optional["CertTypes"]
-) -> httpx.Client:
-    """Initialize a client."""
-    if not isinstance(base_url, str):
-        raise TypeError("base_url", str, base_url)
-    if ca_cert is not None and not isinstance(ca_cert, os.PathLike):
-        raise TypeError("ca_cert", "path-like", ca_cert)
-    if client_cert is not None and not isinstance(client_cert, (os.PathLike, tuple)):
-        raise TypeError("client_cert", "path-like", client_cert)
+def get_token(client: httpx.Client, auth: "Auth") -> str:
+    # login
+    try:
+        token = auth.login(client)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        raise AuthenticationError("Encounter {} while retrieving token", reason)
 
-    logger.debug("Creating client to %s", base_url)
+    if not token:
+        raise AuthenticationError("Absence of token information")
 
-    params: dict[str, Any] = {"base_url": base_url}
+    # verify
+    if not is_authenticated(client, token):
+        raise AuthenticationError("Invalid token")
 
-    if ca_cert:
-        logger.debug("CA installed: %s", ca_cert)
-        params["verify"] = ca_cert
-    if client_cert:
-        logger.debug("Client side certificate file installed: %s", client_cert)
-        params["cert"] = client_cert
-
-    return httpx.Client(**params)
+    return token
 
 
 def is_authenticated(client: httpx.Client, token: str) -> bool:
