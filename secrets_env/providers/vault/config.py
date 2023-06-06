@@ -141,17 +141,10 @@ def get_auth(data: dict) -> Optional["Auth"]:
 
 
 def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
-    proxy = get_env_var(
-        "SECRETS_ENV_PROXY",
-        # Vault prioritized `VAULT_PROXY_ADDR` before `VAULT_HTTP_PROXY`
-        # https://developer.hashicorp.com/vault/docs/commands#environment-variables
-        "VAULT_PROXY_ADDR",
-        "VAULT_HTTP_PROXY",
-        # capture those (extra) env var to test for `http(s)://` prefix
-        # even we don't do so, they are adopted by httpx later
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-    )
+    # (1) Vault prioritized `VAULT_PROXY_ADDR` before `VAULT_HTTP_PROXY`
+    #     https://developer.hashicorp.com/vault/docs/commands#environment-variables
+    # (2) Standard proxy variables are later captured by httpx
+    proxy = get_env_var("SECRETS_ENV_PROXY", "VAULT_PROXY_ADDR", "VAULT_HTTP_PROXY")
     if not proxy:
         proxy = data.get("proxy")
     if not proxy:

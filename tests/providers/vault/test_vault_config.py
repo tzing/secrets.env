@@ -188,7 +188,7 @@ class TestGetProxy:
         assert t.get_proxy({"proxy": "http://test"}) == ("http://test", True)
 
     def test_success_env(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("https_proxy", "http://test")
+        monkeypatch.setenv("secrets_env_proxy", "http://test")
         assert t.get_proxy({}) == ("http://test", True)
 
     def test_empty(self):
