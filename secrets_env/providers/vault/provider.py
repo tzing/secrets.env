@@ -1,6 +1,5 @@
 import enum
 import logging
-import os
 import re
 import typing
 from http import HTTPStatus
