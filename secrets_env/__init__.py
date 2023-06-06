@@ -1,7 +1,7 @@
 import logging
 import typing
 
-from ._metadata import __name__, __version__
+from ._metadata import __name__, __version__  # noqa: F401
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
