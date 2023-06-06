@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import httpx
 
+import secrets_env._metadata
 from secrets_env.exceptions import (
     AuthenticationError,
     ConfigError,
@@ -89,7 +90,16 @@ class KvProvider(ProviderBase):
             logger.debug("Client side certificate file installed: %s", self.client_cert)
             client_params["cert"] = self.client_cert
 
-        self._client = httpx.Client(**client_params)
+        self._client = httpx.Client(
+            **client_params,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": (
+                    f"secrets.env/{secrets_env._metadata.__version__} "
+                    f"python-httpx/{httpx.__version__}"
+                ),
+            },
+        )
 
         # install token
         self._client.headers["X-Vault-Token"] = get_token(self._client, self.auth)
