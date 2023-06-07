@@ -38,7 +38,10 @@ def read_values(
     num_expected = len(config["requests"])
     num_loaded = len(output_values)
 
-    if num_expected == num_loaded:
+    if not num_expected:
+        return {}
+
+    elif num_expected == num_loaded:
         logger.info(
             "<!important>\U0001F511 <mark>%d</mark> secrets loaded", num_expected
         )

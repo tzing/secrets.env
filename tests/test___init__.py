@@ -55,3 +55,19 @@ class TestReadValues:
 
         assert t.read_values(strict=True) is None
         assert "<error>1</error> / 2 secrets read." in caplog.text
+
+    def test_no_value(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        monkeypatch.setattr(
+            "secrets_env.config.load_config",
+            lambda _: {
+                "providers": Mock(),
+                "requests": [],
+            },
+        )
+
+        with caplog.at_level(logging.INFO):
+            assert t.read_values() == {}
+
+        assert not caplog.records
