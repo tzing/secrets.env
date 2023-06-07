@@ -61,13 +61,15 @@ Typically, the configuration file should contain ``source`` section to specify t
         }
       }
 
-.. note::
+   .. code-tab:: toml pyproject.toml
 
-   This app can also read configurations from ``pyproject.toml`` file using the `PEP-518`_ format.
-   To use this format, you need to use the template in TOML format and add the prefix ``tool.secrets-env`` to each section.
-   For example, change ``[secrets]`` to ``[tool.secrets-env.secrets]``.
+      [tool.secrets-env.source]
+      type = "vault"
+      url = "https://example.com/"
+      auth = "oidc"
 
-   .. _PEP-518: https://www.python.org/dev/peps/pep-0518/
+      [tool.secrets-env.secrets]
+      VAR = "secret/default#example"
 
 
 Source
@@ -75,9 +77,12 @@ Source
 
 Source section specifies secret provider information.
 
-Since this app uses "vault" as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
+This app uses :ref:`vault-provider` as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
 
-In addition, having more than one provider is also possible by modifying the "source" table to a list and giving each provider a unique ``name``:
+Multiple sources
+^^^^^^^^^^^^^^^^
+
+Having more than one provider is also possible by modifying the "source" table to a list and giving each provider a unique ``name``:
 
 .. tabs::
 
@@ -126,6 +131,17 @@ In addition, having more than one provider is also possible by modifying the "so
         ]
       }
 
+   .. code-tab:: toml pyproject.toml
+
+      [[tool.secrets-env.source]]
+      name = "vault-1"
+      url = "https://vault-1.example.com/"
+      auth = {method = "okta", username = "user@example.com"}
+
+      [[tool.secrets-env.source]]
+      name = "vault-2"
+      url = "https://vault-2.example.com/"
+      auth = "oidc"
 
 Secrets
 +++++++
@@ -134,6 +150,39 @@ The "secrets" section lists key-value pairs where the keys correspond to the env
 The specific format of the value depends on the secret provider being used.
 
 For example, in the case of Vault, the value could be either a string in the format of ``path#field``, or a table that includes the ``path`` and ``field`` fields.
+
+.. tabs::
+
+   .. code-tab:: toml
+
+      [secrets]
+      VAR1 = {path = "secret/default", field = "example"}
+
+   .. code-tab:: yaml
+
+      secrets:
+        VAR1:
+          path: secret/default
+          field: example
+
+   .. code-tab:: json
+
+      {
+        "secrets": {
+          "VAR1": {
+            "path": "secret/default",
+            "field": "example"
+          }
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.secrets]
+      VAR1 = {path = "secret/default", field = "example"}
+
+Multiple sources
+^^^^^^^^^^^^^^^^
 
 If multiple providers are installed, you must provide the source name for each of them:
 
@@ -164,6 +213,10 @@ If multiple providers are installed, you must provide the source name for each o
         }
       }
 
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.secrets]
+      VAR1 = {provider = "vault-1", path = "secret/default", field = "example"}
 
 Providers
 ---------
