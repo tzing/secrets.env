@@ -28,16 +28,6 @@ Typically, the configuration file should contain ``source`` section to specify t
 
 .. tabs::
 
-   .. code-tab:: yaml
-
-      source:
-        type: vault
-        url: https://example.com/
-        auth: oidc
-
-      secrets:
-        VAR: "secret/default#example"
-
    .. code-tab:: toml
 
       [source]
@@ -47,6 +37,16 @@ Typically, the configuration file should contain ``source`` section to specify t
 
       [secrets]
       VAR = "secret/default#example"
+
+   .. code-tab:: yaml
+
+      source:
+        type: vault
+        url: https://example.com/
+        auth: oidc
+
+      secrets:
+        VAR: "secret/default#example"
 
    .. code-tab:: json
 
@@ -81,6 +81,18 @@ In addition, having more than one provider is also possible by modifying the "so
 
 .. tabs::
 
+   .. code-tab:: toml
+
+      [[source]]
+      name = "vault-1"
+      url = "https://vault-1.example.com/"
+      auth = {method = "okta", username = "user@example.com"}
+
+      [[source]]
+      name = "vault-2"
+      url = "https://vault-2.example.com/"
+      auth = "oidc"
+
    .. code-tab:: yaml
 
       source:
@@ -93,18 +105,6 @@ In addition, having more than one provider is also possible by modifying the "so
         - name: vault-2
           url: https://vault-2.example.com/
           auth: oidc
-
-   .. code-tab:: toml
-
-      [[source]]
-      name = "vault-1"
-      url = "https://vault-1.example.com/"
-      auth = {method = "okta", username = "user@example.com"}
-
-      [[source]]
-      name = "vault-2"
-      url = "https://vault-2.example.com/"
-      auth = "oidc"
 
    .. code-tab:: json
 
@@ -139,6 +139,11 @@ If multiple providers are installed, you must provide the source name for each o
 
 .. tabs::
 
+   .. code-tab:: toml
+
+      [secrets]
+      VAR1 = {provider = "vault-1", path = "secret/default", field = "example"}
+
    .. code-tab:: yaml
 
       secrets:
@@ -146,11 +151,6 @@ If multiple providers are installed, you must provide the source name for each o
           provider: vault-1
           path: secret/default
           field: example
-
-   .. code-tab:: toml
-
-      [secrets]
-      VAR1 = {provider = "vault-1", path = "secret/default", field = "example"}
 
    .. code-tab:: json
 
