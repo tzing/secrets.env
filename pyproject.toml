@@ -84,3 +84,15 @@ exclude_lines = [
 
 [tool.pyright]
 include = ["secrets_env"]
+
+[tool.bumpver]
+current_version = "0.27.1"
+version_pattern = "MAJOR.MINOR.PATCH"
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+]
+"secrets_env/_metadata.py" = [
+    '__version__ = "{version}"'
+]
