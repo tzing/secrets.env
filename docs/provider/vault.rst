@@ -90,6 +90,25 @@ Configuration template
         }
       }
 
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.source]
+      url = "https://example.com/"
+      proxy = "http://proxy:3128"
+
+      [tool.secrets-env.source.auth]
+      method = "okta"
+      username = "user@example.com"
+
+      [tool.secrets-env.source.tls]
+      ca_cert = "/path/ca.cert"
+      client_cert = "/path/client.cert"
+      client_key = "/path/client.key"
+
+      [tool.secrets-env.secrets]
+      BRIEF = "secret/default#example.to.value"
+      FULL = {path = "secret/default", field = "example.to.value"}
+
 
 Connection parameters
 ---------------------
@@ -174,6 +193,18 @@ Once all other parameters have been provided by non-config sources, you can set 
       source:
         auth: okta
 
+   .. code-tab:: json
+
+      {
+        "source": {
+          "auth": "okta"
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.source]
+      auth = "okta"
 
 TLS configuration
 +++++++++++++++++
@@ -223,6 +254,23 @@ For vault provider, secret values must be explicitly paired with both a path and
 
         SHORTCUT: "secret/default#example.to.value"  # shortcut: path#field
 
+   .. code-tab:: json
+
+      {
+        "secrets": {
+          "CLASSIC": {
+            "path": "secret/default",
+            "field": "example.to.value"
+          },
+          "SHORTCUT": "secret/default#example.to.value"
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.secrets]
+      CLASSIC = {path = "secret/default", field = "example.to.value"}
+      SHORTCUT = "secret/default#example.to.value"  # shortcut: path#field
 
 .. _authentication-methods:
 
@@ -390,3 +438,24 @@ For additional details, refer to the :ref:`use-teleport-addon` section.
         teleport:
           proxy: example.com
           app: demo
+
+   .. code-tab:: json
+
+      {
+        "source": {
+          "type": "teleport+vault",
+          "teleport": {
+            "proxy": "example.com",
+            "app": "demo"
+          }
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.source]
+      type = "teleport+vault"
+
+      [tool.secrets-env.source.teleport]
+      proxy = "example.com"
+      app = "demo"
