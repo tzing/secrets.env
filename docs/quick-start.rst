@@ -60,6 +60,36 @@ This app can receive configurations from different sources. Here's a simple exam
           field: example-1
         VAR2: secrets/default#example-2
 
+   .. code-tab:: json
+
+      // file: .secrets-env.json
+      {
+        "source": {
+          "type": "vault",
+          "url": "https://example.com",
+          "auth": "token"
+        },
+        "secrets": {
+          "VAR1": {
+            "path": "secrets/default",
+            "field": "example-1"
+          },
+          "VAR2": "secrets/default#example-2"
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      # file: pyproject.toml
+      [tool.secrets-env.source]
+      type = "vault"
+      url = "https://example.com"
+      auth = "token"
+
+      [tool.secrets-env.secrets]
+      VAR1 = {path = "secrets/default", field = "example-1"}
+      VAR2 = "secrets/default#example-2"
+
 This config directs secrets.env to read 2 values from the Vault and load them into ``VAR1`` and ``VAR2``, respectively.
 
 Note that credentials should never be included in the config file. Instead, you should set an environment variable for authentication in such case.

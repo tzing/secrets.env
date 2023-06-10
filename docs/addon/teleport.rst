@@ -68,6 +68,28 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
           proxy: example.com
           app: demo
 
+   .. code-tab:: json
+
+      {
+        "source": {
+          "type": "teleport+vault",
+          "teleport": {
+            "proxy": "example.com",
+            "app": "demo"
+          }
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.source]
+      type = "teleport+vault"
+
+      [tool.secrets-env.source.teleport]
+      proxy = "example.com"
+      app = "demo"
+
+
 Parameters
 ++++++++++
 
@@ -101,6 +123,21 @@ Hence, for such use cases, we can conveniently set the app name directly in the 
       source:
         type: teleport+vault
         teleport: demo
+
+   .. code-tab:: json
+
+      {
+        "source": {
+          "type": "teleport+vault",
+          "teleport": "demo"
+        }
+      }
+
+   .. code-tab:: toml pyproject.toml
+
+      [tool.secrets-env.source]
+      type = "teleport+vault"
+      teleport = "demo"
 
 Adapted provider
 ++++++++++++++++
