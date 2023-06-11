@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.27.0"
+version = "0.27.1"
 description = "Bridge between Vault and your app"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
@@ -91,7 +91,7 @@ version_pattern = "MAJOR.MINOR.PATCH"
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
-    'current_version = "{version}"',
+    'version = "{version}"',
 ]
 "secrets_env/_metadata.py" = [
     '__version__ = "{version}"'
