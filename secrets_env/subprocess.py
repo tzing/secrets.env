@@ -105,18 +105,6 @@ class Run:
 
 
 def polling_output(ch: Channel, source: IO[str], q: queue.Queue):
-    logger.debug(
-        "Subprocess polling worker created. thread id= %s; channel= %s",
-        threading.get_native_id(),
-        ch.name,
-    )
-
     for line in source:
         q.put((ch, line))
         logger.debug("%s %s", ch.prefix, strip_ansi(line.rstrip()))
-
-    logger.debug(
-        "Subprocess polling worker shutdown. thread id= %s; channel= %s",
-        threading.get_native_id(),
-        ch.name,
-    )
