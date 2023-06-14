@@ -186,6 +186,8 @@ def call_app_login(params: "AppParameter") -> None:
                 f"  <link>{line}</link>"
             )
 
+    runner.wait()
+
     if runner.return_code == 0:
         logger.info("Successfully logged into app %s", app)
         return None
