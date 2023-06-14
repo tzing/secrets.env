@@ -193,7 +193,7 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
 
         # finalize
         logger.debug(
-            "HTTP Server shutdown. ident= %s; address= %s",
+            "HTTP Server shutdown. thread id= %s; address= %s",
             threading.get_native_id(),
             self.server_address,
         )
