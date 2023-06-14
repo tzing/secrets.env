@@ -172,6 +172,11 @@ def call_app_login(params: "AppParameter") -> None:
     runner = Run(cmd)
 
     for line in runner.iter_any_output():
+        # early escape on detect 'success' message from stdout
+        if line.startswith("Logged into app"):
+            break
+
+        # capture auth url from stderr
         if line.lstrip().startswith("http://127.0.0.1:"):
             logger.info(
                 "<!important>"
