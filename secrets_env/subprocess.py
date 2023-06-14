@@ -78,9 +78,11 @@ class Run:
 
     def wait(self) -> int:
         """Wait until process terminated"""
+        rc = self._proc.wait()
         for t in self._threads:
-            t.join()
-        return self._proc.wait()
+            # expect threads to stop (almost) immediately
+            t.join(1.0)
+        return rc
 
     def _flush(self):
         self.wait()
