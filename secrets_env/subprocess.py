@@ -44,17 +44,21 @@ class Run:
         )
 
         # fire threads to read output
-        threading.Thread(
-            target=polling_output,
-            args=(Channel.Stdout, self._proc.stdout, self._queue),
-            daemon=True,
-        ).start()
+        self._threads = (
+            threading.Thread(
+                target=polling_output,
+                args=(Channel.Stdout, self._proc.stdout, self._queue),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=polling_output,
+                args=(Channel.Stderr, self._proc.stderr, self._queue),
+                daemon=True,
+            ),
+        )
 
-        threading.Thread(
-            target=polling_output,
-            args=(Channel.Stderr, self._proc.stderr, self._queue),
-            daemon=True,
-        ).start()
+        for t in self._threads:
+            t.start()
 
     def _iter_output(self) -> Iterator[Tuple[Channel, str]]:
         POLL_INTERVAL = 0.1
@@ -72,7 +76,14 @@ class Run:
                     break
                 time.sleep(POLL_INTERVAL)
 
+    def wait(self) -> int:
+        """Wait until process terminated"""
+        for t in self._threads:
+            t.join()
+        return self._proc.wait()
+
     def _flush(self):
+        self.wait()
         for _ in self._iter_output():
             ...
 
@@ -98,10 +109,6 @@ class Run:
         """Returns stderr outputs"""
         self._flush()
         return "".join(self._stderrs)
-
-    def wait(self) -> int:
-        """Wait until process terminated"""
-        return self._proc.wait()
 
 
 def polling_output(ch: Channel, source: IO[str], q: queue.Queue):
