@@ -80,16 +80,9 @@ class Run:
 
     def wait(self) -> int:
         """Wait until process terminated"""
-        rc = self._proc.wait()
-        for t in self._threads:
-            # expect threads to stop (almost) immediately
-            t.join(1.0)
-        return rc
-
-    def _flush_output(self):
-        self.wait()
         for _ in self._iter_output():
             ...
+        return self._proc.wait()
 
     def iter_any_output(self) -> Iterator[str]:
         """Reads any output. This method does not impacts :py:attr:`stdout` or
@@ -105,13 +98,13 @@ class Run:
     @property
     def stdout(self) -> str:
         """Returns stdout outputs"""
-        self._flush_output()
+        self.wait()
         return "".join(self._stdouts)
 
     @property
     def stderr(self) -> str:
         """Returns stderr outputs"""
-        self._flush_output()
+        self.wait()
         return "".join(self._stderrs)
 
 
