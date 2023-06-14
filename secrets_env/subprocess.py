@@ -4,7 +4,7 @@ import queue
 import subprocess
 import threading
 import time
-from typing import IO, Iterator, List, Sequence, Tuple
+from typing import IO, Iterator, List, Optional, Sequence, Tuple
 
 from secrets_env.utils import strip_ansi
 
@@ -68,37 +68,45 @@ class Run:
                 yield ch, line
 
             except queue.Empty:
-                if self._proc.poll():
+                if self._proc.poll() is not None:
                     break
-                else:
-                    time.sleep(POLL_INTERVAL)
+                time.sleep(POLL_INTERVAL)
 
     def _flush(self):
         for _ in self._iter_output():
             ...
 
     def iter_any_output(self) -> Iterator[str]:
+        """Reads any output. This method does not impacts :py:attr:`stdout` or
+        :py:attr:`stderr`."""
         for _, line in self._iter_output():
             yield line
 
     @property
-    def return_code(self):
-        return self._proc.wait()
+    def return_code(self) -> Optional[int]:
+        """The child return code"""
+        return self._proc.returncode
 
     @property
     def stdout(self) -> str:
+        """Returns stdout outputs"""
         self._flush()
         return "".join(self._stdouts)
 
     @property
     def stderr(self) -> str:
+        """Returns stderr outputs"""
         self._flush()
         return "".join(self._stderrs)
+
+    def wait(self) -> int:
+        """Wait until process terminated"""
+        return self._proc.wait()
 
 
 def polling_output(ch: Channel, source: IO[str], q: queue.Queue):
     logger.debug(
-        "Subprocess polling worker created. thread id= %s; channel = %s",
+        "Subprocess polling worker created. thread id= %s; channel= %s",
         threading.get_native_id(),
         ch.name,
     )
@@ -108,7 +116,7 @@ def polling_output(ch: Channel, source: IO[str], q: queue.Queue):
         logger.debug("%s %s", ch.prefix, strip_ansi(line.rstrip()))
 
     logger.debug(
-        "Subprocess polling worker shutdown. thread id= %s; channel = %s",
+        "Subprocess polling worker shutdown. thread id= %s; channel= %s",
         threading.get_native_id(),
         ch.name,
     )
