@@ -177,7 +177,8 @@ def call_app_login(params: "AppParameter") -> None:
             break
 
         # capture auth url from stderr
-        if line.lstrip().startswith("http://127.0.0.1:"):
+        line = line.lstrip()
+        if line.startswith("http://127.0.0.1:"):
             logger.info(
                 "<!important>"
                 "Waiting for response from Teleport...\n"
