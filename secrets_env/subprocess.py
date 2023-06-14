@@ -62,8 +62,9 @@ class Run:
 
     def _iter_output(self) -> Iterator[Tuple[Channel, str]]:
         POLL_INTERVAL = 0.1
-        while True:
-            try:
+
+        def _flush_queue():
+            while not self._queue.empty():
                 ch, line = self._queue.get_nowait()
                 if ch == Channel.Stdout:
                     self._stdouts.append(line)
@@ -71,21 +72,17 @@ class Run:
                     self._stderrs.append(line)
                 yield ch, line
 
-            except queue.Empty:
-                if self._proc.poll() is not None:
-                    break
-                time.sleep(POLL_INTERVAL)
+        while self._proc.poll() is None:
+            yield from _flush_queue()
+            time.sleep(POLL_INTERVAL)
+
+        yield from _flush_queue()
 
     def wait(self) -> int:
         """Wait until process terminated"""
-        for t in self._threads:
-            t.join()
-        return self._proc.wait()
-
-    def _flush(self):
-        self.wait()
         for _ in self._iter_output():
             ...
+        return self._proc.wait()
 
     def iter_any_output(self) -> Iterator[str]:
         """Reads any output. This method does not impacts :py:attr:`stdout` or
@@ -101,13 +98,13 @@ class Run:
     @property
     def stdout(self) -> str:
         """Returns stdout outputs"""
-        self._flush()
+        self.wait()
         return "".join(self._stdouts)
 
     @property
     def stderr(self) -> str:
         """Returns stderr outputs"""
-        self._flush()
+        self.wait()
         return "".join(self._stderrs)
 
 

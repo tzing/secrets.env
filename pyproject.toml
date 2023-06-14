@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.27.2"
+version = "0.27.3"
 description = "Bridge between Vault and your app"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
@@ -86,7 +86,7 @@ exclude_lines = [
 include = ["secrets_env"]
 
 [tool.bumpver]
-current_version = "0.27.2"
+current_version = "0.27.3"
 version_pattern = "MAJOR.MINOR.PATCH"
 
 [tool.bumpver.file_patterns]
