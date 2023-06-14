@@ -14,6 +14,7 @@ from secrets_env.exceptions import (
     SecretsEnvError,
     UnsupportedError,
 )
+from secrets_env.subprocess import Run
 
 no_teleport_cli = shutil.which("tsh") is None
 
@@ -137,7 +138,7 @@ class TestCallVersion:
         assert re.search(r"< Teleport v\d+\.\d+\.\d+", caplog.text)
 
     def test_fail(self):
-        mock = Mock(spec=t._RunCommand, return_code=1)
+        mock = Mock(spec=Run, return_code=1)
         mock.returncode = 1
         with patch.object(t, "run_teleport", return_value=mock):
             assert t.call_version() is False
@@ -145,13 +146,13 @@ class TestCallVersion:
 
 class TestCallAppConfig:
     def test_success(self):
-        mock = Mock(spec=t._RunCommand, return_code=0)
+        mock = Mock(spec=Run, return_code=0)
         mock.stdout = b'{"foo": "bar"}'
         with patch.object(t, "run_teleport", return_value=mock):
             assert t.call_app_config("test") == {"foo": "bar"}
 
     def test_fail(self):
-        mock = Mock(spec=t._RunCommand, return_code=1)
+        mock = Mock(spec=Run, return_code=1)
         with patch.object(t, "run_teleport", return_value=mock):
             assert t.call_app_config("test") == {}
 
@@ -159,18 +160,18 @@ class TestCallAppConfig:
 class TestCallAppLogin:
     @pytest.fixture()
     def runner(self):
-        runner = Mock(spec=t._RunCommand, return_code=0)
-        runner.iter_stderr.return_value = []
+        runner = Mock(spec=Run, return_code=0)
+        runner.iter_any_output.return_value = []
         return runner
 
     def test_success(
         self,
         caplog: pytest.LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
-        runner: t._RunCommand,
+        runner: Run,
     ):
         # setup mock
-        runner.iter_stderr.return_value = [
+        runner.iter_any_output.return_value = [
             "If browser...",
             " http://127.0.0.1:12345/mock",
             "Logged into app test",
@@ -187,7 +188,7 @@ class TestCallAppLogin:
             ]
             return runner
 
-        monkeypatch.setattr(t, "_RunCommand", mock_run_command)
+        monkeypatch.setattr(t, "Run", mock_run_command)
 
         # run
         with caplog.at_level(logging.INFO):
@@ -200,67 +201,23 @@ class TestCallAppLogin:
         assert "Waiting for response from Teleport..." in caplog.text
         assert "Successfully logged into app test" in caplog.text
 
-    def test_app_not_found(self, runner: t._RunCommand):
+    def test_app_not_found(self, runner: Run):
         runner.return_code = 1
         runner.stderr = 'ERROR: app "test" not found'
 
         with pytest.raises(
             AuthenticationError, match="Teleport app 'test' not found"
-        ), patch.object(t, "_RunCommand", return_value=runner):
+        ), patch.object(t, "Run", return_value=runner):
             assert t.call_app_login({"app": "test"}) is None
 
-    def test_other_error(self, runner: t._RunCommand):
+    def test_other_error(self, runner: Run):
         runner.return_code = 1
         runner.stderr = "ERROR: mocked"
 
         with pytest.raises(
             AuthenticationError, match="Teleport error: ERROR: mocked"
-        ), patch.object(t, "_RunCommand", return_value=runner):
+        ), patch.object(t, "Run", return_value=runner):
             assert t.call_app_login({"app": "test"}) is None
-
-
-class TestRunCommand:
-    def test_command(self):
-        runner = t._RunCommand(["echo", "hello world"])
-        assert runner.command == ("echo", "hello world")
-
-    def test_run(self, caplog: pytest.LogCaptureFixture):
-        runner = t._RunCommand(
-            [
-                "sh",
-                "-c",
-                """
-                echo 'hello world'
-                echo 'hello stderr' > /dev/stderr
-                exit 36
-                """,
-            ]
-        )
-
-        with caplog.at_level(logging.DEBUG):
-            runner.start()
-            runner.join()
-
-        assert runner.return_code == 36
-        assert runner.stdout == "hello world\n"
-        assert runner.stderr == "hello stderr\n"
-        assert "< hello world" in caplog.text
-        assert "<[stderr] hello stderr" in caplog.text
-
-    def test_iter_stderr(self):
-        runner = t._RunCommand(
-            [
-                "sh",
-                "-c",
-                """
-                echo 'item 1'
-                echo 'item 2' > /dev/stderr
-                echo 'item 3' > /dev/stderr
-                """,
-            ]
-        )
-
-        assert list(runner.iter_stderr()) == ["item 2", "item 3"]
 
 
 fake_cert = b"""

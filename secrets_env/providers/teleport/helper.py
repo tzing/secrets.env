@@ -8,32 +8,21 @@ import datetime
 import importlib.util
 import json
 import logging
-import queue
 import shutil
-import subprocess
-import sys
-import threading
-import time
 import typing
 from pathlib import Path
-from typing import IO, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Dict, Iterable, Optional
 
 from secrets_env.exceptions import (
     AuthenticationError,
     SecretsEnvError,
     UnsupportedError,
 )
-from secrets_env.utils import strip_ansi
+from secrets_env.subprocess import Run
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.teleport.config import AppParameter
 
-    if sys.version_info >= (3, 9):
-        StrQueue = queue.Queue[str]
-        StrPopen = subprocess.Popen[str]
-    else:
-        StrQueue = typing.TypeVar("StrQueue", bound=queue.Queue)
-        StrPopen = typing.TypeVar("StrPopen", bound=subprocess.Popen)
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -180,9 +169,9 @@ def call_app_login(params: "AppParameter") -> None:
     cmd.append(app)
 
     # run
-    runner = _RunCommand(cmd)
+    runner = Run(cmd)
 
-    for line in runner.iter_stderr():
+    for line in runner.iter_any_output():
         if line.lstrip().startswith("http://127.0.0.1:"):
             logger.info(
                 "<!important>"
@@ -190,9 +179,6 @@ def call_app_login(params: "AppParameter") -> None:
                 "If browser does not open automatically, open the link:\n"
                 f"  <link>{line}</link>"
             )
-            break
-
-    runner.join()
 
     if runner.return_code == 0:
         logger.info("Successfully logged into app %s", app)
@@ -204,104 +190,8 @@ def call_app_login(params: "AppParameter") -> None:
     raise AuthenticationError("Teleport error: {}", runner.stderr)
 
 
-class _RunCommand(threading.Thread):
-    """An :py:class:`subprocess.Popen` wrapper that yields stdout in realtime."""
-
-    def __init__(self, cmd: Iterable[str]) -> None:
-        super().__init__(daemon=True)
-        self._command = tuple(cmd)
-
-        self._return_code = None
-        self._stdout_queue: "StrQueue" = queue.Queue()
-        self._stdouts: List[str] = []
-        self._stderr_queue: "StrQueue" = queue.Queue()
-        self._stderrs: List[str] = []
-
-    @property
-    def command(self) -> Tuple[str, ...]:
-        return self._command
-
-    @property
-    def is_completed(self) -> bool:
-        return self.ident is not None and not self.is_alive()
-
-    def run(self) -> None:
-        """Runs subprocess in background thread in case the iter is early escaped."""
-        logger.debug("$ %s", " ".join(self.command))
-
-        # flush output to queue and log it
-        def _flush_output_to_queue(stream: IO[str], q: "StrQueue", prefix="<"):
-            for line in iter(stream.readline, ""):
-                line = strip_ansi(line)
-                q.put(line)
-                logger.debug("%s %s", prefix, line.rstrip())
-
-        def _flush(proc: "StrPopen"):
-            stdout = typing.cast(IO[str], proc.stdout)
-            stderr = typing.cast(IO[str], proc.stderr)
-            _flush_output_to_queue(stdout, self._stdout_queue)
-            _flush_output_to_queue(stderr, self._stderr_queue, "<[stderr]")
-
-        # run command
-        with subprocess.Popen(
-            args=self.command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf-8",
-        ) as proc:
-            # realtime read outputs to queue
-            while proc.poll() is None:
-                _flush(proc)
-
-            # get exit code and remaning outputs
-            _flush(proc)
-            self._return_code = proc.returncode
-
-    def _iter_output(self, queue_: "StrQueue", store: List[str]) -> Iterator[str]:
-        QUERY_INTERVAL = 0.1
-
-        if self.ident is None:  # not started
-            self.start()
-
-        while True:
-            try:
-                line = queue_.get_nowait()
-                store.append(line)
-                yield line.rstrip()
-            except queue.Empty:
-                if not self.is_alive():
-                    break
-                time.sleep(QUERY_INTERVAL)
-
-    def _flush(self, queue_: "StrQueue", store: List[str]):
-        for _ in self._iter_output(queue_, store):
-            ...
-
-    def iter_stderr(self) -> Iterator[str]:
-        """Yields stderr in realtime"""
-        yield from self._iter_output(self._stderr_queue, self._stderrs)
-
-    @property
-    def return_code(self) -> int:
-        """Subprocess return code"""
-        assert self.is_completed
-        return self._return_code  # type: ignore[reportOptionalMemberAccess]
-
-    @property
-    def stdout(self) -> str:
-        self._flush(self._stdout_queue, self._stdouts)
-        return "".join(self._stdouts)
-
-    @property
-    def stderr(self) -> str:
-        self._flush(self._stderr_queue, self._stderrs)
-        return "".join(self._stderrs)
-
-
-def run_teleport(args: Iterable[str]) -> _RunCommand:
+def run_teleport(args: Iterable[str]) -> Run:
     """Run teleport command. Returns execution result."""
-    cmd = [TELEPORT_APP_NAME, *args]
-    run = _RunCommand(cmd)
-    run.start()
-    run.join()
+    run = Run([TELEPORT_APP_NAME, *args])
+    run.wait()
     return run
