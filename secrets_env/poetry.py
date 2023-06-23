@@ -1,3 +1,6 @@
+"""Adapt poetry's plugin framework to automatically load secrets on specific
+poetry commands.
+"""
 import logging
 import os
 import typing
@@ -31,8 +34,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         event_name: str,
         dispatcher: "EventDispatcher",
     ) -> None:
-        if not isinstance(event, ConsoleCommandEvent):
-            return
+        assert isinstance(event, ConsoleCommandEvent)  # satisfy type check
         if event.command.name not in ("run", "shell"):
             return
 
@@ -47,15 +49,14 @@ class SecretsEnvPlugin(ApplicationPlugin):
             os.environ[name] = value
 
     def setup_output(self, output: "Output") -> None:
-        """Forwards internal messages to cleo.
+        """Forwards internal messages to :py:mod:`cleo`.
 
-        Secrets.env internally uses logging module for showing messages to users.
-        But cleo hides the logs, unless `-vv` (VERY_VERBOSE) is set, this made
-        it harder to show warnings or errors.
+        Secrets.env writes all messages using :py:mod:`logging`. But cleo hides
+        all the logs by default, including warning and error messages.
 
-        So it forwards all internal logs from secrets.env to cleo. (Re)assign the
-        verbosity level in the Handler and colored the output using the custom
-        Formatter, powered with cleo's formatter."""
+        This method forwards all internal logs from secrets.env to cleo. (Re)assign
+        the verbosity level in the customized Handler and colored the output using
+        the custom format, powered with cleo's formatter."""
         # set output format
         output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
         output.formatter.set_style("warning", Style("yellow", options=["bold"]))

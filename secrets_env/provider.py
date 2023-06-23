@@ -7,11 +7,8 @@ import sys
 import typing
 from typing import Dict, Union
 
-if typing.TYPE_CHECKING:
-    from secrets_env.exceptions import ConfigError, ValueNotFound  # noqa: F401
-
-    if sys.version_info >= (3, 10):
-        from typing import TypeAlias
+if typing.TYPE_CHECKING and sys.version_info >= (3, 10):
+    from typing import TypeAlias
 
 
 RequestSpec: "TypeAlias" = Union[Dict[str, str], str]
