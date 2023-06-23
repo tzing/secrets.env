@@ -7,7 +7,8 @@ if typing.TYPE_CHECKING:
 
 
 class NullProvider(ProviderBase):
-    """A provider that always empty string. This type is preserved for debugging."""
+    """A provider that always returns empty string. This provider is preserved
+    for debugging."""
 
     @property
     def type(self) -> str:
