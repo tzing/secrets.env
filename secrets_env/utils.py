@@ -1,3 +1,4 @@
+"""Common utilities."""
 import http
 import logging
 import os
@@ -52,7 +53,33 @@ def ensure_type(
     default: Optional[T] = None,
 ) -> Union[Tuple[T, TL_True], Tuple[Optional[T], TL_False]]:
     """Check if the given value is the expected type, fallback to default value
-    when false."""
+    and report errors on failed.
+
+    This is a helper function to be used for config parsing. For the convenience,
+    use :py:func:`ensure_dict`, :py:func:`ensure_path` and :py:func:`ensure_str`.
+
+    Parameters
+    ----------
+    value_name : str
+        Value name to be used on error reporting.
+    value : T
+        Value to be checked.
+    type_name : str
+        Name of expected type(s) to be used on error reporting.
+    expect_type : Type
+        Type(s) could be used in :py:func:`isinstance`.
+    cast : bool
+        Try to cast ``value`` to ``expect_type`` when :py:func:`isinstance` failed.
+    default : T
+        Default value when all checks failed.
+
+    Returns
+    -------
+    ok : bool
+        Type check success
+    value : T
+        Value that matches expect type
+    """
     # returns ok if already the desired type
     if isinstance(value, expect_type):
         return value, True
@@ -77,12 +104,16 @@ def ensure_type(
 
 
 def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
+    """Ensure the input is :py:class:`dict`. Read :py:func:`ensure_type` for
+    more details."""
     return ensure_type(name, d, "dict", dict, False, {})
 
 
 def ensure_path(
     name: str, p: Any, is_file: bool = True
 ) -> Union[Tuple[Path, TL_True], Tuple[None, TL_False]]:
+    """Ensure the input is :py:class:`pathlib.Path`. Read :py:func:`ensure_type`
+    for more details."""
     path: Optional[Path]
     path, _ = ensure_type(name, p, "path", Path, True)
     if not path:
@@ -101,11 +132,13 @@ def ensure_path(
 
 
 def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
+    """Ensure the input is :py:class:`str`. Read :py:func:`ensure_type` for
+    more details."""
     return ensure_type(name, s, "str", str, False)
 
 
 def get_env_var(*names: str) -> Optional[str]:
-    """Get value from (any candidate) environment variable."""
+    """Get value from environment variable(s)."""
     for name in names:
         if var := os.getenv(name.upper()):
             return var
@@ -116,8 +149,7 @@ def get_env_var(*names: str) -> Optional[str]:
 
 def get_httpx_error_reason(e: "httpx.HTTPError"):
     """Returns a reason for those errors that should not breaks the program.
-    This is a helper function used in `expect` clause, and it would raise the
-    error again when `None` is returned."""
+    This is a helper function to be used in :keyword:`expect` clause."""
     import httpx
 
     logger.debug("httpx error occurs. Type= %s", type(e).__name__, exc_info=True)
@@ -131,6 +163,7 @@ def get_httpx_error_reason(e: "httpx.HTTPError"):
 
 
 def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
+    """Print :py:class:`httpx.Response` to debug log."""
     try:
         code_enum = http.HTTPStatus(resp.status_code)
         code_name = code_enum.name
@@ -153,19 +186,19 @@ def prompt(
     type: Optional[Union["click.types.ParamType", Any]] = None,
     show_default: bool = True,
 ) -> Optional[Any]:
-    """Wrapped `click.prompt` function. Shows the prompt when this feature is
-    not disabled.
+    """Wrapped :py:func:`click.prompt` function. Shows the prompt when this feature
+    is not disabled.
 
     Parameters
     ----------
     text : str
         The text to show for the prompt.
-    default : Optional[Any]
+    default : Any | None
         The default value to use if no input happens. If this is not given it
         will prompt until it's aborted.
     hide_input : bool
         If this is set to true then the input value will be hidden.
-    type : Optional[Union[click.types.ParamType, Any]]
+    type : click.types.ParamType | Any | None
         The type to use to check the value against.
     show_default : bool
         Shows or hides the default value in the prompt.
@@ -191,8 +224,8 @@ def prompt(
 
 
 def read_keyring(name: str) -> Optional[str]:
-    """Wrapped `keyring.get_password`. Do not raise error when there is no
-    keyring backend enabled."""
+    """Wrapped :py:func:`keyring.get_password` and capture error when keyring
+    keyring backend is not enabled."""
     # skip prompt if the env var is set
     env = os.getenv("SECRETS_ENV_NO_KEYRING", "FALSE")
     if env.upper() in ("TRUE", "T", "YES", "Y", "1"):
@@ -220,11 +253,11 @@ def removeprefix(s: str, prefix: str):
 
 
 def strip_ansi(value: str) -> str:
+    """Strip ANSI escape codes from the string."""
     return _ansi_re.sub("", value)
 
 
 def trimmed_str(o: Any) -> str:
-    """Cast an object to str and trimmed."""
     __max_len = 20
     s = str(o)
     if len(s) > __max_len:
