@@ -4,9 +4,13 @@ import re
 import typing
 from pathlib import Path
 from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
+import os
+import sys
+from typing import Any, Optional, Union
 
 if typing.TYPE_CHECKING:
     import httpx
+    import click
 
 T = TypeVar("T")
 TL_True = Literal[True]
@@ -73,10 +77,6 @@ def ensure_type(
     return default, False
 
 
-def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
-    return ensure_type(name, s, "str", str, False)
-
-
 def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
     return ensure_type(name, d, "dict", dict, False, {})
 
@@ -101,20 +101,8 @@ def ensure_path(
     return path, True
 
 
-def trimmed_str(o: Any) -> str:
-    """Cast an object to str and trimmed."""
-    __max_len = 20
-    s = str(o)
-    if len(s) > __max_len:
-        s = s[: __max_len - 3] + "..."
-    return s
-
-
-def removeprefix(s: str, prefix: str):
-    # str.removeprefix is only available after python 3.9
-    if s.startswith(prefix):
-        return s[len(prefix) :]
-    return s
+def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
+    return ensure_type(name, s, "str", str, False)
 
 
 def get_httpx_error_reason(e: "httpx.HTTPError"):
@@ -149,5 +137,21 @@ def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
     )
 
 
+def removeprefix(s: str, prefix: str):
+    # str.removeprefix is only available after python 3.9
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return s
+
+
 def strip_ansi(value: str) -> str:
     return _ansi_re.sub("", value)
+
+
+def trimmed_str(o: Any) -> str:
+    """Cast an object to str and trimmed."""
+    __max_len = 20
+    s = str(o)
+    if len(s) > __max_len:
+        s = s[: __max_len - 3] + "..."
+    return s
