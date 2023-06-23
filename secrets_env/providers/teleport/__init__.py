@@ -11,6 +11,7 @@ ADAPTER_PREFIX = "teleport+"
 
 
 def get_provider(type_: str, data: dict) -> "ProviderBase":
+    type_ = type_.lower()
     if not type_.startswith(ADAPTER_PREFIX):
         raise ConfigError("Not a Teleport integrated provider: {}", type_)
 
