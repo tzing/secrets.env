@@ -28,10 +28,6 @@ class TestGetProvider:
         )
         assert isinstance(t.get_provider({"type": "Teleport+Test"}), ProviderBase)
 
-    def test_plugin_error(self):
-        with pytest.raises(ConfigError):
-            t.get_provider({"type": "MALFORM"})
-
     def test_not_found(self):
         with pytest.raises(ConfigError):
             t.get_provider({"type": "no-this-type"})

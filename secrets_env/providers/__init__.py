@@ -9,20 +9,20 @@ DEFAULT_PROVIDER = "vault"
 
 
 def get_provider(data: dict) -> "ProviderBase":
-    type_raw = data.get("type", DEFAULT_PROVIDER)
-    type_ = type_raw.lower()
+    type_ = data.get("type", DEFAULT_PROVIDER)
+    type_lower = type_.lower()
 
     # builtin first
     # fmt: off
-    if type_.startswith("teleport+"):
+    if type_lower.startswith("teleport+"):
         from . import teleport
         return teleport.get_provider(type_, data)
-    if type_ == "null":
+    if type_lower == "null":
         from . import null
         return null.get_provider(type_, data)
-    if type_ == "vault":
+    if type_lower == "vault":
         from . import vault
         return vault.get_provider(type_, data)
     # fmt: on
 
-    raise secrets_env.exceptions.ConfigError("Unknown provider type {}", type_raw)
+    raise secrets_env.exceptions.ConfigError("Unknown provider type {}", type_)
