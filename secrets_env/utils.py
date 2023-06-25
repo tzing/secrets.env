@@ -1,4 +1,4 @@
-"""Common utilities."""
+"""Utility collection."""
 import http
 import logging
 import os
@@ -197,8 +197,7 @@ def prompt(
     type: Optional[Union["click.types.ParamType", Any]] = None,
     show_default: bool = True,
 ) -> Optional[Any]:
-    """Wrapped :py:func:`click.prompt` function. Shows the prompt when this feature
-    is not disabled.
+    """Wrap :py:func:`click.prompt`, shows the prompt when this feature is not disabled.
 
     Parameters
     ----------
@@ -234,8 +233,8 @@ def prompt(
 
 
 def read_keyring(name: str) -> Optional[str]:
-    """Wrapped :py:func:`keyring.get_password` and capture error when keyring
-    keyring backend is not enabled."""
+    """Wrap :py:func:`keyring.get_password` and capture error when keyring is
+    not available."""
     # skip prompt if the env var is set
     if get_bool_from_env_var("SECRETS_ENV_NO_KEYRING"):
         return None
