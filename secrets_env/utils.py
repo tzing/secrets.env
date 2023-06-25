@@ -138,7 +138,7 @@ def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_F
 
 
 def get_env_var(*names: str) -> Optional[str]:
-    """Get value from environment variable(s)."""
+    """Get value from environment variable."""
     for name in names:
         if var := os.getenv(name.upper()):
             return var
@@ -147,9 +147,20 @@ def get_env_var(*names: str) -> Optional[str]:
     return None
 
 
+def get_bool_from_env_var(*names: str, default: bool = False) -> bool:
+    """Get boolean value from environment variable. It returns :py:obj:`True`
+    when value is any of ``TRUE``, ``T``, ``YES``, ``Y`` or ``1`` case insensitive,
+    or :py:obj:`False` otherwise. When variable is not set, it returns default.
+    """
+    env = get_env_var(*names)
+    if not env:
+        return default
+    return env.upper() in ("TRUE", "T", "YES", "Y", "1")
+
+
 def get_httpx_error_reason(e: "httpx.HTTPError"):
     """Returns a reason for those errors that should not breaks the program.
-    This is a helper function to be used in :keyword:`expect` clause."""
+    This is a helper function to be used in ``expect`` clause."""
     import httpx
 
     logger.debug("httpx error occurs. Type= %s", type(e).__name__, exc_info=True)
@@ -206,8 +217,7 @@ def prompt(
     import click
 
     # skip prompt if the env var is set
-    env = os.getenv("SECRETS_ENV_NO_PROMPT", "FALSE")
-    if env.upper() in ("TRUE", "T", "YES", "Y", "1"):
+    if get_bool_from_env_var("SECRETS_ENV_NO_PROMPT"):
         return None
 
     try:
@@ -227,8 +237,7 @@ def read_keyring(name: str) -> Optional[str]:
     """Wrapped :py:func:`keyring.get_password` and capture error when keyring
     keyring backend is not enabled."""
     # skip prompt if the env var is set
-    env = os.getenv("SECRETS_ENV_NO_KEYRING", "FALSE")
-    if env.upper() in ("TRUE", "T", "YES", "Y", "1"):
+    if get_bool_from_env_var("SECRETS_ENV_NO_KEYRING"):
         return None
 
     # load optional dependency
