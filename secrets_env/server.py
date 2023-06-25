@@ -1,3 +1,6 @@
+"""Provide a HTTP server that runs in background and provide
+:py:attr:`ThreadingHTTPServer.context` to exchange the data safely.
+"""
 import collections.abc
 import contextlib
 import functools
@@ -90,6 +93,14 @@ class SafeDict(_SafeDictBase):
 
 
 class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    """The handler to be used with :py:class:`ThreadingHTTPServer`.
+
+    The :py:meth:`do_GET` in this class is overridden. It calls calls
+    :py:meth:`route` with the path to retrieve the handler function pointer.
+    When a callable is returned, it forwards the request to that function, or
+    responses 404 to client when nothing received.
+    """
+
     server: "ThreadingHTTPServer"
 
     def route(self, path: str) -> Optional["RouteHandler"]:
@@ -165,6 +176,8 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
         """Create a HTTP server that served in background thread.
         The threads starts automatically but will not serve requests until
         :py:attr:`ready` event is set.
+
+        Use :py:func:`start_server` for convenience.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
 
@@ -199,7 +212,8 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
         )
 
     @property
-    def server_uri(self):
+    def server_uri(self) -> str:
+        """Get server URI."""
         host, port = self.server_address
         return f"http://{host}:{port}"
 
@@ -211,6 +225,28 @@ def start_server(
     *,
     ready: bool = True,
 ) -> ThreadingHTTPServer:
+    """Starts a :py:class:`ThreadingHTTPServer` that listen to the specified
+    port.
+
+    This function is a shortcut to :py:meth:`ThreadingHTTPServer.create`.
+
+    Parameters
+    ----------
+    handler : HTTPRequestHandler
+        Request handler class.
+    host : str
+        The address on which the server is listening.
+    port : int
+        The port to listen to. It uses random port when not set.
+    ready : bool
+        Set the server as *ready to start*. When it is set to false, the
+        developer must update :py:attr:`ThreadingHTTPServer.ready` event, or the
+        server would never start.
+
+    Return
+    ------
+    server : ThreadingHTTPServer
+    """
     if port is None:
         port = get_free_port()
 
@@ -231,6 +267,8 @@ def get_free_port() -> int:
 
 @functools.lru_cache(maxsize=None)
 def get_template(filename: str) -> string.Template:
+    """Load template from ``templates/`` directory and returns in
+    :py:class:`string.Template` type."""
     current_dir = pathlib.Path(__file__).resolve().parent
     template_dir = current_dir / "templates"
     template_file = template_dir / filename
