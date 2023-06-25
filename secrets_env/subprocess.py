@@ -25,9 +25,11 @@ class Channel(enum.IntEnum):
 
 
 class Run:
-    """Run subprocess and yields both stdout and stderr in real time."""
+    """Yet another :py:class:`subprocess.Popen` wrapper. Runs subprocess and
+    yields both stdout and stderr in real time."""
 
     def __init__(self, cmd: Sequence[str]) -> None:
+        """Starts a run."""
         self._queue = queue.Queue()
         self._stdouts: List[str] = []
         self._stderrs: List[str] = []
@@ -85,25 +87,26 @@ class Run:
         return self._proc.wait()
 
     def iter_any_output(self) -> Iterator[str]:
-        """Reads any output. This method does not impacts :py:attr:`stdout` or
-        :py:attr:`stderr`."""
+        """Reads any output in real time.
+
+        This method does not impacts :py:attr:`stdout` or :py:attr:`stderr`."""
         for _, line in self._iter_output():
             yield line
 
     @property
     def return_code(self) -> Optional[int]:
-        """The child return code"""
+        """The child process return code"""
         return self._proc.returncode
 
     @property
     def stdout(self) -> str:
-        """Returns stdout outputs"""
+        """Wait until process terminated and returns stdout outputs"""
         self.wait()
         return "".join(self._stdouts)
 
     @property
     def stderr(self) -> str:
-        """Returns stderr outputs"""
+        """Wait until process terminated and returns stderr outputs"""
         self.wait()
         return "".join(self._stderrs)
 

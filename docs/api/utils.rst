@@ -55,3 +55,17 @@ secrets_env.server module
       .. autoproperty:: server_uri
 
       .. automethod:: create
+
+secrets_env.subprocess module
+-----------------------------
+
+.. automodule:: secrets_env.subprocess
+
+   .. autoclass:: Run
+
+      .. autoproperty:: return_code
+      .. autoproperty:: stdout
+      .. autoproperty:: stderr
+
+      .. automethod:: wait
+      .. automethod:: iter_any_output
