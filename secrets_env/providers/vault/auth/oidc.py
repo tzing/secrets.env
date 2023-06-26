@@ -8,8 +8,8 @@ from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import AuthenticationError, TypeError
-from secrets_env.io import get_env_var
 from secrets_env.server import HTTPRequestHandler, start_server
+from secrets_env.utils import get_env_var
 
 from .base import Auth
 

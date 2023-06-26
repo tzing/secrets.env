@@ -1,11 +1,15 @@
+"""Utility collection."""
 import http
 import logging
+import os
 import re
+import sys
 import typing
 from pathlib import Path
 from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
 
 if typing.TYPE_CHECKING:
+    import click
     import httpx
 
 T = TypeVar("T")
@@ -49,7 +53,34 @@ def ensure_type(
     default: Optional[T] = None,
 ) -> Union[Tuple[T, TL_True], Tuple[Optional[T], TL_False]]:
     """Check if the given value is the expected type, fallback to default value
-    when false."""
+    and report errors on failed.
+
+    This is a helper function to be used for config parsing. You may prefer
+    :py:func:`ensure_dict`, :py:func:`ensure_path` or :py:func:`ensure_str`,
+    which offers a simpler solution for the same purpose.
+
+    Parameters
+    ----------
+    value_name : str
+        Value name to be used on error reporting.
+    value
+        Value to be checked.
+    type_name : str
+        Name of expected type(s) to be used on error reporting.
+    expect_type
+        Type(s) could be used in :py:func:`isinstance`.
+    cast : bool
+        Try to cast ``value`` to ``expect_type`` when :py:func:`isinstance` failed.
+    default
+        Default value when all checks failed.
+
+    Returns
+    -------
+    ok : bool
+        Type check success
+    value
+        Value that matches expect type
+    """
     # returns ok if already the desired type
     if isinstance(value, expect_type):
         return value, True
@@ -73,17 +104,17 @@ def ensure_type(
     return default, False
 
 
-def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
-    return ensure_type(name, s, "str", str, False)
-
-
 def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
+    """Ensure the input is :py:class:`dict`. Read :py:func:`ensure_type` for
+    more details."""
     return ensure_type(name, d, "dict", dict, False, {})
 
 
 def ensure_path(
     name: str, p: Any, is_file: bool = True
 ) -> Union[Tuple[Path, TL_True], Tuple[None, TL_False]]:
+    """Ensure the input is :py:class:`pathlib.Path`. Read :py:func:`ensure_type`
+    for more details."""
     path: Optional[Path]
     path, _ = ensure_type(name, p, "path", Path, True)
     if not path:
@@ -101,26 +132,36 @@ def ensure_path(
     return path, True
 
 
-def trimmed_str(o: Any) -> str:
-    """Cast an object to str and trimmed."""
-    __max_len = 20
-    s = str(o)
-    if len(s) > __max_len:
-        s = s[: __max_len - 3] + "..."
-    return s
+def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
+    """Ensure the input is :py:class:`str`. Read :py:func:`ensure_type` for
+    more details."""
+    return ensure_type(name, s, "str", str, False)
 
 
-def removeprefix(s: str, prefix: str):
-    # str.removeprefix is only available after python 3.9
-    if s.startswith(prefix):
-        return s[len(prefix) :]
-    return s
+def get_env_var(*names: str) -> Optional[str]:
+    """Get value from environment variable."""
+    for name in names:
+        if var := os.getenv(name.upper()):
+            return var
+        if var := os.getenv(name.lower()):
+            return var
+    return None
+
+
+def get_bool_from_env_var(*names: str, default: bool = False) -> bool:
+    """Get boolean value from environment variable. It returns :py:obj:`True`
+    when value is any of ``TRUE``, ``T``, ``YES``, ``Y`` or ``1`` case insensitive,
+    or :py:obj:`False` otherwise. When variable is not set, it returns default.
+    """
+    env = get_env_var(*names)
+    if not env:
+        return default
+    return env.upper() in ("TRUE", "T", "YES", "Y", "1")
 
 
 def get_httpx_error_reason(e: "httpx.HTTPError"):
     """Returns a reason for those errors that should not breaks the program.
-    This is a helper function used in `expect` clause, and it would raise the
-    error again when `None` is returned."""
+    This is a helper function to be used in ``expect`` clause."""
     import httpx
 
     logger.debug("httpx error occurs. Type= %s", type(e).__name__, exc_info=True)
@@ -134,6 +175,7 @@ def get_httpx_error_reason(e: "httpx.HTTPError"):
 
 
 def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
+    """Print :py:class:`httpx.Response` to debug log."""
     try:
         code_enum = http.HTTPStatus(resp.status_code)
         code_name = code_enum.name
@@ -149,5 +191,84 @@ def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
     )
 
 
+def prompt(
+    text: str,
+    default: Optional[Any] = None,
+    hide_input: bool = False,
+    type: Optional[Union["click.types.ParamType", Any]] = None,
+    show_default: bool = True,
+) -> Optional[Any]:
+    """Wrap :py:func:`click.prompt`, shows the prompt when this feature is not disabled.
+
+    Parameters
+    ----------
+    text : str
+        The text to show for the prompt.
+    default : Any | None
+        The default value to use if no input happens. If this is not given it
+        will prompt until it's aborted.
+    hide_input : bool
+        If this is set to true then the input value will be hidden.
+    type : click.types.ParamType | Any | None
+        The type to use to check the value against.
+    show_default : bool
+        Shows or hides the default value in the prompt.
+    """
+    import click
+
+    # skip prompt if the env var is set
+    if get_bool_from_env_var("SECRETS_ENV_NO_PROMPT"):
+        return None
+
+    try:
+        return click.prompt(
+            text=text,
+            default=default,
+            hide_input=hide_input,
+            type=type,
+            show_default=show_default,
+        )
+    except click.Abort:
+        sys.stdout.write(os.linesep)
+        return None
+
+
+def read_keyring(name: str) -> Optional[str]:
+    """Wrap :py:func:`keyring.get_password` and capture error when keyring is
+    not available."""
+    # skip prompt if the env var is set
+    if get_bool_from_env_var("SECRETS_ENV_NO_KEYRING"):
+        return None
+
+    # load optional dependency
+    try:
+        import keyring
+        import keyring.errors
+    except ImportError:
+        return None
+
+    # read value
+    try:
+        return keyring.get_password("secrets.env", name)
+    except keyring.errors.NoKeyringError:
+        return None
+
+
+def removeprefix(s: str, prefix: str):
+    # str.removeprefix is only available after python 3.9
+    if s.startswith(prefix):
+        return s[len(prefix) :]
+    return s
+
+
 def strip_ansi(value: str) -> str:
+    """Strip ANSI escape codes from the string."""
     return _ansi_re.sub("", value)
+
+
+def trimmed_str(o: Any) -> str:
+    __max_len = 20
+    s = str(o)
+    if len(s) > __max_len:
+        s = s[: __max_len - 3] + "..."
+    return s

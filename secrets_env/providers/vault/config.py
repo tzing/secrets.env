@@ -3,8 +3,7 @@ import logging
 import typing
 from typing import Any, Dict, Optional, Tuple, TypedDict, Union
 
-from secrets_env.io import get_env_var
-from secrets_env.utils import ensure_dict, ensure_path, ensure_str
+from secrets_env.utils import ensure_dict, ensure_path, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
