@@ -55,29 +55,30 @@ def ensure_type(
     """Check if the given value is the expected type, fallback to default value
     and report errors on failed.
 
-    This is a helper function to be used for config parsing. For the convenience,
-    use :py:func:`ensure_dict`, :py:func:`ensure_path` and :py:func:`ensure_str`.
+    This is a helper function to be used for config parsing. You may prefer
+    :py:func:`ensure_dict`, :py:func:`ensure_path` or :py:func:`ensure_str`,
+    which offers a simpler solution for the same purpose.
 
     Parameters
     ----------
     value_name : str
         Value name to be used on error reporting.
-    value : T
+    value
         Value to be checked.
     type_name : str
         Name of expected type(s) to be used on error reporting.
-    expect_type : Type
+    expect_type
         Type(s) could be used in :py:func:`isinstance`.
     cast : bool
         Try to cast ``value`` to ``expect_type`` when :py:func:`isinstance` failed.
-    default : T
+    default
         Default value when all checks failed.
 
     Returns
     -------
     ok : bool
         Type check success
-    value : T
+    value
         Value that matches expect type
     """
     # returns ok if already the desired type

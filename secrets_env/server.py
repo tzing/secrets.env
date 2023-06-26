@@ -177,7 +177,8 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
         The threads starts automatically but will not serve requests until
         :py:attr:`ready` event is set.
 
-        Use :py:func:`start_server` for convenience.
+        Consider using the :py:func:`start_server` method for a more straightforward
+        approach to achieve the same purpose.
         """
         server = cls(server_address=(host, port), RequestHandlerClass=handler)
 

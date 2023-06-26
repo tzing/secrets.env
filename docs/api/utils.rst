@@ -14,12 +14,6 @@ secrets_env.utils module
    .. autofunction:: prompt
    .. autofunction:: read_keyring
 
-   Logging
-   +++++++
-
-   .. autofunction:: get_httpx_error_reason
-   .. autofunction:: log_httpx_response
-
    Text formating
    ++++++++++++++
 
