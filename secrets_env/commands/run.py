@@ -16,9 +16,9 @@ from secrets_env.click import add_output_options, entrypoint
         "ignore_unknown_options": True,
     }
 )
-@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED, required=True)
 @click.option(
-    "-c",
+    "-C",
     "--config",
     type=click.Path(
         exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path
@@ -46,6 +46,7 @@ def run(args: Sequence[str], config: Path, strict: bool):
     # run
     logger = logging.getLogger(__name__)
     logger.debug("exec> %s", " ".join(args))
+
     result = subprocess.run(args, env=environ)
 
     sys.exit(result.returncode)
