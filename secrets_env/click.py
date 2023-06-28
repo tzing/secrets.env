@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class Verbosity(enum.IntEnum):
+    """Defines log visibility"""
+
     levelno_internal: int
     levelno_others: int
 
@@ -38,13 +40,13 @@ class Verbosity(enum.IntEnum):
 
 
 class ClickHandler(logging.Handler):
-    """Send the logs to click's echo.
+    """Send the logs to :py:func:`click.echo`.
 
     This app has more than one entry point: command line tool and poetry plugin,
     which use different frameworks. This app reports the information using the
-    built-in 'logging' module. Then use this customized handler for converting
-    them to the format in corresponding framework, powered with their features
-    like color stripping on non-interactive terminal."""
+    built-in :py:mod:`logging` module. Then use this customized handler for
+    converting them to the format in corresponding framework, powered with their
+    features like color stripping on non-interactive terminal."""
 
     def __init__(self, extra_filter_level: Optional[int] = None) -> None:
         """
@@ -65,7 +67,8 @@ class ClickHandler(logging.Handler):
         self.extra_filter_level = extra_filter_level
 
     def filter(self, record: logging.LogRecord):
-        """To let <!important> tag penetrate the level-based filters."""
+        """Overrides :py:meth:`logging.Handler.filter` rules to make ``<!important>``
+        tag penetrate all the filters."""
         if self.extra_filter_level is not None:
             # accept <!important> to penetrate filter
             if record.msg.startswith("<!important>"):
@@ -163,6 +166,8 @@ class SecretsEnvFormatter(ColorFormatter):
 
 
 def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
+    """Add -v/-q options to the click command, and call :py:func:`setup_logging`
+    before the command executed."""
     # add options
     click.option(
         "-v",
@@ -196,7 +201,7 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
 
 
 def setup_logging(verbose: int, quiet: bool):
-    """Setup logging module and forwards internal messages to click."""
+    """Setup :py:mod:`logging` and forwards messages to :py:mod:`click`."""
     if quiet:
         verbosity = Verbosity.Quiet
     else:
@@ -219,3 +224,13 @@ def setup_logging(verbose: int, quiet: bool):
 
     logging.root.setLevel(verbosity.levelno_others)
     logging.root.addHandler(root_handler)
+
+
+@click.group(
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+    }
+)
+def entrypoint():
+    """Secrets.env is a tool that could put secrets from vault to environment
+    variables."""

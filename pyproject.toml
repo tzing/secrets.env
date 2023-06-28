@@ -61,7 +61,7 @@ teleport = ["cryptography"]
 yaml = ["PyYAML"]
 
 [tool.poetry.scripts]
-"secrets.env" = "secrets_env.cli:main"
+"secrets.env" = "secrets_env.commands:main"
 
 [tool.poetry.plugins."poetry.application.plugin"]
 poetry-secrets-env-plugin = "secrets_env.poetry:SecretsEnvPlugin"

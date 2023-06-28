@@ -6,7 +6,7 @@ import click
 import click.testing
 import pytest
 
-import secrets_env.cli.output as t
+import secrets_env.click as t
 
 
 class TestClickHandler:
