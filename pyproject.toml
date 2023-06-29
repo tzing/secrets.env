@@ -74,7 +74,7 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=secrets_env --cov-report xml --cov-report=term-missing "
+addopts = "--cov=secrets_env --cov-report xml"
 
 [tool.coverage.report]
 exclude_lines = [
