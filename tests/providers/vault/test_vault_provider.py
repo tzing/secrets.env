@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -66,12 +67,18 @@ class TestKvProvider:
         assert isinstance(kwargs["cert"], Path)
 
 
+@pytest.mark.skipif(
+    os.getenv("VAULT_TOKEN") is None,
+    reason="Skip these tests when vault is not setup",
+)
 class TestKvProviderUsingVaultConnection:
     """Integration tests for KvProvider"""
 
     @pytest.fixture(scope="class")
     def provider(self) -> t.KvProvider:
-        return t.KvProvider("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+        return t.KvProvider(
+            os.getenv("VAULT_ADDR"), TokenAuth(os.getenv("VAULT_TOKEN"))
+        )
 
     def test_client_success(self, provider: t.KvProvider):
         with patch.object(t, "is_authenticated", return_value=True):
@@ -161,10 +168,14 @@ class TestGetToken:
             t.get_token(mock_client, mock_auth)
 
 
+@pytest.mark.skipif(
+    os.getenv("VAULT_ADDR") is None,
+    reason="Skip these tests when vault is not setup",
+)
 def test_is_authenticated():
     # success: use real client
-    client = httpx.Client(base_url="http://localhost:8200")
-    assert t.is_authenticated(client, "!ntegr@t!0n-test")
+    client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
+    assert t.is_authenticated(client, os.getenv("VAULT_TOKEN"))
     assert not t.is_authenticated(client, "invalid-token")
 
     # type error
