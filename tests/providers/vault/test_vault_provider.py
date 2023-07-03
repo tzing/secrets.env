@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, PropertyMock
+from unittest.mock import Mock, PropertyMock, patch
 
 import httpx
 import httpx._config
@@ -97,14 +97,14 @@ class TestKvProvider:
             t.KvProvider, "client", PropertyMock(return_value=unittest_client)
         )
 
-        monkeypatch.setattr(t, "read_secret", lambda _1, _2: "secret")
-        assert provider.read_secret("test-path") == "secret"
+        monkeypatch.setattr(t, "read_secret", lambda _1, _2: {"bar": "secret"})
+        assert provider.read_secret("test-path") == {"bar": "secret"}
 
     def test_read_secret_cache(
         self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
     ):
-        monkeypatch.setattr(provider, "_secrets", {"test-path": "secret"})
-        assert provider.read_secret("test-path") == "secret"
+        monkeypatch.setattr(provider, "_secrets", {"test-path": {"bar": "secret"}})
+        assert provider.read_secret("test-path") == {"bar": "secret"}
 
     def test_read_secret_not_found(
         self,
@@ -123,6 +123,22 @@ class TestKvProvider:
     def test_read_secret_error(self, provider: t.KvProvider):
         with pytest.raises(TypeError):
             provider.read_secret(1234)
+
+    def test_read_field_success(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        monkeypatch.setattr(provider, "read_secret", lambda _: {"bar": "secret"})
+        assert provider.read_field("foo", "bar") == "secret"
+
+    def test_read_field_fail(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        with pytest.raises(TypeError):
+            provider.read_field(1234, "bar")
+
+        monkeypatch.setattr(provider, "read_secret", lambda _: {})
+        with pytest.raises(ValueNotFound):
+            provider.read_field("foo", "bar")
 
 
 @pytest.mark.skipif(
@@ -170,11 +186,6 @@ class TestKvProviderUsingVaultConnection:
             provider.read_field("kv2/test", "test.no-this-key")
         with pytest.raises(ValueNotFound):
             provider.read_field("secret/no-this-secret", "test")
-
-        with pytest.raises(TypeError):
-            provider.read_field(1234, "foo")
-        with pytest.raises(TypeError):
-            provider.read_field("secret/test", 1234)
 
 
 class TestGetToken:
