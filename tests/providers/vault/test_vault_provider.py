@@ -1,5 +1,6 @@
+import os
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import httpx
 import httpx._config
@@ -65,13 +66,93 @@ class TestKvProvider:
         assert isinstance(kwargs["verify"], Path)
         assert isinstance(kwargs["cert"], Path)
 
+    @pytest.mark.parametrize("spec", ["foo#bar", {"path": "foo", "field": "bar"}])
+    def test_get_success(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider, spec
+    ):
+        def mock_read_field(path, field):
+            assert path == "foo"
+            assert field == "bar"
+            return "secret"
 
+        monkeypatch.setattr(provider, "read_field", mock_read_field)
+
+        assert provider.get(spec) == "secret"
+
+    def test_get_fail(self, provider: t.KvProvider):
+        with pytest.raises(ConfigError):
+            provider.get({})
+
+        with pytest.raises(TypeError):
+            provider.get(1234)
+
+    def test_read_secret_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: t.KvProvider,
+        unittest_client: httpx.Client,
+    ):
+        monkeypatch.setattr(provider, "_secrets", {})
+        monkeypatch.setattr(
+            t.KvProvider, "client", PropertyMock(return_value=unittest_client)
+        )
+
+        monkeypatch.setattr(t, "read_secret", lambda _1, _2: {"bar": "secret"})
+        assert provider.read_secret("test-path") == {"bar": "secret"}
+
+    def test_read_secret_cache(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        monkeypatch.setattr(provider, "_secrets", {"test-path": {"bar": "secret"}})
+        assert provider.read_secret("test-path") == {"bar": "secret"}
+
+    def test_read_secret_not_found(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: t.KvProvider,
+        unittest_client: httpx.Client,
+    ):
+        monkeypatch.setattr(provider, "_secrets", {})
+        monkeypatch.setattr(
+            t.KvProvider, "client", PropertyMock(return_value=unittest_client)
+        )
+        monkeypatch.setattr(t, "read_secret", lambda _1, _2: None)
+        with pytest.raises(ValueNotFound):
+            provider.read_secret("test-secret")
+
+    def test_read_secret_error(self, provider: t.KvProvider):
+        with pytest.raises(TypeError):
+            provider.read_secret(1234)
+
+    def test_read_field_success(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        monkeypatch.setattr(provider, "read_secret", lambda _: {"bar": "secret"})
+        assert provider.read_field("foo", "bar") == "secret"
+
+    def test_read_field_fail(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        with pytest.raises(TypeError):
+            provider.read_field(1234, "bar")
+
+        monkeypatch.setattr(provider, "read_secret", lambda _: {})
+        with pytest.raises(ValueNotFound):
+            provider.read_field("foo", "bar")
+
+
+@pytest.mark.skipif(
+    os.getenv("VAULT_TOKEN") is None,
+    reason="Skip these tests when vault is not setup",
+)
 class TestKvProviderUsingVaultConnection:
     """Integration tests for KvProvider"""
 
     @pytest.fixture(scope="class")
     def provider(self) -> t.KvProvider:
-        return t.KvProvider("http://localhost:8200", TokenAuth("!ntegr@t!0n-test"))
+        return t.KvProvider(
+            os.getenv("VAULT_ADDR"), TokenAuth(os.getenv("VAULT_TOKEN"))
+        )
 
     def test_client_success(self, provider: t.KvProvider):
         with patch.object(t, "is_authenticated", return_value=True):
@@ -81,11 +162,6 @@ class TestKvProviderUsingVaultConnection:
     def test_get(self, provider: t.KvProvider):
         assert provider.get("kv1/test#foo") == "hello"
         assert provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
-
-        with pytest.raises(ConfigError):
-            provider.get("")
-        with pytest.raises(TypeError):
-            provider.get(1234)
 
     def test_read_secret_v1(self, provider: t.KvProvider):
         secret_1 = provider.read_secret("kv1/test")
@@ -100,10 +176,6 @@ class TestKvProviderUsingVaultConnection:
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello, world"
 
-    def test_read_secret_fail(self, provider: t.KvProvider):
-        with pytest.raises(ValueNotFound):
-            provider.read_secret("no-this-secret")
-
     def test_read_field(self, provider: t.KvProvider):
         assert provider.read_field("kv1/test", "foo") == "hello"
         assert provider.read_field("kv2/test", 'test."name.with-dot"') == "sample-value"
@@ -114,11 +186,6 @@ class TestKvProviderUsingVaultConnection:
             provider.read_field("kv2/test", "test.no-this-key")
         with pytest.raises(ValueNotFound):
             provider.read_field("secret/no-this-secret", "test")
-
-        with pytest.raises(TypeError):
-            provider.read_field(1234, "foo")
-        with pytest.raises(TypeError):
-            provider.read_field("secret/test", 1234)
 
 
 class TestGetToken:
@@ -161,10 +228,14 @@ class TestGetToken:
             t.get_token(mock_client, mock_auth)
 
 
+@pytest.mark.skipif(
+    os.getenv("VAULT_ADDR") is None,
+    reason="Skip these tests when vault is not setup",
+)
 def test_is_authenticated():
     # success: use real client
-    client = httpx.Client(base_url="http://localhost:8200")
-    assert t.is_authenticated(client, "!ntegr@t!0n-test")
+    client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
+    assert t.is_authenticated(client, os.getenv("VAULT_TOKEN"))
     assert not t.is_authenticated(client, "invalid-token")
 
     # type error
@@ -186,25 +257,10 @@ class TestGetMountPoint:
             httpx.Response(
                 200,
                 json={
-                    "request_id": "01eef618-15b2-0445-4768-fae2f953e25d",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
                     "data": {
-                        "accessor": "kv_92250a43",
-                        "config": {
-                            "default_lease_ttl": 0,
-                            "force_no_cache": False,
-                            "max_lease_ttl": 0,
-                        },
-                        "description": "",
-                        "external_entropy_access": False,
-                        "local": False,
                         "options": {"version": "1"},
                         "path": "secrets/",
-                        "seal_wrap": False,
                         "type": "kv",
-                        "uuid": "f26f43ad-5e58-c739-be4a-a6fb29481bc0",
                     },
                     "wrap_info": None,
                     "warnings": None,
@@ -219,29 +275,11 @@ class TestGetMountPoint:
             httpx.Response(
                 200,
                 json={
-                    "request_id": "989b476f-1f1d-c493-0777-8f7e9823a3c8",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
                     "data": {
-                        "accessor": "kv_8e4430be",
-                        "config": {
-                            "default_lease_ttl": 0,
-                            "force_no_cache": False,
-                            "max_lease_ttl": 0,
-                        },
-                        "description": "",
-                        "external_entropy_access": False,
-                        "local": False,
                         "options": {"version": "2"},
                         "path": "secrets/",
-                        "seal_wrap": False,
                         "type": "kv",
-                        "uuid": "1dc09fc2-4844-f332-b08d-845fcb754545",
                     },
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
                 },
             )
         )
