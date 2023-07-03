@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, PropertyMock
 
 import httpx
 import httpx._config
@@ -86,6 +86,44 @@ class TestKvProvider:
         with pytest.raises(TypeError):
             provider.get(1234)
 
+    def test_read_secret_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: t.KvProvider,
+        unittest_client: httpx.Client,
+    ):
+        monkeypatch.setattr(provider, "_secrets", {})
+        monkeypatch.setattr(
+            t.KvProvider, "client", PropertyMock(return_value=unittest_client)
+        )
+
+        monkeypatch.setattr(t, "read_secret", lambda _1, _2: "secret")
+        assert provider.read_secret("test-path") == "secret"
+
+    def test_read_secret_cache(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider
+    ):
+        monkeypatch.setattr(provider, "_secrets", {"test-path": "secret"})
+        assert provider.read_secret("test-path") == "secret"
+
+    def test_read_secret_not_found(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        provider: t.KvProvider,
+        unittest_client: httpx.Client,
+    ):
+        monkeypatch.setattr(provider, "_secrets", {})
+        monkeypatch.setattr(
+            t.KvProvider, "client", PropertyMock(return_value=unittest_client)
+        )
+        monkeypatch.setattr(t, "read_secret", lambda _1, _2: None)
+        with pytest.raises(ValueNotFound):
+            provider.read_secret("test-secret")
+
+    def test_read_secret_error(self, provider: t.KvProvider):
+        with pytest.raises(TypeError):
+            provider.read_secret(1234)
+
 
 @pytest.mark.skipif(
     os.getenv("VAULT_TOKEN") is None,
@@ -121,10 +159,6 @@ class TestKvProviderUsingVaultConnection:
         secret = provider.read_secret("kv2/test")
         assert isinstance(secret, dict)
         assert secret["foo"] == "hello, world"
-
-    def test_read_secret_fail(self, provider: t.KvProvider):
-        with pytest.raises(ValueNotFound):
-            provider.read_secret("no-this-secret")
 
     def test_read_field(self, provider: t.KvProvider):
         assert provider.read_field("kv1/test", "foo") == "hello"
