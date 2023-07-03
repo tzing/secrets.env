@@ -9,9 +9,6 @@ on:
   pull_request:
 
 env:
-  # python version for the jobs that does not need to run on all versions
-  MAIN_PYTHON_VERSION: "3.10"
-
   # workaround for issue: g-dbus-error-quark: The name org.freedesktop.secrets was not provided by any .service files (2)
   PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
 
@@ -51,7 +48,6 @@ jobs:
       - name: Run pytest
         run: |
           poetry run pytest
-
 
   integration-test:
     name: Integretion test
@@ -98,15 +94,13 @@ jobs:
           EoS
 
       - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
       - uses: actions/cache@v3
         with:
           path: |
             ~/.cache/pip
             ~/.cache/pypoetry
-          key: ${{ runner.os }}-python-${{ env.MAIN_PYTHON_VERSION }}-poetry-${{ hashFiles('poetry.lock') }}
+          key: ${{ runner.os }}-python-poetry-${{ hashFiles('poetry.lock') }}
 
       - uses: actions/checkout@v3
 
@@ -123,18 +117,16 @@ jobs:
     name: Run linter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
       - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
       - uses: actions/cache@v3
         with:
           path: |
             ~/.cache/pip
             ~/.cache/pypoetry
-          key: ${{ runner.os }}-python-${{ env.MAIN_PYTHON_VERSION }}-poetry-${{ hashFiles('poetry.lock') }}
+          key: ${{ runner.os }}-python-poetry-${{ hashFiles('poetry.lock') }}
+
+      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
@@ -208,12 +200,7 @@ jobs:
       - lint
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python ${{ env.MAIN_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+      - uses: actions/setup-python@v4
 
       - uses: actions/cache@v3
         with:
@@ -221,6 +208,8 @@ jobs:
             ~/.cache/pip
             ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
