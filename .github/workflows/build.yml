@@ -25,7 +25,7 @@ jobs:
         python-version:
           - "3.8"
           - "3.9"
-          # 3.10 is used for intergretion test
+          - "3.10"
           - "3.11"
 
     steps:
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run python -m pytest
+          poetry run pytest
 
 
   integration-test:
@@ -117,7 +117,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run python -m pytest
+          poetry run pytest -m
 
   lint:
     name: Run linter
@@ -138,7 +138,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install poetry
+          pip3 install poetry
           poetry install --all-extras --with lint
 
       - name: Coding style check
@@ -177,7 +177,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install poetry
+          pip3 install poetry
 
       - name: Check version
         run: |
@@ -224,7 +224,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install poetry
+          pip3 install poetry
           poetry install --with doc
 
       - name: Check sphinx build error
