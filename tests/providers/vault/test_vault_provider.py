@@ -141,13 +141,8 @@ class TestKvProvider:
             provider.read_field("foo", "bar")
 
 
-@pytest.mark.skipif(
-    os.getenv("VAULT_TOKEN") is None,
-    reason="Skip these tests when vault is not setup",
-)
+@pytest.mark.integr_test
 class TestKvProviderUsingVaultConnection:
-    """Integration tests for KvProvider"""
-
     @pytest.fixture(scope="class")
     def provider(self) -> t.KvProvider:
         return t.KvProvider(
@@ -228,10 +223,7 @@ class TestGetToken:
             t.get_token(mock_client, mock_auth)
 
 
-@pytest.mark.skipif(
-    os.getenv("VAULT_ADDR") is None,
-    reason="Skip these tests when vault is not setup",
-)
+@pytest.mark.integr_test
 def test_is_authenticated():
     # success: use real client
     client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
