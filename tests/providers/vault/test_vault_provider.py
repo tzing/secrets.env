@@ -66,6 +66,26 @@ class TestKvProvider:
         assert isinstance(kwargs["verify"], Path)
         assert isinstance(kwargs["cert"], Path)
 
+    @pytest.mark.parametrize("spec", ["foo#bar", {"path": "foo", "field": "bar"}])
+    def test_get_success(
+        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider, spec
+    ):
+        def mock_read_field(path, field):
+            assert path == "foo"
+            assert field == "bar"
+            return "secret"
+
+        monkeypatch.setattr(provider, "read_field", mock_read_field)
+
+        assert provider.get(spec) == "secret"
+
+    def test_get_fail(self, provider: t.KvProvider):
+        with pytest.raises(ConfigError):
+            provider.get({})
+
+        with pytest.raises(TypeError):
+            provider.get(1234)
+
 
 @pytest.mark.skipif(
     os.getenv("VAULT_TOKEN") is None,
@@ -88,11 +108,6 @@ class TestKvProviderUsingVaultConnection:
     def test_get(self, provider: t.KvProvider):
         assert provider.get("kv1/test#foo") == "hello"
         assert provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
-
-        with pytest.raises(ConfigError):
-            provider.get("")
-        with pytest.raises(TypeError):
-            provider.get(1234)
 
     def test_read_secret_v1(self, provider: t.KvProvider):
         secret_1 = provider.read_secret("kv1/test")
@@ -197,25 +212,10 @@ class TestGetMountPoint:
             httpx.Response(
                 200,
                 json={
-                    "request_id": "01eef618-15b2-0445-4768-fae2f953e25d",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
                     "data": {
-                        "accessor": "kv_92250a43",
-                        "config": {
-                            "default_lease_ttl": 0,
-                            "force_no_cache": False,
-                            "max_lease_ttl": 0,
-                        },
-                        "description": "",
-                        "external_entropy_access": False,
-                        "local": False,
                         "options": {"version": "1"},
                         "path": "secrets/",
-                        "seal_wrap": False,
                         "type": "kv",
-                        "uuid": "f26f43ad-5e58-c739-be4a-a6fb29481bc0",
                     },
                     "wrap_info": None,
                     "warnings": None,
@@ -230,29 +230,11 @@ class TestGetMountPoint:
             httpx.Response(
                 200,
                 json={
-                    "request_id": "989b476f-1f1d-c493-0777-8f7e9823a3c8",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
                     "data": {
-                        "accessor": "kv_8e4430be",
-                        "config": {
-                            "default_lease_ttl": 0,
-                            "force_no_cache": False,
-                            "max_lease_ttl": 0,
-                        },
-                        "description": "",
-                        "external_entropy_access": False,
-                        "local": False,
                         "options": {"version": "2"},
                         "path": "secrets/",
-                        "seal_wrap": False,
                         "type": "kv",
-                        "uuid": "1dc09fc2-4844-f332-b08d-845fcb754545",
                     },
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
                 },
             )
         )
