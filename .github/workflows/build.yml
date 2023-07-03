@@ -28,14 +28,14 @@ jobs:
           - "3.10"
           - "3.11"
 
-    services:
-      vault:
-        image: vault:latest
-        env:
-          VAULT_LOCAL_CONFIG: '{"disable_mlock": true, "backend": {"file": {"path": "/vault/file"}}}'
-          VAULT_DEV_ROOT_TOKEN_ID: "!ntegr@t!0n-test"
-        ports:
-          - 8200:8200
+    # services:
+    #   vault:
+    #     image: vault:latest
+    #     env:
+    #       VAULT_LOCAL_CONFIG: '{"disable_mlock": true, "backend": {"file": {"path": "/vault/file"}}}'
+    #       VAULT_DEV_ROOT_TOKEN_ID: "!ntegr@t!0n-test"
+    #     ports:
+    #       - 8200:8200
 
     steps:
       - uses: actions/checkout@v3
@@ -52,34 +52,34 @@ jobs:
             ~/.cache/pypoetry
           key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
 
-      - name: Get vault
-        run: |
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt-get update && sudo apt-get install vault
+      # - name: Get vault
+      #   run: |
+      #     curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+      #     sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+      #     sudo apt-get update && sudo apt-get install vault
 
-      - name: Setup secrets
-        env:
-          VAULT_ADDR: http://localhost:8200
-          VAULT_TOKEN: "!ntegr@t!0n-test"
-        run: |
-          vault secrets enable -path kv1 -version=1 kv
-          vault secrets enable -path kv2 -version=2 kv
+      # - name: Setup secrets
+      #   env:
+      #     VAULT_ADDR: http://localhost:8200
+      #     VAULT_TOKEN: "!ntegr@t!0n-test"
+      #   run: |
+      #     vault secrets enable -path kv1 -version=1 kv
+      #     vault secrets enable -path kv2 -version=2 kv
 
-          vault kv put kv1/test - << EoS
-            {
-              "foo": "hello"
-            }
-          EoS
+      #     vault kv put kv1/test - << EoS
+      #       {
+      #         "foo": "hello"
+      #       }
+      #     EoS
 
-          vault kv put kv2/test - << EoS
-            {
-              "foo": "hello, world",
-              "test": {
-                "name.with-dot": "sample-value"
-              }
-            }
-          EoS
+      #     vault kv put kv2/test - << EoS
+      #       {
+      #         "foo": "hello, world",
+      #         "test": {
+      #           "name.with-dot": "sample-value"
+      #         }
+      #       }
+      #     EoS
 
       - name: Install dependencies
         run: |
