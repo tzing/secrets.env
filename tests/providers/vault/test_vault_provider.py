@@ -141,7 +141,7 @@ class TestKvProvider:
             provider.read_field("foo", "bar")
 
 
-@pytest.mark.integr_test
+@pytest.mark.integr_test()
 class TestKvProviderUsingVaultConnection:
     @pytest.fixture(scope="class")
     def provider(self) -> t.KvProvider:
@@ -223,7 +223,7 @@ class TestGetToken:
             t.get_token(mock_client, mock_auth)
 
 
-@pytest.mark.integr_test
+@pytest.mark.integr_test()
 def test_is_authenticated():
     # success: use real client
     client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
