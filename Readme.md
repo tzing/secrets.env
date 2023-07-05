@@ -18,4 +18,4 @@ This app is built to *plug in* secrets into development without landing data on 
 
 * 📦 [PyPI](https://pypi.org/project/secrets-env/)
 * 📐 [Source code](https://github.com/tzing/secrets.env)
-* 📗 [Documentation](http://secretsenv.readthedocs.io/)
+* 📗 [Documentation](https://secretsenv.readthedocs.io/)
