@@ -74,9 +74,9 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=secrets_env --cov-report xml -m 'not integr_test'"
+addopts = "--cov=secrets_env --cov-report xml -m 'not integration_test'"
 markers = [
-    "integr_test: mark as integration test that need extra environment setup"
+    "integration_test: mark as integration test that need extra environment setup"
 ]
 
 [tool.coverage.report]

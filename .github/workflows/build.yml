@@ -111,7 +111,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run pytest -m integr_test
+          poetry run pytest -m integration_test
 
   lint:
     name: Run linter
