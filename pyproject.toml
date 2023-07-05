@@ -6,7 +6,7 @@ authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
 readme = "Readme.pypi.rst"
 repository = "https://github.com/tzing/secrets.env"
-documentation = "https://tzing.github.io/secrets.env/"
+documentation = "https://secretsenv.readthedocs.io/"
 keywords = ["vault", "environment variables"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -43,9 +43,9 @@ flake8-comprehensions = "^3.10.1"
 flake8-bugbear = "^22.10.27"
 pyright = "^1.1.281"
 
-[tool.poetry.group.doc]
+[tool.poetry.group.docs]
 optional = true
-[tool.poetry.group.doc.dependencies]
+[tool.poetry.group.docs.dependencies]
 Sphinx = "^7.0.1"
 furo = "^2023.5.20"
 sphinx-tabs = "^3.4.1"
@@ -74,7 +74,10 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = "--cov=secrets_env --cov-report xml --cov-report=term-missing "
+addopts = "--cov=secrets_env --cov-report xml -m 'not integration_test'"
+markers = [
+    "integration_test: mark as integration test that need extra environment setup"
+]
 
 [tool.coverage.report]
 exclude_lines = [
