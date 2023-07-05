@@ -43,9 +43,9 @@ flake8-comprehensions = "^3.10.1"
 flake8-bugbear = "^22.10.27"
 pyright = "^1.1.281"
 
-[tool.poetry.group.doc]
+[tool.poetry.group.docs]
 optional = true
-[tool.poetry.group.doc.dependencies]
+[tool.poetry.group.docs.dependencies]
 Sphinx = "^7.0.1"
 furo = "^2023.5.20"
 sphinx-tabs = "^3.4.1"
