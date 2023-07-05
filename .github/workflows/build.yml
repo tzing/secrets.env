@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - trunk
-    tags:
-      - v*
   pull_request:
 
 env:
@@ -140,52 +138,3 @@ jobs:
       - name: Type check
         run: |
           poetry run pyright
-
-  publish:
-    name: Release package to PyPI
-
-    runs-on: ubuntu-latest
-
-    needs:
-      - test
-      - lint
-
-    if: startsWith(github.event.ref, 'refs/tags/v')
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python ${{ env.MAIN_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
-
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.cache/pypoetry
-          key: ${{ runner.os }}-python-${{ matrix.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
-
-      - name: Install dependencies
-        run: |
-          pip3 install poetry
-
-      - name: Check version
-        run: |
-          export PACKAGE_VERSION="$(poetry version --short)"
-          export TAG_VERSION="${GITHUB_REF_NAME:1}"
-
-          echo "package version: $PACKAGE_VERSION"
-          echo "github ref: $TAG_VERSION"
-
-          [[ "x$PACKAGE_VERSION" == "x$TAG_VERSION" ]]
-
-      - name: Build
-        run: |
-          poetry build
-
-      - name: Publish a Python distribution to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
