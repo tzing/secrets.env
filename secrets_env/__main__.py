@@ -1,3 +1,3 @@
-import secrets_env.cli
+import secrets_env.commands
 
-secrets_env.cli.main()
+secrets_env.commands.main()
