@@ -63,7 +63,7 @@ class Run:
             t.start()
 
     def _iter_output(self) -> Iterator[Tuple[Channel, str]]:
-        POLL_INTERVAL = 0.1
+        POLL_INTERVAL = 0.05
 
         def _flush_queue():
             while not self._queue.empty():
@@ -78,6 +78,7 @@ class Run:
             yield from _flush_queue()
             time.sleep(POLL_INTERVAL)
 
+        time.sleep(POLL_INTERVAL)
         yield from _flush_queue()
 
     def wait(self) -> int:
