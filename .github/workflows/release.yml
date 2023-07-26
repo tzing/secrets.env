@@ -6,15 +6,20 @@ on:
       - v*
 
 jobs:
-  release-package:
+  pypi-publish:
     name: Release package to PyPI
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
       - uses: actions/cache@v3
         with:
@@ -40,5 +45,3 @@ jobs:
 
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
