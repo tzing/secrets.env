@@ -92,6 +92,8 @@ jobs:
           EoS
 
       - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
       - uses: actions/cache@v3
         with:
@@ -116,6 +118,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
       - uses: actions/cache@v3
         with:
