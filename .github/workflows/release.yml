@@ -4,11 +4,15 @@ on:
   push:
     tags:
       - v*
+  pull_request: # TODO remove
 
 jobs:
-  release-package:
+  pypi-publish:
     name: Release package to PyPI
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
@@ -43,4 +47,4 @@ jobs:
       - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/ # TODO remove
