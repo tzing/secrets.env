@@ -41,7 +41,7 @@ def read_toml_file(path: "Path") -> Optional[dict]:
     try:
         import tomllib  # pyright: ignore[reportMissingImports]
     except ImportError:
-        import tomli as tomllib
+        import tomli as tomllib  # pyright: ignore[reportMissingImports]
 
     with open(path, "rb") as fp:
         try:
