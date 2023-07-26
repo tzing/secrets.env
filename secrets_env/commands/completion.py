@@ -38,7 +38,7 @@ def completion(ctx: click.Context, shell: str):
     rv = click.shell_completion.shell_complete(
         cli=ctx.command,
         ctx_args={},
-        prog_name=prog_name,
+        prog_name="secrets.env",
         complete_var="_COMPLETE",  # not really used
         instruction=f"{shell}_source",
     )
