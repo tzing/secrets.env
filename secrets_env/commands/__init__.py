@@ -1,5 +1,5 @@
 import secrets_env.click
 
-from . import run, version
+from . import completion, run, version
 
 main = secrets_env.click.entrypoint
