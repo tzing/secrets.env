@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import httpx
 
-import secrets_env._metadata
+import secrets_env.version
 from secrets_env.exceptions import (
     AuthenticationError,
     ConfigError,
@@ -95,7 +95,7 @@ class KvProvider(ProviderBase):
             headers={
                 "Accept": "application/json",
                 "User-Agent": (
-                    f"secrets.env/{secrets_env._metadata.__version__} "
+                    f"secrets.env/{secrets_env.version.__version__} "
                     f"python-httpx/{httpx.__version__}"
                 ),
             },
