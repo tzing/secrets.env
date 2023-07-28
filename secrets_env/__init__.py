@@ -1,12 +1,10 @@
 import logging
 import typing
 
-from ._metadata import __name__, __version__  # noqa: F401
+from secrets_env.version import __version__  # noqa: F401
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-
-logger = logging.getLogger(__name__)
 
 
 def read_values(
@@ -35,6 +33,8 @@ def read_values(
     output_values = secrets_env.collect.read_values(config)
 
     # report
+    logger = logging.getLogger(__name__)
+
     num_expected = len(config["requests"])
     num_loaded = len(output_values)
 

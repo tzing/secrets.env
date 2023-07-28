@@ -93,9 +93,5 @@ current_version = "0.27.4"
 version_pattern = "MAJOR.MINOR.PATCH"
 
 [tool.bumpver.file_patterns]
-"pyproject.toml" = [
-    'version = "{version}"',
-]
-"secrets_env/_metadata.py" = [
-    '__version__ = "{version}"'
-]
+"pyproject.toml" = ['version = "{version}"']
+"secrets_env/version.py" = ['__version__ = "{version}"']
