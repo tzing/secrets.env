@@ -39,7 +39,7 @@ def completion(ctx: click.Context, shell: str):
         cli=ctx.command,
         ctx_args={},
         prog_name="secrets.env",
-        complete_var="_COMPLETE",  # not really used
+        complete_var="_SECRETS_ENV_COMPLETE",
         instruction=f"{shell}_source",
     )
 
