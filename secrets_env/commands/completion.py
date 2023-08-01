@@ -4,12 +4,11 @@ import sys
 
 import click
 
-from secrets_env.click import add_output_options, entrypoint
+from secrets_env.click import entrypoint
 
 
 @entrypoint.command()
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]), required=False)
-@add_output_options
 @click.pass_context
 def completion(ctx: click.Context, shell: str):
     """Print shell completion script for this command.

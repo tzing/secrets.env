@@ -19,6 +19,7 @@ User guide
    :maxdepth: 1
 
    quick-start
+   commands
    configurations
    addon/index
    api/index

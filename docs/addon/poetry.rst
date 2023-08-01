@@ -1,5 +1,3 @@
-.. _poetry-addon:
-
 Poetry
 ======
 

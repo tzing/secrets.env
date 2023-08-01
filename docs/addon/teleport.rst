@@ -1,5 +1,3 @@
-.. _teleport-addon:
-
 Teleport
 ========
 
@@ -142,4 +140,4 @@ Hence, for such use cases, we can conveniently set the app name directly in the 
 Adapted provider
 ++++++++++++++++
 
-- :ref:`vault-provider`
+- :doc:`/provider/vault`

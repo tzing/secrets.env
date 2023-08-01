@@ -77,7 +77,7 @@ Source
 
 Source section specifies secret provider information.
 
-This app uses :ref:`vault-provider` as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
+This app uses :doc:`/provider/vault` as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
 
 Multiple sources
 ^^^^^^^^^^^^^^^^

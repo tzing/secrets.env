@@ -23,8 +23,8 @@ Or you can add it as `poetry <https://python-poetry.org/>`_ plugin:
 Certain features are not activated by default. Here are the dependency groups you can use:
 
 * ``all`` - *install everything below*
-* ``keyring`` - enable :ref:`keyring add-on <keyring-addon>`
-* ``teleport`` - to reduce some overhead in :ref:`Teleport add-on <teleport-addon>`
+* ``keyring`` - enable :doc:`keyring add-on </addon/keyring>`
+* ``teleport`` - to reduce some overhead in :doc:`Teleport add-on </addon/teleport>`
 * ``yaml`` - supporting YAML config
 
 Create config
@@ -101,18 +101,17 @@ Note that credentials should never be included in the config file. Instead, you 
 Run
 ---
 
-You can use this app either as a command line tool or as a `poetry plugin <https://python-poetry.org/docs/master/plugins/)>`_:
+You can use this app either as a :doc:`command line tool </commands>` or as a :doc:`poetry plugin </addon/poetry>`:
 
 .. tabs::
 
-   .. tab:: CLI
+   .. code-tab:: bash CLI
 
-      Loads secrets to environment variable then runs the command::
+      secrets.env run -- your-app
 
-         secrets.env run -- your-app
+   .. code-tab:: bash Poetry Plugin
 
-   .. tab:: Poetry Plugin
+      poetry run your-app
 
-      Pull secrets to environment variable on poetry command `run <https://python-poetry.org/docs/cli/#run>`_ and `shell <https://python-poetry.org/docs/cli/#shell>`_::
 
-         poetry run your-app
+.. Pull secrets to environment variable on poetry command `run <https://python-poetry.org/docs/cli/#run>`_ and `shell <https://python-poetry.org/docs/cli/#shell>`_

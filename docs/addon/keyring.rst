@@ -1,5 +1,3 @@
-.. _keyring-addon:
-
 Keyring
 =======
 
@@ -18,7 +16,7 @@ You need to install secrets.env with extra ``keyring`` to enable this feature:
 
     pip install 'secrets.env[keyring]'
 
-When used this app as a :ref:`Poetry plugin<poetry-addon>`, there is no need for the optional dependency. Keyring is integrated into poetry core, ensuring constant feature availability.
+When used this app as a :doc:`Poetry plugin</addon/poetry>`, there is no need for the optional dependency. Keyring is integrated into poetry core, ensuring constant feature availability.
 
 Usage
 -----

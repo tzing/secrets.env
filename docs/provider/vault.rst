@@ -1,5 +1,3 @@
-.. _vault-provider:
-
 Vault KV Provider
 =================
 
@@ -168,7 +166,7 @@ The supportted authentication methods are:
 
 Keyring integration
 ^^^^^^^^^^^^^^^^^^^
-When :ref:`keyring add-on <keyring-addon>` is enabled, the provider reads the credentials from system keyring.
+When :doc:`keyring add-on </addon/keyring>` is enabled, the provider reads the credentials from system keyring.
 You can disable it by setting environment variable ``SECRETS_ENV_NO_KEYRING=True``.
 
 Prompt input
@@ -415,7 +413,7 @@ Authentication using an existing `RADIUS`_ server that accepts the `PAP authenti
 Teleport integration
 --------------------
 
-Once the :ref:`Teleport add-on <teleport-addon>` is activated, we gain the ability to utilize this feature, which facilitates the retrieval of URL and TLS configurations from Teleport.
+Once the :doc:`Teleport add-on </addon/teleport>` is activated, we gain the ability to utilize this feature, which facilitates the retrieval of URL and TLS configurations from Teleport.
 
 To make use of this feature, you need to assign the value ``teleport+vault`` to the ``type`` field and introduce the ``teleport`` section for application information.
 For additional details, refer to the :ref:`use-teleport-addon` section.
