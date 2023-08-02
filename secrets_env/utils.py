@@ -1,5 +1,4 @@
 """Utility collection."""
-import http
 import logging
 import os
 import re
@@ -176,6 +175,8 @@ def get_httpx_error_reason(e: "httpx.HTTPError"):
 
 def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
     """Print :py:class:`httpx.Response` to debug log."""
+    import http
+
     try:
         code_enum = http.HTTPStatus(resp.status_code)
         code_name = code_enum.name
@@ -233,7 +234,7 @@ def prompt(
         return None
 
 
-def read_keyring(name: str) -> Optional[str]:
+def read_keyring(key: str) -> Optional[str]:
     """Wrap :py:func:`keyring.get_password` and capture error when keyring is
     not available."""
     # skip prompt if the env var is set
@@ -249,9 +250,34 @@ def read_keyring(name: str) -> Optional[str]:
 
     # read value
     try:
-        return keyring.get_password("secrets.env", name)
+        return keyring.get_password("secrets.env", key)
     except keyring.errors.NoKeyringError:
         return None
+
+
+def create_keyring_login_key(host: str, user: str) -> str:
+    """Build key for storing login credentials in keyring."""
+    import json
+
+    return json.dumps(
+        {"host": get_hostname(host), "type": "login", "user": user.casefold()}
+    )
+
+
+def create_keyring_token_key(host: str):
+    """Build key for storing token in keyring."""
+    import json
+
+    return json.dumps({"host": get_hostname(host), "type": "token"})
+
+
+def get_hostname(url: str) -> str:
+    """Extract hostname from given URL."""
+    import urllib.parse
+
+    u = urllib.parse.urlsplit(url)
+    hostname = typing.cast(str, u.hostname)
+    return hostname.casefold()
 
 
 def removeprefix(s: str, prefix: str):
