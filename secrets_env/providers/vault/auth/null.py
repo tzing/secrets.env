@@ -21,5 +21,5 @@ class NoAuth(Auth):
         return None
 
     @classmethod
-    def load(cls, data: typing.Dict[str, typing.Any]) -> Auth:
+    def load(cls, url: str, data: typing.Dict[str, typing.Any]) -> Auth:
         return cls()

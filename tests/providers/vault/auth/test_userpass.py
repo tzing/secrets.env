@@ -65,9 +65,11 @@ class TestUserPasswordAuth:
 
     def test_load_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: "user")
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: "P@ssw0rd")
+        monkeypatch.setattr(
+            t.UserPasswordAuth, "_load_password", lambda _1, _2: "P@ssw0rd"
+        )
 
-        obj = t.UserPasswordAuth.load({})
+        obj = t.UserPasswordAuth.load("https://example.com/", {})
         assert obj == t.UserPasswordAuth("user", "P@ssw0rd")
 
     @pytest.mark.usefixtures("_patch_method")
@@ -89,8 +91,11 @@ class TestUserPasswordAuth:
         err_message: str,
     ):
         monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: username)
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_password", lambda _: password)
-        assert t.UserPasswordAuth.load({}) is None
+        monkeypatch.setattr(
+            t.UserPasswordAuth, "_load_password", lambda _1, _2: password
+        )
+
+        assert t.UserPasswordAuth.load("https://example.com/", {}) is None
         assert err_message in caplog.text
 
     @pytest.mark.usefixtures("_patch_method")
@@ -110,21 +115,26 @@ class TestUserPasswordAuth:
             p.assert_any_call("Username for MOCK auth")
 
     @pytest.mark.usefixtures("_patch_path")
-    def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
+    def test__load_password(self):
         # env var
-        with monkeypatch.context() as m:
-            m.setenv("SECRETS_ENV_PASSWORD", "bar")
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
+        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
+            assert (
+                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
+            )
 
         # prompt
         with patch.object(t, "prompt", return_value="bar") as p:
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
+            assert (
+                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
+            )
             p.assert_any_call("Password for foo", hide_input=True)
 
         # keyring
         with patch.object(t, "read_keyring", return_value="bar") as r:
-            assert t.UserPasswordAuth._load_password("foo") == "bar"
-            r.assert_any_call("mock/foo")
+            assert (
+                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
+            )
+            r.assert_any_call('{"host": "example.com", "type": "login", "user": "foo"}')
 
     @pytest.mark.usefixtures("_patch_path")
     def test_login_success(
@@ -182,7 +192,7 @@ def test_auth_methods(
     monkeypatch.setenv("SECRETS_ENV_USERNAME", "user")
     monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
 
-    auth = method_class.load({})
+    auth = method_class.load("https://example.com/", {})
     assert auth
 
     # test login

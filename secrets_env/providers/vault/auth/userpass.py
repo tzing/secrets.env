@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import TypeError
-from secrets_env.utils import get_env_var, prompt, read_keyring
+from secrets_env.utils import (
+    create_keyring_login_key,
+    get_env_var,
+    prompt,
+    read_keyring,
+)
 
 from .base import Auth
 
@@ -43,7 +48,7 @@ class UserPasswordAuth(Auth):
         object.__setattr__(self, "password", password)
 
     @classmethod
-    def load(cls, data: Dict[str, Any]) -> Optional["UserPasswordAuth"]:
+    def load(cls, url: str, data: Dict[str, Any]) -> Optional["UserPasswordAuth"]:
         username = cls._load_username(data)
         if not isinstance(username, str) or not username:
             logger.error(
@@ -52,7 +57,7 @@ class UserPasswordAuth(Auth):
             )
             return None
 
-        password = cls._load_password(username)
+        password = cls._load_password(url, username)
         if not isinstance(password, str) or not password:
             logger.error(
                 "Missing password for %s auth.",
@@ -76,13 +81,13 @@ class UserPasswordAuth(Auth):
         return prompt(f"Username for {cls.method()} auth")
 
     @classmethod
-    def _load_password(cls, username: str) -> Optional[str]:
+    def _load_password(cls, url: str, username: str) -> Optional[str]:
         password = get_env_var("SECRETS_ENV_PASSWORD")
         if password:
             logger.debug("Found password from environment variable.")
             return password
 
-        password = read_keyring(f"{cls.path()}/{username}")
+        password = read_keyring(create_keyring_login_key(url, username))
         if password:
             logger.debug("Found password in keyring")
             return password

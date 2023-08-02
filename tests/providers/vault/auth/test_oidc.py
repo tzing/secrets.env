@@ -81,18 +81,18 @@ class TestOpenIDConnectAuth:
             auth.login(Mock(spec=httpx.Client))
 
     def test_load_default(self):
-        auth = t.OpenIDConnectAuth.load({})
+        auth = t.OpenIDConnectAuth.load("https://example.com/", {})
         assert isinstance(auth, t.OpenIDConnectAuth)
         assert auth.role is None
 
     def test_load_envvar(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_ROLE", "test")
-        auth = t.OpenIDConnectAuth.load({})
+        auth = t.OpenIDConnectAuth.load("https://example.com/", {})
         assert isinstance(auth, t.OpenIDConnectAuth)
         assert auth.role == "test"
 
     def test_load_config(self):
-        auth = t.OpenIDConnectAuth.load({"role": "test"})
+        auth = t.OpenIDConnectAuth.load("https://example.com/", {"role": "test"})
         assert isinstance(auth, t.OpenIDConnectAuth)
         assert auth.role == "test"
 

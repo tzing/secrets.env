@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import TypeError
-from secrets_env.utils import get_env_var, read_keyring
+from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyring
 
 from .base import Auth
 
@@ -41,7 +41,7 @@ class TokenAuth(Auth):
         return self.token
 
     @classmethod
-    def load(cls, data: Dict[str, Any]) -> Optional[Auth]:
+    def load(cls, url: str, data: Dict[str, Any]) -> Optional[Auth]:
         # env var
         token = get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN")
         if token:
@@ -59,7 +59,7 @@ class TokenAuth(Auth):
             return cls(token)
 
         # keyring
-        token = read_keyring("token")
+        token = read_keyring(create_keyring_token_key(url))
         if token:
             logger.debug("Found token from keyring")
             return cls(token)
