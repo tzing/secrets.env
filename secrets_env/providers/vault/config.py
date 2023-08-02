@@ -48,13 +48,12 @@ def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
     is_success = True
 
     # url
-    if url := get_url(data):
-        output["url"] = url
-    else:
-        is_success = False
+    output["url"] = url = get_url(data)
+    if not url:
+        return None
 
     # auth
-    if auth := get_auth(data.get("auth", {})):
+    if auth := get_auth(url, data.get("auth", {})):
         output["auth"] = auth
     else:
         is_success = False
@@ -101,7 +100,7 @@ def get_url(data: dict) -> Optional[str]:
     return url
 
 
-def get_auth(data: dict) -> Optional["Auth"]:
+def get_auth(url: str, data: dict) -> Optional["Auth"]:
     # syntax sugar: `auth: <method>`
     if isinstance(data, str):
         data = {"method": data}
@@ -136,7 +135,7 @@ def get_auth(data: dict) -> Optional["Auth"]:
     class_: "Auth" = getattr(module, class_name)
 
     # build auth object from data
-    return class_.load(data)
+    return class_.load(url, data)
 
 
 def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
