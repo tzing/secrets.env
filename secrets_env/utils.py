@@ -273,9 +273,15 @@ def create_keyring_token_key(host: str):
 
 def get_hostname(url: str) -> str:
     """Extract hostname from given URL."""
+    if "://" not in url:
+        return get_hostname(f"http://{url}")
+
     import urllib.parse
 
     u = urllib.parse.urlsplit(url)
+    if u.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid scheme: {u.scheme}")
+
     hostname = typing.cast(str, u.hostname)
     return hostname.casefold()
 

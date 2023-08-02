@@ -174,3 +174,13 @@ def test_create_keyring_token_key():
         t.create_keyring_token_key("https://Example.com/foo")
         == '{"host": "example.com", "type": "token"}'
     )
+
+
+def test_get_hostname():
+    assert t.get_hostname("EXAMPLE.COM:80") == "example.com"
+    assert t.get_hostname("HTTP://example.com:80") == "example.com"
+    assert t.get_hostname("127.0.0.1") == "127.0.0.1"
+    assert t.get_hostname("[::1]:80") == "::1"
+
+    with pytest.raises(ValueError):
+        t.get_hostname("ftp://example.com")
