@@ -41,10 +41,9 @@ class TestSet:
     @pytest.mark.usefixtures("_patch_is_keyring_available")
     def test_success_login(self):
         runner = click.testing.CliRunner()
-        with (
-            patch("click.prompt", return_value="P@ssw0rd"),
-            patch("keyring.set_password") as keyring,
-        ):
+        with patch("click.prompt", return_value="P@ssw0rd"), patch(
+            "keyring.set_password"
+        ) as keyring:
             rv = runner.invoke(t.group, ["set", "https://example.com", "demo"])
 
         assert rv.exit_code == 0
