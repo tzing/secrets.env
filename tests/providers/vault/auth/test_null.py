@@ -10,4 +10,4 @@ class TestNoAuth:
         assert auth.login(object()) is None
 
     def test_load(self):
-        assert isinstance(t.NoAuth.load({}), t.NoAuth)
+        assert isinstance(t.NoAuth.load("https://example.com/", {}), t.NoAuth)

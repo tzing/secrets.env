@@ -21,6 +21,6 @@ class Auth(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def load(cls, data: Dict[str, Any]) -> Optional["Auth"]:
+    def load(cls, url: str, data: Dict[str, Any]) -> Optional["Auth"]:
         """Initialize an instance of this class using the provided config data
         or internally load the secrets from the system."""

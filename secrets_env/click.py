@@ -6,10 +6,6 @@ from typing import Callable, Optional
 
 import click
 
-from secrets_env.utils import removeprefix
-
-logger = logging.getLogger(__name__)
-
 
 class Verbosity(enum.IntEnum):
     """Defines log visibility"""
@@ -143,6 +139,8 @@ class SecretsEnvFormatter(ColorFormatter):
     """Add colors for internal expression."""
 
     def format(self, record: logging.LogRecord) -> str:
+        from secrets_env.utils import removeprefix
+
         # remvoe the <!important> prefix, which was used for filter
         record.msg = removeprefix(record.msg, "<!important>")
         msg = super().format(record)
@@ -179,7 +177,7 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
         "-q",
         "--quiet",
         is_flag=True,
-        help="Silent mode. Don't show output until error.",
+        help="Silent mode. Don't show logs until error.",
     )(func)
 
     # wrap original function for post-parsing actions
@@ -200,7 +198,7 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
     return decorated
 
 
-def setup_logging(verbose: int, quiet: bool):
+def setup_logging(verbose: int = 0, quiet: bool = False):
     """Setup :py:mod:`logging` and forwards messages to :py:mod:`click`."""
     if quiet:
         verbosity = Verbosity.Quiet

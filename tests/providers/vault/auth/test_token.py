@@ -30,11 +30,11 @@ class TestTokenAuth:
     def test_load_env(self, monkeypatch: pytest.MonkeyPatch):
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_TOKEN", "T0ken")
-            assert t.TokenAuth.load({}) == self.authobj
+            assert t.TokenAuth.load("https://example.com/", {}) == self.authobj
 
         with monkeypatch.context() as m:
             m.setenv("VAULT_TOKEN", "T0ken")
-            assert t.TokenAuth.load({}) == self.authobj
+            assert t.TokenAuth.load("https://example.com/", {}) == self.authobj
 
     @pytest.fixture()
     def token_helper_file(self):
@@ -46,14 +46,14 @@ class TestTokenAuth:
     def test_load_helper(self, token_helper_file: Mock):
         token_helper_file.is_file.return_value = True
         token_helper_file.open = mock_open(read_data="T0ken")
-        assert t.TokenAuth.load({}) == self.authobj
+        assert t.TokenAuth.load("https://example.com/", {}) == self.authobj
 
     @pytest.mark.usefixtures("token_helper_file")
     def test_load_keyring(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "read_keyring", lambda _: "T0ken")
-        assert t.TokenAuth.load({}) == self.authobj
+        assert t.TokenAuth.load("https://example.com/", {}) == self.authobj
 
     @pytest.mark.usefixtures("token_helper_file")
     def test_load_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "read_keyring", lambda _: None)
-        assert t.TokenAuth.load({}) is None
+        assert t.TokenAuth.load("https://example.com/", {}) is None

@@ -21,18 +21,10 @@ When used this app as a :doc:`Poetry plugin</addon/poetry>`, there is no need fo
 Usage
 -----
 
-Add value
-+++++++++
+Add/remove value
+++++++++++++++++
 
-Currently we don't provide tool to save the credential. Please use keyring's `command line utility`_ to manage values.
-
-Use the service name ``secrets.env`` and the keys listed in :ref:`authentication-methods` section.
-
-.. code-block:: bash
-
-   keyring set secrets.env okta/test@example.com
-
-.. _command line utility: https://keyring.readthedocs.io/en/latest/#command-line-utility
+Use :ref:`command-keyring` command.
 
 Temporary disable
 +++++++++++++++++

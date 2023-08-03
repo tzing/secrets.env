@@ -160,3 +160,27 @@ class TestKeyring:
     def test_not_install(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setitem(sys.modules, "keyring", None)
         assert t.read_keyring("test") is None
+
+
+def test_create_keyring_login_key():
+    assert (
+        t.create_keyring_login_key("http://Example.com/foo", "User@Example.com")
+        == '{"host": "example.com", "type": "login", "user": "user@example.com"}'
+    )
+
+
+def test_create_keyring_token_key():
+    assert (
+        t.create_keyring_token_key("https://Example.com/foo")
+        == '{"host": "example.com", "type": "token"}'
+    )
+
+
+def test_extract_http_host():
+    assert t.extract_http_host("EXAMPLE.COM:80") == "example.com"
+    assert t.extract_http_host("HTTP://example.com:80") == "example.com"
+    assert t.extract_http_host("127.0.0.1") == "127.0.0.1"
+    assert t.extract_http_host("[::1]:80") == "::1"
+
+    with pytest.raises(ValueError, match="Invalid scheme: ftp"):
+        t.extract_http_host("ftp://example.com")
