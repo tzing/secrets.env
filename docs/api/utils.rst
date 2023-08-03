@@ -12,6 +12,12 @@ secrets_env.utils module
    .. autofunction:: get_bool_from_env_var
    .. autofunction:: get_env_var
    .. autofunction:: prompt
+
+   Keyring integration
+   +++++++++++++++++++
+
+   .. autofunction:: create_keyring_login_key
+   .. autofunction:: create_keyring_token_key
    .. autofunction:: read_keyring
 
    Text formating
