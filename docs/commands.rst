@@ -1,9 +1,10 @@
 Commands
 --------
 
-Secrets.env comes with command line interface for you.
+Secrets.env comes with command line interface.
+To get help from the command-line, call ``secrets.env`` to read the complete command list.
 
-To get help from the command-line, call ``secrets.env`` to read the complete command list.g
+**Usage**
 
 .. code-block:: bash
 
@@ -22,10 +23,42 @@ You can enable completion by running following command in your terminal:
    eval "$(secrets.env completion)"
 
 
+keyring
+=======
+
+Manage credential using system keyring service.
+
+keyring del
++++++++++++
+
+keyring set
++++++++++++
+
+
+keyring status
+++++++++++++++
+
+Command to check if keyring is available.
+
+**Usage**
+
+.. code-block:: bash
+
+    secrets.env keyring status
+
+
 run
 ===
 
 This command loads secrets into environment variable then run the command.
+
+**Usage**
+
+.. code-block:: bash
+
+   secrets.env run [OPTIONS] -- CMD [ARGS]...
+
+**Options**
 
 ``-C, --config FILE``
    Specify an alternative configuration file.
