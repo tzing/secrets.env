@@ -250,9 +250,14 @@ def read_keyring(key: str) -> Optional[str]:
 
     # read value
     try:
-        return keyring.get_password("secrets.env", key)
+        value = keyring.get_password("secrets.env", key)
     except keyring.errors.NoKeyringError:
-        return None
+        value = None
+
+    logger.debug(
+        "Read keyring for %s: %s", key, "success" if value is not None else "failed"
+    )
+    return value
 
 
 def create_keyring_login_key(host: str, user: str) -> str:

@@ -177,7 +177,7 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
         "-q",
         "--quiet",
         is_flag=True,
-        help="Silent mode. Don't show output until error.",
+        help="Silent mode. Don't show logs until error.",
     )(func)
 
     # wrap original function for post-parsing actions

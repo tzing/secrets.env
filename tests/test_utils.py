@@ -182,5 +182,5 @@ def test_extract_http_host():
     assert t.extract_http_host("127.0.0.1") == "127.0.0.1"
     assert t.extract_http_host("[::1]:80") == "::1"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid scheme: ftp"):
         t.extract_http_host("ftp://example.com")
