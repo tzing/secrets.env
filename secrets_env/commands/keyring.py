@@ -1,14 +1,16 @@
+import logging
 import sys
 
 import click
 
-from secrets_env.click import entrypoint, setup_logging
+from secrets_env.click import add_output_options, entrypoint
+
+logger = logging.getLogger(__name__)
 
 
 @entrypoint.group("keyring")
 def group():
     """Manage credential using system keyring service."""
-    setup_logging()
 
 
 @group.command()
@@ -20,83 +22,85 @@ def status():
 
 
 @group.command("set")
-@click.option(
-    "-H", "--host", required=True, help="Specify the host for this credential set."
-)
-@click.option("-t", "--token", help="Token to be stored.")
-@click.option("-u", "--user", help="Username.")
-@click.option("-p", "--password", help="Password. This app will prompt for input.")
-def command_set(host: str, token: str, user: str, password: str):
+@click.argument("host")
+@click.argument("target")
+@click.argument("value", required=False)
+@add_output_options
+def command_set(host: str, target: str, value: str):
     """Store credential in system keyring.
 
-    You must specify exactly one of the following options: '-t' / '--token' or
-    '-u' / '--user'. These options are mutually exclusive.
+    HOST is the hostname/url to the vault that uses this credential.
+
+    TARGET is the target credential name. It could be `token` for auth token, or
+    the username for login.
+
+    VALUE is the credential value. This app will prompt for input when it is not
+    passed as an argument.
     """
     if not is_keyring_available():
         sys.exit(2)
 
-    key = get_keyring_key(host, token, user)
+    # build key
+    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
 
-    if user:
-        if not password:
-            password = click.prompt("Password", hide_input=True)
-        if not password:
-            raise click.UsageError("Missing password (option '-p' / '--password').")
-        secret = password
-
+    if target == "token":
+        key = create_keyring_token_key(host)
+        name = "token"
     else:
-        secret = token
+        key = create_keyring_login_key(host, target)
+        name = "password"
 
+    # get value
+    if not value:
+        value = click.prompt(name, hide_input=True)
+    if not value:
+        raise click.UsageError("Missing credential value.")
+
+    # save value
     import keyring
     import keyring.errors
 
+    logger.debug("Set keyring value with key %s", key)
+
     try:
-        keyring.set_password("secrets.env", key, secret)
+        keyring.set_password("secrets.env", key, value)
     except keyring.errors.PasswordSetError:
-        click.secho("Failed to set password", fg="red", err=True)
+        click.secho(f"Failed to save {name}", fg="red", err=True)
         sys.exit(1)
 
 
 @group.command("del")
-@click.option(
-    "-H", "--host", required=True, help="Specify the host for this credential set."
-)
-@click.option("-t", "--token", help="Token to be stored.")
-@click.option("-u", "--user", help="Username.")
-def command_del(host: str, token: str, user: str):
+@click.argument("host")
+@click.argument("target")
+@add_output_options
+def command_del(host: str, target: str):
     """Remove a credential from system keyring.
 
-    You must specify exactly one of the following options: '-t' / '--token' or
-    '-u' / '--user'. These options are mutually exclusive.
+    HOST is the hostname/url to the vault that uses this credential.
+
+    TARGET is the target credential name. It could be `token` for auth token, or
+    the username for login.
     """
     if not is_keyring_available():
         sys.exit(2)
 
-    key = get_keyring_key(host, token, user)
+    # build key
+    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
 
+    if target == "token":
+        key = create_keyring_token_key(host)
+    else:
+        key = create_keyring_login_key(host, target)
+
+    # remove
     import keyring
     import keyring.errors
 
     try:
         keyring.delete_password("secrets.env", key)
+        logger.debug("Remove %s from keyring", key)
     except keyring.errors.PasswordDeleteError:
-        ...  # ignore
-
-
-def get_keyring_key(host: str, token: str, user: str) -> str:
-    if not token and not user:
-        raise click.UsageError("Missing option '-t' / '--token' or '-u' / '--user'.")
-    if token and user:
-        raise click.UsageError(
-            "Option '-t' / '--token' and '-u' / '--user' are mutually exclusive."
-        )
-
-    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
-
-    if user:
-        return create_keyring_login_key(host, user)
-    else:
-        return create_keyring_token_key(host)
+        logger.debug("Failed to remove %s from keyring", key)
 
 
 def is_keyring_available() -> bool:
