@@ -1,5 +1,6 @@
-import secrets_env.providers.plain as t
 import pytest
+
+import secrets_env.providers.plain as t
 
 
 def test():
