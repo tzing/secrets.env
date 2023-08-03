@@ -1,4 +1,4 @@
-API docs
+API Docs
 ========
 
 API documentation about secrets.env core library, for developers who are building applications that integrate with its API.
