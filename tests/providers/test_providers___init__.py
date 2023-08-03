@@ -28,6 +28,12 @@ class TestGetProvider:
         )
         assert isinstance(t.get_provider({"type": "Teleport+Test"}), ProviderBase)
 
+    def test_plain(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.plain.get_provider", mock_get_provider
+        )
+        assert isinstance(t.get_provider({"type": "plain"}), ProviderBase)
+
     def test_not_found(self):
         with pytest.raises(ConfigError):
             t.get_provider({"type": "no-this-type"})

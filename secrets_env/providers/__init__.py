@@ -12,7 +12,6 @@ def get_provider(data: dict) -> "ProviderBase":
     type_ = data.get("type", DEFAULT_PROVIDER)
     type_lower = type_.lower()
 
-    # builtin first
     # fmt: off
     if type_lower.startswith("teleport+"):
         from . import teleport
@@ -20,6 +19,9 @@ def get_provider(data: dict) -> "ProviderBase":
     if type_lower == "null":
         from . import null
         return null.get_provider(type_, data)
+    if type_lower == "plain":
+        from . import plain
+        return plain.get_provider(type_, data)
     if type_lower == "vault":
         from . import vault
         return vault.get_provider(type_, data)

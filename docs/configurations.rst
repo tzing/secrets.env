@@ -79,6 +79,8 @@ Source section specifies secret provider information.
 
 This app uses :doc:`/provider/vault` as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
 
+.. _multiple sources config:
+
 Multiple sources
 ^^^^^^^^^^^^^^^^
 
@@ -191,13 +193,13 @@ If multiple providers are installed, you must provide the source name for each o
    .. code-tab:: toml
 
       [secrets]
-      VAR1 = {provider = "vault-1", path = "secret/default", field = "example"}
+      VAR1 = {source = "vault-1", path = "secret/default", field = "example"}
 
    .. code-tab:: yaml
 
       secrets:
         VAR1:
-          provider: vault-1
+          source: vault-1
           path: secret/default
           field: example
 
@@ -206,7 +208,7 @@ If multiple providers are installed, you must provide the source name for each o
       {
         "secrets": {
           "VAR1": {
-            "provider": "vault-1",
+            "source": "vault-1",
             "path": "secret/default",
             "field": "example"
           }
@@ -216,15 +218,15 @@ If multiple providers are installed, you must provide the source name for each o
    .. code-tab:: toml pyproject.toml
 
       [tool.secrets-env.secrets]
-      VAR1 = {provider = "vault-1", path = "secret/default", field = "example"}
+      VAR1 = {source = "vault-1", path = "secret/default", field = "example"}
 
 Providers
 ---------
 
-As of now, we have only a single provider.
 For information on how to use it and its specifications, please refer to the following links.
 
 .. toctree::
    :maxdepth: 2
 
    provider/vault
+   provider/plain
