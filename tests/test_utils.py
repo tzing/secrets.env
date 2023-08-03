@@ -176,11 +176,11 @@ def test_create_keyring_token_key():
     )
 
 
-def test_get_hostname():
-    assert t.get_hostname("EXAMPLE.COM:80") == "example.com"
-    assert t.get_hostname("HTTP://example.com:80") == "example.com"
-    assert t.get_hostname("127.0.0.1") == "127.0.0.1"
-    assert t.get_hostname("[::1]:80") == "::1"
+def test_extract_http_host():
+    assert t.extract_http_host("EXAMPLE.COM:80") == "example.com"
+    assert t.extract_http_host("HTTP://example.com:80") == "example.com"
+    assert t.extract_http_host("127.0.0.1") == "127.0.0.1"
+    assert t.extract_http_host("[::1]:80") == "::1"
 
     with pytest.raises(ValueError):
-        t.get_hostname("ftp://example.com")
+        t.extract_http_host("ftp://example.com")

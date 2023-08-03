@@ -260,7 +260,7 @@ def create_keyring_login_key(host: str, user: str) -> str:
     import json
 
     return json.dumps(
-        {"host": get_hostname(host), "type": "login", "user": user.casefold()}
+        {"host": extract_http_host(host), "type": "login", "user": user.casefold()}
     )
 
 
@@ -268,13 +268,13 @@ def create_keyring_token_key(host: str):
     """Build key for storing token in keyring."""
     import json
 
-    return json.dumps({"host": get_hostname(host), "type": "token"})
+    return json.dumps({"host": extract_http_host(host), "type": "token"})
 
 
-def get_hostname(url: str) -> str:
+def extract_http_host(url: str) -> str:
     """Extract hostname from given URL."""
     if "://" not in url:
-        return get_hostname(f"http://{url}")
+        return extract_http_host(f"http://{url}")
 
     import urllib.parse
 
