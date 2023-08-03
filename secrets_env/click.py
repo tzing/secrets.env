@@ -198,7 +198,7 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
     return decorated
 
 
-def setup_logging(verbose: int, quiet: bool):
+def setup_logging(verbose: int = 0, quiet: bool = False):
     """Setup :py:mod:`logging` and forwards messages to :py:mod:`click`."""
     if quiet:
         verbosity = Verbosity.Quiet

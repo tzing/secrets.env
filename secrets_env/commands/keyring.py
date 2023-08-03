@@ -1,109 +1,102 @@
 import sys
-import typing
-from typing import List, Optional
 
 import click
 
-from secrets_env.click import entrypoint
-
-if typing.TYPE_CHECKING:
-    from click.shell_completion import CompletionItem
-
-
-class _CredentialNameParamType(click.ParamType):
-    name = "name"
-
-    def shell_complete(
-        self, ctx: click.Context, param: click.Parameter, incomplete: str
-    ) -> List["CompletionItem"]:
-        from click.shell_completion import CompletionItem
-
-        candidates = [
-            *self.get_email_from_git(),
-        ]
-
-        suggestion = []
-        for candidate in candidates:
-            if candidate.startswith(incomplete):
-                suggestion.append(CompletionItem(candidate))
-
-        return suggestion
-
-    @staticmethod
-    def get_email_from_git():
-        import subprocess
-
-        rv = subprocess.run(["git", "config", "user.email"], stdout=subprocess.PIPE)
-        if rv.returncode == 0:
-            yield rv.stdout.rstrip().decode()
-
-
-CredentialNameParamType = _CredentialNameParamType()
+from secrets_env.click import entrypoint, setup_logging
 
 
 @entrypoint.group("keyring")
 def group():
     """Manage credential using system keyring service."""
+    setup_logging()
 
 
 @group.command()
 def status():
     """Check if keyring is available."""
     if not is_keyring_available():
-        sys.exit(128)
+        sys.exit(2)
     click.echo("ok")
 
 
-@group.command()
+@group.command("set")
 @click.option(
     "-H", "--host", required=True, help="Specify the host for this credential set."
 )
 @click.option("-t", "--token", help="Token to be stored.")
-@click.option("-u", "--user", type=CredentialNameParamType, help="Username.")
+@click.option("-u", "--user", help="Username.")
 @click.option("-p", "--password", help="Password. This app will prompt for input.")
-def set(host: str, token: str, user: str, password: str):
+def command_set(host: str, token: str, user: str, password: str):
     """Store credential in system keyring.
 
     You must specify exactly one of the following options: '-t' / '--token' or
     '-u' / '--user'. These options are mutually exclusive.
     """
-    # check input
-    if not token and not user:
-        raise click.UsageError("Missing option '-t' / '--token' or '-u' / '--user'.")
-    elif token and user:
-        raise click.UsageError(
-            "Option '-t' / '--token' and '-u' / '--user' are mutually exclusive."
-        )
-    elif user:
+    if not is_keyring_available():
+        sys.exit(2)
+
+    key = get_keyring_key(host, token, user)
+
+    if user:
         if not password:
             password = click.prompt("Password", hide_input=True)
         if not password:
             raise click.UsageError("Missing password (option '-p' / '--password').")
+        secret = password
 
-    # check keyring
-    if not is_keyring_available():
-        sys.exit(128)
-
-    # save
-    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
-
-    if token:
-        key = create_keyring_token_key(host)
-        value = token
     else:
-        key = create_keyring_login_key(host, user)
-        value = password
+        secret = token
 
     import keyring
     import keyring.errors
 
     try:
-        keyring.set_password("secrets.env", key, value)
+        keyring.set_password("secrets.env", key, secret)
     except keyring.errors.PasswordSetError:
         click.secho("Failed to set password", fg="red", err=True)
         sys.exit(1)
 
-    click.echo("ok")
+
+@group.command("del")
+@click.option(
+    "-H", "--host", required=True, help="Specify the host for this credential set."
+)
+@click.option("-t", "--token", help="Token to be stored.")
+@click.option("-u", "--user", help="Username.")
+def command_del(host: str, token: str, user: str):
+    """Remove a credential from system keyring.
+
+    You must specify exactly one of the following options: '-t' / '--token' or
+    '-u' / '--user'. These options are mutually exclusive.
+    """
+    if not is_keyring_available():
+        sys.exit(2)
+
+    key = get_keyring_key(host, token, user)
+
+    import keyring
+    import keyring.errors
+
+    try:
+        keyring.delete_password("secrets.env", key)
+    except keyring.errors.PasswordDeleteError:
+        ...  # ignore
+
+
+def get_keyring_key(host: str, token: str, user: str) -> str:
+    if not token and not user:
+        raise click.UsageError("Missing option '-t' / '--token' or '-u' / '--user'.")
+    if token and user:
+        raise click.UsageError(
+            "Option '-t' / '--token' and '-u' / '--user' are mutually exclusive."
+        )
+
+    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
+
+    if user:
+        return create_keyring_login_key(host, user)
+    else:
+        return create_keyring_token_key(host)
 
 
 def is_keyring_available() -> bool:
@@ -111,15 +104,16 @@ def is_keyring_available() -> bool:
         import keyring
         import keyring.backends.fail
     except ImportError:
-        click.echo(
+        click.secho(
             "Dependency `keyring` not found. "
             "Please install secrets.env with extras `[keyring]`.",
-            file=sys.stderr,
+            fg="red",
+            err=True,
         )
         return False
 
     if isinstance(keyring.get_keyring(), keyring.backends.fail.Keyring):
-        click.echo("Keyring service is not available", file=sys.stderr)
+        click.secho("Keyring service is not available", fg="red", err=True)
         return False
 
     return True
