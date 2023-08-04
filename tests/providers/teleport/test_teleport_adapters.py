@@ -20,9 +20,9 @@ def test_get_adapter():
 def conn_info():
     return AppConnectionInfo(
         uri="https://example.com",
-        path_ca=Path(__file__),
-        path_cert=Path(__file__),
-        path_key=Path(__file__),
+        ca=None,
+        cert=b"cert",
+        key=b"key",
     )
 
 
@@ -30,15 +30,12 @@ def test_adapt_vault_provider(
     monkeypatch: pytest.MonkeyPatch, conn_info: AppConnectionInfo
 ):
     def mock_load(type_, data):
-        assert data == {
-            "url": "https://example.com",
-            "auth": "oidc",
-            "tls": {
-                "ca_cert": Path(__file__),
-                "client_cert": Path(__file__),
-                "client_key": Path(__file__),
-            },
-        }
+        assert data["url"] == "https://example.com"
+        assert len(data["tls"]) == 2
+        assert isinstance(data["tls"]["client_cert"], Path)
+        assert data["tls"]["client_cert"].is_file()
+        assert isinstance(data["tls"]["client_key"], Path)
+        assert data["tls"]["client_key"].is_file()
         return Mock(spec=ProviderBase)
 
     monkeypatch.setattr("secrets_env.providers.vault.get_provider", mock_load)
