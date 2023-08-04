@@ -48,16 +48,17 @@ class TestGetConnectionInfo:
             lambda _: {
                 "uri": "https://example.com",
                 "ca": "/no/this/file",
-                "cert": __file__,
-                "key": __file__,
+                "cert": "/mock/data",
+                "key": "/mock/data",
             },
         )
+        monkeypatch.setattr("builtins.open", mock_open(read_data=b"test"))
 
         assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
             uri="https://example.com",
-            path_ca=None,
-            path_cert=Path(__file__),
-            path_key=Path(__file__),
+            ca=None,
+            cert=b"test",
+            key=b"test",
         )
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):

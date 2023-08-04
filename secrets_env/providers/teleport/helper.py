@@ -34,9 +34,24 @@ class AppConnectionInfo:
     """Teleport app connection information."""
 
     uri: str
-    path_ca: Optional[Path]
-    path_cert: Path
-    path_key: Path
+    ca: Optional[bytes]
+    cert: bytes
+    key: bytes
+
+    @classmethod
+    def from_config(cls, uri: str, ca: str, cert: str, key: str) -> "AppConnectionInfo":
+        path_ca = Path(ca)
+        if path_ca.is_file():  # CA is not always installed
+            data_ca = path_ca.read_bytes()
+        else:
+            data_ca = None
+
+        with open(cert, "rb") as fd:
+            data_cert = fd.read()
+        with open(key, "rb") as fd:
+            data_key = fd.read()
+
+        return cls(uri=uri, ca=data_ca, cert=data_cert, key=data_key)
 
 
 def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
@@ -80,22 +95,7 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     if not cfg:
         raise AuthenticationError("Failed to get connection info from Teleport")
 
-    # CA is not always installed
-    path_ca = None
-    if ca := cfg.get("ca"):
-        path_ca = Path(ca)
-        if not path_ca.exists():
-            path_ca = None
-
-    cert_path = Path(cfg["cert"])
-    path_key = Path(cfg["key"])
-
-    return AppConnectionInfo(
-        uri=cfg["uri"],
-        path_ca=path_ca,
-        path_cert=cert_path,
-        path_key=path_key,
-    )
+    return AppConnectionInfo.from_config(**cfg)
 
 
 def attempt_get_app_config(app: str) -> Dict[str, str]:
