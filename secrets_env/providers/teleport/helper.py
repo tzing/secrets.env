@@ -3,13 +3,17 @@ information from it.
 
 .. _Teleport CLI: https://goteleport.com/docs/reference/cli/
 """
+import atexit
 import dataclasses
 import datetime
 import importlib.util
 import json
 import logging
+import os
 import shutil
+import tempfile
 import typing
+from functools import cached_property
 from pathlib import Path
 from typing import Dict, Iterable, Optional
 
@@ -31,12 +35,23 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class AppConnectionInfo:
-    """Teleport app connection information."""
+    """Teleport app connection information.
+
+    This object copied the certificate on object creation, and destroy them
+    when secrets.env terminated.
+    """
 
     uri: str
+    """URI to the app."""
+
     ca: Optional[bytes]
+    """Certificate authority (CA) certificate."""
+
     cert: bytes
+    """Client side certificate."""
+
     key: bytes
+    """Client side private key."""
 
     @classmethod
     def from_config(cls, uri: str, ca: str, cert: str, key: str) -> "AppConnectionInfo":
@@ -52,6 +67,31 @@ class AppConnectionInfo:
             data_key = fd.read()
 
         return cls(uri=uri, ca=data_ca, cert=data_cert, key=data_key)
+
+    @cached_property
+    def path_ca(self) -> Optional[Path]:
+        if not self.ca:
+            return None
+        return create_temp_file(".crt", self.ca)
+
+    @cached_property
+    def path_cert(self) -> Path:
+        return create_temp_file(".cert", self.cert)
+
+    @cached_property
+    def path_key(self) -> Path:
+        return create_temp_file(".key", self.key)
+
+
+def create_temp_file(suffix: str, data: bytes) -> Path:
+    fd, path = tempfile.mkstemp(suffix=suffix)
+
+    os.write(fd, data)
+    os.close(fd)
+
+    atexit.register(os.remove, path)
+
+    return Path(path)
 
 
 def get_connection_info(params: "AppParameter") -> AppConnectionInfo:

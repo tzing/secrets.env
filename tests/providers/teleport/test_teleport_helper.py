@@ -2,7 +2,7 @@ import datetime
 import logging
 import re
 import shutil
-from pathlib import Path
+import tempfile
 from unittest.mock import Mock, mock_open, patch
 
 import cryptography.x509
@@ -17,6 +17,25 @@ from secrets_env.exceptions import (
 from secrets_env.subprocess import Run
 
 no_teleport_cli = shutil.which("tsh") is None
+
+
+def test_app_connection_info():
+    with tempfile.NamedTemporaryFile() as fd_ca, tempfile.NamedTemporaryFile() as fd_cert, tempfile.NamedTemporaryFile() as fd_key:  # noqa: E501, wtf black doesn't change line
+        fd_cert.write(b"cert")
+        fd_cert.flush()
+        fd_key.write(b"key")
+        fd_key.flush()
+        fd_ca.write(b"ca")
+        fd_ca.flush()
+
+        cfg = t.AppConnectionInfo.from_config(
+            uri="https://example.com", ca=fd_ca.name, cert=fd_cert.name, key=fd_key.name
+        )
+
+    assert cfg == t.AppConnectionInfo("https://example.com", b"ca", b"cert", b"key")
+    assert cfg.path_ca.is_file()
+    assert cfg.path_cert.is_file()
+    assert cfg.path_key.is_file()
 
 
 class TestGetConnectionInfo:

@@ -33,9 +33,7 @@ def test_adapt_vault_provider(
         assert data["url"] == "https://example.com"
         assert len(data["tls"]) == 2
         assert isinstance(data["tls"]["client_cert"], Path)
-        assert data["tls"]["client_cert"].is_file()
         assert isinstance(data["tls"]["client_key"], Path)
-        assert data["tls"]["client_key"].is_file()
         return Mock(spec=ProviderBase)
 
     monkeypatch.setattr("secrets_env.providers.vault.get_provider", mock_load)
