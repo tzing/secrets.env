@@ -33,9 +33,12 @@ def test_app_connection_info():
         )
 
     assert cfg == t.AppConnectionInfo("https://example.com", b"ca", b"cert", b"key")
+    assert cfg.cert_and_key == b"cert\nkey"
+
     assert cfg.path_ca.is_file()
     assert cfg.path_cert.is_file()
     assert cfg.path_key.is_file()
+    assert cfg.path_cert_and_key.is_file()
 
 
 class TestGetConnectionInfo:

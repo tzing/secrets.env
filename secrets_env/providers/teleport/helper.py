@@ -68,6 +68,10 @@ class AppConnectionInfo:
 
         return cls(uri=uri, ca=data_ca, cert=data_cert, key=data_key)
 
+    @property
+    def cert_and_key(self) -> bytes:
+        return self.cert + b"\n" + self.key
+
     @cached_property
     def path_ca(self) -> Optional[Path]:
         if not self.ca:
@@ -81,6 +85,10 @@ class AppConnectionInfo:
     @cached_property
     def path_key(self) -> Path:
         return create_temp_file(".key", self.key)
+
+    @cached_property
+    def path_cert_and_key(self) -> Path:
+        return create_temp_file(".pem", self.cert_and_key)
 
 
 def create_temp_file(suffix: str, data: bytes) -> Path:
