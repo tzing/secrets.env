@@ -2,6 +2,7 @@ import enum
 import logging
 import re
 import typing
+from functools import cached_property
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
@@ -58,19 +59,15 @@ class KvProvider(ProviderBase):
         self.ca_cert = ca_cert
         self.client_cert = client_cert
 
-        self._client: Optional[httpx.Client] = None
         self._secrets: Dict[str, VaultSecretQueryResult] = {}
 
     @property
     def type(self) -> str:
         return "vault"
 
-    @property
+    @cached_property
     def client(self) -> httpx.Client:
         """Returns HTTP client."""
-        if self._client:
-            return self._client
-
         logger.debug(
             "Vault client initialization requested. URL= %s, Auth type= %s",
             self.url,
@@ -90,7 +87,7 @@ class KvProvider(ProviderBase):
             logger.debug("Client side certificate file installed: %s", self.client_cert)
             client_params["cert"] = self.client_cert
 
-        self._client = httpx.Client(
+        client = httpx.Client(
             **client_params,
             headers={
                 "Accept": "application/json",
@@ -102,9 +99,9 @@ class KvProvider(ProviderBase):
         )
 
         # install token
-        self._client.headers["X-Vault-Token"] = get_token(self._client, self.auth)
+        client.headers["X-Vault-Token"] = get_token(client, self.auth)
 
-        return self._client
+        return client
 
     def get(self, spec: RequestSpec) -> str:
         if not spec:
