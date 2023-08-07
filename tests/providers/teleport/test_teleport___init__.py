@@ -7,30 +7,20 @@ from secrets_env.exceptions import ConfigError
 from secrets_env.provider import ProviderBase
 
 
-def test_get_provider_success(monkeypatch: pytest.MonkeyPatch):
-    def mock_get_adapter(type_):
-        assert type_ == "test"
-        return mock_adapter
+class TestGetProvider:
+    def test_adapter(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_handle(name, data):
+            assert name == "Test"
+            assert isinstance(data, dict)
+            return Mock(spec=ProviderBase)
 
-    def mock_adapter(type_, data, _3):
-        assert type_ == "test"
-        assert data == {"test": "foo"}
-        return Mock(spec=ProviderBase)
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.adapters.handle", mock_handle
+        )
 
-    monkeypatch.setattr(
-        "secrets_env.providers.teleport.adapters.get_adapter", mock_get_adapter
-    )
-    monkeypatch.setattr(
-        "secrets_env.providers.teleport.config.parse_config", lambda _: Mock()
-    )
-    monkeypatch.setattr(
-        "secrets_env.providers.teleport.helper.get_connection_info", lambda _: Mock()
-    )
+        provider = t.get_provider("Teleport+Test", {"test": "foo"})
+        assert isinstance(provider, ProviderBase)
 
-    provider = t.get_provider("teleport+test", {"test": "foo"})
-    assert isinstance(provider, ProviderBase)
-
-
-def test_get_provider_fail():
-    with pytest.raises(ConfigError):
-        t.get_provider("test", {"test": "foo"})
+    def test_failed(self):
+        with pytest.raises(ConfigError):
+            t.get_provider("test", {"test": "foo"})
