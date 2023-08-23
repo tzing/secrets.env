@@ -33,6 +33,13 @@ For other users, please read `official document <https://goteleport.com/docs/ins
 
       poetry self add secrets.env -E teleport
 
+
+Teleport provider
+-----------------
+
+See :doc:`../provider/teleport` page.
+
+
 .. _use-teleport-adapter:
 
 Teleport adapter
