@@ -107,8 +107,8 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
 
     Parameters
     ----------
-    app : str
-        Teleport application name
+    params : AppParameter
+        Parameters parsed by :py:mod:`~secrets_env.providers.teleport.config`.
 
     Raises
     ------
@@ -212,6 +212,8 @@ def call_app_login(params: "AppParameter") -> None:
     cmd = [TELEPORT_APP_NAME, "app", "login"]
     if proxy := params.get("proxy"):
         cmd.append(f"--proxy={proxy}")
+    if cluster := params.get("cluster"):
+        cmd.append(f"--cluster={cluster}")
     if user := params.get("user"):
         cmd.append(f"--user={user}")
     cmd.append(app)

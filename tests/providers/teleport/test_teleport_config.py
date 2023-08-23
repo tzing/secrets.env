@@ -7,6 +7,7 @@ from secrets_env.exceptions import ConfigError
 def test_parse_source_config():
     assert t.parse_source_config({"app": "test"}) == {
         "proxy": None,
+        "cluster": None,
         "user": None,
         "app": "test",
     }
@@ -16,6 +17,7 @@ def test_parse_adapter_config():
     # success
     assert t.parse_adapter_config({"teleport": "test"}) == {
         "proxy": None,
+        "cluster": None,
         "user": None,
         "app": "test",
     }
@@ -36,6 +38,7 @@ class TestParseConfig:
             },
         ) == {
             "proxy": "example.com",
+            "cluster": None,
             "user": "user",
             "app": "test",
         }
@@ -43,6 +46,7 @@ class TestParseConfig:
     def test_shortcut(self):
         assert t.parse_config("test.teleport", "test") == {
             "proxy": None,
+            "cluster": None,
             "user": None,
             "app": "test",
         }

@@ -205,7 +205,8 @@ class TestCallAppLogin:
                 "tsh",
                 "app",
                 "login",
-                "--proxy=proxy:3128",
+                "--proxy=proxy.example.com",
+                "--cluster=stg.example.com",
                 "--user=user",
                 "test",
             ]
@@ -216,7 +217,14 @@ class TestCallAppLogin:
         # run
         with caplog.at_level(logging.INFO):
             assert (
-                t.call_app_login({"proxy": "proxy:3128", "user": "user", "app": "test"})
+                t.call_app_login(
+                    {
+                        "proxy": "proxy.example.com",
+                        "cluster": "stg.example.com",
+                        "user": "user",
+                        "app": "test",
+                    }
+                )
                 is None
             )
 

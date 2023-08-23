@@ -56,6 +56,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
 
       [source.teleport]
       proxy = "example.com"
+      cluster = "example.com"
       app = "demo"
 
    .. code-tab:: yaml
@@ -64,6 +65,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
         type: teleport+vault
         teleport:
           proxy: example.com
+          cluster: example.com
           app: demo
 
    .. code-tab:: json
@@ -73,6 +75,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
           "type": "teleport+vault",
           "teleport": {
             "proxy": "example.com",
+            "cluster": "example.com",
             "app": "demo"
           }
         }
@@ -85,6 +88,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
 
       [tool.secrets-env.source.teleport]
       proxy = "example.com"
+      cluster = "example.com"
       app = "demo"
 
 
@@ -98,6 +102,9 @@ All parameters should be placed under ``source.teleport`` section.
 
 ``proxy``
    Address to Teleport `proxy <https://goteleport.com/docs/architecture/proxy/>`_ service.
+
+``cluster``
+   Teleport cluster to connect.
 
 ``user``
    Teleport user name.

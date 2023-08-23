@@ -12,6 +12,7 @@ class AppParameter(TypedDict):
     """Parameters used for retrieving app certificates."""
 
     proxy: Optional[str]
+    cluster: Optional[str]
     user: Optional[str]
     app: str
 
@@ -37,6 +38,8 @@ def parse_config(prefix: str, section: Union[Dict[str, Any], str]) -> AppParamet
 
     if proxy := section.get("proxy"):
         proxy, _ = ensure_str(f"{prefix}.proxy", proxy)
+    if cluster := section.get("cluster"):
+        cluster, _ = ensure_str(f"{prefix}.cluster", proxy)
     if user := section.get("user"):
         user, _ = ensure_str(f"{prefix}.user", user)
 
@@ -46,6 +49,7 @@ def parse_config(prefix: str, section: Union[Dict[str, Any], str]) -> AppParamet
 
     return AppParameter(
         proxy=proxy,
+        cluster=cluster,
         user=user,
         app=typing.cast(str, app),
     )
