@@ -33,10 +33,10 @@ For other users, please read `official document <https://goteleport.com/docs/ins
 
       poetry self add secrets.env -E teleport
 
-.. _use-teleport-addon:
+.. _use-teleport-adapter:
 
-Use Teleport adapter
---------------------
+Teleport adapter
+----------------
 
 Teleport uses short-lived certificates to authenticate users and services - including the secret manager.
 

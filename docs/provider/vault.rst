@@ -416,7 +416,7 @@ Teleport integration
 Once the :doc:`Teleport add-on </addon/teleport>` is activated, we gain the ability to utilize this feature, which facilitates the retrieval of URL and TLS configurations from Teleport.
 
 To make use of this feature, you need to assign the value ``teleport+vault`` to the ``type`` field and introduce the ``teleport`` section for application information.
-For additional details, refer to the :ref:`use-teleport-addon` section.
+For additional details, refer to the :ref:`use-teleport-adapter` section.
 
 .. tabs::
 
