@@ -3,6 +3,13 @@ Teleport Provider
 
 This provider reads connection information of a `Teleport`_-protected application and pastes them to environment variables.
 
+This component is introduced to do the *tsh login* and *export* things for me:
+
+.. code-block:: bash
+
+   tsh app login --proxy=proxy.blah.com my-app
+   export SSL_CERT_FILE=$(tsh app config --proxy=proxy.blah.com -f=ca my-app)
+
 .. _Teleport: https://goteleport.com/
 
 type
@@ -32,7 +39,7 @@ Configuration template
 
       [secrets]
       HOST = { source = "tsh", field = "uri" }
-      CLIENT_CERT = { source = "tsh", field = "client-cert", format = "path" }
+      CLIENT_CERT = { source = "tsh", field = "cert", format = "path" }
 
    .. code-tab:: yaml
 
@@ -47,7 +54,7 @@ Configuration template
           field: uri
           source: tsh
         CLIENT_CERT:
-          field: client-cert
+          field: cert
           format: path
           source: tsh
 
@@ -69,7 +76,7 @@ Configuration template
           },
           "CLIENT_CERT": {
             "source": "tsh",
-            "field": "client-cert",
+            "field": "cert",
             "format": "path"
           }
         }
@@ -85,7 +92,7 @@ Configuration template
 
       [tool.secrets-env.secrets]
       HOST = { source = "tsh", field = "uri" }
-      CLIENT_CERT = { source = "tsh", field = "client-cert", format = "path" }
+      CLIENT_CERT = { source = "tsh", field = "cert", format = "path" }
 
 
 Source section
@@ -110,3 +117,30 @@ The following parameters will be filled by Teleport when not specified.
 
 Values
 ------
+
+The configurations in ``secrets`` section specified the item to output:
+
+``field`` *(required)*
+   Item to output. It could be:
+
+   ``uri``
+      URI to the app.
+   ``ca``
+      Certificate authority (CA) certificate. The certificate to verify the peer.
+   ``cert``
+      Client certificate.
+   ``key``
+      Private key.
+   ``cert+key``
+      Client certificate and private key bundle.
+
+``format``
+   Output format for certificates. The value is discarded when ``field`` is set to ``uri``.
+   The value could be:
+
+   ``path`` *(default)*
+      Path to the certificate file. Note this file would be burned after secrets.env session terminated.
+   ``pem``
+      Output text in `PEM`_ format.
+
+.. _PEM: https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail
