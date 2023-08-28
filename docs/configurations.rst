@@ -186,7 +186,7 @@ For example, in the case of Vault, the value could be either a string in the for
 Multiple sources
 ^^^^^^^^^^^^^^^^
 
-If multiple providers are installed, you must provide the source name for each of them:
+If multiple providers are installed, you must provide ``source`` for each of them:
 
 .. tabs::
 
