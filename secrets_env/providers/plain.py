@@ -1,5 +1,6 @@
 import typing
 
+from secrets_env.exceptions import TypeError
 from secrets_env.provider import ProviderBase
 
 if typing.TYPE_CHECKING:
