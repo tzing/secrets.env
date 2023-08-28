@@ -33,7 +33,7 @@ TELEPORT_APP_NAME = "tsh"
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class AppConnectionInfo:
     """Teleport app connection information.
 
