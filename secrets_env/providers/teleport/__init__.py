@@ -2,26 +2,36 @@ import typing
 
 from secrets_env.exceptions import ConfigError
 
-from . import adapters, config, helper
-
 if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase
+    from secrets_env.providers.teleport.provider import TeleportProvider
 
 ADAPTER_PREFIX = "teleport+"
 
 
-def get_provider(type_: str, data: dict) -> "ProviderBase":
-    type_ = type_.lower()
-    if not type_.startswith(ADAPTER_PREFIX):
-        raise ConfigError("Not a Teleport integrated provider: {}", type_)
+def get_provider(type_: str, data: dict) -> "TeleportProvider":
+    from .config import parse_source_config
+    from .provider import TeleportProvider
 
-    # ensure the adopted provider type is supportted
-    adopted_type = type_[len(ADAPTER_PREFIX) :]
-    adopter = adapters.get_adapter(adopted_type)
+    cfg = parse_source_config(data)
+    return TeleportProvider(**cfg)
+
+
+def get_adapted_provider(type_: str, data: dict) -> "ProviderBase":
+    from .adapters import get_adapter
+    from .config import parse_adapter_config
+    from .helper import get_connection_info
+
+    iname = type_.lower()
+    if not iname.startswith(ADAPTER_PREFIX):
+        raise ConfigError("Not a Teleport compatible provider: {}", type_)
+
+    subtype = type_[len(ADAPTER_PREFIX) :]
+    factory = get_adapter(subtype)
 
     # get connection parameter
-    app_param = config.parse_config(data)
-    conn_info = helper.get_connection_info(app_param)
+    app_param = parse_adapter_config(data)
+    conn_info = get_connection_info(app_param)
 
     # forward parameters to corresponding provider
-    return adopter(adopted_type, data, conn_info)
+    return factory(subtype, data, conn_info)

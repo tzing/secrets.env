@@ -12,14 +12,17 @@ AdapterType = typing.Callable[[str, dict, "AppConnectionInfo"], "ProviderBase"]
 logger = logging.getLogger(__name__)
 
 
-def get_adapter(type_: str) -> AdapterType:
-    if type_ == "vault":
+def get_adapter(name: str) -> AdapterType:
+    iname = name.lower()
+    if iname == "vault":
         return adapt_vault_provider
 
-    raise ConfigError("Unknown provider type {}", type_)
+    raise ConfigError("Unknown provider type {}", name)
 
 
-def adapt_vault_provider(type_: str, data: dict, conn_info: "AppConnectionInfo"):
+def adapt_vault_provider(
+    type_: str, data: dict, conn_info: "AppConnectionInfo"
+) -> "ProviderBase":
     assert isinstance(data, dict)
     from secrets_env.providers import vault
 

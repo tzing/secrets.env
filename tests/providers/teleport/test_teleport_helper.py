@@ -2,7 +2,7 @@ import datetime
 import logging
 import re
 import shutil
-from pathlib import Path
+import tempfile
 from unittest.mock import Mock, mock_open, patch
 
 import cryptography.x509
@@ -17,6 +17,33 @@ from secrets_env.exceptions import (
 from secrets_env.subprocess import Run
 
 no_teleport_cli = shutil.which("tsh") is None
+
+
+def test_app_connection_info():
+    with tempfile.NamedTemporaryFile() as fd_ca, tempfile.NamedTemporaryFile() as fd_cert, tempfile.NamedTemporaryFile() as fd_key:  # noqa: E501, wtf black doesn't change line
+        fd_cert.write(b"cert")
+        fd_cert.flush()
+        fd_key.write(b"key")
+        fd_key.flush()
+        fd_ca.write(b"ca")
+        fd_ca.flush()
+
+        cfg = t.AppConnectionInfo.from_config(
+            uri="https://example.com", ca=fd_ca.name, cert=fd_cert.name, key=fd_key.name
+        )
+
+    assert cfg == t.AppConnectionInfo(
+        uri="https://example.com", ca=b"ca", cert=b"cert", key=b"key"
+    )
+
+    assert cfg.path_ca.is_file()
+    assert cfg.path_ca.read_bytes() == b"ca"
+    assert cfg.path_cert.is_file()
+    assert cfg.path_cert.read_bytes() == b"cert"
+    assert cfg.path_key.is_file()
+    assert cfg.path_key.read_bytes() == b"key"
+    assert cfg.path_cert_and_key.is_file()
+    assert cfg.path_cert_and_key.read_bytes() == b"cert\nkey"
 
 
 class TestGetConnectionInfo:
@@ -48,16 +75,17 @@ class TestGetConnectionInfo:
             lambda _: {
                 "uri": "https://example.com",
                 "ca": "/no/this/file",
-                "cert": __file__,
-                "key": __file__,
+                "cert": "/mock/data",
+                "key": "/mock/data",
             },
         )
+        monkeypatch.setattr("builtins.open", mock_open(read_data=b"test"))
 
         assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
             uri="https://example.com",
-            path_ca=None,
-            path_cert=Path(__file__),
-            path_key=Path(__file__),
+            ca=None,
+            cert=b"test",
+            key=b"test",
         )
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
@@ -182,7 +210,8 @@ class TestCallAppLogin:
                 "tsh",
                 "app",
                 "login",
-                "--proxy=proxy:3128",
+                "--proxy=proxy.example.com",
+                "--cluster=stg.example.com",
                 "--user=user",
                 "test",
             ]
@@ -193,7 +222,14 @@ class TestCallAppLogin:
         # run
         with caplog.at_level(logging.INFO):
             assert (
-                t.call_app_login({"proxy": "proxy:3128", "user": "user", "app": "test"})
+                t.call_app_login(
+                    {
+                        "proxy": "proxy.example.com",
+                        "cluster": "stg.example.com",
+                        "user": "user",
+                        "app": "test",
+                    }
+                )
                 is None
             )
 

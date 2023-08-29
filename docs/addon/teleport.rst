@@ -33,10 +33,17 @@ For other users, please read `official document <https://goteleport.com/docs/ins
 
       poetry self add secrets.env -E teleport
 
-.. _use-teleport-addon:
 
-Use Teleport adapter
---------------------
+Teleport provider
+-----------------
+
+See :doc:`../provider/teleport` page.
+
+
+.. _use-teleport-adapter:
+
+Teleport adapter
+----------------
 
 Teleport uses short-lived certificates to authenticate users and services - including the secret manager.
 
@@ -56,6 +63,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
 
       [source.teleport]
       proxy = "example.com"
+      cluster = "example.com"
       app = "demo"
 
    .. code-tab:: yaml
@@ -64,6 +72,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
         type: teleport+vault
         teleport:
           proxy: example.com
+          cluster: example.com
           app: demo
 
    .. code-tab:: json
@@ -73,6 +82,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
           "type": "teleport+vault",
           "teleport": {
             "proxy": "example.com",
+            "cluster": "example.com",
             "app": "demo"
           }
         }
@@ -85,6 +95,7 @@ In this configuration, secrets.evn is configured to communicate with the Telepor
 
       [tool.secrets-env.source.teleport]
       proxy = "example.com"
+      cluster = "example.com"
       app = "demo"
 
 
@@ -98,6 +109,9 @@ All parameters should be placed under ``source.teleport`` section.
 
 ``proxy``
    Address to Teleport `proxy <https://goteleport.com/docs/architecture/proxy/>`_ service.
+
+``cluster``
+   Teleport cluster to connect.
 
 ``user``
    Teleport user name.

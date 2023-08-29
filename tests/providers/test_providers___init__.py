@@ -26,6 +26,12 @@ class TestGetProvider:
         monkeypatch.setattr(
             "secrets_env.providers.teleport.get_provider", mock_get_provider
         )
+        assert isinstance(t.get_provider({"type": "Teleport"}), ProviderBase)
+
+    def test_teleport_adapter(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.get_adapted_provider", mock_get_provider
+        )
         assert isinstance(t.get_provider({"type": "Teleport+Test"}), ProviderBase)
 
     def test_plain(self, monkeypatch: pytest.MonkeyPatch):

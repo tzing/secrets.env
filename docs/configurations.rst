@@ -228,5 +228,6 @@ For information on how to use it and its specifications, please refer to the fol
 .. toctree::
    :maxdepth: 2
 
-   provider/vault
    provider/plain
+   provider/teleport
+   provider/vault

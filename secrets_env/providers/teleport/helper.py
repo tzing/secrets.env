@@ -3,13 +3,17 @@ information from it.
 
 .. _Teleport CLI: https://goteleport.com/docs/reference/cli/
 """
+import atexit
 import dataclasses
 import datetime
 import importlib.util
 import json
 import logging
+import os
 import shutil
+import tempfile
 import typing
+from functools import cached_property
 from pathlib import Path
 from typing import Dict, Iterable, Optional
 
@@ -31,12 +35,71 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class AppConnectionInfo:
-    """Teleport app connection information."""
+    """Teleport app connection information.
+
+    This object copied the certificate on object creation, and destroy them
+    when secrets.env terminated.
+    """
 
     uri: str
-    path_ca: Optional[Path]
-    path_cert: Path
-    path_key: Path
+    """URI to the app."""
+
+    ca: Optional[bytes]
+    """Certificate authority (CA) certificate."""
+
+    cert: bytes
+    """Client side certificate."""
+
+    key: bytes
+    """Client side private key."""
+
+    @classmethod
+    def from_config(cls, uri: str, ca: str, cert: str, key: str) -> "AppConnectionInfo":
+        path_ca = Path(ca)
+        if path_ca.is_file():  # CA is not always installed
+            data_ca = path_ca.read_bytes()
+        else:
+            data_ca = None
+
+        with open(cert, "rb") as fd:
+            data_cert = fd.read()
+        with open(key, "rb") as fd:
+            data_key = fd.read()
+
+        return cls(uri=uri, ca=data_ca, cert=data_cert, key=data_key)
+
+    @property
+    def cert_and_key(self) -> bytes:
+        return self.cert + b"\n" + self.key
+
+    @cached_property
+    def path_ca(self) -> Optional[Path]:
+        if not self.ca:
+            return None
+        return create_temp_file(".crt", self.ca)
+
+    @cached_property
+    def path_cert(self) -> Path:
+        return create_temp_file(".cert", self.cert)
+
+    @cached_property
+    def path_key(self) -> Path:
+        return create_temp_file(".key", self.key)
+
+    @cached_property
+    def path_cert_and_key(self) -> Path:
+        return create_temp_file(".pem", self.cert_and_key)
+
+
+def create_temp_file(suffix: str, data: bytes) -> Path:
+    fd, path = tempfile.mkstemp(suffix=suffix)
+
+    os.write(fd, data)
+    os.close(fd)
+
+    atexit.register(os.remove, path)
+
+    return Path(path)
 
 
 def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
@@ -44,8 +107,8 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
 
     Parameters
     ----------
-    app : str
-        Teleport application name
+    params : AppParameter
+        Parameters parsed by :py:mod:`~secrets_env.providers.teleport.config`.
 
     Raises
     ------
@@ -80,22 +143,7 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     if not cfg:
         raise AuthenticationError("Failed to get connection info from Teleport")
 
-    # CA is not always installed
-    path_ca = None
-    if ca := cfg.get("ca"):
-        path_ca = Path(ca)
-        if not path_ca.exists():
-            path_ca = None
-
-    cert_path = Path(cfg["cert"])
-    path_key = Path(cfg["key"])
-
-    return AppConnectionInfo(
-        uri=cfg["uri"],
-        path_ca=path_ca,
-        path_cert=cert_path,
-        path_key=path_key,
-    )
+    return AppConnectionInfo.from_config(**cfg)
 
 
 def attempt_get_app_config(app: str) -> Dict[str, str]:
@@ -164,6 +212,8 @@ def call_app_login(params: "AppParameter") -> None:
     cmd = [TELEPORT_APP_NAME, "app", "login"]
     if proxy := params.get("proxy"):
         cmd.append(f"--proxy={proxy}")
+    if cluster := params.get("cluster"):
+        cmd.append(f"--cluster={cluster}")
     if user := params.get("user"):
         cmd.append(f"--user={user}")
     cmd.append(app)
