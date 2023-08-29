@@ -1,4 +1,3 @@
-import enum
 import functools
 import logging
 import sys
@@ -6,33 +5,17 @@ from typing import Callable, Optional
 
 import click
 
-
-class Verbosity(enum.IntEnum):
-    """Defines log visibility"""
-
-    levelno_internal: int
-    levelno_others: int
-
-    def __new__(
-        cls, value: int, levelno_internal: int, levelno_others: int
-    ) -> "Verbosity":
-        obj = int.__new__(cls)
-        obj._value_ = value
-        obj.levelno_internal = levelno_internal
-        obj.levelno_others = levelno_others
-        return obj
-
-    Quiet = -1, logging.WARNING, logging.WARNING
-    """Only show errors."""
-
-    Default = 0, logging.INFO, logging.WARNING
-    """Show INFO for secrets.env messages. Show WARNING for others."""
-
-    Verbose = 1, logging.DEBUG, logging.WARNING
-    """Show all for secrets.env messages. Show WARNING for others."""
-
-    Debug = 2, logging.DEBUG, logging.DEBUG
-    """Show everything."""
+VERBOSITY = {
+    # verbosity: (level for secrets.env logs, level for other logs)
+    # Quiet: only show errors.
+    -1: (logging.WARNING, logging.WARNING),
+    # Default: show INFO for secrets.env messages. show WARNING for others.
+    0: (logging.INFO, logging.WARNING),
+    # Verbose: show all for secrets.env messages. show WARNING for others.
+    1: (logging.DEBUG, logging.WARNING),
+    # Debug: show everything.
+    2: (logging.DEBUG, logging.DEBUG),
+}
 
 
 class ClickHandler(logging.Handler):
@@ -201,14 +184,14 @@ def add_output_options(func: Callable[..., None]) -> Callable[..., None]:
 def setup_logging(verbose: int = 0, quiet: bool = False):
     """Setup :py:mod:`logging` and forwards messages to :py:mod:`click`."""
     if quiet:
-        verbosity = Verbosity.Quiet
+        verbose = -1
     else:
-        # the customized verbosity expression must in [-1, 2]
         verbose = min(verbose, 2)
-        verbosity = Verbosity(verbose)
+
+    levelno_internal, levelno_others = VERBOSITY[verbose]
 
     # logging for internal messages
-    internal_handler = ClickHandler(verbosity.levelno_internal)
+    internal_handler = ClickHandler(levelno_internal)
     internal_handler.setFormatter(SecretsEnvFormatter())
 
     internal_logger = logging.getLogger("secrets_env")
@@ -220,7 +203,7 @@ def setup_logging(verbose: int = 0, quiet: bool = False):
     root_handler = ClickHandler()
     root_handler.setFormatter(ColorFormatter())
 
-    logging.root.setLevel(verbosity.levelno_others)
+    logging.root.setLevel(levelno_others)
     logging.root.addHandler(root_handler)
 
 
