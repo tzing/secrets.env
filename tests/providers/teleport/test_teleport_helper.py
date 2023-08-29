@@ -32,13 +32,18 @@ def test_app_connection_info():
             uri="https://example.com", ca=fd_ca.name, cert=fd_cert.name, key=fd_key.name
         )
 
-    assert cfg == t.AppConnectionInfo("https://example.com", b"ca", b"cert", b"key")
-    assert cfg.cert_and_key == b"cert\nkey"
+    assert cfg == t.AppConnectionInfo(
+        uri="https://example.com", ca=b"ca", cert=b"cert", key=b"key"
+    )
 
     assert cfg.path_ca.is_file()
+    assert cfg.path_ca.read_bytes() == b"ca"
     assert cfg.path_cert.is_file()
+    assert cfg.path_cert.read_bytes() == b"cert"
     assert cfg.path_key.is_file()
+    assert cfg.path_key.read_bytes() == b"key"
     assert cfg.path_cert_and_key.is_file()
+    assert cfg.path_cert_and_key.read_bytes() == b"cert\nkey"
 
 
 class TestGetConnectionInfo:
