@@ -6,7 +6,6 @@ import pytest
 import secrets_env.providers.teleport.adapters as t
 from secrets_env.exceptions import ConfigError
 from secrets_env.provider import ProviderBase
-from secrets_env.providers.teleport.config import AppParameter
 from secrets_env.providers.teleport.helper import AppConnectionInfo
 
 
