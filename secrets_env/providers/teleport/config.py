@@ -39,7 +39,7 @@ def parse_config(prefix: str, section: Union[Dict[str, Any], str]) -> AppParamet
     if proxy := section.get("proxy"):
         proxy, _ = ensure_str(f"{prefix}.proxy", proxy)
     if cluster := section.get("cluster"):
-        cluster, _ = ensure_str(f"{prefix}.cluster", proxy)
+        cluster, _ = ensure_str(f"{prefix}.cluster", cluster)
     if user := section.get("user"):
         user, _ = ensure_str(f"{prefix}.user", user)
 

@@ -44,19 +44,19 @@ Configuration template
    .. code-tab:: yaml
 
       source:
-      - name: tsh
-        type: teleport
-        proxy: teleport.example.com
-        app: demo
+        - name: tsh
+          type: teleport
+          proxy: teleport.example.com
+          app: demo
 
       secrets:
         HOST:
-          field: uri
           source: tsh
+          field: uri
         CLIENT_CERT:
+          source: tsh
           field: cert
           format: path
-          source: tsh
 
    .. code-tab:: json
 

@@ -54,7 +54,9 @@ class AppConnectionInfo:
     """Client side private key."""
 
     @classmethod
-    def from_config(cls, uri: str, ca: str, cert: str, key: str) -> "AppConnectionInfo":
+    def from_config(
+        cls, uri: str, ca: str, cert: str, key: str, **sink
+    ) -> "AppConnectionInfo":
         path_ca = Path(ca)
         if path_ca.is_file():  # CA is not always installed
             data_ca = path_ca.read_bytes()
