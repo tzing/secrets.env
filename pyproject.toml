@@ -6,7 +6,7 @@ authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
 readme = "Readme.pypi.rst"
 repository = "https://github.com/tzing/secrets.env"
-documentation = "https://secretsenv.readthedocs.io/"
+documentation = "https://secrets-env.readthedocs.io/"
 keywords = ["vault", "environment variables"]
 classifiers = [
     "Development Status :: 4 - Beta",

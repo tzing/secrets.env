@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/secrets.env)](https://pypi.org/project/secrets-env/)
 ![Python version](https://img.shields.io/pypi/pyversions/secrets.env)
 [![Build status](https://img.shields.io/github/actions/workflow/status/tzing/secrets.env/build.yml?branch=main)](https://github.com/tzing/secrets.env/actions/workflows/build.yml)
-[![Documentation status](https://readthedocs.org/projects/secretsenv/badge/?version=latest)](https://secretsenv.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/secrets-env/badge/?version=latest)](https://secrets-env.readthedocs.io/en/latest/?badge=latest)
 
 Secrets.env is the bridge between [Vault](https://www.vaultproject.io/) and your app.
 
@@ -18,4 +18,4 @@ This app is built to *plug in* secrets into development without landing data on 
 
 * 📦 [PyPI](https://pypi.org/project/secrets-env/)
 * 📐 [Source code](https://github.com/tzing/secrets.env)
-* 📗 [Documentation](https://secretsenv.readthedocs.io/)
+* 📗 [Documentation](https://secrets-env.readthedocs.io/)
