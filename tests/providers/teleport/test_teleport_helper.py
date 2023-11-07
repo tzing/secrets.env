@@ -20,7 +20,7 @@ no_teleport_cli = shutil.which("tsh") is None
 
 
 def test_app_connection_info():
-    with tempfile.NamedTemporaryFile() as fd_ca, tempfile.NamedTemporaryFile() as fd_cert, tempfile.NamedTemporaryFile() as fd_key:  # noqa: E501, wtf black doesn't change line
+    with tempfile.NamedTemporaryFile() as fd_ca, tempfile.NamedTemporaryFile() as fd_cert, tempfile.NamedTemporaryFile() as fd_key:
         fd_cert.write(b"cert")
         fd_cert.flush()
         fd_key.write(b"key")

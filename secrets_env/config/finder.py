@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import importlib
 import importlib.util
 import itertools
 import logging
+import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+
+if typing.TYPE_CHECKING:
+    from typing import Literal
 
 __warned_formats = None
 
@@ -60,7 +65,7 @@ CONFIG_FILE_FORMATS = (
 logger = logging.getLogger(__name__)
 
 
-def find_config_file(cwd: Optional[Path] = None) -> Optional[ConfigFile]:
+def find_config_file(cwd: Path | None = None) -> ConfigFile | None:
     """Find config file.
 
     It looks for the file that matches the name pre-defined in ``CONFIG_FILE_FORMATS``
@@ -86,7 +91,7 @@ def find_config_file(cwd: Optional[Path] = None) -> Optional[ConfigFile]:
     return None
 
 
-def get_config_file_metadata(path: Path) -> Optional[ConfigFile]:
+def get_config_file_metadata(path: Path) -> ConfigFile | None:
     """Add required internal metadata to the file path."""
     # ensure file exist
     if not path.is_file():
