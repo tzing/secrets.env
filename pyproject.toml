@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.28.3"
+version = "0.29.0-dev"
 description = "Bridge between Vault and your app"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
@@ -82,8 +82,8 @@ exclude_lines = ["pragma: no cover", "if typing.TYPE_CHECKING"]
 include = ["secrets_env"]
 
 [tool.bumpver]
-current_version = "0.28.3"
-version_pattern = "MAJOR.MINOR.PATCH"
+current_version = "0.29.0-dev"
+version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['version = "{version}"']
