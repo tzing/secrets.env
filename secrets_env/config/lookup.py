@@ -13,6 +13,8 @@ import platformdirs
 if typing.TYPE_CHECKING:
     from typing import Iterable, Literal
 
+APP_NAME = "secrets.env"
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,6 +48,27 @@ def find_local_config_file(cwd: Path | None = None) -> ConfigFile | None:
         if f := find_readable_file(dir_, CONFIG_FILE_FORMATS):
             return f
     return None
+
+
+def find_global_config_files() -> Iterable[ConfigFile]:
+    """Find user/site config files."""
+    CONFIG_FILE_FORMATS = (
+        ConfigFileSpec("config.toml", "toml"),
+        ConfigFileSpec("config.yaml", "yaml"),
+        ConfigFileSpec("config.yml", "yaml"),
+        ConfigFileSpec("config.json", "json"),
+    )
+
+    for dir_ in (
+        platformdirs.user_config_path(APP_NAME),
+        platformdirs.site_config_path(APP_NAME),
+    ):
+        if f := find_readable_file(dir_, CONFIG_FILE_FORMATS):
+            yield f
+
+
+def get_user_config_file_path() -> Path:
+    return platformdirs.user_config_path(APP_NAME) / "config.toml"
 
 
 def find_readable_file(

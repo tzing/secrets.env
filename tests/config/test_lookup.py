@@ -57,6 +57,21 @@ class TestFindLocalConfigFile:
         )
 
 
+class TestFindGlobalConfigFiles:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(Path, "is_file", lambda _: True)
+        files = list(t.find_global_config_files())
+        assert len(files) == 2
+
+    def test_nothing(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(Path, "is_file", lambda _: False)
+        assert list(t.find_global_config_files()) == []
+
+
+def test_get_user_config_file_path():
+    assert isinstance(t.get_user_config_file_path(), Path)
+
+
 def test_is_readable_format():
     assert t.is_readable_format("json") is True
     assert t.is_readable_format("yaml") is True
