@@ -11,7 +11,7 @@ from pathlib import Path
 import platformdirs
 
 if typing.TYPE_CHECKING:
-    from typing import Literal
+    from typing import Iterable, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +43,30 @@ def find_local_config_file(cwd: Path | None = None) -> ConfigFile | None:
     )
 
     for dir_ in itertools.chain([cwd], cwd.parents):
-        for spec in CONFIG_FILE_FORMATS:
-            path = dir_ / spec.filename
-            if not path.is_file():
-                continue
-
-            logger.debug("Find config file %s", path)
-
-            if not is_readable_format(spec.format):
-                logger.warning(
-                    "The config file %s was found, but the required dependency "
-                    "for %s format is not installed.",
-                    path,
-                    spec.format,
-                )
-                continue
-
-            return ConfigFile(spec.filename, spec.format, path)
-
+        if f := find_readable_file(dir_, CONFIG_FILE_FORMATS):
+            return f
     return None
+
+
+def find_readable_file(
+    dirpath: Path, specs: Iterable[ConfigFileSpec]
+) -> ConfigFile | None:
+    for spec in specs:
+        filepath = dirpath / spec.filename
+        if not filepath.is_file():
+            continue
+        logger.debug("Find config file %s", filepath)
+
+        if not is_readable_format(spec.format):
+            logger.warning(
+                "The config file <data>%s</data> was found, but the required "
+                "dependency for <mark>%s</mark> format is not installed.",
+                filepath,
+                spec.format,
+            )
+            return
+
+        return ConfigFile(spec.filename, spec.format, filepath)
 
 
 def is_readable_format(fmt: str) -> bool:

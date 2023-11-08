@@ -51,7 +51,10 @@ class TestFindLocalConfigFile:
 
         file = t.find_local_config_file(tmp_path)
         assert file is None
-        assert "the required dependency for toml format is not installed" in caplog.text
+        assert (
+            "the required dependency for <mark>toml</mark> format is not installed"
+            in caplog.text
+        )
 
 
 def test_is_readable_format():
