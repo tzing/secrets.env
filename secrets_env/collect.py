@@ -3,7 +3,7 @@ import typing
 from typing import Dict
 
 if typing.TYPE_CHECKING:
-    from secrets_env.config.parser import Config
+    from secrets_env.config0.parser import Config
     from secrets_env.provider import ProviderBase, RequestSpec
 
 logger = logging.getLogger(__name__)

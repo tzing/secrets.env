@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import secrets_env.config as t
+import secrets_env.config0 as t
 from secrets_env.provider import ProviderBase
 
 

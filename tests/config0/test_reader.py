@@ -4,8 +4,8 @@ from unittest.mock import Mock, mock_open
 
 import pytest
 
-import secrets_env.config.reader as t
-from secrets_env.config.finder import ConfigFile
+import secrets_env.config0.reader as t
+from secrets_env.config0.finder import ConfigFile
 from secrets_env.exceptions import UnsupportedError
 
 

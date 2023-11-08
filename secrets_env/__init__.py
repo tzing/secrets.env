@@ -21,10 +21,10 @@ def read_values(
         successfully loaded.
     """
     import secrets_env.collect
-    import secrets_env.config
+    import secrets_env.config0
 
     # parse config
-    config = secrets_env.config.load_config(config_file)
+    config = secrets_env.config0.load_config(config_file)
     if not config:
         # skip logging. already show error in `load_config`
         return None

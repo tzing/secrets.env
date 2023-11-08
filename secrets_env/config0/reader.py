@@ -8,7 +8,7 @@ from secrets_env.exceptions import UnsupportedError
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
-    from secrets_env.config.finder import ConfigFile
+    from secrets_env.config0.finder import ConfigFile
 
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-import secrets_env.config.finder as t
+import secrets_env.config0.finder as t
 
 
 class TestConfigFile:

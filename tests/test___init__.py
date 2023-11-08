@@ -10,7 +10,7 @@ class TestReadValues:
     @pytest.fixture()
     def _patch_load_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.config.load_config",
+            "secrets_env.config0.load_config",
             lambda _: {
                 "providers": Mock(),
                 "requests": [Mock(), Mock()],
@@ -42,7 +42,7 @@ class TestReadValues:
         assert "<error>1</error> / 2 secrets loaded" in caplog.text
 
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("secrets_env.config.load_config", lambda _: None)
+        monkeypatch.setattr("secrets_env.config0.load_config", lambda _: None)
         assert t.read_values() is None
 
     @pytest.mark.usefixtures("_patch_load_config")
@@ -60,7 +60,7 @@ class TestReadValues:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
         monkeypatch.setattr(
-            "secrets_env.config.load_config",
+            "secrets_env.config0.load_config",
             lambda _: {
                 "providers": Mock(),
                 "requests": [],
