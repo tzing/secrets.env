@@ -7,13 +7,13 @@ import secrets_env.config.lookup as t
 
 class TestFindLocalConfigFile:
     @pytest.mark.parametrize(
-        ("filename", "format_"),
+        "filename",
         [
-            (".secrets-env.toml", "toml"),
-            (".secrets-env.yaml", "yaml"),
-            (".secrets-env.yml", "yaml"),
-            (".secrets-env.json", "json"),
-            ("pyproject.toml", "pyproject.toml"),
+            ".secrets-env.toml",
+            ".secrets-env.yaml",
+            ".secrets-env.yml",
+            ".secrets-env.json",
+            "pyproject.toml",
         ],
     )
     def test_success(
@@ -21,24 +21,20 @@ class TestFindLocalConfigFile:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         filename: str,
-        format_: str,
     ):
         monkeypatch.chdir(tmp_path)
         (tmp_path / filename).touch()
 
-        file = t.find_local_config_file()
-        assert isinstance(file, t.ConfigFile)
-        assert isinstance(file.path, Path)
-        assert file.filename == filename
-        assert file.format == format_
+        path = t.find_local_config_file()
+        assert isinstance(path, Path)
 
     def test_multiple(self, tmp_path: Path):
         (tmp_path / ".secrets-env.toml").touch()
         (tmp_path / ".secrets-env.json").touch()
 
-        file = t.find_local_config_file(tmp_path)
-        assert isinstance(file, t.ConfigFile)
-        assert file.filename == ".secrets-env.toml"
+        path = t.find_local_config_file(tmp_path)
+        assert isinstance(path, Path)
+        assert path.name == ".secrets-env.toml"
 
     def test_not_readable(
         self,
@@ -52,7 +48,7 @@ class TestFindLocalConfigFile:
         file = t.find_local_config_file(tmp_path)
         assert file is None
         assert (
-            "the required dependency for <mark>toml</mark> format is not installed"
+            "the required dependency for <mark>.toml</mark> format is not installed"
             in caplog.text
         )
 
@@ -73,13 +69,13 @@ def test_get_user_config_file_path():
 
 
 def test_is_readable_format():
-    assert t.is_readable_format("json") is True
-    assert t.is_readable_format("yaml") is True
-    assert t.is_readable_format("toml") is True
-    assert t.is_readable_format("pyproject.toml") is True
+    assert t.is_readable_format(".toml") is True
+    assert t.is_readable_format(".yaml") is True
+    assert t.is_readable_format(".json") is True
     assert t.is_readable_format("html") is False
 
 
 def test_is_installed():
     assert t.is_installed("json") is True
+    assert t.is_installed("unknown") is False
     assert t.is_installed(".error") is False

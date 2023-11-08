@@ -5,65 +5,51 @@ import importlib.util
 import itertools
 import logging
 import typing
-from dataclasses import dataclass
 from pathlib import Path
 
 import platformdirs
 
 if typing.TYPE_CHECKING:
-    from typing import Iterable, Literal
+    from typing import Iterable
 
 APP_NAME = "secrets.env"
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class ConfigFileSpec:
-    """Avaliable config file formats."""
-
-    filename: str
-    format: Literal["toml", "yaml", "json", "pyproject.toml"]
-
-
-@dataclass(frozen=True)
-class ConfigFile(ConfigFileSpec):
-    path: Path
-
-
-def find_local_config_file(cwd: Path | None = None) -> ConfigFile | None:
+def find_local_config_file(cwd: Path | None = None) -> Path | None:
     """Find config file in current directory."""
     if cwd is None:
         cwd = Path.cwd()
 
-    CONFIG_FILE_FORMATS = (
-        ConfigFileSpec(".secrets-env.toml", "toml"),
-        ConfigFileSpec(".secrets-env.yaml", "yaml"),
-        ConfigFileSpec(".secrets-env.yml", "yaml"),
-        ConfigFileSpec(".secrets-env.json", "json"),
-        ConfigFileSpec("pyproject.toml", "pyproject.toml"),
+    CONFIG_NAME_CANDIDATES = (
+        ".secrets-env.toml",
+        ".secrets-env.yaml",
+        ".secrets-env.yml",
+        ".secrets-env.json",
+        "pyproject.toml",
     )
 
     for dir_ in itertools.chain([cwd], cwd.parents):
-        if f := find_readable_file(dir_, CONFIG_FILE_FORMATS):
+        if f := find_readable_file(dir_, CONFIG_NAME_CANDIDATES):
             return f
     return None
 
 
-def find_global_config_files() -> Iterable[ConfigFile]:
+def find_global_config_files() -> Iterable[Path]:
     """Find user/site config files."""
-    CONFIG_FILE_FORMATS = (
-        ConfigFileSpec("config.toml", "toml"),
-        ConfigFileSpec("config.yaml", "yaml"),
-        ConfigFileSpec("config.yml", "yaml"),
-        ConfigFileSpec("config.json", "json"),
+    CONFIG_NAME_CANDIDATES = (
+        "config.toml",
+        "config.yaml",
+        "config.yml",
+        "config.json",
     )
 
     for dir_ in (
         platformdirs.user_config_path(APP_NAME),
         platformdirs.site_config_path(APP_NAME),
     ):
-        if f := find_readable_file(dir_, CONFIG_FILE_FORMATS):
+        if f := find_readable_file(dir_, CONFIG_NAME_CANDIDATES):
             yield f
 
 
@@ -71,34 +57,32 @@ def get_user_config_file_path() -> Path:
     return platformdirs.user_config_path(APP_NAME) / "config.toml"
 
 
-def find_readable_file(
-    dirpath: Path, specs: Iterable[ConfigFileSpec]
-) -> ConfigFile | None:
-    for spec in specs:
-        filepath = dirpath / spec.filename
+def find_readable_file(dirpath: Path, candidates: Iterable[str]) -> Path | None:
+    for name in candidates:
+        filepath = dirpath / name
         if not filepath.is_file():
             continue
         logger.debug("Find config file %s", filepath)
 
-        if not is_readable_format(spec.format):
+        if not is_readable_format(filepath.suffix):
             logger.warning(
                 "The config file <data>%s</data> was found, but the required "
                 "dependency for <mark>%s</mark> format is not installed.",
                 filepath,
-                spec.format,
+                filepath.suffix,
             )
             return
 
-        return ConfigFile(spec.filename, spec.format, filepath)
+        return filepath
 
 
-def is_readable_format(fmt: str) -> bool:
-    if fmt == "json":
-        return True
-    elif fmt == "yaml":
-        return is_installed("yaml")
-    elif fmt in ("toml", "pyproject.toml"):
+def is_readable_format(suffix: str) -> bool:
+    if suffix == ".toml":
         return is_installed("tomllib") or is_installed("tomli")
+    elif suffix in (".yaml", ".yml"):
+        return is_installed("yaml")
+    elif suffix == ".json":
+        return True
     return False
 
 
