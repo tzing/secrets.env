@@ -111,7 +111,7 @@ def parse_spec(spec: "RequestSpec") -> OutputSpec:
     ):
         raise ConfigError("Invalid format (secrets.VAR.format): {}", output_format)
 
-    return OutputSpec(output_field.lower(), output_format.lower())  # type: ignore
+    return OutputSpec(output_field.lower(), output_format.lower())  # type: ignore[reportGeneralTypeIssues]
 
 
 def get_ca(conn_info: "AppConnectionInfo", format_: Literal["path", "pem"]) -> str:

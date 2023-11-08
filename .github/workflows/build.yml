@@ -137,7 +137,7 @@ jobs:
 
       - name: Coding style check
         run: |
-          poetry run flake8
+          poetry run ruff check .
 
       - name: Type check
         run: |

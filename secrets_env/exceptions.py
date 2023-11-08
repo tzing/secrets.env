@@ -35,7 +35,7 @@ class SecretsEnvError(Exception):
 
            print(f"{exc.key=}")
            # exc.key='kwarg example'
-        """  # noqa: E501
+        """
         msg = fmt.format(*args)
         super().__init__(msg)
         for name, value in extras.items():
