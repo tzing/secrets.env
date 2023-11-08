@@ -2,14 +2,14 @@ import logging
 import typing
 from typing import Optional
 
-from secrets_env.config.finder import find_config_file, get_config_file_metadata
-from secrets_env.config.parser import parse_config
-from secrets_env.config.reader import read_config_file
+from secrets_env.config0.finder import find_config_file, get_config_file_metadata
+from secrets_env.config0.parser import parse_config
+from secrets_env.config0.reader import read_config_file
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
-    from secrets_env.config.parser import Config
+    from secrets_env.config0.parser import Config
 
 logger = logging.getLogger(__name__)
 

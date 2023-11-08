@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-import secrets_env.config.parser as t
+import secrets_env.config0.parser as t
 from secrets_env.exceptions import AuthenticationError, ConfigError
 from secrets_env.provider import ProviderBase
 
