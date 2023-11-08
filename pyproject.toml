@@ -30,7 +30,6 @@ poetry = "^1.2.2"
 pytest = "^7.3.0"
 pytest-cov = "^4.0.0"
 respx = "^0.20.1"
-ruamel-yaml = "^0.17.24"
 
 [tool.poetry.group.lint]
 optional = true
