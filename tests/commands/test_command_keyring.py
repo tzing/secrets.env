@@ -121,7 +121,7 @@ def test_is_keyring_available():
     with patch("keyring.get_keyring", return_value=keyring.backends.null.Keyring()):
         assert t.is_keyring_available() is True
 
-    # import error
+    # test import error
     with patch.dict("sys.modules", {"keyring": None}):
         assert t.is_keyring_available() is False
 

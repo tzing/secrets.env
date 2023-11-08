@@ -19,7 +19,7 @@ class ConfigFileSpec:
     filename: str
     format: Literal["json", "yaml", "toml", "pyproject.toml"]
 
-    __LANGUAGE = {
+    __LANGUAGE = {  # noqa: RUF012
         "json": "json",
         "yaml": "yaml",
         "toml": "toml",

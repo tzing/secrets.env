@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import enum
 import logging
 import re
 import typing
 from functools import cached_property
 from http import HTTPStatus
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, Literal, Union
 
 import httpx
 
@@ -20,8 +21,12 @@ from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
 if typing.TYPE_CHECKING:
+    from pathlib import Path
+    from typing import Any
+
     from secrets_env.providers.vault.auth.base import Auth
     from secrets_env.providers.vault.config import CertTypes
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +41,10 @@ class SecretSource(typing.NamedTuple):
     field: str
 
 
-KVVersion = Literal[1, 2]
-VaultSecret = Dict[str, str]
-VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
+if typing.TYPE_CHECKING:
+    KVVersion = Literal[1, 2]
+    VaultSecret = Dict[str, str]
+    VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
 
 
 class KvProvider(ProviderBase):
@@ -47,11 +53,11 @@ class KvProvider(ProviderBase):
     def __init__(
         self,
         url: str,
-        auth: "Auth",
+        auth: Auth,
         *,
-        proxy: Optional[str] = None,
-        ca_cert: Optional["Path"] = None,
-        client_cert: Optional["CertTypes"] = None,
+        proxy: str | None = None,
+        ca_cert: Path | None = None,
+        client_cert: CertTypes | None = None,
     ) -> None:
         self.url = url
         self.auth = auth
@@ -59,7 +65,7 @@ class KvProvider(ProviderBase):
         self.ca_cert = ca_cert
         self.client_cert = client_cert
 
-        self._secrets: Dict[str, VaultSecretQueryResult] = {}
+        self._secrets: dict[str, VaultSecretQueryResult] = {}
 
     @property
     def type(self) -> str:
@@ -143,7 +149,7 @@ class KvProvider(ProviderBase):
                 result = Marker.SecretNotExist
             self._secrets[path] = result
 
-        # return
+        # returns value
         if result == Marker.SecretNotExist:
             raise ValueNotFound("Secret {} not found", path)
         return result
@@ -174,14 +180,14 @@ class KvProvider(ProviderBase):
         return value
 
 
-def get_token(client: httpx.Client, auth: "Auth") -> str:
+def get_token(client: httpx.Client, auth: Auth) -> str:
     # login
     try:
         token = auth.login(client)
     except httpx.HTTPError as e:
         if not (reason := get_httpx_error_reason(e)):
             raise
-        raise AuthenticationError("Encounter {} while retrieving token", reason)
+        raise AuthenticationError("Encounter {} while retrieving token", reason) from e
 
     if not token:
         raise AuthenticationError("Absence of token information")
@@ -221,7 +227,7 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
 
 def get_mount_point(
     client: httpx.Client, path: str
-) -> Tuple[Optional[str], Optional[KVVersion]]:
+) -> tuple[str | None, KVVersion | None]:
     """Get mount point and KV engine version to a secret.
 
     Returns
@@ -276,7 +282,7 @@ def get_mount_point(
     return None, None
 
 
-def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
+def read_secret(client: httpx.Client, path: str) -> VaultSecret | None:
     """Read secret from Vault.
 
     See also
@@ -324,12 +330,12 @@ def read_secret(client: httpx.Client, path: str) -> Optional[VaultSecret]:
     return None
 
 
-def get_field(secret: dict, name: str) -> Optional[str]:
+def get_field(secret: dict, name: str) -> str | None:
     """Traverse the secret data to get the field along with the given name."""
     for n in split_field(name):
         if not isinstance(secret, dict):
             return None
-        secret = secret.get(n)  # type: ignore
+        secret = typing.cast(dict, secret.get(n))
 
     if not isinstance(secret, str):
         return None
@@ -337,7 +343,7 @@ def get_field(secret: dict, name: str) -> Optional[str]:
     return secret
 
 
-def split_field(name: str) -> List[str]:
+def split_field(name: str) -> list[str]:
     """Split a field name into subsequences. By default, this function splits
     the name by dots, with supportting of preserving the quoted subpaths.
     """

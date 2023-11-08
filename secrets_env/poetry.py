@@ -1,6 +1,8 @@
 """Adapt poetry's plugin framework to automatically load secrets on specific
 poetry commands.
 """
+from __future__ import annotations
+
 import logging
 import os
 import typing
@@ -15,6 +17,8 @@ import secrets_env
 from secrets_env.utils import removeprefix
 
 if typing.TYPE_CHECKING:
+    from typing import ClassVar
+
     from cleo.events.event import Event
     from cleo.events.event_dispatcher import EventDispatcher
     from cleo.io.outputs.output import Output
@@ -24,15 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class SecretsEnvPlugin(ApplicationPlugin):
-    def activate(self, application: "Application") -> None:
+    def activate(self, application: Application) -> None:
         if application.event_dispatcher:
             application.event_dispatcher.add_listener(COMMAND, self.load_secret)
 
     def load_secret(
         self,
-        event: "Event",
+        event: Event,
         event_name: str,
-        dispatcher: "EventDispatcher",
+        dispatcher: EventDispatcher,
     ) -> None:
         assert isinstance(event, ConsoleCommandEvent)  # satisfy type check
         if event.command.name not in ("run", "shell"):
@@ -48,7 +52,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         for name, value in secrets.items():
             os.environ[name] = value
 
-    def setup_output(self, output: "Output") -> None:
+    def setup_output(self, output: Output) -> None:
         """Forwards internal messages to :py:mod:`cleo`.
 
         Secrets.env writes all messages using :py:mod:`logging`. But cleo hides
@@ -82,7 +86,7 @@ class CleoHandler(logging.Handler):
     them to the format in corresponding framework, powered with their features
     like color stripping on non-interactive terminal."""
 
-    VERBOSITY = {
+    VERBOSITY: ClassVar = {
         logging.DEBUG: Verbosity.VERY_VERBOSE,
         logging.INFO: Verbosity.VERBOSE,
         logging.WARNING: Verbosity.NORMAL,
@@ -90,7 +94,7 @@ class CleoHandler(logging.Handler):
         logging.CRITICAL: Verbosity.QUIET,
     }
 
-    def __init__(self, output: "Output") -> None:
+    def __init__(self, output: Output) -> None:
         super().__init__(logging.NOTSET)
         self.output = output
 
