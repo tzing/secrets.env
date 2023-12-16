@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import logging
+import os
+from pathlib import Path
+from typing import Optional
+
+from secrets_env.exceptions import ConfigError, UnsupportedError
+
+logger = logging.getLogger(__name__)
+
+
+def read(file: os.PathLike) -> dict:
+    """Read the file."""
+    filepath = Path(file)
+    if not filepath.is_file():
+        raise ConfigError(f"File not found: {filepath}")
+
+    if filepath.suffix == ".toml":
+        data = read_toml_file(filepath)
+    elif filepath.suffix in (".yaml", ".yml"):
+        data = read_yaml_file(file)
+    elif filepath.suffix == ".json":
+        data = read_json_file(file)
+    else:
+        raise UnsupportedError(f"Unexpected format: {filepath.suffix}")
+
+    if data is None:
+        return {}
+
+    if not isinstance(data, dict):
+        logger.warning("Config should be key value pairs. Got %s.", type(data).__name__)
+        return {}
+
+    if filepath.name == "pyproject.toml":
+        data = data.get("tool", {}).get("secrets-env", {})
+
+    return data or {}
+
+
+def read_toml_file(path: Path) -> Optional[dict]:
+    try:
+        import tomllib  # pyright: ignore[reportMissingImports]
+    except ImportError:
+        import tomli as tomllib  # pyright: ignore[reportMissingImports]
+
+    with path.open("rb") as fd:
+        try:
+            return tomllib.load(fd)
+        except (tomllib.TOMLDecodeError, UnicodeDecodeError):
+            logger.exception("Failed to parse TOML file: %s", path)
+            return None
+
+
+def read_yaml_file(path: Path) -> Optional[dict]:
+    import yaml
+
+    with path.open("rb") as fd:
+        try:
+            return yaml.safe_load(fd)
+        except yaml.YAMLError:
+            logger.exception("Failed to parse YAML file: %s", path)
+            return None
+
+
+def read_json_file(path: Path) -> Optional[dict]:
+    import json
+
+    with path.open("rb") as fd:
+        try:
+            return json.load(fd)
+        except json.JSONDecodeError:
+            logger.exception("Failed to parse JSON file: %s", path)
+            return None
