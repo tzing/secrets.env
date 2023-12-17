@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
-import os
+import typing
 from pathlib import Path
-from typing import Optional
+
+if typing.TYPE_CHECKING:
+    import os
 
 from secrets_env.exceptions import ConfigError, UnsupportedError
 
@@ -38,7 +40,7 @@ def read(file: os.PathLike) -> dict:
     return data or {}
 
 
-def read_toml_file(path: Path) -> Optional[dict]:
+def read_toml_file(path: Path) -> dict | None:
     try:
         import tomllib  # pyright: ignore[reportMissingImports]
     except ImportError:
@@ -52,7 +54,7 @@ def read_toml_file(path: Path) -> Optional[dict]:
             return None
 
 
-def read_yaml_file(path: Path) -> Optional[dict]:
+def read_yaml_file(path: Path) -> dict | None:
     import yaml
 
     with path.open("rb") as fd:
@@ -63,7 +65,7 @@ def read_yaml_file(path: Path) -> Optional[dict]:
             return None
 
 
-def read_json_file(path: Path) -> Optional[dict]:
+def read_json_file(path: Path) -> dict | None:
     import json
 
     with path.open("rb") as fd:
