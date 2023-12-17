@@ -12,18 +12,18 @@ from secrets_env.exceptions import ConfigError, UnsupportedError
 logger = logging.getLogger(__name__)
 
 
-def read(file: os.PathLike) -> dict:
+def read(path: os.PathLike) -> dict:
     """Read the file."""
-    filepath = Path(file)
+    filepath = Path(path)
     if not filepath.is_file():
         raise ConfigError(f"File not found: {filepath}")
 
     if filepath.suffix == ".toml":
         data = read_toml_file(filepath)
     elif filepath.suffix in (".yaml", ".yml"):
-        data = read_yaml_file(file)
+        data = read_yaml_file(filepath)
     elif filepath.suffix == ".json":
-        data = read_json_file(file)
+        data = read_json_file(filepath)
     else:
         raise UnsupportedError(f"Unexpected format: {filepath.suffix}")
 
