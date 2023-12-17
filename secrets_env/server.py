@@ -11,14 +11,17 @@ import logging
 import pathlib
 import socket
 import string
-import sys
 import threading
+import typing
 import urllib.parse
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Iterator, List
+from typing import Any
 
-URLParams = Dict[str, List[str]]
-RouteHandler = Callable[[URLParams], None]
+if typing.TYPE_CHECKING:
+    from typing import Callable, Dict, Iterator, List
+
+    URLParams = Dict[str, List[str]]
+    RouteHandler = Callable[[URLParams], None]
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +54,7 @@ class RWLock:
             self.read_lock_release()
 
 
-if sys.version_info >= (3, 9):
-    _SafeDictBase = collections.abc.MutableMapping[str, Any]
-else:
-    _SafeDictBase = collections.abc.MutableMapping
-
-
-class SafeDict(_SafeDictBase):
+class SafeDict(collections.abc.MutableMapping[str, Any]):
     """Dictionary with read write lock."""
 
     def __init__(self) -> None:
