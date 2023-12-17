@@ -93,7 +93,10 @@ class TestParseSpec:
             t.parse_spec({"field": "ca", "format": "invalid"})
 
     def test_type_error(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(
+            ConfigError,
+            match=re.escape("Expect dict for secrets path spec, got int"),
+        ):
             t.parse_spec(1234)
 
 

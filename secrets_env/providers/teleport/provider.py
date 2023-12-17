@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 import typing
 from functools import cached_property
-from typing import Literal, Optional
+from typing import Literal
 
-from secrets_env.exceptions import ConfigError, TypeError, ValueNotFound
+from secrets_env.exceptions import ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase
 from secrets_env.providers.teleport.helper import get_connection_info
 
@@ -32,9 +34,9 @@ class TeleportProvider(ProviderBase):
     def __init__(
         self,
         *,
-        proxy: Optional[str],
-        cluster: Optional[str],
-        user: Optional[str],
+        proxy: str | None,
+        cluster: str | None,
+        user: str | None,
         app: str,
     ) -> None:
         self.proxy = proxy
@@ -43,7 +45,7 @@ class TeleportProvider(ProviderBase):
         self.app = app
 
     @cached_property
-    def tsh(self) -> "AppConnectionInfo":
+    def tsh(self) -> AppConnectionInfo:
         """Return teleport app connection information."""
         return get_connection_info(
             {
@@ -54,7 +56,7 @@ class TeleportProvider(ProviderBase):
             }
         )
 
-    def get(self, raw_spec: "RequestSpec") -> str:
+    def get(self, raw_spec: RequestSpec) -> str:
         spec = parse_spec(raw_spec)
 
         if spec.field == "uri":
@@ -85,7 +87,7 @@ class TeleportProvider(ProviderBase):
         raise ConfigError("Invalid value spec: {}", raw_spec)
 
 
-def parse_spec(spec: "RequestSpec") -> OutputSpec:
+def parse_spec(spec: RequestSpec) -> OutputSpec:
     # extract
     if isinstance(spec, str):
         output_field = spec
@@ -94,7 +96,9 @@ def parse_spec(spec: "RequestSpec") -> OutputSpec:
         output_field = spec.get("field")
         output_format = spec.get("format", DEFAULT_OUTPUT_FORMAT)
     else:
-        raise TypeError("secret path spec", dict, spec)
+        raise ConfigError(
+            "Expect dict for secrets path spec, got {}", type(spec).__name__
+        )
 
     # validate
     if (
@@ -114,7 +118,7 @@ def parse_spec(spec: "RequestSpec") -> OutputSpec:
     return OutputSpec(output_field.lower(), output_format.lower())  # type: ignore[reportGeneralTypeIssues]
 
 
-def get_ca(conn_info: "AppConnectionInfo", format_: Literal["path", "pem"]) -> str:
+def get_ca(conn_info: AppConnectionInfo, format_: Literal["path", "pem"]) -> str:
     if not conn_info.ca:
         raise ValueNotFound("CA is not avaliable")
     if format_ == "path":
