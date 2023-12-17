@@ -56,35 +56,35 @@ class TeleportProvider(ProviderBase):
             }
         )
 
-    def get(self, raw_spec: RequestSpec) -> str:
-        spec = parse_spec(raw_spec)
+    def get(self, spec: RequestSpec) -> str:
+        parsed = parse_spec(spec)
 
-        if spec.field == "uri":
+        if parsed.field == "uri":
             return self.tsh.uri
 
-        elif spec.field == "ca":
+        elif parsed.field == "ca":
             # bypass cognitive complexity check
-            return get_ca(self.tsh, spec.format)
+            return get_ca(self.tsh, parsed.format)
 
-        elif spec.field == "cert":
-            if spec.format == "path":
+        elif parsed.field == "cert":
+            if parsed.format == "path":
                 return str(self.tsh.path_cert)
-            elif spec.format == "pem":
+            elif parsed.format == "pem":
                 return self.tsh.cert.decode()
 
-        elif spec.field == "key":
-            if spec.format == "path":
+        elif parsed.field == "key":
+            if parsed.format == "path":
                 return str(self.tsh.path_key)
-            elif spec.format == "pem":
+            elif parsed.format == "pem":
                 return self.tsh.key.decode()
 
-        elif spec.field == "cert+key":
-            if spec.format == "path":
+        elif parsed.field == "cert+key":
+            if parsed.format == "path":
                 return str(self.tsh.path_cert_and_key)
-            elif spec.format == "pem":
+            elif parsed.format == "pem":
                 return self.tsh.cert_and_key.decode()
 
-        raise ConfigError("Invalid value spec: {}", raw_spec)
+        raise ConfigError("Invalid value spec: {}", spec)
 
 
 def parse_spec(spec: RequestSpec) -> OutputSpec:
