@@ -1,6 +1,8 @@
 """Provide a HTTP server that runs in background and provide
 :py:attr:`ThreadingHTTPServer.context` to exchange the data safely.
 """
+from __future__ import annotations
+
 import collections.abc
 import contextlib
 import functools
@@ -11,10 +13,9 @@ import socket
 import string
 import sys
 import threading
-import typing
 import urllib.parse
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterator, List
 
 URLParams = Dict[str, List[str]]
 RouteHandler = Callable[[URLParams], None]
@@ -61,7 +62,7 @@ class SafeDict(_SafeDictBase):
 
     def __init__(self) -> None:
         self._lock = RWLock()
-        self._data: Dict = {}
+        self._data: dict = {}
 
     def __repr__(self) -> str:
         with self._lock.read_lock:
@@ -101,9 +102,9 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     responses 404 to client when nothing received.
     """
 
-    server: "ThreadingHTTPServer"
+    server: ThreadingHTTPServer
 
-    def route(self, path: str) -> Optional["RouteHandler"]:
+    def route(self, path: str) -> RouteHandler | None:
         """Routing GET request to specific method."""
 
     def do_GET(self) -> None:
@@ -128,7 +129,7 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             fmt % args,
         )
 
-    def response_html(self, code: int, filename: str, mapping: Optional[dict] = None):
+    def response_html(self, code: int, filename: str, mapping: dict | None = None):
         """Response from template."""
         # render body
         template = get_template(filename)
@@ -171,7 +172,7 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
         cls,
         host: str,
         port: int,
-        handler: typing.Type[HTTPRequestHandler],
+        handler: type[HTTPRequestHandler],
     ):
         """Create a HTTP server that served in background thread.
         The threads starts automatically but will not serve requests until
@@ -220,9 +221,9 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
 
 
 def start_server(
-    handler: typing.Type[HTTPRequestHandler],
+    handler: type[HTTPRequestHandler],
     host: str = "127.0.0.1",
-    port: Optional[int] = None,
+    port: int | None = None,
     *,
     ready: bool = True,
 ) -> ThreadingHTTPServer:
