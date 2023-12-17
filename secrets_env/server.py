@@ -1,6 +1,8 @@
 """Provide a HTTP server that runs in background and provide
 :py:attr:`ThreadingHTTPServer.context` to exchange the data safely.
 """
+from __future__ import annotations
+
 import collections.abc
 import contextlib
 import functools
@@ -14,10 +16,13 @@ import threading
 import typing
 import urllib.parse
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any
 
-URLParams = Dict[str, List[str]]
-RouteHandler = Callable[[URLParams], None]
+if typing.TYPE_CHECKING:
+    from typing import Callable, Dict, Iterator, List
+
+    URLParams = Dict[str, List[str]]
+    RouteHandler = Callable[[URLParams], None]
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +66,7 @@ class SafeDict(_SafeDictBase):
 
     def __init__(self) -> None:
         self._lock = RWLock()
-        self._data: Dict = {}
+        self._data: dict = {}
 
     def __repr__(self) -> str:
         with self._lock.read_lock:
@@ -101,9 +106,9 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     responses 404 to client when nothing received.
     """
 
-    server: "ThreadingHTTPServer"
+    server: ThreadingHTTPServer  # type: ignore[reportIncompatibleVariableOverride]
 
-    def route(self, path: str) -> Optional["RouteHandler"]:
+    def route(self, path: str) -> RouteHandler | None:
         """Routing GET request to specific method."""
 
     def do_GET(self) -> None:
@@ -118,17 +123,17 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         params = urllib.parse.parse_qs(url.query)
         return func(params)
 
-    def log_message(self, fmt: str, *args: Any) -> None:
+    def log_message(self, format: str, *args: Any) -> None:
         """Redirect request logs to logging infrastructure, while the builtin
         implementation writes data to stderr."""
         logger.debug(
             "[%s] HTTP server: %s - %s",
             self.log_date_time_string(),
             self.address_string(),
-            fmt % args,
+            format % args,
         )
 
-    def response_html(self, code: int, filename: str, mapping: Optional[dict] = None):
+    def response_html(self, code: int, filename: str, mapping: dict | None = None):
         """Response from template."""
         # render body
         template = get_template(filename)
@@ -171,7 +176,7 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
         cls,
         host: str,
         port: int,
-        handler: typing.Type[HTTPRequestHandler],
+        handler: type[HTTPRequestHandler],
     ):
         """Create a HTTP server that served in background thread.
         The threads starts automatically but will not serve requests until
@@ -220,9 +225,9 @@ class ThreadingHTTPServer(http.server.ThreadingHTTPServer):
 
 
 def start_server(
-    handler: typing.Type[HTTPRequestHandler],
+    handler: type[HTTPRequestHandler],
     host: str = "127.0.0.1",
-    port: Optional[int] = None,
+    port: int | None = None,
     *,
     ready: bool = True,
 ) -> ThreadingHTTPServer:
