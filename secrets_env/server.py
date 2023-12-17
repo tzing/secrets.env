@@ -102,8 +102,6 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     responses 404 to client when nothing received.
     """
 
-    server: ThreadingHTTPServer
-
     def route(self, path: str) -> RouteHandler | None:
         """Routing GET request to specific method."""
 
@@ -119,14 +117,14 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         params = urllib.parse.parse_qs(url.query)
         return func(params)
 
-    def log_message(self, fmt: str, *args: Any) -> None:
+    def log_message(self, format: str, *args: Any) -> None:
         """Redirect request logs to logging infrastructure, while the builtin
         implementation writes data to stderr."""
         logger.debug(
             "[%s] HTTP server: %s - %s",
             self.log_date_time_string(),
             self.address_string(),
-            fmt % args,
+            format % args,
         )
 
     def response_html(self, code: int, filename: str, mapping: dict | None = None):
