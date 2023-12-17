@@ -102,6 +102,8 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     responses 404 to client when nothing received.
     """
 
+    server: ThreadingHTTPServer  # type: ignore[reportIncompatibleVariableOverride]
+
     def route(self, path: str) -> RouteHandler | None:
         """Routing GET request to specific method."""
 
