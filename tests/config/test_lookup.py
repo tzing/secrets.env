@@ -78,4 +78,4 @@ def test_is_readable_format():
 def test_is_installed():
     assert t.is_installed("json") is True
     assert t.is_installed("unknown") is False
-    assert t.is_installed(".error") is False
+    assert t.is_installed("__error__") is False
