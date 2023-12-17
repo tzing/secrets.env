@@ -40,7 +40,7 @@ class TestLoadConfig:
             assert isinstance(request["spec"], (str, dict))
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "find_config_file", lambda: None)
+        monkeypatch.setattr(t, "find_local_config_file", lambda: None)
         assert t.load_config() is None
 
     def test_not_content(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
