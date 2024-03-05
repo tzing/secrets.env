@@ -102,7 +102,7 @@ class TestLogHttpxResponse:
         t.log_httpx_response(self.logger, resp)
 
         assert "URL= https://example.com/;" in caplog.text
-        assert "Status= 403 (FORBIDDEN);" in caplog.text
+        assert "Status= 403 (Forbidden);" in caplog.text
         assert 'Raw response= {"foo": "bar"}' in caplog.text
 
     def test_error(self, caplog: pytest.LogCaptureFixture):
@@ -113,7 +113,7 @@ class TestLogHttpxResponse:
         t.log_httpx_response(self.logger, resp)
 
         assert "URL= https://example.com/;" in caplog.text
-        assert "Status= 999 (unknown);" in caplog.text
+        assert "Status= 999 (Unknown);" in caplog.text
         assert "Raw response= \ufffd undecodable bytes" in caplog.text
 
 

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 import typing
-from typing import Dict
 
 if typing.TYPE_CHECKING:
     from secrets_env.config0.parser import Config
@@ -9,7 +10,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def read_values(config: "Config") -> Dict[str, str]:
+def read_values(config: Config) -> dict[str, str]:
     """Request values from providers."""
     output_values = {}
     for request in config["requests"]:
@@ -36,9 +37,7 @@ def read_values(config: "Config") -> Dict[str, str]:
     return output_values
 
 
-def read1(
-    provider: "ProviderBase", name: str, spec: "RequestSpec"
-) -> typing.Optional[str]:
+def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> str | None:
     """Read single value.
 
     This function wraps :py:meth:`secrets_env.provider.ProviderBase.get` and

@@ -1,19 +1,23 @@
 """Utility collection."""
+from __future__ import annotations
+
 import logging
 import os
 import re
 import sys
 import typing
 from pathlib import Path
-from typing import Any, Literal, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import overload
 
 if typing.TYPE_CHECKING:
+    from typing import Any, Literal, TypeVar
+
     import click
     import httpx
 
-T = TypeVar("T")
-TL_True = Literal[True]
-TL_False = Literal[False]
+    T = TypeVar("T")
+    TL_True = Literal[True]
+    TL_False = Literal[False]
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +29,10 @@ def ensure_type(
     value_name: str,
     value: Any,
     type_name: str,
-    expect_type: Type[T],
+    expect_type: type[T],
     cast: bool,
     default: T,
-) -> Union[Tuple[T, TL_True], Tuple[T, TL_False]]:
+) -> tuple[T, TL_True] | tuple[T, TL_False]:
     ...  # pragma: no cover
 
 
@@ -37,9 +41,9 @@ def ensure_type(
     value_name: str,
     value: Any,
     type_name: str,
-    expect_type: Type[T],
+    expect_type: type[T],
     cast: bool,
-) -> Union[Tuple[T, TL_True], Tuple[Literal[None], TL_False]]:
+) -> tuple[T, TL_True] | tuple[Literal[None], TL_False]:
     ...  # pragma: no cover
 
 
@@ -47,10 +51,10 @@ def ensure_type(
     value_name: str,
     value: Any,
     type_name: str,
-    expect_type: Type[T],
+    expect_type: type[T],
     cast: bool,
-    default: Optional[T] = None,
-) -> Union[Tuple[T, TL_True], Tuple[Optional[T], TL_False]]:
+    default: T | None = None,
+) -> tuple[T, TL_True] | tuple[T | None, TL_False]:
     """Check if the given value is the expected type, fallback to default value
     and report errors on failed.
 
@@ -103,7 +107,7 @@ def ensure_type(
     return default, False
 
 
-def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
+def ensure_dict(name: str, d: Any) -> tuple[dict, bool]:
     """Ensure the input is :py:class:`dict`. Read :py:func:`ensure_type` for
     more details."""
     return ensure_type(name, d, "dict", dict, False, {})
@@ -111,10 +115,10 @@ def ensure_dict(name: str, d: Any) -> Tuple[dict, bool]:
 
 def ensure_path(
     name: str, p: Any, is_file: bool = True
-) -> Union[Tuple[Path, TL_True], Tuple[None, TL_False]]:
+) -> tuple[Path, TL_True] | tuple[None, TL_False]:
     """Ensure the input is :py:class:`pathlib.Path`. Read :py:func:`ensure_type`
     for more details."""
-    path: Optional[Path]
+    path: Path | None
     path, _ = ensure_type(name, p, "path", Path, True)
     if not path:
         return None, False
@@ -131,13 +135,13 @@ def ensure_path(
     return path, True
 
 
-def ensure_str(name: str, s: Any) -> Union[Tuple[str, TL_True], Tuple[None, TL_False]]:
+def ensure_str(name: str, s: Any) -> tuple[str, TL_True] | tuple[None, TL_False]:
     """Ensure the input is :py:class:`str`. Read :py:func:`ensure_type` for
     more details."""
     return ensure_type(name, s, "str", str, False)
 
 
-def get_env_var(*names: str) -> Optional[str]:
+def get_env_var(*names: str) -> str | None:
     """Get value from environment variable."""
     for name in names:
         if var := os.getenv(name.upper()):
@@ -158,7 +162,7 @@ def get_bool_from_env_var(*names: str, default: bool = False) -> bool:
     return env.upper() in ("TRUE", "T", "YES", "Y", "1")
 
 
-def get_httpx_error_reason(e: "httpx.HTTPError"):
+def get_httpx_error_reason(e: httpx.HTTPError):
     """Returns a reason for those errors that should not breaks the program.
     This is a helper function to be used in ``expect`` clause."""
     import httpx
@@ -173,32 +177,28 @@ def get_httpx_error_reason(e: "httpx.HTTPError"):
     return None
 
 
-def log_httpx_response(logger_: logging.Logger, resp: "httpx.Response"):
+def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
     """Print :py:class:`httpx.Response` to debug log."""
-    import http
-
-    try:
-        code_enum = http.HTTPStatus(resp.status_code)
-        code_name = code_enum.name
-    except ValueError:
-        code_name = "unknown"
+    import httpx
 
     logger_.debug(
         "URL= %s; Status= %d (%s); Raw response= %s",
         resp.url,
         resp.status_code,
-        code_name,
+        resp.reason_phrase
+        or httpx.codes.get_reason_phrase(resp.status_code)
+        or "Unknown",
         resp.text,
     )
 
 
 def prompt(
     text: str,
-    default: Optional[Any] = None,
+    default: Any | None = None,
     hide_input: bool = False,
-    type: Optional[Union["click.types.ParamType", Any]] = None,
+    type: click.types.ParamType | type | None = None,
     show_default: bool = True,
-) -> Optional[Any]:
+) -> Any:
     """Wrap :py:func:`click.prompt`, shows the prompt when this feature is not disabled.
 
     Parameters
@@ -234,7 +234,7 @@ def prompt(
         return None
 
 
-def read_keyring(key: str) -> Optional[str]:
+def read_keyring(key: str) -> str | None:
     """Wrap :py:func:`keyring.get_password` and capture error when keyring is
     not available."""
     # skip prompt if the env var is set

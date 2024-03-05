@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import typing
 
@@ -8,8 +10,8 @@ if typing.TYPE_CHECKING:
 
 
 def read_values(
-    config_file: typing.Optional["Path"] = None, strict: bool = False
-) -> typing.Optional[typing.Dict[str, str]]:
+    config_file: Path | None = None, strict: bool = False
+) -> dict[str, str] | None:
     """Load secrets from vault and put them to environment variable.
 
     Parameters

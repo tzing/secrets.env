@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import enum
 import logging
 import queue
 import subprocess
 import threading
 import time
-from typing import IO, Iterator, List, Optional, Sequence, Tuple
+import typing
 
 from secrets_env.utils import strip_ansi
+
+if typing.TYPE_CHECKING:
+    from typing import IO, Iterator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Channel(enum.IntEnum):
     prefix: str
 
-    def __new__(cls, value: int, prefix: str) -> "Channel":
+    def __new__(cls, value: int, prefix: str) -> Channel:
         obj = int.__new__(cls, value)
         obj._value_ = value
         obj.prefix = prefix
@@ -31,8 +36,8 @@ class Run:
     def __init__(self, cmd: Sequence[str]) -> None:
         """Starts a run."""
         self._queue = queue.Queue()
-        self._stdouts: List[str] = []
-        self._stderrs: List[str] = []
+        self._stdouts: list[str] = []
+        self._stderrs: list[str] = []
 
         # start process
         logger.debug("$ %s", " ".join(cmd))
@@ -62,7 +67,7 @@ class Run:
         for t in self._threads:
             t.start()
 
-    def _iter_output(self) -> Iterator[Tuple[Channel, str]]:
+    def _iter_output(self) -> Iterator[tuple[Channel, str]]:
         POLL_INTERVAL = 0.05
 
         def _flush_queue():
@@ -95,7 +100,7 @@ class Run:
             yield line
 
     @property
-    def return_code(self) -> Optional[int]:
+    def return_code(self) -> int | None:
         """The child process return code"""
         return self._proc.returncode
 

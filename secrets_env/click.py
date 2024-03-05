@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import functools
 import logging
 import sys
-from typing import Callable, Optional
+import typing
 
 import click
+
+if typing.TYPE_CHECKING:
+    from typing import Callable
 
 VERBOSITY = {
     # verbosity: (level for secrets.env logs, level for other logs)
@@ -27,7 +32,7 @@ class ClickHandler(logging.Handler):
     converting them to the format in corresponding framework, powered with their
     features like color stripping on non-interactive terminal."""
 
-    def __init__(self, extra_filter_level: Optional[int] = None) -> None:
+    def __init__(self, extra_filter_level: int | None = None) -> None:
         """
         Parameters
         ----------

@@ -1,7 +1,13 @@
 """All exception types that might be raised from secrets.env core.
 """
+
+from __future__ import annotations
+
 import builtins
-from typing import Any, Type, Union
+import typing
+
+if typing.TYPE_CHECKING:
+    from typing import Any
 
 
 class SecretsEnvError(Exception):
@@ -56,7 +62,7 @@ class TypeError(SecretsEnvError, builtins.TypeError):
     :meta private:
     """
 
-    def __init__(self, name: str, expect: Union[str, Type], got: Any) -> None:
+    def __init__(self, name: str, expect: str | type, got: Any) -> None:
         self.name = name
         self.expect = expect.__name__ if isinstance(expect, type) else str(expect)
         self.got = type(got).__name__

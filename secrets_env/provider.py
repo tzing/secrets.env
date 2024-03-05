@@ -2,6 +2,9 @@
 
 For secret provider implementations, see :py:mod:`secrets_env.providers`.
 """
+
+from __future__ import annotations
+
 import abc
 import sys
 import typing
@@ -11,7 +14,7 @@ if typing.TYPE_CHECKING and sys.version_info >= (3, 10):
     from typing import TypeAlias
 
 
-RequestSpec: "TypeAlias" = Union[Dict[str, str], str]
+RequestSpec: TypeAlias = Union[Dict[str, str], str]
 """:py:class:`RequestSpec` represents a secret spec (name/path) to be loaded.
 """
 
