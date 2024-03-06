@@ -48,11 +48,16 @@ def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> str | None:
 
     # type checking
     if not isinstance(provider, ProviderBase):
-        raise secrets_env.exceptions.TypeError("provider", "secret provider", provider)
+        raise TypeError(
+            f'Expected "provider" to be a credential provider class, '
+            f"got {type(provider).__name__}"
+        )
     if not isinstance(name, str):
-        raise secrets_env.exceptions.TypeError("name", str, name)
+        raise TypeError(f'Expected "name" to be a string, got {type(name).__name__}')
     if not isinstance(spec, (str, dict)):
-        raise secrets_env.exceptions.TypeError("spec", dict, spec)
+        raise TypeError(
+            f'Expected "spec" to be a string or dict, got {type(spec).__name__}'
+        )
 
     # run
     try:

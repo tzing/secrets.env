@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from secrets_env.exceptions import AuthenticationError, TypeError
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.server import HTTPRequestHandler, start_server
 from secrets_env.utils import get_env_var
 
@@ -35,7 +35,9 @@ class OpenIDConnectAuth(Auth):
     def __init__(self, role: Optional[str] = None) -> None:
         super().__init__()
         if role is not None and not isinstance(role, str):
-            raise TypeError("role", str, role)
+            raise TypeError(
+                f'Expected "role" to be a string, got {type(role).__name__}'
+            )
         object.__setattr__(self, "role", role)
 
     @classmethod

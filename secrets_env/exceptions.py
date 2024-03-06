@@ -56,19 +56,6 @@ class ConfigError(SecretsEnvError, builtins.ValueError):
     """Configuration is malformed."""
 
 
-class TypeError(SecretsEnvError, builtins.TypeError):
-    """Inappropriate argument type.
-
-    :meta private:
-    """
-
-    def __init__(self, name: str, expect: str | type, got: Any) -> None:
-        self.name = name
-        self.expect = expect.__name__ if isinstance(expect, type) else str(expect)
-        self.got = type(got).__name__
-        super().__init__(f"Expect {self.expect} for {self.name}, got {self.got}")
-
-
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
 

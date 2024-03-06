@@ -502,10 +502,22 @@ class TestGetSecretSourceDict:
     @pytest.mark.parametrize(
         ("input_", "err_msg"),
         [
-            ({"field": "bar"}, "Missing secret path"),
-            ({"path": "foo", "field": 1234}, "Expect str for secret field"),
-            ({"path": "foo"}, "Missing secret field"),
-            ({"path": 1234, "field": "bar"}, "Expect str for secret path"),
+            (
+                {"field": "bar"},
+                "Missing secret path",
+            ),
+            (
+                {"path": "foo", "field": 1234},
+                'Expected "field" to be a string, got int',
+            ),
+            (
+                {"path": "foo"},
+                "Missing secret field",
+            ),
+            (
+                {"path": 1234, "field": "bar"},
+                'Expected "path" to be a string, got int',
+            ),
         ],
     )
     def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):

@@ -4,7 +4,6 @@ import typing
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from secrets_env.exceptions import TypeError
 from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyring
 
 from .base import Auth
@@ -30,7 +29,9 @@ class TokenAuth(Auth):
             Authentication token.
         """
         if not isinstance(token, str):
-            raise TypeError("token", str, token)
+            raise TypeError(
+                f'Expected "token" to be a string, got {type(token).__name__}'
+            )
         object.__setattr__(self, "token", token)
 
     @classmethod
