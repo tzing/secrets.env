@@ -1,17 +1,16 @@
+from __future__ import annotations
+
 import logging
 import typing
 import urllib.parse
 import uuid
 import webbrowser
-from dataclasses import dataclass, field
 from http import HTTPStatus
-from typing import Any, Dict, Optional
 
 from secrets_env.exceptions import AuthenticationError
+from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.server import HTTPRequestHandler, start_server
 from secrets_env.utils import get_env_var
-
-from .base import Auth
 
 if typing.TYPE_CHECKING:
     import httpx
@@ -23,28 +22,28 @@ PATH_OIDC_CALLBACK = "/oidc/callback"
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
 class OpenIDConnectAuth(Auth):
-    role: Optional[str]
-    """Role.
-    """
+    """OpenID Connect."""
 
-    authorization_code: Optional[str] = field(repr=False, default=None)
-    """Authorization code from server response."""
+    method: str = "OIDC"
 
-    def __init__(self, role: Optional[str] = None) -> None:
-        super().__init__()
-        if role is not None and not isinstance(role, str):
-            raise TypeError(
-                f'Expected "role" to be a string, got {type(role).__name__}'
-            )
-        object.__setattr__(self, "role", role)
+    role: str | None
+    """Role."""
 
     @classmethod
-    def method(cls) -> str:
-        return "OIDC"
+    def create(cls, url: str, config: dict) -> OpenIDConnectAuth | None:
+        if role := get_env_var("SECRETS_ENV_ROLE"):
+            logger.debug("Found OIDC role from environment variable: %s", role)
+            return cls(role=role)
 
-    def login(self, client: "httpx.Client") -> str:
+        if role := config.get("role"):
+            logger.debug("Found OIDC role from config file: %s", role)
+            return cls(role=role)
+
+        logger.debug("Missing OIDC role. Use default.")
+        return cls(role=None)
+
+    def login(self, client: httpx.Client) -> str:
         logger.debug("Applying ODIC auth")
 
         # prepare server
@@ -94,35 +93,22 @@ class OpenIDConnectAuth(Auth):
 
         return token
 
-    @classmethod
-    def load(cls, url: str, data: Dict[str, Any]) -> "OpenIDConnectAuth":
-        if role := get_env_var("SECRETS_ENV_ROLE"):
-            logger.debug("Found role from environment variable: %s", role)
-            return cls(role)
-
-        if role := data.get("role"):
-            logger.debug("Found role from config file: %s", role)
-            return cls(role)
-
-        logger.debug("Missing OIDC role. Use default.")
-        return cls()
-
 
 class OIDCRequestHandler(HTTPRequestHandler):
-    def route(self, path: str) -> Optional["RouteHandler"]:
+    def route(self, path: str) -> RouteHandler | None:
         if path == PATH_OIDC_CALLBACK:
             return self.do_oidc_callback
         if path == self.server.context["entrypoint"]:
             return self.do_forward_auth_url
 
-    def do_forward_auth_url(self, params: "URLParams"):
+    def do_forward_auth_url(self, params: URLParams):
         """Forwards user to auth URL, which is very loooong."""
         self.send_response(HTTPStatus.FOUND)
         self.send_header("Location", self.server.context["auth_url"])
         self.send_header("Cache-control", "no-store")
         self.end_headers()
 
-    def do_oidc_callback(self, params: "URLParams"):
+    def do_oidc_callback(self, params: URLParams):
         # get authorization code
         codes = params.get("code")
         if not codes:
@@ -148,8 +134,8 @@ class OIDCRequestHandler(HTTPRequestHandler):
 
 
 def get_authorization_url(
-    client: "httpx.Client", redirect_uri: str, role: Optional[str], client_nonce: str
-) -> Optional[str]:
+    client: httpx.Client, redirect_uri: str, role: str | None, client_nonce: str
+) -> str | None:
     """Get OIDC authorization URL.
 
     See also
@@ -162,8 +148,8 @@ def get_authorization_url(
         On requesting URL failed.
     """
     if redirect_uri.startswith("http://127.0.0.1"):
-        # vault only accepts hostname from pre-configured acceptlist and `localhost`
-        # is always in the list
+        # vault only accepts hostname from pre-configured accept list
+        # `localhost` is in the list but `127.0.0.1` is not
         redirect_uri = redirect_uri.replace("http://127.0.0.1", "http://localhost", 1)
 
     payload = {
@@ -187,8 +173,8 @@ def get_authorization_url(
 
 
 def request_token(
-    client: "httpx.Client", auth_url: str, auth_code: str, client_nonce: str
-) -> Optional[str]:
+    client: httpx.Client, auth_url: str, auth_code: str, client_nonce: str
+) -> str | None:
     """Exchange authorization code for client token.
 
     See also

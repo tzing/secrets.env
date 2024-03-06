@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import importlib
 import logging
 import typing
-from typing import Any, Dict, Optional, Tuple, TypedDict, Union
+from typing import TypedDict
 
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
+    from typing import Any
 
     from secrets_env.providers.vault.auth.base import Auth
+
+    CertTypes = Path | tuple[Path, Path]
+
 
 DEFAULT_AUTH_METHOD = "token"
 
@@ -22,29 +28,22 @@ AUTH_METHODS = {
     "token": ("secrets_env.providers.vault.auth.token", "TokenAuth"),
 }
 
-CertTypes = Union[
-    # cert file
-    "Path",
-    # client file, key file
-    Tuple["Path", "Path"],
-]
-
 
 class VaultConnectionInfo(TypedDict):
     url: str
-    auth: "Auth"
+    auth: Auth
     proxy: str
 
     # tls
-    ca_cert: "Path"
+    ca_cert: Path
     client_cert: CertTypes
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
-    output: Dict[str, Any] = {}
+def get_connection_info(data: dict) -> VaultConnectionInfo | None:
+    output: dict[str, Any] = {}
     is_success = True
 
     # url
@@ -80,7 +79,7 @@ def get_connection_info(data: dict) -> Optional[VaultConnectionInfo]:
     return typing.cast(VaultConnectionInfo, output) if is_success else None
 
 
-def get_url(data: dict) -> Optional[str]:
+def get_url(data: dict) -> str | None:
     url = get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR")
     if not url:
         url = data.get("url", None)
@@ -100,7 +99,7 @@ def get_url(data: dict) -> Optional[str]:
     return url
 
 
-def get_auth(url: str, data: dict) -> Optional["Auth"]:
+def get_auth(url: str, data: dict) -> Auth | None:
     # syntax sugar: `auth: <method>`
     if isinstance(data, str):
         data = {"method": data}
@@ -132,13 +131,13 @@ def get_auth(url: str, data: dict) -> Optional["Auth"]:
         return None
 
     module = importlib.import_module(module_name)
-    class_: "Auth" = getattr(module, class_name)
+    class_: Auth = getattr(module, class_name)
 
     # build auth object from data
     return class_.load(url, data)
 
 
-def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
+def get_proxy(data: dict) -> tuple[str | None, bool]:
     # (1) Vault prioritized `VAULT_PROXY_ADDR` before `VAULT_HTTP_PROXY`
     #     https://developer.hashicorp.com/vault/docs/commands#environment-variables
     # (2) Standard proxy variables are later captured by httpx
@@ -159,7 +158,7 @@ def get_proxy(data: dict) -> Tuple[Optional[str], bool]:
     return proxy, True
 
 
-def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
+def get_tls_ca_cert(data: dict) -> tuple[Path | None, bool]:
     path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
     if not path:
         path = data.get("ca_cert")
@@ -170,7 +169,7 @@ def get_tls_ca_cert(data: dict) -> Tuple[Optional["Path"], bool]:
     return None, True
 
 
-def get_tls_client_cert(data: dict) -> Tuple[Optional[CertTypes], bool]:
+def get_tls_client_cert(data: dict) -> tuple[CertTypes | None, bool]:
     client_cert, client_key = None, None
     is_success = True
 

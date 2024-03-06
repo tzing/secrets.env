@@ -1,8 +1,10 @@
-import pytest
-
-import secrets_env.providers.vault.auth.base as t
+from secrets_env.providers.vault.auth.base import NullAuth
 
 
-def test_auth_method():
-    with pytest.raises(NotImplementedError):
-        t.Auth.method()
+class TestNullAuth:
+    def test_login(self):
+        auth = NullAuth()
+        assert auth.login(object()) is None
+
+    def test_create(self):
+        assert isinstance(NullAuth.create("https://example.com/", {}), NullAuth)
