@@ -399,12 +399,12 @@ def get_secret_source_dict(spec: dict) -> SecretSource:
     if not path:
         raise ConfigError("Missing secret path part")
     elif not isinstance(path, str):
-        raise TypeError("secret path", str, path)
+        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
 
     field = spec.get("field")
     if not field:
         raise ConfigError("Missing secret field part")
     elif not isinstance(field, str):
-        raise TypeError("secret field", str, field)
+        raise TypeError(f'Expected "field" to be a string, got {type(field).__name__}')
 
     return SecretSource(path, field)
