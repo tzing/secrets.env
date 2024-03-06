@@ -5,7 +5,6 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-from secrets_env.exceptions import TypeError
 from secrets_env.utils import (
     create_keyring_login_key,
     get_env_var,
@@ -41,9 +40,13 @@ class UserPasswordAuth(Auth):
 
     def __init__(self, username: str, password: str) -> None:
         if not isinstance(username, str):
-            raise TypeError("username", str, username)
+            raise TypeError(
+                f'Expected "username" to be a string, got {type(username).__name__}'
+            )
         if not isinstance(password, str):
-            raise TypeError("password", str, password)
+            raise TypeError(
+                f'Expected "password" to be a string, got {type(password).__name__}'
+            )
         object.__setattr__(self, "username", username)
         object.__setattr__(self, "password", password)
 

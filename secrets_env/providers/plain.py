@@ -1,6 +1,5 @@
 import typing
 
-from secrets_env.exceptions import TypeError
 from secrets_env.provider import ProviderBase
 
 if typing.TYPE_CHECKING:
@@ -21,7 +20,9 @@ class PlainTextProvider(ProviderBase):
         elif isinstance(spec, dict):
             value = spec.get("value")
         else:
-            raise TypeError("secret path spec", dict, spec)
+            raise TypeError(
+                f'Expected "spec" to be a string or dict, got {type(spec).__name__}'
+            )
         return value or ""
 
 

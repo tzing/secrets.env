@@ -11,12 +11,7 @@ from typing import Dict, Literal, Union
 import httpx
 
 import secrets_env.version
-from secrets_env.exceptions import (
-    AuthenticationError,
-    ConfigError,
-    TypeError,
-    ValueNotFound,
-)
+from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
 
@@ -119,7 +114,9 @@ class KvProvider(ProviderBase):
             # dict input: {"path": "foo", "key": "bar"}
             src = get_secret_source_dict(spec)
         else:
-            raise TypeError("secret path spec", dict, spec)
+            raise TypeError(
+                f'Expected "spec" to match secret path spec, got {type(spec).__name__}'
+            )
         return self.read_field(src.path, src.field)
 
     def read_secret(self, path: str) -> VaultSecret:
@@ -136,7 +133,9 @@ class KvProvider(ProviderBase):
             Secret data. Or 'SecretNotExist' marker when not found.
         """
         if not isinstance(path, str):
-            raise TypeError("path", str, path)
+            raise TypeError(
+                f'Expected "path" to be a string, got {type(path).__name__}'
+            )
 
         # try cache
         result = self._secrets.get(path, Marker.NoMatch)
@@ -170,7 +169,9 @@ class KvProvider(ProviderBase):
             The secret value if matched
         """
         if not isinstance(field, str):
-            raise TypeError("field", str, field)
+            raise TypeError(
+                f'Expected "field" to be a string, got {type(field).__name__}'
+            )
 
         secret = self.read_secret(path)
         value = get_field(secret, field)
@@ -207,9 +208,11 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     https://developer.hashicorp.com/vault/api-docs/auth/token
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("client", "httpx client", client)
+        raise TypeError(
+            f'Expected "client" to be a httpx client, got {type(client).__name__}'
+        )
     if not isinstance(token, str):
-        raise TypeError("token", str, token)
+        raise TypeError(f'Expected "token" to be a string, got {type(token).__name__}')
 
     logger.debug("Validate token for %s", client.base_url)
 
@@ -245,9 +248,11 @@ def get_mount_point(
         https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("client", "httpx client", client)
+        raise TypeError(
+            f'Expected "client" to be a httpx client, got {type(client).__name__}'
+        )
     if not isinstance(path, str):
-        raise TypeError("path", str, path)
+        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
 
     try:
         resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
@@ -290,9 +295,11 @@ def read_secret(client: httpx.Client, path: str) -> VaultSecret | None:
     https://developer.hashicorp.com/vault/api-docs/secret/kv
     """
     if not isinstance(client, httpx.Client):
-        raise TypeError("client", "httpx client", client)
+        raise TypeError(
+            f'Expected "client" to be a httpx client, got {type(client).__name__}'
+        )
     if not isinstance(path, str):
-        raise TypeError("path", str, path)
+        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
 
     mount_point, version = get_mount_point(client, path)
     if not mount_point:
