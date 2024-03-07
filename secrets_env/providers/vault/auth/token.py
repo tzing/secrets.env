@@ -1,69 +1,58 @@
-import dataclasses
+from __future__ import annotations
+
 import logging
 import typing
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import cast
 
+from pydantic import SecretStr
+
+from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyring
 
-from .base import Auth
-
 if typing.TYPE_CHECKING:
-    import httpx
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
 class TokenAuth(Auth):
     """Token-based authentication."""
 
-    token: str
-    """Authentication token."""
+    method: str = "token"
 
-    def __init__(self, token: str) -> None:
-        """
-        Parameters
-        ----------
-        token : str
-            Authentication token.
-        """
-        if not isinstance(token, str):
-            raise TypeError(
-                f'Expected "token" to be a string, got {type(token).__name__}'
-            )
-        object.__setattr__(self, "token", token)
+    token: SecretStr
+    """Authentication token.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/tutorials/tokens/tokens#token-prefix
+    """
 
     @classmethod
-    def method(cls) -> str:
-        return "token"
-
-    def login(self, client: "httpx.Client") -> str:
-        return self.token
-
-    @classmethod
-    def load(cls, url: str, data: Dict[str, Any]) -> Optional[Auth]:
+    def create(cls, url: str, config: dict) -> TokenAuth | None:
         # env var
-        token = get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN")
-        if token:
+        if token := get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN"):
             logger.debug("Found token from environment variable")
-            return cls(token)
+            token = cast(SecretStr, token)
+            return cls(token=token)
 
         # token helper
         # https://www.vaultproject.io/docs/commands/token-helper
-        file_ = Path.home() / ".vault-token"
-        if file_.is_file():
-            with file_.open("r", encoding="utf-8") as fd:
-                # don't think the token could be so long
-                token = fd.read(256).strip()
+        helper_path = Path.home() / ".vault-token"
+        if helper_path.is_file():
             logger.debug("Found token from token helper")
-            return cls(token)
+            with helper_path.open("r", encoding="utf-8") as fd:
+                # don't think the token could be this long
+                token = fd.read(256).strip()
+            token = cast(SecretStr, token)
+            return cls(token=token)
 
         # keyring
-        token = read_keyring(create_keyring_token_key(url))
-        if token:
+        if token := read_keyring(create_keyring_token_key(url)):
             logger.debug("Found token from keyring")
-            return cls(token)
+            token = cast(SecretStr, token)
+            return cls(token=token)
 
-        logger.error("Missing auth information: token.")
-        return None
+    def login(self, client: Any) -> str:
+        return self.token.get_secret_value()

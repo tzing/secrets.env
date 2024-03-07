@@ -31,7 +31,7 @@ class OpenIDConnectAuth(Auth):
     """Role."""
 
     @classmethod
-    def create(cls, url: str, config: dict) -> OpenIDConnectAuth | None:
+    def create(cls, url: str, config: dict) -> OpenIDConnectAuth:
         if role := get_env_var("SECRETS_ENV_ROLE"):
             logger.debug("Found OIDC role from environment variable: %s", role)
             return cls(role=role)
