@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import logging
-import typing
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from pydantic import SecretStr
 
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyring
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 class TokenAuth(Auth):
     """Token-based authentication."""
 
-    method: str = "token"
+    method = "token"
 
     token: SecretStr
     """Authentication token.

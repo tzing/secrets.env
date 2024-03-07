@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import typing
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, ClassVar
 
 import pydantic
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from typing import Any, Self
 
     import httpx
@@ -18,7 +18,7 @@ class Auth(pydantic.BaseModel, ABC):
         "frozen": True,
     }
 
-    method: str
+    method: ClassVar[str]
     """Authentication method name."""
 
     @classmethod
@@ -40,7 +40,7 @@ class NullAuth(Auth):
     This class is used when no authentication is required.
     """
 
-    method: str = "null"
+    method: ClassVar[str] = "null"
 
     @classmethod
     def create(cls, url: str, config: dict[str, Any]) -> NullAuth:

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class OpenIDConnectAuth(Auth):
     """OpenID Connect."""
 
-    method: str = "OIDC"
+    method = "OIDC"
 
     role: str | None
     """Role."""
