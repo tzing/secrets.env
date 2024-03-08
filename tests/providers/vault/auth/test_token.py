@@ -37,7 +37,8 @@ class TestTokenAuth:
 
     @pytest.mark.usefixtures("_disable_token_helper")
     def test_create_failed(self):
-        assert TokenAuth.create("https://example.com/", {}) is None
+        with pytest.raises(ValueError, match="Missing token for Vault authentication."):
+            assert TokenAuth.create("https://example.com/", {}) is None
 
     def test_login(self):
         client = Mock(spec=httpx.Client)

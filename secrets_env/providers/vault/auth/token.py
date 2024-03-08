@@ -29,7 +29,7 @@ class TokenAuth(Auth):
     """
 
     @classmethod
-    def create(cls, url: str, config: dict) -> TokenAuth | None:
+    def create(cls, url: str, config: dict) -> TokenAuth:
         # env var
         if token := get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN"):
             logger.debug("Found token from environment variable")
@@ -52,6 +52,8 @@ class TokenAuth(Auth):
             logger.debug("Found token from keyring")
             token = cast(SecretStr, token)
             return cls(token=token)
+
+        raise ValueError("Missing token for Vault authentication.")
 
     def login(self, client: Any) -> str:
         return self.token.get_secret_value()

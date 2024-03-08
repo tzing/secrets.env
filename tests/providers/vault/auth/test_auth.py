@@ -2,7 +2,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from secrets_env.exceptions import ConfigError
 from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.providers.vault.auth.base import Auth, NullAuth
 
@@ -26,7 +25,7 @@ def test_create_auth_by_name(monkeypatch: pytest.MonkeyPatch, method: str, path:
 
 
 def test_create_auth_by_name_fail():
-    with pytest.raises(ConfigError):
+    with pytest.raises(ValueError, match="Unknown auth method: invalid"):
         create_auth_by_name("https://example.com/", {"method": "invalid"})
 
 

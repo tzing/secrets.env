@@ -151,7 +151,7 @@ Vault enforce authentication during requests, so we must provide the identity in
 
 Authentication method
 ^^^^^^^^^^^^^^^^^^^^^
-The authentication method is a required input, and can be set using the ``method`` keyword or the ``SECRETS_ENV_METHOD`` environment variable.
+The authentication method is a required input, and must be set using the ``method`` keyword.
 If ``method`` is not specified, the default method is `Vault token`_.
 Additional inputs may be required depending on the selected method.
 

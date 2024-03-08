@@ -1,12 +1,10 @@
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 import secrets_env.providers.vault.config as t
-from secrets_env.providers.vault.auth.base import Auth, NullAuth
-from secrets_env.providers.vault.auth.token import TokenAuth
-from secrets_env.providers.vault.auth.userpass import OktaAuth
+from secrets_env.providers.vault.auth.base import NullAuth
 
 
 class TestGetConnectionInfo:

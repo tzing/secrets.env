@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import typing
-from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
     from secrets_env.providers.vault.auth.base import Auth
@@ -42,4 +41,4 @@ def create_auth_by_name(url: str, config: dict) -> Auth:
         return TokenAuth.create(url, config)
     # fmt: on
 
-    raise ConfigError(f'Unknown auth method: "{method}"')
+    raise ValueError(f"Unknown auth method: {method}")

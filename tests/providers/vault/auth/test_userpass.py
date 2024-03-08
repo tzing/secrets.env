@@ -1,3 +1,4 @@
+import re
 from typing import Type
 from unittest.mock import patch
 
@@ -44,10 +45,10 @@ class TestUserPasswordAuth:
     @pytest.mark.parametrize(
         ("username", "password", "err_message"),
         [
-            ("user@example.com", "", "Missing password for MOCK auth."),
-            ("", "P@ssw0rd", "Missing username for MOCK auth."),
-            ("user@example.com", None, "Missing password for MOCK auth."),
-            (None, "P@ssw0rd", "Missing username for MOCK auth."),
+            ("user@example.com", "", "Missing password for MOCK auth"),
+            ("", "P@ssw0rd", "Missing username for MOCK auth"),
+            ("user@example.com", None, "Missing password for MOCK auth"),
+            (None, "P@ssw0rd", "Missing username for MOCK auth"),
         ],
     )
     def test_load_fail(
@@ -64,8 +65,8 @@ class TestUserPasswordAuth:
         monkeypatch.setattr(MockAuth, "_get_username", lambda _: username)
         monkeypatch.setattr(MockAuth, "_get_password", lambda _1, _2: password)
 
-        assert MockAuth.create("https://example.com/", {}) is None
-        assert err_message in caplog.text
+        with pytest.raises(ValueError, match=re.escape(err_message)):
+            assert MockAuth.create("https://example.com/", {}) is None
 
     def test__load_username(self, monkeypatch: pytest.MonkeyPatch):
         class MockAuth(UserPasswordAuth):

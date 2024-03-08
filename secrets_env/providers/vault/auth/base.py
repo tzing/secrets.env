@@ -23,7 +23,7 @@ class Auth(pydantic.BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def create(cls, url: str, config: dict[str, Any]) -> Self | None:
+    def create(cls, url: str, config: dict[str, Any]) -> Self:
         """
         Initialize an instance of this class using the provided config data
         or internally load the secrets from the system.

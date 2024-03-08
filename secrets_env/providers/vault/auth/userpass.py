@@ -38,16 +38,14 @@ class UserPasswordAuth(Auth):
     """Request timeout."""
 
     @classmethod
-    def create(cls, url: str, config: dict) -> Self | None:
+    def create(cls, url: str, config: dict) -> Self:
         username = cls._get_username(config)
         if not username:
-            logger.error("Missing username for %s auth.", cls.method)
-            return None
+            raise ValueError(f"Missing username for {cls.method} auth")
 
         password = cls._get_password(url, username)
-        if not isinstance(password, str) or not password:
-            logger.error("Missing password for %s auth.", cls.method)
-            return None
+        if not password:
+            raise ValueError(f"Missing password for {cls.method} auth")
 
         return cls(
             username=username,
