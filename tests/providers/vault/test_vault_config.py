@@ -4,8 +4,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 import secrets_env.providers.vault.config as t
-from secrets_env.providers.vault.auth.base import Auth
-from secrets_env.providers.vault.auth.null import NoAuth
+from secrets_env.providers.vault.auth.base import Auth, NullAuth
+from secrets_env.providers.vault.auth.token import TokenAuth
+from secrets_env.providers.vault.auth.userpass import OktaAuth
 
 
 class TestGetConnectionInfo:
@@ -52,7 +53,7 @@ class TestGetConnectionInfo:
         # test
         assert isinstance(cfg, dict)
         assert cfg["url"] == "https://example.com"
-        assert cfg["auth"] == NoAuth()
+        assert cfg["auth"] == NullAuth()
 
         def _assert_key_equals(key: str, value):
             if value:
@@ -103,14 +104,12 @@ class TestGetURL:
 
 class TestGetAuthBehavior:
     def test_from_data(self):
-        assert isinstance(t.get_auth("https://example.com", {"method": "null"}), NoAuth)
-
-    def test_from_env(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("SECRETS_ENV_METHOD", "null")
-        assert isinstance(t.get_auth("https://example.com", {}), NoAuth)
+        assert isinstance(
+            t.get_auth("https://example.com", {"method": "null"}), NullAuth
+        )
 
     def test_syntax_sugar(self):
-        assert isinstance(t.get_auth("https://example.com", "null"), NoAuth)
+        assert isinstance(t.get_auth("https://example.com", "null"), NullAuth)
 
     def test_type_error(self):
         assert t.get_auth("https://example.com", {"method": 1234}) is None
@@ -120,7 +119,7 @@ class TestGetAuthBehavior:
     ):
         monkeypatch.setattr(t, "DEFAULT_AUTH_METHOD", "null")
 
-        assert isinstance(t.get_auth("https://example.com", {}), NoAuth)
+        assert isinstance(t.get_auth("https://example.com", {}), NullAuth)
         assert (
             "Missing required config <mark>auth method</mark>. "
             "Use default method <data>null</data>"
@@ -129,59 +128,6 @@ class TestGetAuthBehavior:
     def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
         assert t.get_auth("https://example.com", {"method": "no-this-method"}) is None
         assert "Unknown auth method: <data>no-this-method</data>" in caplog.text
-
-
-class TestGetAuthFactory:
-    def setup_method(self):
-        self.mock_auth = Mock(spec=Auth)
-
-    def mock_load(self, url: str, data: dict) -> Auth:
-        assert url == "https://example.com"
-        assert isinstance(data, dict)
-        return self.mock_auth
-
-    def test_token(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.token.TokenAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "TOKEN"}) is self.mock_auth
-
-    def test_okta(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.userpass.OktaAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "okta"}) is self.mock_auth
-
-    def test_oidc(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.oidc.OpenIDConnectAuth.load",
-            self.mock_load,
-        )
-        assert t.get_auth("https://example.com", {"method": "oidc"}) is self.mock_auth
-
-    def test_no_auth(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.null.NoAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "null"}) is self.mock_auth
-
-    def test_basic(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.userpass.BasicAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "Basic"}) is self.mock_auth
-
-    def test_ldap(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.userpass.LDAPAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "LDAP"}) is self.mock_auth
-
-    def test_radius(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.auth.userpass.RADIUSAuth.load", self.mock_load
-        )
-        assert t.get_auth("https://example.com", {"method": "radius"}) is self.mock_auth
 
 
 class TestGetProxy:

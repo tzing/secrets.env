@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import typing
 from typing import TypedDict
 
+from secrets_env.exceptions import ConfigError
+from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.utils import ensure_dict, ensure_path, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
@@ -15,18 +16,7 @@ if typing.TYPE_CHECKING:
 
     CertTypes = Path | tuple[Path, Path]
 
-
 DEFAULT_AUTH_METHOD = "token"
-
-AUTH_METHODS = {
-    "basic": ("secrets_env.providers.vault.auth.userpass", "BasicAuth"),
-    "ldap": ("secrets_env.providers.vault.auth.userpass", "LDAPAuth"),
-    "null": ("secrets_env.providers.vault.auth.null", "NoAuth"),
-    "oidc": ("secrets_env.providers.vault.auth.oidc", "OpenIDConnectAuth"),
-    "okta": ("secrets_env.providers.vault.auth.userpass", "OktaAuth"),
-    "radius": ("secrets_env.providers.vault.auth.userpass", "RADIUSAuth"),
-    "token": ("secrets_env.providers.vault.auth.token", "TokenAuth"),
-}
 
 
 class VaultConnectionInfo(TypedDict):
@@ -107,34 +97,24 @@ def get_auth(url: str, data: dict) -> Auth | None:
     # type check
     data, _ = ensure_dict("source.auth", data)
 
-    # extract auth method
-    method = get_env_var("SECRETS_ENV_METHOD")
-    if not method:
-        method = data.get("method")
-
-    if not method:
-        method = DEFAULT_AUTH_METHOD
+    # set auth method
+    if "method" not in data:
+        data["method"] = DEFAULT_AUTH_METHOD
         logger.warning(
             "Missing required config <mark>auth method</mark>. "
             "Use default method <data>%s</data>",
             DEFAULT_AUTH_METHOD,
         )
 
-    method, _ = ensure_str("auth method", method)
-    if not method:
+    _, ok = ensure_str("auth method", data["method"])
+    if not ok:
         return None
 
-    # get auth class (import by name)
-    module_name, class_name = AUTH_METHODS.get(method.lower(), (None, None))
-    if not module_name or not class_name:
-        logger.error("Unknown auth method: <data>%s</data>", method)
+    try:
+        return create_auth_by_name(url, data)
+    except ConfigError:
+        logger.error("Unknown auth method: <data>%s</data>", data["method"])
         return None
-
-    module = importlib.import_module(module_name)
-    class_: Auth = getattr(module, class_name)
-
-    # build auth object from data
-    return class_.load(url, data)
 
 
 def get_proxy(data: dict) -> tuple[str | None, bool]:

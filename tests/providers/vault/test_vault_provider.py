@@ -23,7 +23,7 @@ def mock_client() -> httpx.Client:
 @pytest.fixture()
 def mock_auth():
     auth = Mock(spec=Auth)
-    auth.method.return_value = "mocked"
+    auth.method = "mocked"
     return auth
 
 

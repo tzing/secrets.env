@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def create_auth_by_name(url: str, config: dict) -> Auth | None:
+def create_auth_by_name(url: str, config: dict) -> Auth:
     """
     Create an instance of the authentication class by the provided name.
     """
