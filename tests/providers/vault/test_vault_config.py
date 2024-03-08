@@ -123,9 +123,9 @@ class TestGetAuthBehavior:
             "Use default method <data>null</data>"
         ) in caplog.text
 
-    def test_unknown_method(self, caplog: pytest.LogCaptureFixture):
-        assert t.get_auth("https://example.com", {"method": "no-this-method"}) is None
-        assert "Unknown auth method: <data>no-this-method</data>" in caplog.text
+    def test_unknown_method(self):
+        with pytest.raises(ValueError, match="Unknown auth method: no-this-method"):
+            t.get_auth("https://example.com", {"method": "no-this-method"})
 
 
 class TestGetProxy:
