@@ -141,13 +141,14 @@ class TestKvProvider:
             provider.read_field("foo", "bar")
 
 
-@pytest.mark.integration_test()
 class TestKvProviderUsingVaultConnection:
     @pytest.fixture(scope="class")
     def provider(self) -> t.KvProvider:
-        return t.KvProvider(
-            os.getenv("VAULT_ADDR"), TokenAuth(os.getenv("VAULT_TOKEN"))
-        )
+        url = os.getenv("VAULT_ADDR")
+        token = os.getenv("VAULT_TOKEN")
+        if not url or not token:
+            pytest.skip("VAULT_ADDR or VAULT_TOKEN are not set")
+        return t.KvProvider(url, TokenAuth(token=token))
 
     def test_client_success(self, provider: t.KvProvider):
         with patch.object(t, "is_authenticated", return_value=True):
