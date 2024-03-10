@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,6 +41,9 @@ class TestGetConnectionInfo:
     def test_success(
         self, cfg_proxy, proxy, cfg_ca_cert, ca_cert, cfg_client_cert, client_cert
     ):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
+
         # setup
         self.data.update(cfg_proxy)
         self.data["tls"].update(cfg_ca_cert)
