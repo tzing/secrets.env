@@ -107,7 +107,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install poetry
-          poetry install
+          poetry install --all-extras
 
       - name: Run pytest
         run: |
