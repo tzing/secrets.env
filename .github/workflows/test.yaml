@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
 
+env:
+  # fix NoKeyringError in CI
+  PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+
 jobs:
   unit:
     name: Unit test
