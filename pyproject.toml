@@ -27,22 +27,14 @@ tomli = { version = ">=1.1.0,<3", python = "<3.11" }
 
 [tool.poetry.group.test.dependencies]
 poetry = "^1.2.2"
-pytest = "^7.3.0"
-pytest-cov = "^4.0.0"
-respx = "^0.20.1"
-
-[tool.poetry.group.lint]
-optional = true
-[tool.poetry.group.lint.dependencies]
-ruff = "^0.1.4"
-pyright = "*"
-
-[tool.poetry.group.docs]
-optional = true
-[tool.poetry.group.docs.dependencies]
-Sphinx = "^7.0.1"
 furo = ">=2023.5.20"
-sphinx-tabs = "^3.4.1"
+pyright = "*"
+pytest = "^8.1.1"
+pytest-cov = "^4.1.0"
+respx = "^0.20.2"
+ruff = "^0.3.2"
+sphinx = "^7.2.6"
+sphinx-tabs = "^3.4.5"
 
 [tool.poetry.extras]
 all = ["cryptography", "keyring", "PyYAML"]
