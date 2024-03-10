@@ -37,11 +37,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install poetry
-          poetry config virtualenvs.create false
           poetry install --all-extras
 
-      - name: Run pytest
-        run: pytest
+      - name: Pytest
+        run: poetry run pytest
 
   integration:
     name: Integretion test
@@ -103,8 +102,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install poetry
-          poetry config virtualenvs.create false
           poetry install
 
       - name: Run pytest
-        run: pytest -m integration_test
+        run: poetry run pytest -m integration_test

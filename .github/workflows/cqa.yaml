@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    name: Run linter
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v5
@@ -27,11 +27,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install poetry
-          poetry config virtualenvs.create false
           poetry install --all-extras
 
       - name: Coding style check
-        run: ruff check .
+        run: poetry run ruff check .
 
   type:
     name: Type check
@@ -53,8 +52,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install poetry
-          poetry config virtualenvs.create false
           poetry install --all-extras
 
       - name: Type check
-        run: pyright
+        run: poetry run pyright
