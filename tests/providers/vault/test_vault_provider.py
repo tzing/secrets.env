@@ -224,8 +224,12 @@ class TestGetToken:
             t.get_token(mock_client, mock_auth)
 
 
-@pytest.mark.integration_test()
 def test_is_authenticated():
+    url = os.getenv("VAULT_ADDR")
+    token = os.getenv("VAULT_TOKEN")
+    if not url or not token:
+        pytest.skip("VAULT_ADDR or VAULT_TOKEN are not set")
+
     # success: use real client
     client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
     assert t.is_authenticated(client, os.getenv("VAULT_TOKEN"))
