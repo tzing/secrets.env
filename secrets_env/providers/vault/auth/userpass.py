@@ -1,10 +1,12 @@
-import abc
-import logging
-import typing
-import urllib.parse
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from __future__ import annotations
 
+import logging
+import urllib.parse
+from typing import TYPE_CHECKING, ClassVar, Optional, cast
+
+from pydantic import PrivateAttr, SecretStr
+
+from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import (
     create_keyring_login_key,
     get_env_var,
@@ -12,104 +14,82 @@ from secrets_env.utils import (
     read_keyring,
 )
 
-from .base import Auth
+if TYPE_CHECKING:
+    from typing import Self
 
-if typing.TYPE_CHECKING:
     import httpx
+
+OptionalFloat = Optional[float]  # workaround for UP007; remove after py 3.10
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
 class UserPasswordAuth(Auth):
     """Username and password based authentication."""
 
-    @classmethod
-    @abc.abstractmethod
-    def path(cls) -> str:
-        """Returns method name used by Vault."""
-        raise NotImplementedError()
-
-    _TIMEOUT = None
+    vault_name: ClassVar[str]
+    """Name used in Vault request."""
 
     username: str
     """User name."""
 
-    password: str = field(repr=False)
+    password: SecretStr
     """Password."""
 
-    def __init__(self, username: str, password: str) -> None:
-        if not isinstance(username, str):
-            raise TypeError(
-                f'Expected "username" to be a string, got {type(username).__name__}'
-            )
-        if not isinstance(password, str):
-            raise TypeError(
-                f'Expected "password" to be a string, got {type(password).__name__}'
-            )
-        object.__setattr__(self, "username", username)
-        object.__setattr__(self, "password", password)
+    _timeout: ClassVar[OptionalFloat] = PrivateAttr(None)
+    """Request timeout."""
 
     @classmethod
-    def load(cls, url: str, data: Dict[str, Any]) -> Optional["UserPasswordAuth"]:
-        username = cls._load_username(data)
-        if not isinstance(username, str) or not username:
-            logger.error(
-                "Missing username for %s auth.",
-                cls.method(),
-            )
-            return None
+    def create(cls, url: str, config: dict) -> Self:
+        username = cls._get_username(config)
+        if not username:
+            raise ValueError(f"Missing username for {cls.method} auth")
 
-        password = cls._load_password(url, username)
-        if not isinstance(password, str) or not password:
-            logger.error(
-                "Missing password for %s auth.",
-                cls.method(),
-            )
-            return None
+        password = cls._get_password(url, username)
+        if not password:
+            raise ValueError(f"Missing password for {cls.method} auth")
 
-        return cls(username, password)
+        return cls(
+            username=username,
+            password=cast(SecretStr, password),
+        )
 
     @classmethod
-    def _load_username(cls, data: Dict[str, Any]) -> Optional[str]:
-        username = get_env_var("SECRETS_ENV_USERNAME")
-        if username:
+    def _get_username(cls, config: dict) -> str | None:
+        if username := get_env_var("SECRETS_ENV_USERNAME"):
             logger.debug("Found username from environment variable.")
             return username
 
-        username = data.get("username")
-        if username:
+        if username := config.get("username"):
             return username
 
-        return prompt(f"Username for {cls.method()} auth")
+        return prompt(f"Username for {cls.method} auth")
 
     @classmethod
-    def _load_password(cls, url: str, username: str) -> Optional[str]:
-        password = get_env_var("SECRETS_ENV_PASSWORD")
-        if password:
+    def _get_password(cls, url: str, username: str) -> str | None:
+        if password := get_env_var("SECRETS_ENV_PASSWORD"):
             logger.debug("Found password from environment variable.")
             return password
 
-        password = read_keyring(create_keyring_login_key(url, username))
-        if password:
+        if password := read_keyring(create_keyring_login_key(url, username)):
             logger.debug("Found password in keyring")
             return password
 
         return prompt(f"Password for {username}", hide_input=True)
 
-    def login(self, client: "httpx.Client") -> Optional[str]:
+    def login(self, client: httpx.Client) -> str | None:
         username = urllib.parse.quote(self.username)
         resp = client.post(
-            f"/v1/auth/{self.path()}/login/{username}",
+            f"/v1/auth/{self.vault_name}/login/{username}",
             json={
                 "username": self.username,
-                "password": self.password,
+                "password": self.password.get_secret_value(),
             },
-            timeout=self._TIMEOUT,
+            timeout=self._timeout,
         )
 
         if not resp.is_success:
-            logger.error("Failed to login with %s method", self.method())
+            logger.error("Failed to login with %s method", self.method)
             logger.debug(
                 "Login failed. URL= %s, Code= %d. Msg= %s",
                 resp.url,
@@ -121,55 +101,32 @@ class UserPasswordAuth(Auth):
         return resp.json()["auth"]["client_token"]
 
 
-@dataclass(frozen=True)
 class BasicAuth(UserPasswordAuth):
     """Login to Vault using user name and password."""
 
-    @classmethod
-    def method(cls):
-        return "basic"
-
-    @classmethod
-    def path(cls):
-        return "userpass"
+    method = "basic"
+    vault_name = "userpass"
 
 
-@dataclass(frozen=True)
 class LDAPAuth(UserPasswordAuth):
     """Login with LDAP credentials."""
 
-    @classmethod
-    def method(cls):
-        return "LDAP"
-
-    @classmethod
-    def path(cls):
-        return "ldap"
+    method = "LDAP"
+    vault_name = "ldap"
 
 
-@dataclass(frozen=True)
 class OktaAuth(UserPasswordAuth):
     """Okta authentication."""
 
+    method = "Okta"
+    vault_name = "okta"
+
     # Okta 2FA got triggerred within the api call, so needs a longer timeout
-    _TIMEOUT = 60.0
-
-    @classmethod
-    def method(cls):
-        return "Okta"
-
-    @classmethod
-    def path(cls):
-        return "okta"
+    _timeout = PrivateAttr(60.0)
 
 
 class RADIUSAuth(UserPasswordAuth):
     """RADIUS authentication with PAP authentication scheme."""
 
-    @classmethod
-    def method(cls):
-        return "RADIUS"
-
-    @classmethod
-    def path(cls):
-        return "radius"
+    method = "RADIUS"
+    vault_name = "radius"

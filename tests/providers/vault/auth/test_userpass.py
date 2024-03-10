@@ -1,3 +1,4 @@
+import re
 from typing import Type
 from unittest.mock import patch
 
@@ -6,6 +7,7 @@ import pytest
 import respx
 
 import secrets_env.providers.vault.auth.userpass as t
+from secrets_env.providers.vault.auth.userpass import UserPasswordAuth
 
 
 @pytest.fixture()
@@ -31,55 +33,22 @@ def login_success_response() -> httpx.Response:
 
 
 class TestUserPasswordAuth:
-    @pytest.fixture(autouse=True)
-    def _unfreeze_userpass(self, monkeypatch: pytest.MonkeyPatch):
-        # UserPasswordAuth does not implemented all the required methods so need
-        # to patch __abstractmethods__ to skip TypeError raised by ABC
-        monkeypatch.setattr(t.UserPasswordAuth, "__abstractmethods__", set())
-
-    @pytest.fixture()
-    def _patch_method(self):
-        with patch.object(t.UserPasswordAuth, "method", return_value="MOCK"):
-            yield
-
-    @pytest.fixture()
-    def _patch_path(self):
-        with patch.object(t.UserPasswordAuth, "path", return_value="mock"):
-            yield
-
-    def test___init__(self):
-        # success
-        obj = t.UserPasswordAuth("user@example.com", "P@ssw0rd")
-        assert obj.username == "user@example.com"
-        assert obj.password == "P@ssw0rd"
-
-        # error
-        with pytest.raises(TypeError):
-            t.UserPasswordAuth(1234, "P@ssw0rd")
-        with pytest.raises(TypeError):
-            t.UserPasswordAuth("user@example.com", 1234)
-
-    def test_path(self):
-        with pytest.raises(NotImplementedError):
-            t.UserPasswordAuth.path()
-
-    def test_load_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: "user")
+    def test_create_success(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(UserPasswordAuth, "_get_username", lambda _: "user")
         monkeypatch.setattr(
-            t.UserPasswordAuth, "_load_password", lambda _1, _2: "P@ssw0rd"
+            UserPasswordAuth, "_get_password", lambda _1, _2: "P@ssw0rd"
         )
 
-        obj = t.UserPasswordAuth.load("https://example.com/", {})
-        assert obj == t.UserPasswordAuth("user", "P@ssw0rd")
+        obj = UserPasswordAuth.create("https://example.com/", {})
+        assert obj == UserPasswordAuth(username="user", password="P@ssw0rd")
 
-    @pytest.mark.usefixtures("_patch_method")
     @pytest.mark.parametrize(
         ("username", "password", "err_message"),
         [
-            ("user@example.com", "", "Missing password for MOCK auth."),
-            ("", "P@ssw0rd", "Missing username for MOCK auth."),
-            ("user@example.com", None, "Missing password for MOCK auth."),
-            (None, "P@ssw0rd", "Missing username for MOCK auth."),
+            ("user@example.com", "", "Missing password for MOCK auth"),
+            ("", "P@ssw0rd", "Missing username for MOCK auth"),
+            ("user@example.com", None, "Missing password for MOCK auth"),
+            (None, "P@ssw0rd", "Missing username for MOCK auth"),
         ],
     )
     def test_load_fail(
@@ -90,53 +59,48 @@ class TestUserPasswordAuth:
         caplog: pytest.LogCaptureFixture,
         err_message: str,
     ):
-        monkeypatch.setattr(t.UserPasswordAuth, "_load_username", lambda _: username)
-        monkeypatch.setattr(
-            t.UserPasswordAuth, "_load_password", lambda _1, _2: password
-        )
+        class MockAuth(UserPasswordAuth):
+            method = "MOCK"
 
-        assert t.UserPasswordAuth.load("https://example.com/", {}) is None
-        assert err_message in caplog.text
+        monkeypatch.setattr(MockAuth, "_get_username", lambda _: username)
+        monkeypatch.setattr(MockAuth, "_get_password", lambda _1, _2: password)
 
-    @pytest.mark.usefixtures("_patch_method")
-    @pytest.mark.usefixtures("_patch_path")
+        with pytest.raises(ValueError, match=re.escape(err_message)):
+            assert MockAuth.create("https://example.com/", {}) is None
+
     def test__load_username(self, monkeypatch: pytest.MonkeyPatch):
+        class MockAuth(UserPasswordAuth):
+            method = "MOCK"
+
         # config
-        assert t.UserPasswordAuth._load_username({"username": "foo"}) == "foo"
+        assert MockAuth._get_username({"username": "foo"}) == "foo"
 
         # env var
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_USERNAME", "foo")
-            assert t.UserPasswordAuth._load_username({}) == "foo"
+            assert MockAuth._get_username({}) == "foo"
 
         # prompt
         with patch.object(t, "prompt", return_value="foo") as p:
-            assert t.UserPasswordAuth._load_username({}) == "foo"
+            assert MockAuth._get_username({}) == "foo"
             p.assert_any_call("Username for MOCK auth")
 
-    @pytest.mark.usefixtures("_patch_path")
-    def test__load_password(self):
+    def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
         # env var
-        with patch.dict("os.environ", {"SECRETS_ENV_PASSWORD": "bar"}):
-            assert (
-                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
-            )
+        with monkeypatch.context() as m:
+            m.setenv("SECRETS_ENV_PASSWORD", "bar")
+            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
 
         # prompt
         with patch.object(t, "prompt", return_value="bar") as p:
-            assert (
-                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
-            )
+            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
             p.assert_any_call("Password for foo", hide_input=True)
 
         # keyring
         with patch.object(t, "read_keyring", return_value="bar") as r:
-            assert (
-                t.UserPasswordAuth._load_password("https://example.com", "foo") == "bar"
-            )
+            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
             r.assert_any_call('{"host": "example.com", "type": "login", "user": "foo"}')
 
-    @pytest.mark.usefixtures("_patch_path")
     def test_login_success(
         self,
         unittest_respx: respx.MockRouter,
@@ -147,11 +111,13 @@ class TestUserPasswordAuth:
             return_value=login_success_response
         )
 
-        auth_obj = t.UserPasswordAuth("user@example.com", "password")
+        class MockAuth(UserPasswordAuth):
+            method = "MOCK"
+            vault_name = "mock"
+
+        auth_obj = MockAuth(username="user@example.com", password="password")
         assert auth_obj.login(unittest_client) == "client-token"
 
-    @pytest.mark.usefixtures("_patch_method")
-    @pytest.mark.usefixtures("_patch_path")
     def test_login_fail(
         self,
         unittest_respx: respx.MockRouter,
@@ -162,9 +128,12 @@ class TestUserPasswordAuth:
             return_value=httpx.Response(400)
         )
 
-        auth_obj = t.UserPasswordAuth("user@example.com", "password")
-        assert auth_obj.login(unittest_client) is None
+        class MockAuth(UserPasswordAuth):
+            method = "MOCK"
+            vault_name = "mock"
 
+        auth_obj = MockAuth(username="user@example.com", password="password")
+        assert auth_obj.login(unittest_client) is None
         assert "Failed to login with MOCK method" in caplog.text
 
 
@@ -179,20 +148,20 @@ class TestUserPasswordAuth:
 )
 def test_auth_methods(
     monkeypatch: pytest.MonkeyPatch,
-    method_class: Type[t.UserPasswordAuth],
+    method_class: Type[UserPasswordAuth],
     unittest_respx: respx.MockRouter,
     login_path: str,
     login_success_response: httpx.Response,
     unittest_client: httpx.Client,
 ):
     # no exception is enough
-    assert isinstance(method_class.method(), str)
+    assert isinstance(method_class.method, str)
 
     # test creation
     monkeypatch.setenv("SECRETS_ENV_USERNAME", "user")
     monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
 
-    auth = method_class.load("https://example.com/", {})
+    auth = method_class.create("https://example.com/", {})
     assert auth
 
     # test login

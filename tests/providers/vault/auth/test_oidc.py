@@ -9,20 +9,30 @@ import respx
 import secrets_env.providers.vault.auth.oidc as t
 import secrets_env.server
 from secrets_env.exceptions import AuthenticationError
+from secrets_env.providers.vault.auth.oidc import (
+    OIDCRequestHandler,
+    OpenIDConnectAuth,
+    get_authorization_url,
+    request_token,
+)
 
 
 class TestOpenIDConnectAuth:
-    def test___init__(self):
-        # success
-        t.OpenIDConnectAuth("default")
-        t.OpenIDConnectAuth(None)
+    def test_create_default(self):
+        auth = OpenIDConnectAuth.create("https://example.com/", {})
+        assert isinstance(auth, OpenIDConnectAuth)
+        assert auth.role is None
 
-        # fail
-        with pytest.raises(TypeError):
-            t.OpenIDConnectAuth(1234)
+    def test_create_envvar(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_ROLE", "demo")
+        auth = OpenIDConnectAuth.create("https://example.com/", {})
+        assert isinstance(auth, OpenIDConnectAuth)
+        assert auth.role == "demo"
 
-    def test_method(self):
-        assert isinstance(t.OpenIDConnectAuth.method(), str)
+    def test_create_config(self):
+        auth = OpenIDConnectAuth.create("https://example.com/", {"role": "sample"})
+        assert isinstance(auth, OpenIDConnectAuth)
+        assert auth.role == "sample"
 
     @pytest.fixture()
     def _patch_get_authorization_url(self, monkeypatch: pytest.MonkeyPatch):
@@ -62,13 +72,13 @@ class TestOpenIDConnectAuth:
         monkeypatch.setattr("webbrowser.open", patch_webbrowser_open)
 
         # run
-        auth = t.OpenIDConnectAuth()
+        auth = OpenIDConnectAuth(role=None)
         assert auth.login(Mock(spec=httpx.Client)) == "t0ken"
 
     def test_login_fail_1(self, monkeypatch: pytest.MonkeyPatch):
         # case: get auth url failed
         monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
-        auth = t.OpenIDConnectAuth()
+        auth = OpenIDConnectAuth(role=None)
         with pytest.raises(AuthenticationError):
             auth.login(Mock(spec=httpx.Client))
 
@@ -76,30 +86,14 @@ class TestOpenIDConnectAuth:
     def test_login_fail_2(self, monkeypatch: pytest.MonkeyPatch):
         # case: not received the token
         monkeypatch.setattr("webbrowser.open", lambda _: None)
-        auth = t.OpenIDConnectAuth()
+        auth = OpenIDConnectAuth(role=None)
         with pytest.raises(AuthenticationError):
             auth.login(Mock(spec=httpx.Client))
-
-    def test_load_default(self):
-        auth = t.OpenIDConnectAuth.load("https://example.com/", {})
-        assert isinstance(auth, t.OpenIDConnectAuth)
-        assert auth.role is None
-
-    def test_load_envvar(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("SECRETS_ENV_ROLE", "test")
-        auth = t.OpenIDConnectAuth.load("https://example.com/", {})
-        assert isinstance(auth, t.OpenIDConnectAuth)
-        assert auth.role == "test"
-
-    def test_load_config(self):
-        auth = t.OpenIDConnectAuth.load("https://example.com/", {"role": "test"})
-        assert isinstance(auth, t.OpenIDConnectAuth)
-        assert auth.role == "test"
 
 
 class TestOIDCRequestHandler:
     def setup_method(self):
-        self.server = secrets_env.server.start_server(t.OIDCRequestHandler)
+        self.server = secrets_env.server.start_server(OIDCRequestHandler)
         self.server.context.update(
             entrypoint="/ffff-ffff",
             client=Mock(spec=httpx.Client),
@@ -138,8 +132,7 @@ class TestOIDCRequestHandler:
         assert resp.status_code == 400
 
         # request token fail
-        def mock_request_token(client, auth_url, auth_code, client_nonce):
-            ...
+        def mock_request_token(client, auth_url, auth_code, client_nonce): ...
 
         monkeypatch.setattr(t, "request_token", mock_request_token)
         resp = self.client.get("/oidc/callback?code=blah")
@@ -166,7 +159,7 @@ class TestGetAuthorizationUrl:
             )
         )
         assert (
-            t.get_authorization_url(
+            get_authorization_url(
                 unittest_client,
                 "http://127.0.0.1/callback",
                 None,
@@ -181,7 +174,7 @@ class TestGetAuthorizationUrl:
         unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
 
         assert (
-            t.get_authorization_url(
+            get_authorization_url(
                 unittest_client,
                 "http://localhost/callback",
                 "test_role",
@@ -233,7 +226,7 @@ class TestRequestToken:
             )
         )
         assert (
-            t.request_token(
+            request_token(
                 unittest_client,
                 "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
                 "test-code",
@@ -247,7 +240,7 @@ class TestRequestToken:
     ):
         unittest_respx.get("/v1/auth/oidc/oidc/callback") % 403
         assert (
-            t.request_token(
+            request_token(
                 unittest_client,
                 "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
                 "test-code",

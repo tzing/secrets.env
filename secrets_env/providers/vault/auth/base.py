@@ -1,26 +1,50 @@
-import abc
-import typing
-from typing import Any, Dict, Optional
+from __future__ import annotations
 
-if typing.TYPE_CHECKING:
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, ClassVar
+
+import pydantic
+
+if TYPE_CHECKING:
+    from typing import Any, Self
+
     import httpx
 
 
-class Auth(abc.ABC):
+class Auth(pydantic.BaseModel, ABC):
     """Base class for authentication schemes."""
 
-    @classmethod
-    @abc.abstractmethod
-    def method(cls) -> str:
-        """Returns authentication method name."""
-        raise NotImplementedError()
+    model_config = {
+        "frozen": True,
+    }
 
-    @abc.abstractmethod
-    def login(self, client: "httpx.Client") -> Optional[str]:
+    method: ClassVar[str]
+    """Authentication method name."""
+
+    @classmethod
+    @abstractmethod
+    def create(cls, url: str, config: dict[str, Any]) -> Self:
+        """
+        Initialize an instance of this class using the provided config data
+        or internally load the secrets from the system.
+        """
+
+    @abstractmethod
+    def login(self, client: httpx.Client) -> str | None:
         """Login and get token."""
 
+
+class NullAuth(Auth):
+    """No authentication.
+
+    This class is used when no authentication is required.
+    """
+
+    method: ClassVar[str] = "null"
+
     @classmethod
-    @abc.abstractmethod
-    def load(cls, url: str, data: Dict[str, Any]) -> Optional["Auth"]:
-        """Initialize an instance of this class using the provided config data
-        or internally load the secrets from the system."""
+    def create(cls, url: str, config: dict[str, Any]) -> NullAuth:
+        return cls()
+
+    def login(self, client: Any) -> None:
+        return None

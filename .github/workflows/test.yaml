@@ -106,7 +106,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install poetry
-          poetry install
+          poetry install --all-extras
 
       - name: Run pytest
-        run: poetry run pytest -m integration_test
+        run: poetry run pytest
