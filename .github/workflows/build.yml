@@ -47,7 +47,7 @@ jobs:
         run: |
           poetry run pytest
 
-  integration-test:
+  integration:
     name: Integretion test
     runs-on: ubuntu-latest
 
@@ -133,7 +133,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install poetry
-          poetry install --all-extras --with lint
+          poetry install --all-extras
 
       - name: Coding style check
         run: |
