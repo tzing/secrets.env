@@ -1,0 +1,60 @@
+name: Code quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    name: Run linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-python-3.11-poetry-${{ hashFiles('poetry.lock') }}
+
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip3 install poetry
+          poetry config virtualenvs.create false
+          poetry install --all-extras
+
+      - name: Coding style check
+        run: ruff check .
+
+  type:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-python-3.11-poetry-${{ hashFiles('poetry.lock') }}
+
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip3 install poetry
+          poetry config virtualenvs.create false
+          poetry install --all-extras
+
+      - name: Type check
+        run: pyright
