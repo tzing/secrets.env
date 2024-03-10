@@ -85,6 +85,10 @@ class TestGetConnectionInfo:
 
 
 class TestGetURL:
+    @pytest.fixture(autouse=True)
+    def _del_env_vars(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("VAULT_ADDR", raising=False)
+
     def setup_method(self):
         self.data = {"url": "https://data.example.com"}
 
