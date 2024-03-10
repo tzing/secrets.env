@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 import secrets_env.providers.vault as t
@@ -11,9 +13,13 @@ class TestGetProvider:
         assert isinstance(out, KvProvider)
 
     def test_fail(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
         with pytest.raises(ConfigError):
             t.get_provider("vault", {})
 
     def test_not_related(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
         with pytest.raises(ConfigError):
             t.get_provider("something-else", {})

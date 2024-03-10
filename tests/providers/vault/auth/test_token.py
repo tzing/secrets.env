@@ -9,6 +9,10 @@ from secrets_env.providers.vault.auth.token import TokenAuth
 
 
 class TestTokenAuth:
+    @pytest.fixture(autouse=True)
+    def _disable_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("VAULT_TOKEN")
+
     @pytest.fixture()
     def _disable_token_helper(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
