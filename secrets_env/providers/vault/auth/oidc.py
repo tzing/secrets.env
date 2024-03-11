@@ -27,7 +27,7 @@ class OpenIDConnectAuth(Auth):
 
     method = "OIDC"
 
-    role: typing.Optional[str]  # noqa: UP007; remove after py 3.10
+    role: str | None
     """Role."""
 
     @classmethod

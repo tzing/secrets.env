@@ -580,6 +580,20 @@ paramiko = ["paramiko"]
 pgp = ["gpg"]
 
 [[package]]
+name = "eval-type-backport"
+version = "0.1.3"
+description = "Like `typing._eval_type`, but lets older Python versions use newer typing features."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "eval_type_backport-0.1.3-py3-none-any.whl", hash = "sha256:519d2a993b3da286df9f90e17f503f66435106ad870cf26620c5720e2158ddf2"},
+    {file = "eval_type_backport-0.1.3.tar.gz", hash = "sha256:d83ee225331dfa009493cec1f3608a71550b515ee4749abe78da14e3c5e314f5"},
+]
+
+[package.extras]
+tests = ["pytest"]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.0"
 description = "Backport of PEP 654 (exception groups)"
@@ -1999,4 +2013,4 @@ yaml = ["PyYAML"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "b886ee0df38f0d0a2e220f7fb9d9f67b42c8a87f84b624745addabe1734cf862"
+content-hash = "3e6803d0a7944711b47df59fef9be3d7554f8ea082f899c254ca3fc302e3b12e"

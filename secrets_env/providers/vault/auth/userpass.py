@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import urllib.parse
-from typing import TYPE_CHECKING, ClassVar, Optional, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from pydantic import PrivateAttr, SecretStr
 
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
 
     import httpx
 
-OptionalFloat = Optional[float]  # workaround for UP007; remove after py 3.10
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +34,7 @@ class UserPasswordAuth(Auth):
     password: SecretStr
     """Password."""
 
-    _timeout: ClassVar[OptionalFloat] = PrivateAttr(None)
+    _timeout: ClassVar[float | None] = PrivateAttr(None)
     """Request timeout."""
 
     @classmethod
