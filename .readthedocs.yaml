@@ -9,7 +9,7 @@ build:
       - pip install poetry
     post_install:
       - |
-        "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && poetry install
+        source "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && poetry install
 
 sphinx:
   configuration: docs/conf.py
