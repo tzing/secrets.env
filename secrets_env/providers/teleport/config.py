@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 import typing
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Any, Optional, TypedDict
 
 from secrets_env.exceptions import ConfigError
 from secrets_env.utils import ensure_dict, ensure_str
@@ -17,18 +19,18 @@ class AppParameter(TypedDict):
     app: str
 
 
-def parse_source_config(data: Dict[str, Any]) -> AppParameter:
+def parse_source_config(data: dict[str, Any]) -> AppParameter:
     return parse_config("source", data)
 
 
-def parse_adapter_config(data: Dict[str, Any]) -> AppParameter:
+def parse_adapter_config(data: dict[str, Any]) -> AppParameter:
     section = data.get("teleport")
     if not section:
         raise ConfigError("Missing 'teleport' config")
     return parse_config("source.teleport", section)
 
 
-def parse_config(prefix: str, section: Union[Dict[str, Any], str]) -> AppParameter:
+def parse_config(prefix: str, section: dict[str, Any] | str) -> AppParameter:
     # short cut
     if isinstance(section, str):
         section = {"app": section}
