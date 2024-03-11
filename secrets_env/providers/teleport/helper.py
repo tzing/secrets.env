@@ -3,6 +3,7 @@ information from it.
 
 .. _Teleport CLI: https://goteleport.com/docs/reference/cli/
 """
+
 import atexit
 import dataclasses
 import datetime
@@ -177,10 +178,12 @@ def is_certificate_valid(filepath: str) -> bool:
         data = fd.read()
 
     cert = cryptography.x509.load_pem_x509_certificate(data)
-    now = datetime.datetime.utcnow()
-    if now > cert.not_valid_after:
+    now = datetime.datetime.now().astimezone()
+    if now > cert.not_valid_after_utc:
         logger.debug(
-            "Certificate expire at: %s < current time %s", cert.not_valid_after, now
+            "Certificate expire at %s < current time %s",
+            cert.not_valid_after_utc.astimezone(),
+            now,
         )
         return False
 
