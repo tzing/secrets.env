@@ -57,8 +57,7 @@ class TestGetConnectionInfo:
 
     @pytest.fixture()
     def _patch_call_app_login(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_call_app_login(params):
-            ...
+        def mock_call_app_login(params): ...
 
         monkeypatch.setattr(t, "call_app_login", mock_call_app_login)
 
@@ -146,7 +145,9 @@ class TestIsCertificateValid:
         monkeypatch.setattr("builtins.open", mock_open())
 
         mock_cert = Mock(spec=cryptography.x509.Certificate)
-        mock_cert.not_valid_after = datetime.datetime.now() + datetime.timedelta(30)
+        mock_cert.not_valid_after_utc = (
+            datetime.datetime.now().astimezone() + datetime.timedelta(days=30)
+        )
         monkeypatch.setattr(
             "cryptography.x509.load_pem_x509_certificate", lambda _: mock_cert
         )
