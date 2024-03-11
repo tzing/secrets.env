@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import typing
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 from secrets_env.exceptions import ConfigError
 from secrets_env.utils import ensure_dict, ensure_str
@@ -13,9 +13,9 @@ logger = logging.getLogger()
 class AppParameter(TypedDict):
     """Parameters used for retrieving app certificates."""
 
-    proxy: Optional[str]
-    cluster: Optional[str]
-    user: Optional[str]
+    proxy: str | None
+    cluster: str | None
+    user: str | None
     app: str
 
 
