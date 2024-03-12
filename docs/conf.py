@@ -23,7 +23,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
-    "sphinx_tabs.tabs",
+    "sphinx_design",
 ]
 
 intersphinx_mapping = {

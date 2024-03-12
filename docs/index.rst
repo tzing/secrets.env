@@ -1,15 +1,22 @@
 Secrets.env
 ===========
 
-Secrets.env is the bridge between `Vault <https://www.vaultproject.io/>`_ and your app.
+.. attention::
 
-It put values from Vault KV engine to environment variables like a ``.env`` loader, without landing credentials on disk.
+   I'm currently reworking the documentation. Many pages might be incomplete.
+
+   Please refer to the `stable version <https://secrets-env.readthedocs.io/en/stable/>`_ or the `source code <https://github.com/tzing/secrets.env>`_ for more details.
+
+Secrets.env connects the credential store to your development environment.
+
+Safeguard your sensitive data by securely retrieving and injecting credentials into your environment variables.
+Just like a ``.env`` loader, but without landing credentials on disk.
 
 .. image:: imgs/screenshot.png
 
-Security is important, but don't want it to be a stumbling block. We love secret manager, but the practice of getting secrets for local development could be a trouble.
+While security remains paramount, it shouldn't hinder your progress. While we value secret management services, obtaining secrets for local development can be cumbersome.
 
-This app is built to *plug in* secrets into development without landing data on disk, easily reproduce the environment, and reduce the risk of uploading the secrets to the server.
+Enter our solution: designed to seamlessly integrate secrets into your development workflow without storing data on disk. Easily replicate environments and mitigate the risk of inadvertently exposing secrets.
 
 
 User guide
@@ -18,15 +25,14 @@ User guide
 .. toctree::
    :maxdepth: 1
 
-   quick-start
+   introduction
    commands
    configurations
    addon/index
-   api/index
 
 .. toctree::
    :caption: Links
    :hidden:
 
-   PyPI page <https://pypi.org/project/secrets-env/>
-   GitHub repository <https://github.com/tzing/secrets.env/>
+   GitHub <https://github.com/tzing/secrets.env/>
+   PyPI <https://pypi.org/project/secrets-env/>

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "secrets.env"
 version = "0.29.0-dev"
-description = "Bridge between Vault and your app"
+description = "Connect the credential store to your development environment"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
 readme = "Readme.pypi.rst"
@@ -27,7 +27,7 @@ pydantic = "^2.0.3"
 PyYAML = { version = ">=5.1.2,<7", optional = true }
 tomli = { version = ">=1.1.0,<3", python = "<3.11" }
 
-[tool.poetry.group.test.dependencies]
+[tool.poetry.group.dev.dependencies]
 poetry = "^1.2.2"
 furo = ">=2023.5.20"
 pyright = "*"
@@ -36,7 +36,7 @@ pytest-cov = "^4.1.0"
 respx = "^0.20.2"
 ruff = "^0.3.2"
 sphinx = "^7.2.6"
-sphinx-tabs = "^3.4.5"
+sphinx-design = "^0.5.0"
 
 [tool.poetry.extras]
 all = ["cryptography", "keyring", "PyYAML"]

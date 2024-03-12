@@ -218,5 +218,4 @@ def setup_logging(verbose: int = 0, quiet: bool = False):
     }
 )
 def entrypoint():
-    """Secrets.env is a tool that could put secrets from vault to environment
-    variables."""
+    """Connect the credential store to your development environment."""
