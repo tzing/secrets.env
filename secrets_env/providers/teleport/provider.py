@@ -7,11 +7,12 @@ from typing import Literal
 
 from secrets_env.exceptions import ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase
-from secrets_env.providers.teleport.helper import get_connection_info
+from secrets_env.providers.teleport.helper import get_connection_param
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import RequestSpec
-    from secrets_env.providers.teleport.helper import AppConnectionInfo
+    from secrets_env.providers.teleport.config import TeleportUserConfig
+    from secrets_env.providers.teleport.helper import TeleportConnectionParameter
 
 DEFAULT_OUTPUT_FORMAT = "path"
 
@@ -31,30 +32,13 @@ class TeleportProvider(ProviderBase):
     def type(self) -> str:
         return "teleport"
 
-    def __init__(
-        self,
-        *,
-        proxy: str | None,
-        cluster: str | None,
-        user: str | None,
-        app: str,
-    ) -> None:
-        self.proxy = proxy
-        self.cluster = cluster
-        self.user = user
-        self.app = app
+    def __init__(self, *, config: TeleportUserConfig) -> None:
+        self._config = config
 
     @cached_property
-    def tsh(self) -> AppConnectionInfo:
+    def tsh(self) -> TeleportConnectionParameter:
         """Return teleport app connection information."""
-        return get_connection_info(
-            {
-                "proxy": self.proxy,
-                "cluster": self.cluster,
-                "user": self.user,
-                "app": self.app,
-            }
-        )
+        return get_connection_param(self._config)
 
     def get(self, spec: RequestSpec) -> str:
         parsed = parse_spec(spec)
@@ -118,7 +102,9 @@ def parse_spec(spec: RequestSpec) -> OutputSpec:
     return OutputSpec(output_field.lower(), output_format.lower())  # type: ignore[reportGeneralTypeIssues]
 
 
-def get_ca(conn_info: AppConnectionInfo, format_: Literal["path", "pem"]) -> str:
+def get_ca(
+    conn_info: TeleportConnectionParameter, format_: Literal["path", "pem"]
+) -> str:
     if not conn_info.ca:
         raise ValueNotFound("CA is not avaliable")
     if format_ == "path":

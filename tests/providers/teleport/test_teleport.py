@@ -5,28 +5,21 @@ import pytest
 import secrets_env.providers.teleport as t
 from secrets_env.exceptions import ConfigError
 from secrets_env.provider import ProviderBase
-from secrets_env.providers.teleport.helper import AppConnectionInfo
+from secrets_env.providers.teleport.config import TeleportUserConfig
 from secrets_env.providers.teleport.provider import TeleportProvider
 
 
-def test_get_provider(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "secrets_env.providers.teleport.config.parse_source_config",
-        lambda _: {"app": "test"},
-    )
-    monkeypatch.setattr(
-        "secrets_env.providers.teleport.provider.TeleportProvider",
-        lambda **kwargs: Mock(spec=TeleportProvider),
-    )
-    assert isinstance(t.get_provider("teleport", {}), TeleportProvider)
+def test_get_provider():
+    provider = t.get_provider("teleport", {"app": "test"})
+    assert isinstance(provider, TeleportProvider)
 
 
 class TestGetAdaptedProvider:
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_factory(subtype, data, conn_info):
+        def mock_factory(subtype, data, param):
             assert subtype == "Test"
             assert isinstance(data, dict)
-            assert isinstance(conn_info, AppConnectionInfo)
+            assert isinstance(param, TeleportUserConfig)
             return Mock(spec=ProviderBase)
 
         def mock_get_adapter(subtype):
@@ -38,14 +31,18 @@ class TestGetAdaptedProvider:
             mock_get_adapter,
         )
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.config.parse_adapter_config", Mock()
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.teleport.helper.get_connection_info",
-            lambda _: Mock(spec=AppConnectionInfo),
+            "secrets_env.providers.teleport.helper.get_connection_param",
+            lambda _: Mock(spec=TeleportUserConfig),
         )
 
-        assert isinstance(t.get_adapted_provider("Teleport+Test", {}), ProviderBase)
+        config = {
+            "teleport": {
+                "app": "test",
+            }
+        }
+        provider = t.get_adapted_provider("teleport+Test", config)
+
+        assert isinstance(provider, ProviderBase)
 
     def test_fail(self):
         with pytest.raises(ConfigError):
