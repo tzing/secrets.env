@@ -4,11 +4,11 @@ information from it.
 .. _Teleport CLI: https://goteleport.com/docs/reference/cli/
 """
 
+from __future__ import annotations
+
 import atexit
-import dataclasses
 import datetime
 import importlib.util
-import json
 import logging
 import os
 import shutil
@@ -16,7 +16,9 @@ import tempfile
 import typing
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Annotated
+
+from pydantic import BaseModel, BeforeValidator, model_validator
 
 from secrets_env.exceptions import (
     AuthenticationError,
@@ -26,7 +28,7 @@ from secrets_env.exceptions import (
 from secrets_env.subprocess import Run
 
 if typing.TYPE_CHECKING:
-    from secrets_env.providers.teleport.config import AppParameter
+    from secrets_env.providers.teleport.config import TeleportUserConfig
 
 
 TELEPORT_APP_NAME = "tsh"
@@ -34,9 +36,33 @@ TELEPORT_APP_NAME = "tsh"
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
-class AppConnectionInfo:
-    """Teleport app connection information.
+class TeleportAppConfig(BaseModel):
+    """Layout returned by `tsh app config` command."""
+
+    uri: str
+    """URI to the app."""
+
+    ca: Path | None
+    """Certificate authority (CA) certificate."""
+
+    cert: Path
+    """Client side certificate."""
+
+    key: Path
+    """Client side private key."""
+
+
+def _path_validator(data):
+    if isinstance(data, Path):
+        if data.is_file():
+            return data.read_bytes()
+        else:
+            return None
+    return data
+
+
+class TeleportConnectionParameter(BaseModel):
+    """App URI and the short-lived certificate for Teleport.
 
     This object copied the certificate on object creation, and destroy them
     when secrets.env terminated.
@@ -45,56 +71,67 @@ class AppConnectionInfo:
     uri: str
     """URI to the app."""
 
-    ca: Optional[bytes]
+    ca: Annotated[bytes | None, BeforeValidator(_path_validator)]
     """Certificate authority (CA) certificate."""
 
-    cert: bytes
+    cert: Annotated[bytes, BeforeValidator(_path_validator)]
     """Client side certificate."""
 
-    key: bytes
+    key: Annotated[bytes, BeforeValidator(_path_validator)]
     """Client side private key."""
 
-    @classmethod
-    def from_config(
-        cls, uri: str, ca: str, cert: str, key: str, **sink
-    ) -> "AppConnectionInfo":
-        path_ca = Path(ca)
-        if path_ca.is_file():  # CA is not always installed
-            data_ca = path_ca.read_bytes()
-        else:
-            data_ca = None
+    @model_validator(mode="before")
+    def _from_teleport_app_config(cls, values):
+        if isinstance(values, TeleportAppConfig):
+            return values.model_dump()
+        return values
 
-        with open(cert, "rb") as fd:
-            data_cert = fd.read()
-        with open(key, "rb") as fd:
-            data_key = fd.read()
-
-        return cls(uri=uri, ca=data_ca, cert=data_cert, key=data_key)
-
-    @property
+    @cached_property
     def cert_and_key(self) -> bytes:
         return self.cert + b"\n" + self.key
 
     @cached_property
-    def path_ca(self) -> Optional[Path]:
+    def path_ca(self) -> Path | None:
         if not self.ca:
             return None
-        return create_temp_file(".crt", self.ca)
+        return _create_temp_file(".crt", self.ca)
 
     @cached_property
     def path_cert(self) -> Path:
-        return create_temp_file(".cert", self.cert)
+        return _create_temp_file(".cert", self.cert)
 
     @cached_property
     def path_key(self) -> Path:
-        return create_temp_file(".key", self.key)
+        return _create_temp_file(".key", self.key)
 
     @cached_property
     def path_cert_and_key(self) -> Path:
-        return create_temp_file(".pem", self.cert_and_key)
+        return _create_temp_file(".pem", self.cert_and_key)
+
+    def is_cert_valid(self) -> bool:
+        """Check if the certificate is still valid.
+
+        Raises
+        ------
+        ImportError
+            When `cryptography` package is not installed.
+        """
+        import cryptography.x509
+
+        cert = cryptography.x509.load_pem_x509_certificate(self.cert)
+        now = datetime.datetime.now().astimezone()
+        if now > cert.not_valid_after_utc:
+            logger.debug(
+                "Certificate expire at %s < current time %s",
+                cert.not_valid_after_utc.astimezone(),
+                now,
+            )
+            return False
+
+        return True
 
 
-def create_temp_file(suffix: str, data: bytes) -> Path:
+def _create_temp_file(suffix: str, data: bytes) -> Path:
     fd, path = tempfile.mkstemp(suffix=suffix)
 
     os.write(fd, data)
@@ -105,13 +142,8 @@ def create_temp_file(suffix: str, data: bytes) -> Path:
     return Path(path)
 
 
-def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
-    """Get app connection information from Teleport API.
-
-    Parameters
-    ----------
-    params : AppParameter
-        Parameters parsed by :py:mod:`~secrets_env.providers.teleport.config`.
+def get_connection_param(config: TeleportUserConfig) -> TeleportConnectionParameter:
+    """Get app connection parameter from Teleport CLI.
 
     Raises
     ------
@@ -123,87 +155,72 @@ def get_connection_info(params: "AppParameter") -> AppConnectionInfo:
     # ensure teleport cli is installed
     if not shutil.which(TELEPORT_APP_NAME):
         raise UnsupportedError(
-            "Teleport CLI ({}) is required for teleport integration", TELEPORT_APP_NAME
+            f"Teleport CLI ({TELEPORT_APP_NAME}) is required for teleport addon"
         )
 
-    # it might take a while for teleport RPC. show the message to indicate it
-    # is not freeze
-    app = params["app"]
-    logger.info("<!important>Get connection information from Teleport for %s", app)
-    logger.debug("Teleport app parameters= %s", params)
+    # it might take a while for teleport RPC. show the message to indicate that
+    # the script is not freeze
+    logger.info(
+        "<!important>Get connection information from Teleport for %s", config.app
+    )
+    logger.debug("Teleport app parameters= %s", config)
 
     # log version before start
     if not call_version():
         raise SecretsEnvError("Internal error on accessing Teleport CLI")
 
     # try to get config directly; when not available, loging and retry
-    cfg = attempt_get_app_config(app)
+    param = try_get_app_config(config.app)
 
-    if not cfg:
-        call_app_login(params)
-        cfg = call_app_config(app)
+    if not param:
+        call_app_login(config)
+        param = call_app_config(config.app)
 
-    if not cfg:
+    if not param:
         raise AuthenticationError("Failed to get connection info from Teleport")
 
-    return AppConnectionInfo.from_config(**cfg)
+    return param
 
 
-def attempt_get_app_config(app: str) -> Dict[str, str]:
+def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
     """The certificate refreshing process takes a while so we'd like to directly
     use the one stored on disk. Teleport sometimes responds the file path without
     expiration check. Therefore we need to check it by ourself.
     """
     # need cryptography package to read cert file
     if not importlib.util.find_spec("cryptography"):
-        return {}
+        return
 
     logger.debug("Try to get config directly")
-    config = call_app_config(app)
-    if not config:
-        # case: not login yet / teleport detect expired
-        return {}
+    param = call_app_config(app)
+    if not param:
+        # not login yet / teleport detect expired
+        return
 
-    if not is_certificate_valid(config["cert"]):
-        # case: detect expired by ourself
-        return {}
+    if not param.is_cert_valid():
+        # cert is expired
+        return
 
-    return config
-
-
-def is_certificate_valid(filepath: str) -> bool:
-    import cryptography.x509
-
-    with open(filepath, "rb") as fd:
-        data = fd.read()
-
-    cert = cryptography.x509.load_pem_x509_certificate(data)
-    now = datetime.datetime.now().astimezone()
-    if now > cert.not_valid_after_utc:
-        logger.debug(
-            "Certificate expire at %s < current time %s",
-            cert.not_valid_after_utc.astimezone(),
-            now,
-        )
-        return False
-
-    return True
+    return param
 
 
 def call_version() -> bool:
     """Call version command and print it to log."""
-    runner = run_teleport(["version"])
+    runner = Run([TELEPORT_APP_NAME, "version"])
+    runner.wait()
     return runner.return_code == 0
 
 
-def call_app_config(app: str) -> Dict[str, str]:
-    runner = run_teleport(["app", "config", "--format=json", app])
+def call_app_config(app: str) -> TeleportConnectionParameter | None:
+    runner = Run([TELEPORT_APP_NAME, "app", "config", "--format=json", app])
     if runner.return_code != 0:
-        return {}
-    return json.loads(runner.stdout)
+        return
+
+    config = TeleportAppConfig.model_validate_json(runner.stdout)
+    return TeleportConnectionParameter.model_validate(config)
 
 
-def call_app_login(params: "AppParameter") -> None:
+def call_app_login(config: TeleportUserConfig) -> None:
     """Call `tsh app login`. Only returns on success.
 
     Raises
@@ -211,17 +228,15 @@ def call_app_login(params: "AppParameter") -> None:
     AuthenticationError
         Login failed
     """
-    app = params["app"]
-
     # build arguments
     cmd = [TELEPORT_APP_NAME, "app", "login"]
-    if proxy := params.get("proxy"):
-        cmd.append(f"--proxy={proxy}")
-    if cluster := params.get("cluster"):
-        cmd.append(f"--cluster={cluster}")
-    if user := params.get("user"):
-        cmd.append(f"--user={user}")
-    cmd.append(app)
+    if config.proxy:
+        cmd.append(f"--proxy={config.proxy}")
+    if config.cluster:
+        cmd.append(f"--cluster={config.cluster}")
+    if config.user:
+        cmd.append(f"--user={config.user}")
+    cmd.append(config.app)
 
     # run
     runner = Run(cmd)
@@ -244,17 +259,10 @@ def call_app_login(params: "AppParameter") -> None:
     runner.wait()
 
     if runner.return_code == 0:
-        logger.info("Successfully logged into app %s", app)
+        logger.info("Successfully logged into app %s", config.app)
         return None
 
-    if f'app "{app}" not found' in runner.stderr:
-        raise AuthenticationError("Teleport app '{}' not found", app)
+    if f'app "{config.app}" not found' in runner.stderr:
+        raise AuthenticationError(f"Teleport app '{config.app}' not found")
 
-    raise AuthenticationError("Teleport error: {}", runner.stderr)
-
-
-def run_teleport(args: Iterable[str]) -> Run:
-    """Run teleport command. Returns execution result."""
-    run = Run([TELEPORT_APP_NAME, *args])
-    run.wait()
-    return run
+    raise AuthenticationError(f"Teleport error: {runner.stderr}")

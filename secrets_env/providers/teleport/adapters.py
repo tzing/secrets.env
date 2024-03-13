@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import typing
 
@@ -5,9 +7,11 @@ from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase
-    from secrets_env.providers.teleport.helper import AppConnectionInfo
+    from secrets_env.providers.teleport.helper import TeleportConnectionParameter
 
-AdapterType = typing.Callable[[str, dict, "AppConnectionInfo"], "ProviderBase"]
+    AdapterType = typing.Callable[
+        [str, dict, TeleportConnectionParameter], ProviderBase
+    ]
 
 logger = logging.getLogger(__name__)
 
@@ -21,30 +25,30 @@ def get_adapter(name: str) -> AdapterType:
 
 
 def adapt_vault_provider(
-    type_: str, data: dict, conn_info: "AppConnectionInfo"
-) -> "ProviderBase":
+    type_: str, data: dict, param: TeleportConnectionParameter
+) -> ProviderBase:
     assert isinstance(data, dict)
     from secrets_env.providers import vault
 
     # url
-    if (url := data.get("url")) and url != conn_info.uri:
-        logger.warning("Overwrite source.url to %s", conn_info.uri)
+    if (url := data.get("url")) and url != param.uri:
+        logger.warning("Overwrite source.url to %s", param.uri)
 
-    data["url"] = conn_info.uri
-    logger.debug("Set Vault URL to %s", conn_info.uri)
+    data["url"] = param.uri
+    logger.debug("Set Vault URL to %s", param.uri)
 
     # ca
     tls: dict = data.setdefault("tls", {})
-    if conn_info.path_ca:
-        tls["ca_cert"] = conn_info.path_ca
-        logger.debug("Set Vault CA to %s", conn_info.path_ca)
+    if param.path_ca:
+        tls["ca_cert"] = param.path_ca
+        logger.debug("Set Vault CA to %s", param.path_ca)
 
     # cert
-    tls["client_cert"] = conn_info.path_cert
-    logger.debug("Set Vault client cert to %s", conn_info.path_cert)
+    tls["client_cert"] = param.path_cert
+    logger.debug("Set Vault client cert to %s", param.path_cert)
 
     # key
-    tls["client_key"] = conn_info.path_key
-    logger.debug("Set Vault client key to %s", conn_info.path_key)
+    tls["client_key"] = param.path_key
+    logger.debug("Set Vault client key to %s", param.path_key)
 
     return vault.get_provider(type_, data)

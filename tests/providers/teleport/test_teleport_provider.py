@@ -6,12 +6,13 @@ import pytest
 
 import secrets_env.providers.teleport.provider as t
 from secrets_env.exceptions import ConfigError, ValueNotFound
-from secrets_env.providers.teleport.helper import AppConnectionInfo
+from secrets_env.providers.teleport.config import TeleportUserConfig
+from secrets_env.providers.teleport.helper import TeleportConnectionParameter
 
 
 @pytest.fixture()
 def conn_info():
-    return AppConnectionInfo(
+    return TeleportConnectionParameter(
         uri="https://example.com",
         ca=b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----",
         cert=b"-----MOCK CERTIFICATE-----",
@@ -22,7 +23,7 @@ def conn_info():
 class TestTeleportProvider:
     @pytest.fixture()
     def provider(self):
-        return t.TeleportProvider(proxy=None, cluster=None, user=None, app="test")
+        return t.TeleportProvider(config=TeleportUserConfig(app="test"))
 
     def test_type(self, provider):
         assert provider.type == "teleport"
@@ -39,7 +40,7 @@ class TestTeleportProvider:
     def test_get_path(
         self, monkeypatch: pytest.MonkeyPatch, provider, conn_info, field, expect
     ):
-        monkeypatch.setattr(t, "get_connection_info", lambda _: conn_info)
+        monkeypatch.setattr(t, "get_connection_param", lambda _: conn_info)
         path = provider.get({"field": field, "format": "path"})
         assert isinstance(path, str)
         assert Path(path).is_file()
@@ -58,7 +59,7 @@ class TestTeleportProvider:
     def test_get_pem(
         self, monkeypatch: pytest.MonkeyPatch, provider, conn_info, field, expect
     ):
-        monkeypatch.setattr(t, "get_connection_info", lambda _: conn_info)
+        monkeypatch.setattr(t, "get_connection_param", lambda _: conn_info)
         data = provider.get({"field": field, "format": "pem"})
         assert isinstance(data, str)
         assert data == expect
@@ -112,7 +113,7 @@ def test_get_ca(conn_info):
     assert d == "subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
 
     # no CA
-    conn_info_no_ca = AppConnectionInfo(
+    conn_info_no_ca = TeleportConnectionParameter(
         uri="https://example.com",
         ca=None,
         cert=b"-----MOCK CERTIFICATE-----",

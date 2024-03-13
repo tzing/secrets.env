@@ -1,9 +1,10 @@
 import datetime
+import json
 import logging
 import re
 import shutil
-import tempfile
-from unittest.mock import Mock, mock_open, patch
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 import cryptography.x509
 import pytest
@@ -14,39 +15,117 @@ from secrets_env.exceptions import (
     SecretsEnvError,
     UnsupportedError,
 )
+from secrets_env.providers.teleport.config import TeleportUserConfig
+from secrets_env.providers.teleport.helper import (
+    TeleportAppConfig,
+    TeleportConnectionParameter,
+    call_app_config,
+    call_version,
+    get_connection_param,
+    try_get_app_config,
+)
 from secrets_env.subprocess import Run
 
 no_teleport_cli = shutil.which("tsh") is None
 
 
-def test_app_connection_info():
-    with tempfile.NamedTemporaryFile() as fd_ca, tempfile.NamedTemporaryFile() as fd_cert, tempfile.NamedTemporaryFile() as fd_key:
-        fd_cert.write(b"cert")
-        fd_cert.flush()
-        fd_key.write(b"key")
-        fd_key.flush()
-        fd_ca.write(b"ca")
-        fd_ca.flush()
-
-        cfg = t.AppConnectionInfo.from_config(
-            uri="https://example.com", ca=fd_ca.name, cert=fd_cert.name, key=fd_key.name
-        )
-
-    assert cfg == t.AppConnectionInfo(
+@pytest.fixture()
+def dummy_param():
+    return TeleportConnectionParameter(
         uri="https://example.com", ca=b"ca", cert=b"cert", key=b"key"
     )
 
-    assert cfg.path_ca.is_file()
-    assert cfg.path_ca.read_bytes() == b"ca"
-    assert cfg.path_cert.is_file()
-    assert cfg.path_cert.read_bytes() == b"cert"
-    assert cfg.path_key.is_file()
-    assert cfg.path_key.read_bytes() == b"key"
-    assert cfg.path_cert_and_key.is_file()
-    assert cfg.path_cert_and_key.read_bytes() == b"cert\nkey"
+
+class TestTeleportAppConfig:
+    def test_1(self, tmp_path: Path):
+        text = json.dumps(
+            {
+                "uri": "https://example.com",
+                "ca": str(tmp_path / "ca.crt"),
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+        assert TeleportAppConfig.model_validate_json(text) == TeleportAppConfig(
+            uri="https://example.com",
+            ca=tmp_path / "ca.crt",
+            cert=tmp_path / "cert.crt",
+            key=tmp_path / "key.key",
+        )
+
+    def test_2(self, tmp_path: Path):
+        text = json.dumps(
+            {
+                "uri": "https://example.com",
+                "ca": None,
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+        assert TeleportAppConfig.model_validate_json(text) == TeleportAppConfig(
+            uri="https://example.com",
+            ca=None,
+            cert=tmp_path / "cert.crt",
+            key=tmp_path / "key.key",
+        )
 
 
-class TestGetConnectionInfo:
+class TestTeleportConnectionParameter:
+    def test_model_validate(self, tmp_path: Path):
+        (tmp_path / "cert.crt").write_bytes(b"cert")
+        (tmp_path / "key.key").write_bytes(b"key")
+
+        config = TeleportAppConfig(
+            uri="https://example.com",
+            ca=tmp_path / "ca.crt",
+            cert=tmp_path / "cert.crt",
+            key=tmp_path / "key.key",
+        )
+
+        parsed = TeleportConnectionParameter.model_validate(config)
+        assert isinstance(parsed, TeleportConnectionParameter)
+        assert parsed.uri == "https://example.com"
+        assert parsed.ca is None
+        assert parsed.cert == b"cert"
+        assert parsed.key == b"key"
+
+    def test_path(self, dummy_param: TeleportConnectionParameter):
+        assert dummy_param.path_ca.is_file()
+        assert dummy_param.path_ca.read_bytes() == b"ca"
+        assert dummy_param.path_cert.is_file()
+        assert dummy_param.path_cert.read_bytes() == b"cert"
+        assert dummy_param.path_key.is_file()
+        assert dummy_param.path_key.read_bytes() == b"key"
+        assert dummy_param.path_cert_and_key.is_file()
+        assert dummy_param.path_cert_and_key.read_bytes() == b"cert\nkey"
+
+    def test_path_2(self):
+        param = TeleportConnectionParameter(
+            uri="https://example.com", ca=None, cert=b"cert", key=b"key"
+        )
+        assert param.path_ca is None
+
+    def test_valid_cert(self, monkeypatch: pytest.MonkeyPatch):
+        mock_cert = Mock(spec=cryptography.x509.Certificate)
+        later = datetime.datetime.now().astimezone() + datetime.timedelta(days=30)
+        mock_cert.not_valid_after_utc = later
+        monkeypatch.setattr(
+            "cryptography.x509.load_pem_x509_certificate", lambda _: mock_cert
+        )
+
+        cfg = TeleportConnectionParameter(
+            uri="https://example.com", ca=None, cert=b"cert", key=b"key"
+        )
+        assert cfg.is_cert_valid() is True
+
+    def test_expired_cert(self):
+        cfg = TeleportConnectionParameter(
+            uri="https://example.com", ca=None, cert=fake_cert, key=b"key"
+        )
+        assert cfg.is_cert_valid() is False
+
+
+class TestGetConnectionParam:
     @pytest.fixture()
     def _patch_which(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda _: "/path/cmd")
@@ -66,124 +145,108 @@ class TestGetConnectionInfo:
         "_patch_version",
         "_patch_call_app_login",
     )
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "attempt_get_app_config", lambda _: {})
-        monkeypatch.setattr(
-            t,
-            "call_app_config",
-            lambda _: {
-                "uri": "https://example.com",
-                "ca": "/no/this/file",
-                "cert": "/mock/data",
-                "key": "/mock/data",
-            },
-        )
-        monkeypatch.setattr("builtins.open", mock_open(read_data=b"test"))
+    def test_success(
+        self, monkeypatch: pytest.MonkeyPatch, dummy_param: TeleportConnectionParameter
+    ):
+        monkeypatch.setattr(t, "try_get_app_config", lambda _: None)
+        monkeypatch.setattr(t, "call_app_config", lambda _: dummy_param)
 
-        assert t.get_connection_info({"app": "test"}) == t.AppConnectionInfo(
+        cfg = TeleportUserConfig(app="test")
+        assert get_connection_param(cfg) == TeleportConnectionParameter(
             uri="https://example.com",
-            ca=None,
-            cert=b"test",
-            key=b"test",
+            ca=b"ca",
+            cert=b"cert",
+            key=b"key",
         )
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda _: None)
         with pytest.raises(UnsupportedError):
-            t.get_connection_info({"app": "test"})
+            get_connection_param(TeleportUserConfig(app="test"))
 
     @pytest.mark.usefixtures("_patch_which")
     def test_internal_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "call_version", lambda: False)
         with pytest.raises(SecretsEnvError):
-            t.get_connection_info({"app": "test"})
+            get_connection_param(TeleportUserConfig(app="test"))
 
     @pytest.mark.usefixtures("_patch_which", "_patch_version", "_patch_call_app_login")
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_config", lambda _: {})
+        monkeypatch.setattr(t, "call_app_config", lambda _: None)
         with pytest.raises(AuthenticationError):
-            t.get_connection_info({"app": "test"})
+            get_connection_param(TeleportUserConfig(app="test"))
 
 
-class TestAttemptGetAppConfig:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+class TestTryGetAppConfig:
+    def test_success(
+        self, monkeypatch: pytest.MonkeyPatch, dummy_param: TeleportConnectionParameter
+    ):
+        monkeypatch.setattr(t, "call_app_config", lambda _: dummy_param)
         monkeypatch.setattr(
-            t,
-            "call_app_config",
-            lambda _: {
-                "uri": "https://example.com",
-                "ca": "/no/this/file",
-                "cert": __file__,
-                "key": __file__,
-            },
+            t.TeleportConnectionParameter, "is_cert_valid", lambda _: True
         )
-        monkeypatch.setattr(t, "is_certificate_valid", lambda _: True)
-
-        assert t.attempt_get_app_config("test") == {
-            "uri": "https://example.com",
-            "ca": "/no/this/file",
-            "cert": __file__,
-            "key": __file__,
-        }
+        assert try_get_app_config("test") == dummy_param
 
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("importlib.util.find_spec", lambda _: False)
-        assert t.attempt_get_app_config("test") == {}
+        assert try_get_app_config("test") is None
 
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_config", lambda _: {})
-        assert t.attempt_get_app_config("test") == {}
+        monkeypatch.setattr(t, "call_app_config", lambda _: None)
+        assert try_get_app_config("test") is None
 
-    def test_not_valid(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_config", lambda _: {"cert": __file__})
-        monkeypatch.setattr(t, "is_certificate_valid", lambda _: False)
-        assert t.attempt_get_app_config("test") == {}
-
-
-class TestIsCertificateValid:
-    def test_true(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("builtins.open", mock_open())
-
-        mock_cert = Mock(spec=cryptography.x509.Certificate)
-        mock_cert.not_valid_after_utc = (
-            datetime.datetime.now().astimezone() + datetime.timedelta(days=30)
-        )
+    def test_not_valid(
+        self, monkeypatch: pytest.MonkeyPatch, dummy_param: TeleportConnectionParameter
+    ):
+        monkeypatch.setattr(t, "call_app_config", lambda _: dummy_param)
         monkeypatch.setattr(
-            "cryptography.x509.load_pem_x509_certificate", lambda _: mock_cert
+            t.TeleportConnectionParameter, "is_cert_valid", lambda _: False
         )
-
-        assert t.is_certificate_valid("test") is True
-
-    def test_false(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("builtins.open", mock_open(read_data=fake_cert))
-        assert t.is_certificate_valid("test") is False
+        assert try_get_app_config("test") is None
 
 
 class TestCallVersion:
     @pytest.mark.skipif(no_teleport_cli, reason="Teleport CLI not installed")
     def test_success(self, caplog: pytest.LogCaptureFixture):
         with caplog.at_level(logging.DEBUG):
-            assert t.call_version() is True
+            assert call_version() is True
         assert re.search(r"< Teleport v\d+\.\d+\.\d+", caplog.text)
 
     def test_fail(self):
         mock = Mock(spec=Run, return_code=1)
-        mock.returncode = 1
-        with patch.object(t, "run_teleport", return_value=mock):
-            assert t.call_version() is False
+        mock.return_code = 1
+        with patch.object(t, "Run", return_value=mock):
+            assert call_version() is False
 
 
 class TestCallAppConfig:
-    def test_success(self):
-        mock = Mock(spec=Run, return_code=0)
-        mock.stdout = b'{"foo": "bar"}'
-        with patch.object(t, "run_teleport", return_value=mock):
-            assert t.call_app_config("test") == {"foo": "bar"}
+    def test_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        dummy_param: TeleportConnectionParameter,
+    ):
+        (tmp_path / "ca.crt").write_bytes(b"ca")
+        (tmp_path / "cert.crt").write_bytes(b"cert")
+        (tmp_path / "key.key").write_bytes(b"key")
 
-    def test_fail(self):
-        mock = Mock(spec=Run, return_code=1)
-        with patch.object(t, "run_teleport", return_value=mock):
-            assert t.call_app_config("test") == {}
+        mock = Mock(spec=Run, return_code=0)
+        mock.return_code = 0
+        mock.stdout = json.dumps(
+            {
+                "uri": "https://example.com",
+                "ca": str(tmp_path / "ca.crt"),
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+        monkeypatch.setattr(t, "Run", lambda _: mock)
+
+        assert call_app_config("test") == dummy_param
+
+    def test_fail(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(t, "Run", lambda _: Mock(spec=Run, return_code=1))
+        assert call_app_config("test") is None
 
 
 class TestCallAppLogin:
@@ -221,18 +284,14 @@ class TestCallAppLogin:
         monkeypatch.setattr(t, "Run", mock_run_command)
 
         # run
+        config = TeleportUserConfig(
+            proxy="proxy.example.com",
+            cluster="stg.example.com",
+            user="user",
+            app="test",
+        )
         with caplog.at_level(logging.INFO):
-            assert (
-                t.call_app_login(
-                    {
-                        "proxy": "proxy.example.com",
-                        "cluster": "stg.example.com",
-                        "user": "user",
-                        "app": "test",
-                    }
-                )
-                is None
-            )
+            assert t.call_app_login(config) is None
 
         # test
         assert "Waiting for response from Teleport..." in caplog.text
@@ -242,19 +301,21 @@ class TestCallAppLogin:
         runner.return_code = 1
         runner.stderr = 'ERROR: app "test" not found'
 
-        with pytest.raises(
-            AuthenticationError, match="Teleport app 'test' not found"
-        ), patch.object(t, "Run", return_value=runner):
-            assert t.call_app_login({"app": "test"}) is None
+        with (
+            pytest.raises(AuthenticationError, match="Teleport app 'test' not found"),
+            patch.object(t, "Run", return_value=runner),
+        ):
+            assert t.call_app_login(TeleportUserConfig(app="test")) is None
 
     def test_other_error(self, runner: Run):
         runner.return_code = 1
         runner.stderr = "ERROR: mocked"
 
-        with pytest.raises(
-            AuthenticationError, match="Teleport error: ERROR: mocked"
-        ), patch.object(t, "Run", return_value=runner):
-            assert t.call_app_login({"app": "test"}) is None
+        with (
+            pytest.raises(AuthenticationError, match="Teleport error: ERROR: mocked"),
+            patch.object(t, "Run", return_value=runner),
+        ):
+            assert t.call_app_login(TeleportUserConfig(app="test")) is None
 
 
 fake_cert = b"""
