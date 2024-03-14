@@ -44,6 +44,36 @@ class TestTeleportUserConfig:
         assert cfg.app == "test"
 
 
+class TestTryGetAppConfig:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        conn_param = Mock(TeleportConnectionParameter)
+        conn_param.is_cert_valid.return_value = True
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_config",
+            lambda _: conn_param,
+        )
+        assert try_get_app_config("test") == conn_param
+
+    def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("importlib.util.find_spec", lambda _: False)
+        assert try_get_app_config("test") is None
+
+    def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_config", lambda _: None
+        )
+        assert try_get_app_config("test") is None
+
+    def test_not_valid(self, monkeypatch: pytest.MonkeyPatch):
+        conn_param = Mock(TeleportConnectionParameter)
+        conn_param.is_cert_valid.return_value = False
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_config",
+            lambda _: conn_param,
+        )
+        assert try_get_app_config("test") is None
+
+
 class TestCallVersion:
     @pytest.mark.skipif(tsh_not_installed, reason="Teleport CLI not installed")
     def test_success(self, caplog: pytest.LogCaptureFixture):

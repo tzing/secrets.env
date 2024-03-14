@@ -177,34 +177,6 @@ class TestGetConnectionParam:
             get_connection_param(TeleportUserConfig(app="test"))
 
 
-class TestTryGetAppConfig:
-    def test_success(
-        self, monkeypatch: pytest.MonkeyPatch, dummy_param: TeleportConnectionParameter
-    ):
-        monkeypatch.setattr(t, "call_app_config", lambda _: dummy_param)
-        monkeypatch.setattr(
-            t.TeleportConnectionParameter, "is_cert_valid", lambda _: True
-        )
-        assert try_get_app_config("test") == dummy_param
-
-    def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("importlib.util.find_spec", lambda _: False)
-        assert try_get_app_config("test") is None
-
-    def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "call_app_config", lambda _: None)
-        assert try_get_app_config("test") is None
-
-    def test_not_valid(
-        self, monkeypatch: pytest.MonkeyPatch, dummy_param: TeleportConnectionParameter
-    ):
-        monkeypatch.setattr(t, "call_app_config", lambda _: dummy_param)
-        monkeypatch.setattr(
-            t.TeleportConnectionParameter, "is_cert_valid", lambda _: False
-        )
-        assert try_get_app_config("test") is None
-
-
 fake_cert = b"""
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIUYBwyBPJrpNsQO3FYEZ/L5+egiAEwDQYJKoZIhvcNAQEL
