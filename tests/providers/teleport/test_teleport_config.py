@@ -46,8 +46,7 @@ class TestTeleportUserConfig:
 
 
 class TestTeleportConnectionParameter:
-    def test_model_validate(self, tmp_path: Path):
-        # with ca
+    def test_model_validate_with_ca(self, tmp_path: Path):
         (tmp_path / "ca.crt").write_bytes(
             b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
         )
@@ -72,7 +71,10 @@ class TestTeleportConnectionParameter:
             b"-----MOCK CERTIFICATE-----\n" b"-----MOCK PRIVATE KEY-----"
         )
 
-        # without ca
+    def test_model_validate_without_ca(self, tmp_path: Path):
+        (tmp_path / "cert.crt").write_bytes(b"-----MOCK CERTIFICATE-----")
+        (tmp_path / "key.key").write_bytes(b"-----MOCK PRIVATE KEY-----")
+
         param = TeleportConnectionParameter.model_validate(
             TshAppConfigResponse(
                 uri="https://example.com",
@@ -84,7 +86,7 @@ class TestTeleportConnectionParameter:
 
         assert param.path_ca is None
 
-        # dict
+    def test_model_validate(self):
         param = TeleportConnectionParameter.model_validate(
             {
                 "uri": "https://example.com",
@@ -203,8 +205,7 @@ class TestCallVersion:
 
 
 class TestTshAppConfigResponse:
-    def test(self, tmp_path: Path):
-        # test ca exists
+    def test_with_ca(self, tmp_path: Path):
         (tmp_path / "ca.crt").touch()
         (tmp_path / "cert.crt").touch()
         (tmp_path / "key.crt").touch()
@@ -224,7 +225,10 @@ class TestTshAppConfigResponse:
         assert resp.cert == tmp_path / "cert.crt"
         assert resp.key == tmp_path / "key.key"
 
-        # test ca missing
+    def test_without_ca(self, tmp_path: Path):
+        (tmp_path / "cert.crt").touch()
+        (tmp_path / "key.crt").touch()
+
         resp = TshAppConfigResponse.model_validate(
             {
                 "uri": "https://example.com",
