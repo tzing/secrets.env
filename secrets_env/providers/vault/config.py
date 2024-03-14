@@ -4,19 +4,45 @@ import logging
 import typing
 from typing import TypedDict
 
+from pydantic import BaseModel, FilePath, ValidationError, model_validator
+
 from secrets_env.exceptions import ConfigError
 from secrets_env.providers.vault.auth import create_auth_by_name
-from secrets_env.utils import ensure_dict, ensure_path, ensure_str, get_env_var
+from secrets_env.utils import ensure_dict, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Self
 
     from secrets_env.providers.vault.auth.base import Auth
 
     CertTypes = Path | tuple[Path, Path]
 
 DEFAULT_AUTH_METHOD = "token"
+
+
+class TlsConfig(BaseModel):
+    ca_cert: FilePath | None = None
+    client_cert: FilePath | None = None
+    client_key: FilePath | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _use_env_var(cls, values):
+        assert isinstance(values, dict)
+        if ca_cert := get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT"):
+            values["ca_cert"] = ca_cert
+        if client_cert := get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT"):
+            values["client_cert"] = client_cert
+        if client_key := get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY"):
+            values["client_key"] = client_key
+        return values
+
+    @model_validator(mode="after")
+    def _require_client_cert(self) -> Self:
+        if self.client_key and not self.client_cert:
+            raise ValueError("client_cert is required when client_key is provided")
+        return self
 
 
 class VaultConnectionInfo(TypedDict):
@@ -54,17 +80,19 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
         output["proxy"] = proxy
 
     # tls
-    data_tls = data.get("tls", {})
+    try:
+        model_tls = TlsConfig.model_validate(data.get("tls", {}))
 
-    ca_cert, ok = get_tls_ca_cert(data_tls)
-    is_success &= ok
-    if ok and ca_cert:
-        output["ca_cert"] = ca_cert
+        if model_tls.ca_cert:
+            output["ca_cert"] = model_tls.ca_cert
 
-    client_cert, ok = get_tls_client_cert(data_tls)
-    is_success &= ok
-    if ok and client_cert:
-        output["client_cert"] = client_cert
+        if model_tls.client_key:
+            output["client_cert"] = (model_tls.client_cert, model_tls.client_key)
+        elif model_tls.client_cert:
+            output["client_cert"] = model_tls.client_cert
+
+    except (ValidationError, TypeError):
+        is_success = False
 
     return typing.cast(VaultConnectionInfo, output) if is_success else None
 
@@ -136,55 +164,3 @@ def get_proxy(data: dict) -> tuple[str | None, bool]:
         return None, False
 
     return proxy, True
-
-
-def get_tls_ca_cert(data: dict) -> tuple[Path | None, bool]:
-    path = get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT")
-    if not path:
-        path = data.get("ca_cert")
-
-    if path:
-        return ensure_path("TLS server certificate (CA cert)", path)
-
-    return None, True
-
-
-def get_tls_client_cert(data: dict) -> tuple[CertTypes | None, bool]:
-    client_cert, client_key = None, None
-    is_success = True
-
-    # certificate
-    path = get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT")
-    if not path:
-        path = data.get("client_cert")
-
-    if path:
-        client_cert, ok = ensure_path("TLS client-side certificate (client_cert)", path)
-        is_success &= ok
-
-    # private key
-    path = get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY")
-    if not path:
-        path = data.get("client_key")
-
-    if path:
-        client_key, ok = ensure_path("TLS private key (client_key)", path)
-        is_success &= ok
-
-    # build output
-    if not is_success:
-        return None, False
-
-    if client_cert and client_key:
-        return (client_cert, client_key), True
-    elif client_cert:
-        return client_cert, True
-    elif client_key:
-        logger.error(
-            "Missing config <mark>client_cert</mark>. "
-            "Please provide from config file (<mark>source.tls.client_cert</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_CLIENT_CERT</mark>)."
-        )
-        return None, False
-
-    return None, True

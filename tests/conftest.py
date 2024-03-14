@@ -16,15 +16,6 @@ def _reset_logging():
         logger.handlers.clear()
 
 
-@pytest.fixture()
-def _disable_ensure_path_exist_check(monkeypatch):
-    def ensure_path(_, path):
-        return Path(path), True
-
-    monkeypatch.setattr("secrets_env.providers.vault.config.ensure_path", ensure_path)
-    monkeypatch.setattr("secrets_env.utils.ensure_path", ensure_path)
-
-
 @pytest.fixture(scope="session")
 def repo_path() -> Path:
     this_dir = Path(__file__).resolve().parent
