@@ -9,11 +9,13 @@ from unittest.mock import Mock
 import cryptography.x509
 import pytest
 
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.teleport.config import (
     TeleportConnectionParameter,
     TeleportUserConfig,
     TshAppConfigResponse,
     call_app_config,
+    call_app_login,
     call_version,
     try_get_app_config,
 )
@@ -86,3 +88,73 @@ class TestCallAppConfig:
             lambda _: Mock(spec=Run, return_code=1),
         )
         assert call_app_config("test") is None
+
+
+class TestCallAppLogin:
+    def test_success(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        # setup mock
+        def mock_run_command(cmd: list):
+            assert cmd == [
+                "tsh",
+                "app",
+                "login",
+                "--proxy=proxy.example.com",
+                "--cluster=stg.example.com",
+                "--user=user",
+                "test",
+            ]
+
+            run = Mock(Run, return_code=0)
+            run.iter_any_output.return_value = [
+                "If browser...",
+                " http://127.0.0.1:12345/mock",
+                "Logged into app test",
+            ]
+            return run
+
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.Run", mock_run_command
+        )
+
+        # run
+        config = TeleportUserConfig(
+            proxy="proxy.example.com",
+            cluster="stg.example.com",
+            user="user",
+            app="test",
+        )
+
+        with caplog.at_level(logging.INFO):
+            assert call_app_login(config) is None
+
+        # test
+        assert "Waiting for response from Teleport..." in caplog.text
+        assert "Successfully logged into app test" in caplog.text
+
+    def test_app_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        run = Mock(Run, return_code=1)
+        run.iter_any_output.return_value = [
+            'ERROR: app "test" not found',
+        ]
+        run.stderr = 'ERROR: app "test" not found'
+
+        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: run)
+
+        with pytest.raises(AuthenticationError, match="Teleport app 'test' not found"):
+            assert call_app_login(TeleportUserConfig(app="test")) is None
+
+    def test_other_error(self, monkeypatch: pytest.MonkeyPatch):
+        run = Mock(Run, return_code=1)
+        run.iter_any_output.return_value = [
+            "ERROR: mocked",
+        ]
+        run.stderr = "ERROR: mocked"
+
+        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: run)
+
+        with pytest.raises(AuthenticationError, match="Teleport error: ERROR: mocked"):
+            assert call_app_login(TeleportUserConfig(app="test")) is None
