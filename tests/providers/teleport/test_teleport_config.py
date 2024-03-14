@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import cryptography.x509
 import pytest
 
-from secrets_env.exceptions import AuthenticationError
+from secrets_env.exceptions import AuthenticationError, UnsupportedError
 from secrets_env.providers.teleport.config import (
     TeleportConnectionParameter,
     TeleportUserConfig,
@@ -43,6 +43,87 @@ class TestTeleportUserConfig:
         cfg = TeleportUserConfig.model_validate("test")
         assert isinstance(cfg, TeleportUserConfig)
         assert cfg.app == "test"
+
+    @pytest.fixture()
+    def _patch_which(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
+
+    @pytest.mark.usefixtures("_patch_which")
+    def test_get_connection_param_1(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_version",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.try_get_app_config",
+            lambda _: Mock(TeleportConnectionParameter),
+        )
+
+        cfg = TeleportUserConfig(app="test")
+        assert isinstance(cfg.get_connection_param(), TeleportConnectionParameter)
+
+    @pytest.mark.usefixtures("_patch_which")
+    def test_get_connection_param_2(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_version",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.try_get_app_config",
+            lambda _: None,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_login",
+            lambda _: None,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_config",
+            lambda _: Mock(TeleportConnectionParameter),
+        )
+
+        cfg = TeleportUserConfig(app="test")
+        assert isinstance(cfg.get_connection_param(), TeleportConnectionParameter)
+
+    def test_get_connection_param_missing_dependency(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr("shutil.which", lambda _: None)
+        cfg = TeleportUserConfig(app="test")
+        with pytest.raises(UnsupportedError):
+            cfg.get_connection_param()
+
+    @pytest.mark.usefixtures("_patch_which")
+    def test_get_connection_param_version_error(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_version",
+            lambda: False,
+        )
+        cfg = TeleportUserConfig(app="test")
+        with pytest.raises(RuntimeError):
+            cfg.get_connection_param()
+
+    @pytest.mark.usefixtures("_patch_which")
+    def test_get_connection_param_no_config(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_version",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.try_get_app_config",
+            lambda _: None,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_login",
+            lambda _: None,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.call_app_config",
+            lambda _: None,
+        )
+
+        cfg = TeleportUserConfig(app="test")
+        with pytest.raises(AuthenticationError):
+            cfg.get_connection_param()
 
 
 class TestTeleportConnectionParameter:
