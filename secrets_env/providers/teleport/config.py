@@ -11,7 +11,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, model_validator, AfterValidator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
 from secrets_env.subprocess import Run
@@ -68,7 +68,7 @@ class TeleportUserConfig(BaseModel):
 
         if not param:
             call_app_login(self)
-            param = call_app_config(self)
+            param = call_app_config(self.app)
 
         if not param:
             raise AuthenticationError("Failed to get connection info from Teleport")
