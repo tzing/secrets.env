@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import shutil
+import textwrap
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -42,6 +43,119 @@ class TestTeleportUserConfig:
         cfg = TeleportUserConfig.model_validate("test")
         assert isinstance(cfg, TeleportUserConfig)
         assert cfg.app == "test"
+
+
+class TestTeleportConnectionParameter:
+    def test_model_validate(self, tmp_path: Path):
+        # with ca
+        (tmp_path / "ca.crt").write_bytes(
+            b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
+        )
+        (tmp_path / "cert.crt").write_bytes(b"-----MOCK CERTIFICATE-----")
+        (tmp_path / "key.key").write_bytes(b"-----MOCK PRIVATE KEY-----")
+
+        param = TeleportConnectionParameter.model_validate(
+            TshAppConfigResponse(
+                uri="https://example.com",
+                ca=tmp_path / "ca.crt",
+                cert=tmp_path / "cert.crt",
+                key=tmp_path / "key.key",
+            )
+        )
+
+        assert param.path_ca.read_bytes() == (
+            b"subject=/C=XX/L=Default City/O=Test\n" b"-----MOCK CERTIFICATE-----"
+        )
+        assert param.path_cert.read_bytes() == b"-----MOCK CERTIFICATE-----"
+        assert param.path_key.read_bytes() == b"-----MOCK PRIVATE KEY-----"
+        assert param.path_cert_and_key.read_bytes() == (
+            b"-----MOCK CERTIFICATE-----\n" b"-----MOCK PRIVATE KEY-----"
+        )
+
+        # without ca
+        param = TeleportConnectionParameter.model_validate(
+            TshAppConfigResponse(
+                uri="https://example.com",
+                ca=tmp_path / "not-exist.crt",
+                cert=tmp_path / "cert.crt",
+                key=tmp_path / "key.key",
+            )
+        )
+
+        assert param.path_ca is None
+
+        # dict
+        param = TeleportConnectionParameter.model_validate(
+            {
+                "uri": "https://example.com",
+                "ca": None,
+                "cert": "string input",
+                "key": b"bytes input",
+            }
+        )
+
+        assert param.cert == b"string input"
+        assert param.key == b"bytes input"
+
+    def test_cert_valid(
+        self, monkeypatch: pytest.MonkeyPatch, conn_param: TeleportConnectionParameter
+    ):
+        later = datetime.datetime.now().astimezone() + datetime.timedelta(days=30)
+
+        cert = Mock(cryptography.x509.Certificate)
+        cert.not_valid_after_utc = later
+
+        monkeypatch.setattr(
+            "cryptography.x509.load_pem_x509_certificate", lambda _: cert
+        )
+
+        assert conn_param.is_cert_valid() is True
+
+    def test_cert_expired(self):
+        FAKE_CERT = textwrap.dedent(
+            """
+            -----BEGIN CERTIFICATE-----
+            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
+            -----END CERTIFICATE-----
+            """
+        )
+
+        param = TeleportConnectionParameter(
+            uri="https://example.com",
+            ca=None,
+            cert=FAKE_CERT,
+            key=b"-----MOCK PRIVATE KEY-----",
+        )
+
+        assert param.is_cert_valid() is False
 
 
 class TestTryGetAppConfig:
@@ -114,7 +228,7 @@ class TestTshAppConfigResponse:
         resp = TshAppConfigResponse.model_validate(
             {
                 "uri": "https://example.com",
-                "ca": str(tmp_path / "ca-2.crt"),
+                "ca": str(tmp_path / "not-exist.crt"),
                 "cert": str(tmp_path / "cert.crt"),
                 "key": str(tmp_path / "key.key"),
             }
