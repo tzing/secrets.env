@@ -286,10 +286,10 @@ class TestCallVersion:
 
 
 class TestTshAppConfigResponse:
-    def test_with_ca(self, tmp_path: Path):
+    def test_1(self, tmp_path: Path):
         (tmp_path / "ca.crt").touch()
         (tmp_path / "cert.crt").touch()
-        (tmp_path / "key.crt").touch()
+        (tmp_path / "key.key").touch()
 
         resp = TshAppConfigResponse.model_validate(
             {
@@ -306,9 +306,9 @@ class TestTshAppConfigResponse:
         assert resp.cert == tmp_path / "cert.crt"
         assert resp.key == tmp_path / "key.key"
 
-    def test_without_ca(self, tmp_path: Path):
+    def test_2(self, tmp_path: Path):
         (tmp_path / "cert.crt").touch()
-        (tmp_path / "key.crt").touch()
+        (tmp_path / "key.key").touch()
 
         resp = TshAppConfigResponse.model_validate(
             {
@@ -320,10 +320,23 @@ class TestTshAppConfigResponse:
         )
 
         assert isinstance(resp, TshAppConfigResponse)
-        assert resp.uri == "https://example.com"
         assert resp.ca is None
-        assert resp.cert == tmp_path / "cert.crt"
-        assert resp.key == tmp_path / "key.key"
+
+    def test_3(self, tmp_path: Path):
+        (tmp_path / "cert.crt").touch()
+        (tmp_path / "key.key").touch()
+
+        resp = TshAppConfigResponse.model_validate(
+            {
+                "uri": "https://example.com",
+                "ca": None,
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+
+        assert isinstance(resp, TshAppConfigResponse)
+        assert resp.ca is None
 
 
 class TestCallAppConfig:

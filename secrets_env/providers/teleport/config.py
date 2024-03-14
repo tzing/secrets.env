@@ -11,7 +11,13 @@ from functools import cached_property
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, BeforeValidator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    FilePath,
+    model_validator,
+)
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
 from secrets_env.subprocess import Run
@@ -113,6 +119,7 @@ class TeleportConnectionParameter(BaseModel):
     """Client side private key."""
 
     @model_validator(mode="before")
+    @classmethod
     def _from_tsh_app_config(cls, values):
         if isinstance(values, TshAppConfigResponse):
             return values.model_dump()
@@ -192,9 +199,10 @@ def call_version() -> bool:
     return runner.return_code == 0
 
 
-def _file_exists(path: Path) -> Path | None:
-    if not path.is_file():
-        return None
+def _drop_on_not_exist(path: Path | None) -> Path | None:
+    if isinstance(path, Path):
+        if not path.is_file():
+            return None
     return path
 
 
@@ -204,13 +212,13 @@ class TshAppConfigResponse(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: Annotated[Path | None, AfterValidator(_file_exists)]
+    ca: Annotated[Path | None, AfterValidator(_drop_on_not_exist)]
     """Certificate authority (CA) certificate."""
 
-    cert: Path
+    cert: FilePath
     """Client side certificate."""
 
-    key: Path
+    key: FilePath
     """Client side private key."""
 
 
