@@ -12,7 +12,7 @@ from secrets_env.utils import ensure_dict, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Self
 
     from secrets_env.providers.vault.auth.base import Auth
 
@@ -39,18 +39,10 @@ class TlsConfig(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def _require_client_cert(self) -> TlsConfig:
+    def _require_client_cert(self) -> Self:
         if self.client_key and not self.client_cert:
             raise ValueError("client_cert is required when client_key is provided")
         return self
-
-
-# class VaultUserConfig(BaseModel):
-#     url: str
-#     auth: dict[str, str] | str
-#     proxy: str
-
-#     tls: TLSConfig = Field(default_factory=TLSConfig)
 
 
 class VaultConnectionInfo(TypedDict):
