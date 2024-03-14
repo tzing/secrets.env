@@ -58,6 +58,45 @@ class TestCallVersion:
         assert call_version() is False
 
 
+class TestTshAppConfigResponse:
+    def test(self, tmp_path: Path):
+        # test ca exists
+        (tmp_path / "ca.crt").touch()
+        (tmp_path / "cert.crt").touch()
+        (tmp_path / "key.crt").touch()
+
+        resp = TshAppConfigResponse.model_validate(
+            {
+                "uri": "https://example.com",
+                "ca": str(tmp_path / "ca.crt"),
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+
+        assert isinstance(resp, TshAppConfigResponse)
+        assert resp.uri == "https://example.com"
+        assert resp.ca == tmp_path / "ca.crt"
+        assert resp.cert == tmp_path / "cert.crt"
+        assert resp.key == tmp_path / "key.key"
+
+        # test ca missing
+        resp = TshAppConfigResponse.model_validate(
+            {
+                "uri": "https://example.com",
+                "ca": str(tmp_path / "ca-2.crt"),
+                "cert": str(tmp_path / "cert.crt"),
+                "key": str(tmp_path / "key.key"),
+            }
+        )
+
+        assert isinstance(resp, TshAppConfigResponse)
+        assert resp.uri == "https://example.com"
+        assert resp.ca is None
+        assert resp.cert == tmp_path / "cert.crt"
+        assert resp.key == tmp_path / "key.key"
+
+
 class TestCallAppConfig:
     def test_success(
         self,
