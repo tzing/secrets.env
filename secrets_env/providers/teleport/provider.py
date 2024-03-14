@@ -7,12 +7,13 @@ from typing import Literal
 
 from secrets_env.exceptions import ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase
-from secrets_env.providers.teleport.helper import get_connection_param
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import RequestSpec
-    from secrets_env.providers.teleport.config import TeleportUserConfig
-    from secrets_env.providers.teleport.helper import TeleportConnectionParameter
+    from secrets_env.providers.teleport.config import (
+        TeleportConnectionParameter,
+        TeleportUserConfig,
+    )
 
 DEFAULT_OUTPUT_FORMAT = "path"
 
@@ -38,7 +39,7 @@ class TeleportProvider(ProviderBase):
     @cached_property
     def tsh(self) -> TeleportConnectionParameter:
         """Return teleport app connection information."""
-        return get_connection_param(self._config)
+        return self._config.get_connection_param()
 
     def get(self, spec: RequestSpec) -> str:
         parsed = parse_spec(spec)

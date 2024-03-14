@@ -31,7 +31,8 @@ class TestGetAdaptedProvider:
             mock_get_adapter,
         )
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.helper.get_connection_param",
+            TeleportUserConfig,
+            "get_connection_param",
             lambda _: Mock(spec=TeleportUserConfig),
         )
 

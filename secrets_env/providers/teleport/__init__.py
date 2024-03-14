@@ -24,7 +24,6 @@ def get_provider(type_: str, data: dict) -> TeleportProvider:
 def get_adapted_provider(type_: str, data: dict) -> ProviderBase:
     from .adapters import get_adapter
     from .config import TeleportUserConfig  # noqa: TCH001
-    from .helper import get_connection_param
 
     class TeleportAdapterConfig(pydantic.BaseModel):
         """Config layout for using Teleport as an adapter."""
@@ -40,7 +39,7 @@ def get_adapted_provider(type_: str, data: dict) -> ProviderBase:
 
     # get connection parameter
     app_param = TeleportAdapterConfig.model_validate(data)
-    conn_param = get_connection_param(app_param.teleport)
+    conn_param = app_param.teleport.get_connection_param()
 
     # forward parameters to corresponding provider
     return factory(subtype, data, conn_param)
