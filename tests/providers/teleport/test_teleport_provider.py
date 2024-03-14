@@ -6,18 +6,10 @@ import pytest
 
 import secrets_env.providers.teleport.provider as t
 from secrets_env.exceptions import ConfigError, ValueNotFound
-from secrets_env.providers.teleport.config import TeleportUserConfig
-from secrets_env.providers.teleport.helper import TeleportConnectionParameter
-
-
-@pytest.fixture()
-def conn_info():
-    return TeleportConnectionParameter(
-        uri="https://example.com",
-        ca=b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----",
-        cert=b"-----MOCK CERTIFICATE-----",
-        key=b"-----MOCK PRIVATE KEY-----",
-    )
+from secrets_env.providers.teleport.config import (
+    TeleportConnectionParameter,
+    TeleportUserConfig,
+)
 
 
 class TestTeleportProvider:
@@ -38,9 +30,11 @@ class TestTeleportProvider:
         ],
     )
     def test_get_path(
-        self, monkeypatch: pytest.MonkeyPatch, provider, conn_info, field, expect
+        self, monkeypatch: pytest.MonkeyPatch, provider, conn_param, field, expect
     ):
-        monkeypatch.setattr(t, "get_connection_param", lambda _: conn_info)
+        monkeypatch.setattr(
+            TeleportUserConfig, "get_connection_param", lambda _: conn_param
+        )
         path = provider.get({"field": field, "format": "path"})
         assert isinstance(path, str)
         assert Path(path).is_file()
@@ -57,9 +51,11 @@ class TestTeleportProvider:
         ],
     )
     def test_get_pem(
-        self, monkeypatch: pytest.MonkeyPatch, provider, conn_info, field, expect
+        self, monkeypatch: pytest.MonkeyPatch, provider, conn_param, field, expect
     ):
-        monkeypatch.setattr(t, "get_connection_param", lambda _: conn_info)
+        monkeypatch.setattr(
+            TeleportUserConfig, "get_connection_param", lambda _: conn_param
+        )
         data = provider.get({"field": field, "format": "pem"})
         assert isinstance(data, str)
         assert data == expect
@@ -101,27 +97,27 @@ class TestParseSpec:
             t.parse_spec(1234)
 
 
-def test_get_ca(conn_info):
+def test_get_ca(conn_param):
     # path
-    p = t.get_ca(conn_info, "path")
+    p = t.get_ca(conn_param, "path")
     assert isinstance(p, str)
     assert Path(p).is_file()
 
     # pem
-    d = t.get_ca(conn_info, "pem")
+    d = t.get_ca(conn_param, "pem")
     assert isinstance(d, str)
     assert d == "subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
 
     # no CA
-    conn_info_no_ca = TeleportConnectionParameter(
+    conn_param_no_ca = TeleportConnectionParameter(
         uri="https://example.com",
         ca=None,
         cert=b"-----MOCK CERTIFICATE-----",
         key=b"-----MOCK PRIVATE KEY-----",
     )
     with pytest.raises(ValueNotFound):
-        t.get_ca(conn_info_no_ca, "path")
+        t.get_ca(conn_param_no_ca, "path")
 
     # make linter happy
     with pytest.raises(RuntimeError):
-        t.get_ca(conn_info, "no-this-format")
+        t.get_ca(conn_param, "no-this-format")
