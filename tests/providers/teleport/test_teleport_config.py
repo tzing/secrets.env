@@ -333,6 +333,9 @@ class TestCallAppConfig:
         tmp_path: Path,
         conn_param: TeleportConnectionParameter,
     ):
+        (tmp_path / "ca.crt").write_bytes(
+            b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
+        )
         (tmp_path / "cert.crt").write_bytes(b"-----MOCK CERTIFICATE-----")
         (tmp_path / "key.key").write_bytes(b"-----MOCK PRIVATE KEY-----")
 

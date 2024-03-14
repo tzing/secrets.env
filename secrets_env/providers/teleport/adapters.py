@@ -7,7 +7,7 @@ from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import ProviderBase
-    from secrets_env.providers.teleport.helper import TeleportConnectionParameter
+    from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
     AdapterType = typing.Callable[
         [str, dict, TeleportConnectionParameter], ProviderBase
