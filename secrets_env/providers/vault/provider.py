@@ -13,7 +13,7 @@ import httpx
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase, RequestSpec
-from secrets_env.utils import get_httpx_error_reason, log_httpx_response, removeprefix
+from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -310,7 +310,7 @@ def read_secret(client: httpx.Client, path: str) -> VaultSecret | None:
     if version == 1:
         url = f"/v1/{path}"
     else:
-        subpath = removeprefix(path, mount_point)
+        subpath = path.removeprefix(mount_point)
         url = f"/v1/{mount_point}data/{subpath}"
 
     try:

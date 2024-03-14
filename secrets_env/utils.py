@@ -1,4 +1,5 @@
 """Utility collection."""
+
 from __future__ import annotations
 
 import logging
@@ -32,8 +33,7 @@ def ensure_type(
     expect_type: type[T],
     cast: bool,
     default: T,
-) -> tuple[T, TL_True] | tuple[T, TL_False]:
-    ...  # pragma: no cover
+) -> tuple[T, TL_True] | tuple[T, TL_False]: ...
 
 
 @overload
@@ -43,8 +43,7 @@ def ensure_type(
     type_name: str,
     expect_type: type[T],
     cast: bool,
-) -> tuple[T, TL_True] | tuple[Literal[None], TL_False]:
-    ...  # pragma: no cover
+) -> tuple[T, TL_True] | tuple[Literal[None], TL_False]: ...
 
 
 def ensure_type(
@@ -289,13 +288,6 @@ def extract_http_host(url: str) -> str:
 
     hostname = typing.cast(str, u.hostname)
     return hostname.casefold()
-
-
-def removeprefix(s: str, prefix: str):
-    # str.removeprefix is only available after python 3.9
-    if s.startswith(prefix):
-        return s[len(prefix) :]
-    return s
 
 
 def strip_ansi(value: str) -> str:

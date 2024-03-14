@@ -1,6 +1,7 @@
 """Adapt poetry's plugin framework to automatically load secrets on specific
 poetry commands.
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,6 @@ from cleo.io.outputs.output import Verbosity
 from poetry.plugins.application_plugin import ApplicationPlugin
 
 import secrets_env
-from secrets_env.utils import removeprefix
 
 if typing.TYPE_CHECKING:
     from typing import ClassVar
@@ -118,7 +118,7 @@ class CleoFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         msg = super().format(record)
-        msg = removeprefix(msg, "<!important>")
+        msg = msg.removeprefix("<!important>")
 
         # tag translate
         # uses builtin tags for aligning the appearance with poetry and other plugins

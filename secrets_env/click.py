@@ -127,10 +127,8 @@ class SecretsEnvFormatter(ColorFormatter):
     """Add colors for internal expression."""
 
     def format(self, record: logging.LogRecord) -> str:
-        from secrets_env.utils import removeprefix
-
         # remvoe the <!important> prefix, which was used for filter
-        record.msg = removeprefix(record.msg, "<!important>")
+        record.msg = record.msg.removeprefix("<!important>")
         msg = super().format(record)
 
         # add color based on internal expressions
