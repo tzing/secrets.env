@@ -12,6 +12,8 @@ from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyrin
 if TYPE_CHECKING:
     from typing import Any
 
+    from pydantic_core import Url
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ class TokenAuth(Auth):
     """
 
     @classmethod
-    def create(cls, url: str, config: dict) -> TokenAuth:
+    def create(cls, url: Url, config: dict) -> TokenAuth:
         # env var
         if token := get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN"):
             logger.debug("Found token from environment variable")

@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from pydantic_core import Url
 
 from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.providers.vault.auth.base import Auth, NullAuth
@@ -20,13 +21,13 @@ from secrets_env.providers.vault.auth.base import Auth, NullAuth
 )
 def test_create_auth_by_name(monkeypatch: pytest.MonkeyPatch, method: str, path: str):
     monkeypatch.setattr(path, lambda url, config: Mock(Auth))
-    auth = create_auth_by_name("https://example.com/", {"method": method})
+    auth = create_auth_by_name(Url("https://example.com/"), {"method": method})
     assert isinstance(auth, Auth)
 
 
 def test_create_auth_by_name_fail():
     with pytest.raises(ValueError, match="Unknown auth method: invalid"):
-        create_auth_by_name("https://example.com/", {"method": "invalid"})
+        create_auth_by_name(Url("https://example.com/"), {"method": "invalid"})
 
 
 class TestNullAuth:
@@ -35,4 +36,4 @@ class TestNullAuth:
         assert auth.login(object()) is None
 
     def test_create(self):
-        assert isinstance(NullAuth.create("https://example.com/", {}), NullAuth)
+        assert isinstance(NullAuth.create(Url("https://example.com/"), {}), NullAuth)

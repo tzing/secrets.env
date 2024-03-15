@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import httpx
 import pytest
+from pydantic_core import Url
 
 import secrets_env.providers.vault.auth.token as t
 from secrets_env.providers.vault.auth.token import TokenAuth
@@ -23,26 +24,26 @@ class TestTokenAuth:
     def test_create_from_envvar(self, monkeypatch: pytest.MonkeyPatch):
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_TOKEN", "T0ken")
-            assert t.TokenAuth.create("https://example.com/", {}) == self.sample
+            assert t.TokenAuth.create(Url("https://example.com/"), {}) == self.sample
 
         with monkeypatch.context() as m:
             m.setenv("VAULT_TOKEN", "T0ken")
-            assert t.TokenAuth.create("https://example.com/", {}) == self.sample
+            assert t.TokenAuth.create(Url("https://example.com/"), {}) == self.sample
 
     def test_create_from_helper(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         (tmp_path / ".vault-token").write_text("T0ken")
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        assert TokenAuth.create("https://example.com/", {}) == self.sample
+        assert TokenAuth.create(Url("https://example.com/"), {}) == self.sample
 
     @pytest.mark.usefixtures("_disable_token_helper")
     def test_create_from_keyring(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "read_keyring", lambda _: "T0ken")
-        assert TokenAuth.create("https://example.com/", {}) == self.sample
+        assert TokenAuth.create(Url("https://example.com/"), {}) == self.sample
 
     @pytest.mark.usefixtures("_disable_token_helper")
     def test_create_failed(self):
         with pytest.raises(ValueError, match="Missing token for Vault authentication."):
-            assert TokenAuth.create("https://example.com/", {}) is None
+            assert TokenAuth.create(Url("https://example.com/"), {}) is None
 
     def test_login(self):
         client = Mock(spec=httpx.Client)

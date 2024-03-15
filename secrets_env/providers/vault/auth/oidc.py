@@ -14,6 +14,7 @@ from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     import httpx
+    from typing import Any
 
     from secrets_env.server import RouteHandler, URLParams
 
@@ -31,7 +32,7 @@ class OpenIDConnectAuth(Auth):
     """Role."""
 
     @classmethod
-    def create(cls, url: str, config: dict) -> OpenIDConnectAuth:
+    def create(cls, url: Any, config: dict) -> OpenIDConnectAuth:
         if role := get_env_var("SECRETS_ENV_ROLE"):
             logger.debug("Found OIDC role from environment variable: %s", role)
             return cls(role=role)
