@@ -5,6 +5,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
+from pydantic_core import Url
 
 import secrets_env.providers.vault.auth.userpass as t
 from secrets_env.providers.vault.auth.userpass import UserPasswordAuth
@@ -39,7 +40,7 @@ class TestUserPasswordAuth:
             UserPasswordAuth, "_get_password", lambda _1, _2: "P@ssw0rd"
         )
 
-        obj = UserPasswordAuth.create("https://example.com/", {})
+        obj = UserPasswordAuth.create(Url("https://example.com/"), {})
         assert obj == UserPasswordAuth(username="user", password="P@ssw0rd")
 
     @pytest.mark.parametrize(
@@ -56,7 +57,6 @@ class TestUserPasswordAuth:
         monkeypatch: pytest.MonkeyPatch,
         username: str,
         password: str,
-        caplog: pytest.LogCaptureFixture,
         err_message: str,
     ):
         class MockAuth(UserPasswordAuth):
@@ -66,7 +66,7 @@ class TestUserPasswordAuth:
         monkeypatch.setattr(MockAuth, "_get_password", lambda _1, _2: password)
 
         with pytest.raises(ValueError, match=re.escape(err_message)):
-            assert MockAuth.create("https://example.com/", {}) is None
+            assert MockAuth.create(Url("https://example.com/"), {}) is None
 
     def test__load_username(self, monkeypatch: pytest.MonkeyPatch):
         class MockAuth(UserPasswordAuth):
@@ -89,16 +89,19 @@ class TestUserPasswordAuth:
         # env var
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_PASSWORD", "bar")
-            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
+            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
+            assert out == "bar"
 
         # prompt
         with patch.object(t, "prompt", return_value="bar") as p:
-            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
+            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
+            assert out == "bar"
             p.assert_any_call("Password for foo", hide_input=True)
 
         # keyring
         with patch.object(t, "read_keyring", return_value="bar") as r:
-            assert UserPasswordAuth._get_password("https://example.com", "foo") == "bar"
+            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
+            assert out == "bar"
             r.assert_any_call('{"host": "example.com", "type": "login", "user": "foo"}')
 
     def test_login_success(
@@ -161,7 +164,7 @@ def test_auth_methods(
     monkeypatch.setenv("SECRETS_ENV_USERNAME", "user")
     monkeypatch.setenv("SECRETS_ENV_PASSWORD", "pass")
 
-    auth = method_class.create("https://example.com/", {})
+    auth = method_class.create(Url("https://example.com/"), {})
     assert auth
 
     # test login

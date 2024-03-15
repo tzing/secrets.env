@@ -129,7 +129,7 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
         return
 
     try:
-        auth = create_auth_by_name(str(parsed.url), parsed.auth)
+        auth = create_auth_by_name(parsed.url, parsed.auth)
     except ValueError:
         logger.error("Unknown auth method: <data>%s</data>", parsed.auth.get("method"))
         return

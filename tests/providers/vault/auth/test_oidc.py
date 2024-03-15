@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 import respx
+from pydantic_core import Url
 
 import secrets_env.providers.vault.auth.oidc as t
 import secrets_env.server
@@ -19,18 +20,18 @@ from secrets_env.providers.vault.auth.oidc import (
 
 class TestOpenIDConnectAuth:
     def test_create_default(self):
-        auth = OpenIDConnectAuth.create("https://example.com/", {})
+        auth = OpenIDConnectAuth.create(Url("https://example.com/"), {})
         assert isinstance(auth, OpenIDConnectAuth)
         assert auth.role is None
 
     def test_create_envvar(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_ROLE", "demo")
-        auth = OpenIDConnectAuth.create("https://example.com/", {})
+        auth = OpenIDConnectAuth.create(Url("https://example.com/"), {})
         assert isinstance(auth, OpenIDConnectAuth)
         assert auth.role == "demo"
 
     def test_create_config(self):
-        auth = OpenIDConnectAuth.create("https://example.com/", {"role": "sample"})
+        auth = OpenIDConnectAuth.create(Url("https://example.com/"), {"role": "sample"})
         assert isinstance(auth, OpenIDConnectAuth)
         assert auth.role == "sample"
 

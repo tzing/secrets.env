@@ -5,6 +5,7 @@ import keyring.backends.fail
 import keyring.backends.null
 import keyring.errors
 import pytest
+from pydantic_core import Url
 
 import secrets_env.commands.keyring as t
 
@@ -128,3 +129,9 @@ def test_is_keyring_available():
     # keyring unavailable
     with patch("keyring.get_keyring", return_value=keyring.backends.fail.Keyring()):
         assert t.is_keyring_available() is False
+
+
+def test_url_param():
+    pt = t.UrlParam()
+    assert pt("https://example.com") == Url("https://example.com/")
+    assert pt("EXAMPLE.COM") == Url("http://EXAMPLE.COM/")

@@ -4,13 +4,15 @@ import logging
 import typing
 
 if typing.TYPE_CHECKING:
+    from pydantic_core import Url
+
     from secrets_env.providers.vault.auth.base import Auth
 
 
 logger = logging.getLogger(__name__)
 
 
-def create_auth_by_name(url: str, config: dict) -> Auth:
+def create_auth_by_name(url: Url, config: dict) -> Auth:
     """
     Create an instance of the authentication class by the provided name.
     """

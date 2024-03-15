@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     import httpx
+    from pydantic_core import Url
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class UserPasswordAuth(Auth):
     """Request timeout."""
 
     @classmethod
-    def create(cls, url: str, config: dict) -> Self:
+    def create(cls, url: Url, config: dict) -> Self:
         username = cls._get_username(config)
         if not username:
             raise ValueError(f"Missing username for {cls.method} auth")
@@ -64,7 +65,7 @@ class UserPasswordAuth(Auth):
         return prompt(f"Username for {cls.method} auth")
 
     @classmethod
-    def _get_password(cls, url: str, username: str) -> str | None:
+    def _get_password(cls, url: Url, username: str) -> str | None:
         if password := get_env_var("SECRETS_ENV_PASSWORD"):
             logger.debug("Found password from environment variable.")
             return password

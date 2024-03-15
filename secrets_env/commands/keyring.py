@@ -1,11 +1,23 @@
+from __future__ import annotations
+
 import logging
 import sys
 
 import click
+from pydantic_core import Url
 
 from secrets_env.click import add_output_options, entrypoint
 
 logger = logging.getLogger(__name__)
+
+
+class UrlParam(click.ParamType):
+    name = "url"
+
+    def convert(self, value: str, param, ctx):
+        if "://" in value:
+            return Url(value)
+        return Url(f"http://{value}")
 
 
 @entrypoint.group("keyring")
@@ -22,11 +34,11 @@ def status():
 
 
 @group.command("set")
-@click.argument("host")
+@click.argument("host", type=UrlParam())
 @click.argument("target")
 @click.argument("value", required=False)
 @add_output_options
-def command_set(host: str, target: str, value: str):
+def command_set(host: Url, target: str, value: str):
     """Store credential in system keyring.
 
     HOST is the hostname/url to the vault that uses this credential.
@@ -70,10 +82,10 @@ def command_set(host: str, target: str, value: str):
 
 
 @group.command("del")
-@click.argument("host")
+@click.argument("host", type=UrlParam())
 @click.argument("target")
 @add_output_options
-def command_del(host: str, target: str):
+def command_del(host: Url, target: str):
     """Remove a credential from system keyring.
 
     HOST is the hostname/url to the vault that uses this credential.
