@@ -1,11 +1,8 @@
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-from pydantic_core import Url, ValidationError
+from pydantic_core import Url
 
-import secrets_env.providers.vault.config as t
 from secrets_env.providers.vault.auth.base import NullAuth
 from secrets_env.providers.vault.config import (
     RawVaultUserConfig,
@@ -63,7 +60,9 @@ class TestRawVaultUserConfig:
         assert config.auth == {"method": "token"}
 
         # missing method
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="Missing required config <mark>auth method</mark>"
+        ):
             RawVaultUserConfig.model_validate(
                 {
                     "url": "https://example.com",

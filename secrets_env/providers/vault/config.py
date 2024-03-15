@@ -134,16 +134,19 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
         logger.error("Unknown auth method: <data>%s</data>", parsed.auth.get("method"))
         return
 
-    conn_info = VaultConnectionInfo(
-        url=str(parsed.url),
-        auth=auth,
+    conn_info = typing.cast(
+        VaultConnectionInfo,
+        {
+            "url": str(parsed.url),
+            "auth": auth,
+        },
     )
 
     if parsed.proxy:
         conn_info["proxy"] = str(parsed.proxy)
     if parsed.tls.ca_cert:
         conn_info["ca_cert"] = parsed.tls.ca_cert
-    if parsed.tls.client_key:
+    if parsed.tls.client_cert and parsed.tls.client_key:
         conn_info["client_cert"] = (parsed.tls.client_cert, parsed.tls.client_key)
     elif parsed.tls.client_cert:
         conn_info["client_cert"] = parsed.tls.client_cert
