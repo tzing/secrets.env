@@ -5,6 +5,7 @@ import pytest
 from pydantic_core import Url
 
 from secrets_env.providers.vault.auth.base import NullAuth
+from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.config import (
     TlsConfig,
     VaultUserConfig,
@@ -50,20 +51,21 @@ class TestVaultUserConfig:
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://env.example.com")
 
-    def test_auth_config(self):
-        # shortcut
+    def test_auth__shortcut(self):
         config = VaultUserConfig.model_validate(
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.auth_config == {"method": "null"}
+        assert config.auth == NullAuth()
 
-        # use default
+    def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
+
         config = VaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, VaultUserConfig)
-        assert config.auth_config == {"method": "token"}
+        assert config.auth == TokenAuth(token="tok3n")
 
-        # missing method
+    def test_auth__invalid(self):
         with pytest.raises(
             ValueError, match="Missing required config <mark>auth method</mark>"
         ):

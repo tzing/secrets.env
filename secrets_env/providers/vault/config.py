@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import typing
+from functools import cached_property
 from typing import TypedDict
 
 from pydantic import (
@@ -110,6 +111,19 @@ class VaultUserConfig(BaseModel):
             if "method" not in value:
                 raise ValueError("Missing required config <mark>auth method</mark>")
         return value
+
+    @cached_property
+    def auth(self) -> Auth:
+        """Create auth instance from auth config.
+
+        Raises
+        ------
+        ValueError
+            If auth method is not supported.
+        ValidationError
+            If auth config is invalid.
+        """
+        return create_auth_by_name(self.url, self.auth_config)
 
 
 class VaultConnectionInfo(TypedDict):
