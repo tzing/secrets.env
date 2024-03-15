@@ -39,7 +39,7 @@ def get_adapted_provider(type_: str, data: dict) -> ProviderBase:
 
     # get connection parameter
     app_param = TeleportAdapterConfig.model_validate(data)
-    conn_param = app_param.teleport.get_connection_param()
+    conn_param = app_param.teleport.connection_param
 
     # forward parameters to corresponding provider
     return factory(subtype, data, conn_param)

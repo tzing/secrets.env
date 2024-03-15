@@ -7,7 +7,7 @@ import logging
 import os
 import shutil
 import tempfile
-from functools import cache, cached_property
+from functools import cached_property
 from pathlib import Path
 from typing import Annotated
 
@@ -42,8 +42,8 @@ class TeleportUserConfig(BaseModel):
             return {"app": data}
         return data
 
-    @cache
-    def get_connection_param(self) -> TeleportConnectionParameter:
+    @cached_property
+    def connection_param(self) -> TeleportConnectionParameter:
         """Get app connection parameter from Teleport CLI.
 
         Raises

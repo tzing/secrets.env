@@ -37,13 +37,26 @@ class TeleportProvider(Provider, TeleportUserConfig):
 
     def get(self, raw_spec: RequestSpec) -> str:
         spec = TeleportRequestSpec.model_validate(raw_spec)
-        param = self.get_connection_param()
 
         if spec.field == "uri":
-            return param.uri
-
+            return self.connection_param.uri
         elif spec.field == "ca":
-            return get_ca(param, spec.format)
+            return get_ca(self.connection_param, spec.format)
+        elif spec.field == "cert":
+            if spec.format == "path":
+                return str(self.connection_param.path_cert)
+            elif spec.format == "pem":
+                return self.connection_param.cert.decode()
+        elif spec.field == "key":
+            if spec.format == "path":
+                return str(self.connection_param.path_key)
+            elif spec.format == "pem":
+                return self.connection_param.key.decode()
+        elif spec.field == "cert+key":
+            if spec.format == "path":
+                return str(self.connection_param.path_cert_and_key)
+            elif spec.format == "pem":
+                return self.connection_param.cert_and_key.decode()
 
 
 def get_ca(param: TeleportConnectionParameter, fmt: Literal["path", "pem"]) -> str:
