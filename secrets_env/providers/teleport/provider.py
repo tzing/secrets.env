@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import logging
 import typing
-from functools import cached_property
 from typing import Literal
 
 from pydantic import BaseModel, model_validator
-from pydantic_core import ValidationError
 
 from secrets_env.provider import Provider
 from secrets_env.providers.teleport.config import TeleportUserConfig
@@ -39,3 +37,19 @@ class TeleportProvider(Provider, TeleportUserConfig):
 
     def get(self, raw_spec: RequestSpec) -> str:
         spec = TeleportRequestSpec.model_validate(raw_spec)
+        param = self.get_connection_param()
+
+        if spec.field == "uri":
+            return param.uri
+
+        elif spec.field == "ca":
+            return get_ca(param, spec.format)
+
+
+def get_ca(param: TeleportConnectionParameter, fmt: Literal["path", "pem"]) -> str:
+    if param.ca is None:
+        raise LookupError("CA is not available")
+    if fmt == "path":
+        return str(param.path_ca)
+    elif fmt == "pem":
+        return param.ca.decode()

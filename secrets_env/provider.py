@@ -40,6 +40,12 @@ class Provider(BaseModel, abc.ABC):
 
         Raises
         ------
+        ValidationError
+            If the input format is invalid.
+        UnsupportedError
+            When this operation is not supported.
+        AuthenticationError
+            Failed during authentication.
         LookupError
             If the secret is not found.
         """
