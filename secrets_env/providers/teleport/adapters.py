@@ -6,12 +6,10 @@ import typing
 from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase
+    from secrets_env.provider import Provider
     from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
-    AdapterType = typing.Callable[
-        [str, dict, TeleportConnectionParameter], ProviderBase
-    ]
+    AdapterType = typing.Callable[[str, dict, TeleportConnectionParameter], Provider]
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +24,7 @@ def get_adapter(name: str) -> AdapterType:
 
 def adapt_vault_provider(
     type_: str, data: dict, param: TeleportConnectionParameter
-) -> ProviderBase:
+) -> Provider:
     assert isinstance(data, dict)
     from secrets_env.providers import vault
 

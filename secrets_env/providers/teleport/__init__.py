@@ -5,23 +5,16 @@ import typing
 import pydantic
 
 from secrets_env.exceptions import ConfigError
+from secrets_env.providers.teleport.provider import TeleportProvider  # noqa: F401
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase
-    from secrets_env.providers.teleport.provider import TeleportProvider
+    from secrets_env.provider import Provider
+
 
 ADAPTER_PREFIX = "teleport+"
 
 
-def get_provider(type_: str, data: dict) -> TeleportProvider:
-    from .config import TeleportUserConfig
-    from .provider import TeleportProvider
-
-    cfg = TeleportUserConfig.model_validate(data)
-    return TeleportProvider(config=cfg)
-
-
-def get_adapted_provider(type_: str, data: dict) -> ProviderBase:
+def get_adapted_provider(type_: str, data: dict) -> Provider:
     from .adapters import get_adapter
     from .config import TeleportUserConfig  # noqa: TCH001
 

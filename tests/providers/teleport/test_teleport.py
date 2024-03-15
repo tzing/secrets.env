@@ -1,17 +1,11 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, PropertyMock
 
 import pytest
 
 import secrets_env.providers.teleport as t
 from secrets_env.exceptions import ConfigError
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 from secrets_env.providers.teleport.config import TeleportUserConfig
-from secrets_env.providers.teleport.provider import TeleportProvider
-
-
-def test_get_provider():
-    provider = t.get_provider("teleport", {"app": "test"})
-    assert isinstance(provider, TeleportProvider)
 
 
 class TestGetAdaptedProvider:
@@ -20,7 +14,7 @@ class TestGetAdaptedProvider:
             assert subtype == "Test"
             assert isinstance(data, dict)
             assert isinstance(param, TeleportUserConfig)
-            return Mock(spec=ProviderBase)
+            return Mock(Provider)
 
         def mock_get_adapter(subtype):
             assert subtype == "Test"
@@ -32,8 +26,8 @@ class TestGetAdaptedProvider:
         )
         monkeypatch.setattr(
             TeleportUserConfig,
-            "get_connection_param",
-            lambda _: Mock(spec=TeleportUserConfig),
+            "connection_param",
+            PropertyMock(return_value=Mock(TeleportUserConfig)),
         )
 
         config = {
@@ -43,7 +37,7 @@ class TestGetAdaptedProvider:
         }
         provider = t.get_adapted_provider("teleport+Test", config)
 
-        assert isinstance(provider, ProviderBase)
+        assert isinstance(provider, Provider)
 
     def test_fail(self):
         with pytest.raises(ConfigError):

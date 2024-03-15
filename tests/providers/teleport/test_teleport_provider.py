@@ -58,6 +58,16 @@ class TestTeleportProvider:
         with open(provider.get("cert+key")) as fd:
             assert fd.read() == expect
 
+    def test_get_invalid(self, monkeypatch: pytest.MonkeyPatch):
+        spec = Mock(TeleportRequestSpec)
+        spec.field = "unknown"
+        monkeypatch.setattr(
+            TeleportRequestSpec, "model_validate", Mock(return_value=spec)
+        )
+
+        with pytest.raises(RuntimeError):
+            TeleportProvider(app="test").get("unknown")
+
 
 class TestGetCa:
     def test_success(self):

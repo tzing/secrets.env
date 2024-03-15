@@ -5,7 +5,7 @@ import pytest
 
 import secrets_env.providers.teleport.adapters as t
 from secrets_env.exceptions import ConfigError
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
 
@@ -22,7 +22,7 @@ def test_adapt_vault_provider(monkeypatch: pytest.MonkeyPatch):
         assert len(data["tls"]) == 2
         assert isinstance(data["tls"]["client_cert"], Path)
         assert isinstance(data["tls"]["client_key"], Path)
-        return Mock(spec=ProviderBase)
+        return Mock(spec=Provider)
 
     monkeypatch.setattr("secrets_env.providers.vault.get_provider", mock_load)
 
@@ -36,4 +36,4 @@ def test_adapt_vault_provider(monkeypatch: pytest.MonkeyPatch):
             key=b"key",
         ),
     )
-    assert isinstance(provider, ProviderBase)
+    assert isinstance(provider, Provider)
