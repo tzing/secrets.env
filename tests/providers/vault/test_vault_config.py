@@ -5,14 +5,15 @@ import pytest
 from pydantic_core import Url
 
 from secrets_env.providers.vault.auth.base import NullAuth
+from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.config import (
-    RawVaultUserConfig,
     TlsConfig,
+    VaultUserConfig,
     get_connection_info,
 )
 
 
-class TestRawVaultUserConfig:
+class TestVaultUserConfig:
     def test_success(self, tmp_path: Path):
         if "VAULT_ADDR" in os.environ:
             pytest.skip("VAULT_ADDR is set. Skipping test.")
@@ -21,7 +22,7 @@ class TestRawVaultUserConfig:
         (tmp_path / "client.pem").touch()
         (tmp_path / "client.key").touch()
 
-        config = RawVaultUserConfig.model_validate(
+        config = VaultUserConfig.model_validate(
             {
                 "url": "https://example.com",
                 "auth": {"method": "null"},
@@ -34,9 +35,9 @@ class TestRawVaultUserConfig:
             }
         )
 
-        assert isinstance(config, RawVaultUserConfig)
+        assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://example.com")
-        assert config.auth == {"method": "null"}
+        assert config.auth_config == {"method": "null"}
         assert config.proxy == Url("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",
@@ -46,28 +47,29 @@ class TestRawVaultUserConfig:
 
     def test_url(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_ADDR", "https://env.example.com")
-        config = RawVaultUserConfig.model_validate({"auth": "null"})
-        assert isinstance(config, RawVaultUserConfig)
+        config = VaultUserConfig.model_validate({"auth": "null"})
+        assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://env.example.com")
 
-    def test_auth(self):
-        # shortcut
-        config = RawVaultUserConfig.model_validate(
+    def test_auth__shortcut(self):
+        config = VaultUserConfig.model_validate(
             {"url": "https://example.com", "auth": "null"}
         )
-        assert isinstance(config, RawVaultUserConfig)
-        assert config.auth == {"method": "null"}
+        assert isinstance(config, VaultUserConfig)
+        assert config.auth == NullAuth()
 
-        # use default
-        config = RawVaultUserConfig.model_validate({"url": "https://example.com"})
-        assert isinstance(config, RawVaultUserConfig)
-        assert config.auth == {"method": "token"}
+    def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
 
-        # missing method
+        config = VaultUserConfig.model_validate({"url": "https://example.com"})
+        assert isinstance(config, VaultUserConfig)
+        assert config.auth == TokenAuth(token="tok3n")
+
+    def test_auth__invalid(self):
         with pytest.raises(
             ValueError, match="Missing required config <mark>auth method</mark>"
         ):
-            RawVaultUserConfig.model_validate(
+            VaultUserConfig.model_validate(
                 {
                     "url": "https://example.com",
                     "auth": {"foo": "bar"},
@@ -76,10 +78,10 @@ class TestRawVaultUserConfig:
 
     def test_proxy(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_PROXY", "http://env.proxy.example.com")
-        config = RawVaultUserConfig.model_validate(
+        config = VaultUserConfig.model_validate(
             {"url": "https://example.com", "auth": "null"}
         )
-        assert isinstance(config, RawVaultUserConfig)
+        assert isinstance(config, VaultUserConfig)
         assert config.proxy == Url("http://env.proxy.example.com")
 
 
