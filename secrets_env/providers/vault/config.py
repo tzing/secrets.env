@@ -19,7 +19,7 @@ from secrets_env.utils import ensure_dict, ensure_str, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Self
+    from typing import Self
 
     from secrets_env.providers.vault.auth.base import Auth
 
@@ -41,23 +41,29 @@ class RawVaultUserConfig(BaseModel):
     @classmethod
     def _use_env_var(cls, values: Self | dict) -> Self | dict:
         if isinstance(values, dict):
-            if url := get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR"):
+            if url := get_env_var(
+                "SECRETS_ENV_ADDR",
+                "VAULT_ADDR",
+            ):
                 values["url"] = url
             if proxy := get_env_var(
-                "SECRETS_ENV_PROXY", "VAULT_PROXY_ADDR", "VAULT_HTTP_PROXY"
+                "SECRETS_ENV_PROXY",
+                "VAULT_PROXY_ADDR",
+                "VAULT_HTTP_PROXY",
             ):
                 values["proxy"] = proxy
         return values
 
     @model_validator(mode="before")
     @classmethod
-    def _preprocess_auth(cls, values: Self | dict) -> Self | dict:
+    def _process_auth(cls, values: Self | dict) -> Self | dict:
         if isinstance(values, dict):
-            if auth := values.get("auth"):
+            # prepare auth config
+            if val := values.get("auth"):
                 # has `auth` key
-                if isinstance(auth, str):
+                if isinstance(val, str):
                     # syntax sugar: `auth: <method>`
-                    values["auth"] = {"method": auth}
+                    values["auth"] = {"method": val}
             else:
                 # missing `auth` key; show warning and use default method
                 logger.warning(
@@ -84,13 +90,20 @@ class TlsConfig(BaseModel):
     @classmethod
     def _use_env_var(cls, values: Self | dict) -> Self | dict:
         if isinstance(values, dict):
-            if ca_cert := get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT"):
+            if ca_cert := get_env_var(
+                "SECRETS_ENV_CA_CERT",
+                "VAULT_CACERT",
+            ):
                 values["ca_cert"] = ca_cert
             if client_cert := get_env_var(
-                "SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT"
+                "SECRETS_ENV_CLIENT_CERT",
+                "VAULT_CLIENT_CERT",
             ):
                 values["client_cert"] = client_cert
-            if client_key := get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY"):
+            if client_key := get_env_var(
+                "SECRETS_ENV_CLIENT_KEY",
+                "VAULT_CLIENT_KEY",
+            ):
                 values["client_key"] = client_key
         return values
 
@@ -112,62 +125,31 @@ class VaultConnectionInfo(TypedDict):
 
 
 def get_connection_info(data: dict) -> VaultConnectionInfo | None:
-    output: dict[str, Any] = {}
-    is_success = True
-
-    # url
-    output["url"] = url = get_url(data)
-    if not url:
-        return None
-
-    # auth
-    if auth := get_auth(url, data.get("auth", {})):
-        output["auth"] = auth
-    else:
-        is_success = False
-
-    # proxy
-    proxy, ok = get_proxy(data)
-    is_success &= ok
-    if ok and proxy:
-        output["proxy"] = proxy
-
-    # tls
     try:
-        model_tls = TlsConfig.model_validate(data.get("tls", {}))
-
-        if model_tls.ca_cert:
-            output["ca_cert"] = model_tls.ca_cert
-
-        if model_tls.client_key:
-            output["client_cert"] = (model_tls.client_cert, model_tls.client_key)
-        elif model_tls.client_cert:
-            output["client_cert"] = model_tls.client_cert
-
+        parsed = RawVaultUserConfig.model_validate(data)
     except (ValidationError, TypeError):
-        is_success = False
+        return
 
-    return typing.cast(VaultConnectionInfo, output) if is_success else None
+    auth = get_auth(str(parsed.url), parsed.auth)
+    if not auth:
+        return
 
+    conn_info = VaultConnectionInfo(
+        url=str(parsed.url),
+        auth=auth,
+    )
 
-def get_url(data: dict) -> str | None:
-    url = get_env_var("SECRETS_ENV_ADDR", "VAULT_ADDR")
-    if not url:
-        url = data.get("url", None)
+    if parsed.proxy:
+        conn_info["proxy"] = str(parsed.proxy)
+    if parsed.tls:
+        if parsed.tls.ca_cert:
+            conn_info["ca_cert"] = parsed.tls.ca_cert
+        if parsed.tls.client_key:
+            conn_info["client_cert"] = (parsed.tls.client_cert, parsed.tls.client_key)
+        elif parsed.tls.client_cert:
+            conn_info["client_cert"] = parsed.tls.client_cert
 
-    if not url:
-        logger.error(
-            "Missing required config <mark>url</mark>. "
-            "Please provide from config file (<mark>source.url</mark>) "
-            "or environment variable (<mark>SECRETS_ENV_ADDR</mark>)."
-        )
-        return None
-
-    url, ok = ensure_str("source.url", url)
-    if not ok:
-        return None
-
-    return url
+    return conn_info
 
 
 def get_auth(url: str, data: dict) -> Auth | None:
@@ -196,24 +178,3 @@ def get_auth(url: str, data: dict) -> Auth | None:
     except ConfigError:
         logger.error("Unknown auth method: <data>%s</data>", data["method"])
         return None
-
-
-def get_proxy(data: dict) -> tuple[str | None, bool]:
-    # (1) Vault prioritized `VAULT_PROXY_ADDR` before `VAULT_HTTP_PROXY`
-    #     https://developer.hashicorp.com/vault/docs/commands#environment-variables
-    # (2) Standard proxy variables are later captured by httpx
-    proxy = get_env_var("SECRETS_ENV_PROXY", "VAULT_PROXY_ADDR", "VAULT_HTTP_PROXY")
-    if not proxy:
-        proxy = data.get("proxy")
-    if not proxy:
-        return None, True
-
-    proxy, ok = ensure_str("source.proxy", proxy)
-    if not ok or not proxy:
-        return None, False
-
-    if not proxy.lower().startswith(("http://", "https://")):
-        logger.warning("Proxy must specify 'http://' or 'https://' protocol")
-        return None, False
-
-    return proxy, True
