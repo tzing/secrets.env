@@ -3,12 +3,8 @@ from unittest.mock import Mock, PropertyMock
 
 import pytest
 
+from secrets_env.providers.teleport import TeleportProvider, TeleportRequestSpec, get_ca
 from secrets_env.providers.teleport.config import TeleportConnectionParameter
-from secrets_env.providers.teleport.provider import (
-    TeleportProvider,
-    TeleportRequestSpec,
-    get_ca,
-)
 
 
 class TestTeleportRequestSpec:
