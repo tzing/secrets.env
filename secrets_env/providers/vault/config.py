@@ -64,9 +64,9 @@ class TlsConfig(BaseModel):
         return self
 
 
-class RawVaultUserConfig(BaseModel):
+class VaultUserConfig(BaseModel):
     url: HttpUrl
-    auth: dict[str, str]
+    auth_config: dict[str, str] = Field(alias="auth")
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
 
@@ -100,7 +100,7 @@ class RawVaultUserConfig(BaseModel):
                 )
         return values
 
-    @field_validator("auth", mode="before")
+    @field_validator("auth_config", mode="before")
     @classmethod
     def _validate_auth(cls, value: dict | str) -> dict:
         if isinstance(value, str):
@@ -124,14 +124,16 @@ class VaultConnectionInfo(TypedDict):
 
 def get_connection_info(data: dict) -> VaultConnectionInfo | None:
     try:
-        parsed = RawVaultUserConfig.model_validate(data)
+        parsed = VaultUserConfig.model_validate(data)
     except (ValidationError, TypeError):
         return
 
     try:
-        auth = create_auth_by_name(parsed.url, parsed.auth)
+        auth = create_auth_by_name(parsed.url, parsed.auth_config)
     except ValueError:
-        logger.error("Unknown auth method: <data>%s</data>", parsed.auth.get("method"))
+        logger.error(
+            "Unknown auth method: <data>%s</data>", parsed.auth_config.get("method")
+        )
         return
 
     conn_info = typing.cast(
