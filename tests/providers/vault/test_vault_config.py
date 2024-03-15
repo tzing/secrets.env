@@ -110,6 +110,9 @@ class TestTlsConfig:
 
 class TestGetConnectionInfo:
     def test_success_1(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
+
         parsed = get_connection_info(
             {
                 "url": "https://example.com",
