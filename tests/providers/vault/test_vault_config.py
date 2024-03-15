@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,9 @@ from secrets_env.providers.vault.config import (
 
 class TestRawVaultUserConfig:
     def test_success(self, tmp_path: Path):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
+
         (tmp_path / "ca.cert").touch()
         (tmp_path / "client.pem").touch()
         (tmp_path / "client.key").touch()
@@ -156,9 +160,11 @@ class TestGetConnectionInfo:
         assert parsed["proxy"] == "http://proxy.example.com/"
         assert parsed["client_cert"] == tmp_path / "client.pem"
 
-    def test_fail(self):
+    def test_fail_1(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
         assert get_connection_info({"auth": "null"}) is None
-        assert (
-            get_connection_info({"url": "https://example.com", "auth": "invalid"})
-            is None
-        )
+
+    def test_fail_2(self):
+        out = get_connection_info({"url": "https://example.com", "auth": "invalid"})
+        assert out is None
