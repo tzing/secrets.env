@@ -13,8 +13,9 @@ from secrets_env.server import HTTPRequestHandler, start_server
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
-    import httpx
     from typing import Any
+
+    import httpx
 
     from secrets_env.server import RouteHandler, URLParams
 
