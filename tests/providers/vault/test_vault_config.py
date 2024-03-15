@@ -35,7 +35,7 @@ class TestRawVaultUserConfig:
 
         assert isinstance(config, RawVaultUserConfig)
         assert config.url == Url("https://example.com")
-        assert config.auth == {"method": "null"}  # XXX
+        assert config.auth == {"method": "null"}
         assert config.proxy == Url("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",
@@ -55,12 +55,12 @@ class TestRawVaultUserConfig:
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, RawVaultUserConfig)
-        assert config.auth == {"method": "null"}  # XXX
+        assert config.auth == {"method": "null"}
 
         # use default
         config = RawVaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, RawVaultUserConfig)
-        assert config.auth == {"method": "token"}  # XXX
+        assert config.auth == {"method": "token"}
 
         # missing method
         with pytest.raises(ValueError):
@@ -106,46 +106,60 @@ class TestTlsConfig:
 
 
 class TestGetConnectionInfo:
-    def test_success(self, tmp_path: Path):
+    def test_success_1(self):
         parsed = get_connection_info(
             {
                 "url": "https://example.com",
                 "auth": "null",
-                "proxy": "http://proxy.example.com",
             }
         )
         assert isinstance(parsed, dict)
         assert parsed["url"] == "https://example.com/"
         assert parsed["auth"] == NullAuth()
+
+    def test_success_2(self, tmp_path: Path):
+        (tmp_path / "ca.cert").touch()
+        (tmp_path / "client.pem").touch()
+        (tmp_path / "client.key").touch()
+
+        parsed = get_connection_info(
+            {
+                "url": "https://example.com",
+                "auth": "null",
+                "tls": {
+                    "ca_cert": tmp_path / "ca.cert",
+                    "client_cert": tmp_path / "client.pem",
+                    "client_key": tmp_path / "client.key",
+                },
+            }
+        )
+        assert isinstance(parsed, dict)
+        assert parsed["ca_cert"] == tmp_path / "ca.cert"
+        assert parsed["client_cert"] == (
+            tmp_path / "client.pem",
+            tmp_path / "client.key",
+        )
+
+    def test_success_3(self, tmp_path: Path):
+        (tmp_path / "client.pem").touch()
+
+        parsed = get_connection_info(
+            {
+                "url": "https://example.com",
+                "auth": "null",
+                "proxy": "http://proxy.example.com",
+                "tls": {
+                    "client_cert": tmp_path / "client.pem",
+                },
+            }
+        )
+        assert isinstance(parsed, dict)
         assert parsed["proxy"] == "http://proxy.example.com/"
+        assert parsed["client_cert"] == tmp_path / "client.pem"
 
     def test_fail(self):
         assert get_connection_info({"auth": "null"}) is None
-
-
-class TestGetAuthBehavior:
-    def test_from_data(self):
-        assert isinstance(
-            t.get_auth("https://example.com", {"method": "null"}), NullAuth
-        )
-
-    def test_syntax_sugar(self):
-        assert isinstance(t.get_auth("https://example.com", "null"), NullAuth)
-
-    def test_type_error(self):
-        assert t.get_auth("https://example.com", {"method": 1234}) is None
-
-    def test_default_method(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ):
-        monkeypatch.setattr(t, "DEFAULT_AUTH_METHOD", "null")
-
-        assert isinstance(t.get_auth("https://example.com", {}), NullAuth)
         assert (
-            "Missing required config <mark>auth method</mark>. "
-            "Use default method <data>null</data>"
-        ) in caplog.text
-
-    def test_unknown_method(self):
-        with pytest.raises(ValueError, match="Unknown auth method: no-this-method"):
-            t.get_auth("https://example.com", {"method": "no-this-method"})
+            get_connection_info({"url": "https://example.com", "auth": "invalid"})
+            is None
+        )

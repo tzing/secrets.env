@@ -14,9 +14,8 @@ from pydantic import (
     model_validator,
 )
 
-from secrets_env.exceptions import ConfigError
 from secrets_env.providers.vault.auth import create_auth_by_name
-from secrets_env.utils import ensure_dict, ensure_str, get_env_var
+from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -90,29 +89,27 @@ class RawVaultUserConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _preprocess_auth(cls, values: Self | dict) -> Self | dict:
+    def _setdefault_auth(cls, values: Self | dict) -> Self | dict:
         if isinstance(values, dict):
-            # prepare auth config
-            if val := values.get("auth"):
-                # has `auth` key
-                if isinstance(val, str):
-                    # syntax sugar: `auth: <method>`
-                    values["auth"] = {"method": val}
-            else:
-                # missing `auth` key; show warning and use default method
+            if not values.get("auth"):
+                values["auth"] = {"method": DEFAULT_AUTH_METHOD}
                 logger.warning(
                     "Missing required config <mark>auth method</mark>. "
                     "Use default method <data>%s</data>",
                     DEFAULT_AUTH_METHOD,
                 )
-                values["auth"] = {"method": DEFAULT_AUTH_METHOD}
         return values
 
-    @field_validator("auth")
-    def _validate_auth(cls, auth: dict) -> dict:
-        if "method" not in auth:
-            raise ValueError("Missing required config <mark>auth method</mark>")
-        return auth
+    @field_validator("auth", mode="before")
+    @classmethod
+    def _validate_auth(cls, value: dict | str) -> dict:
+        if isinstance(value, str):
+            # syntax sugar: `auth: <method>`
+            return {"method": value}
+        elif isinstance(value, dict):
+            if "method" not in value:
+                raise ValueError("Missing required config <mark>auth method</mark>")
+        return value
 
 
 class VaultConnectionInfo(TypedDict):
@@ -131,8 +128,10 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
     except (ValidationError, TypeError):
         return
 
-    auth = get_auth(str(parsed.url), parsed.auth)
-    if not auth:
+    try:
+        auth = create_auth_by_name(str(parsed.url), parsed.auth)
+    except ValueError:
+        logger.error("Unknown auth method: <data>%s</data>", parsed.auth.get("method"))
         return
 
     conn_info = VaultConnectionInfo(
@@ -150,31 +149,3 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
         conn_info["client_cert"] = parsed.tls.client_cert
 
     return conn_info
-
-
-def get_auth(url: str, data: dict) -> Auth | None:
-    # syntax sugar: `auth: <method>`
-    if isinstance(data, str):
-        data = {"method": data}
-
-    # type check
-    data, _ = ensure_dict("source.auth", data)
-
-    # set auth method
-    if "method" not in data:
-        data["method"] = DEFAULT_AUTH_METHOD
-        logger.warning(
-            "Missing required config <mark>auth method</mark>. "
-            "Use default method <data>%s</data>",
-            DEFAULT_AUTH_METHOD,
-        )
-
-    _, ok = ensure_str("auth method", data["method"])
-    if not ok:
-        return None
-
-    try:
-        return create_auth_by_name(url, data)
-    except ConfigError:
-        logger.error("Unknown auth method: <data>%s</data>", data["method"])
-        return None
