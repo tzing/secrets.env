@@ -21,6 +21,9 @@ if typing.TYPE_CHECKING:
 DEFAULT_AUTH_METHOD = "token"
 
 
+logger = logging.getLogger(__name__)
+
+
 class TlsConfig(BaseModel):
     ca_cert: FilePath | None = None
     client_cert: FilePath | None = None
@@ -28,14 +31,16 @@ class TlsConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values):
-        assert isinstance(values, dict)
-        if ca_cert := get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT"):
-            values["ca_cert"] = ca_cert
-        if client_cert := get_env_var("SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT"):
-            values["client_cert"] = client_cert
-        if client_key := get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY"):
-            values["client_key"] = client_key
+    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+        if isinstance(values, dict):
+            if ca_cert := get_env_var("SECRETS_ENV_CA_CERT", "VAULT_CACERT"):
+                values["ca_cert"] = ca_cert
+            if client_cert := get_env_var(
+                "SECRETS_ENV_CLIENT_CERT", "VAULT_CLIENT_CERT"
+            ):
+                values["client_cert"] = client_cert
+            if client_key := get_env_var("SECRETS_ENV_CLIENT_KEY", "VAULT_CLIENT_KEY"):
+                values["client_key"] = client_key
         return values
 
     @model_validator(mode="after")
@@ -53,9 +58,6 @@ class VaultConnectionInfo(TypedDict):
     # tls
     ca_cert: Path
     client_cert: CertTypes
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_connection_info(data: dict) -> VaultConnectionInfo | None:
