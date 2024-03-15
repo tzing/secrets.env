@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -15,6 +16,7 @@ if typing.TYPE_CHECKING:
 
     import click
     import httpx
+    import pydantic_core
 
     T = TypeVar("T")
     TL_True = Literal[True]
@@ -259,35 +261,14 @@ def read_keyring(key: str) -> str | None:
     return value
 
 
-def create_keyring_login_key(host: str, user: str) -> str:
+def create_keyring_login_key(url: pydantic_core.Url, user: str) -> str:
     """Build key for storing login credentials in keyring."""
-    import json
-
-    return json.dumps(
-        {"host": extract_http_host(host), "type": "login", "user": user.casefold()}
-    )
+    return json.dumps({"host": url.host, "type": "login", "user": user.casefold()})
 
 
-def create_keyring_token_key(host: str):
+def create_keyring_token_key(url: pydantic_core.Url):
     """Build key for storing token in keyring."""
-    import json
-
-    return json.dumps({"host": extract_http_host(host), "type": "token"})
-
-
-def extract_http_host(url: str) -> str:
-    """Extract hostname from given URL."""
-    if "://" not in url:
-        return extract_http_host(f"http://{url}")
-
-    import urllib.parse
-
-    u = urllib.parse.urlsplit(url)
-    if u.scheme not in ("http", "https"):
-        raise ValueError(f"Invalid scheme: {u.scheme}")
-
-    hostname = typing.cast(str, u.hostname)
-    return hostname.casefold()
+    return json.dumps({"host": url.host, "type": "token"})
 
 
 def strip_ansi(value: str) -> str:
