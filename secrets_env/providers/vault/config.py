@@ -6,6 +6,7 @@ from typing import TypedDict
 
 from pydantic import (
     BaseModel,
+    Field,
     FilePath,
     HttpUrl,
     ValidationError,
@@ -29,56 +30,6 @@ DEFAULT_AUTH_METHOD = "token"
 
 
 logger = logging.getLogger(__name__)
-
-
-class RawVaultUserConfig(BaseModel):
-    url: HttpUrl
-    auth: dict[str, str]
-    proxy: HttpUrl | None = None
-    tls: TlsConfig | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _use_env_var(cls, values: Self | dict) -> Self | dict:
-        if isinstance(values, dict):
-            if url := get_env_var(
-                "SECRETS_ENV_ADDR",
-                "VAULT_ADDR",
-            ):
-                values["url"] = url
-            if proxy := get_env_var(
-                "SECRETS_ENV_PROXY",
-                "VAULT_PROXY_ADDR",
-                "VAULT_HTTP_PROXY",
-            ):
-                values["proxy"] = proxy
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def _process_auth(cls, values: Self | dict) -> Self | dict:
-        if isinstance(values, dict):
-            # prepare auth config
-            if val := values.get("auth"):
-                # has `auth` key
-                if isinstance(val, str):
-                    # syntax sugar: `auth: <method>`
-                    values["auth"] = {"method": val}
-            else:
-                # missing `auth` key; show warning and use default method
-                logger.warning(
-                    "Missing required config <mark>auth method</mark>. "
-                    "Use default method <data>%s</data>",
-                    DEFAULT_AUTH_METHOD,
-                )
-                values["auth"] = {"method": DEFAULT_AUTH_METHOD}
-        return values
-
-    @field_validator("auth")
-    def _validate_auth(cls, auth: dict) -> dict:
-        if "method" not in auth:
-            raise ValueError("Missing required config <mark>auth method</mark>")
-        return auth
 
 
 class TlsConfig(BaseModel):
@@ -114,6 +65,56 @@ class TlsConfig(BaseModel):
         return self
 
 
+class RawVaultUserConfig(BaseModel):
+    url: HttpUrl
+    auth: dict[str, str]
+    proxy: HttpUrl | None = None
+    tls: TlsConfig = Field(default_factory=TlsConfig)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+        if isinstance(values, dict):
+            if url := get_env_var(
+                "SECRETS_ENV_ADDR",
+                "VAULT_ADDR",
+            ):
+                values["url"] = url
+            if proxy := get_env_var(
+                "SECRETS_ENV_PROXY",
+                "VAULT_PROXY_ADDR",
+                "VAULT_HTTP_PROXY",
+            ):
+                values["proxy"] = proxy
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def _preprocess_auth(cls, values: Self | dict) -> Self | dict:
+        if isinstance(values, dict):
+            # prepare auth config
+            if val := values.get("auth"):
+                # has `auth` key
+                if isinstance(val, str):
+                    # syntax sugar: `auth: <method>`
+                    values["auth"] = {"method": val}
+            else:
+                # missing `auth` key; show warning and use default method
+                logger.warning(
+                    "Missing required config <mark>auth method</mark>. "
+                    "Use default method <data>%s</data>",
+                    DEFAULT_AUTH_METHOD,
+                )
+                values["auth"] = {"method": DEFAULT_AUTH_METHOD}
+        return values
+
+    @field_validator("auth")
+    def _validate_auth(cls, auth: dict) -> dict:
+        if "method" not in auth:
+            raise ValueError("Missing required config <mark>auth method</mark>")
+        return auth
+
+
 class VaultConnectionInfo(TypedDict):
     url: str
     auth: Auth
@@ -141,13 +142,12 @@ def get_connection_info(data: dict) -> VaultConnectionInfo | None:
 
     if parsed.proxy:
         conn_info["proxy"] = str(parsed.proxy)
-    if parsed.tls:
-        if parsed.tls.ca_cert:
-            conn_info["ca_cert"] = parsed.tls.ca_cert
-        if parsed.tls.client_key:
-            conn_info["client_cert"] = (parsed.tls.client_cert, parsed.tls.client_key)
-        elif parsed.tls.client_cert:
-            conn_info["client_cert"] = parsed.tls.client_cert
+    if parsed.tls.ca_cert:
+        conn_info["ca_cert"] = parsed.tls.ca_cert
+    if parsed.tls.client_key:
+        conn_info["client_cert"] = (parsed.tls.client_cert, parsed.tls.client_key)
+    elif parsed.tls.client_cert:
+        conn_info["client_cert"] = parsed.tls.client_cert
 
     return conn_info
 
