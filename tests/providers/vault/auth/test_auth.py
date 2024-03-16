@@ -33,7 +33,10 @@ def test_create_auth_by_name_fail():
 class TestNullAuth:
     def test_login(self):
         auth = NullAuth()
-        assert auth.login(object()) is None
+        assert auth.login(Mock()) == ""
+
+        auth = NullAuth(token="test")
+        assert auth.login(Mock()) == "test"
 
     def test_create(self):
         assert isinstance(NullAuth.create(Url("https://example.com/"), {}), NullAuth)

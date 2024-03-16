@@ -43,9 +43,11 @@ class NullAuth(Auth):
 
     method: ClassVar[str] = "null"
 
+    token: str = ""
+
     @classmethod
     def create(cls, url: Any, config: dict[str, Any]) -> NullAuth:
         return cls()
 
-    def login(self, client: Any) -> None:
-        return None
+    def login(self, client: Any) -> str:
+        return self.token
