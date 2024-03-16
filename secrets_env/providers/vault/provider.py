@@ -20,6 +20,7 @@ from pydantic import (
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
+from secrets_env.providers.vault.auth import Auth
 from secrets_env.providers.vault.config import VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
@@ -27,7 +28,6 @@ if typing.TYPE_CHECKING:
     from typing import Self
 
     from secrets_env.provider import RequestSpec
-    from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +104,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
             return cache
 
 
+@validate_call
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
     logger.debug(
         "Vault client initialization requested. URL= %s, Auth type= %s",
@@ -139,7 +140,8 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
     return httpx.Client(**client_params)
 
 
-def get_token(client: httpx.Client, auth: Auth) -> str:
+@validate_call
+def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
 
@@ -166,7 +168,8 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     return token
 
 
-def is_authenticated(client: httpx.Client, token: str) -> bool:
+@validate_call
+def is_authenticated(client: InstanceOf[httpx.Client], token: str) -> bool:
     """Check is a token is authenticated.
 
     See also
@@ -188,14 +191,48 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     return False
 
 
-def read_secret(client: httpx.Client, path: str) -> dict | None:
+@validate_call
+def read_secret(client: InstanceOf[httpx.Client], path: str) -> dict | None:
     """Read secret from Vault.
 
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/secret/kv
     """
-    raise NotImplementedError
+    mount = get_mount(client, path)
+    if not mount:
+        return
+
+    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount.path, mount.version)
+
+    if mount.version == 2:
+        subpath = path.removeprefix(mount.path)
+        request_path = f"/v1/{mount.path}data/{subpath}"
+    else:
+        request_path = f"/v1/{path}"
+
+    try:
+        resp = client.get(request_path)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during query secret %s: %s", path, reason)
+        return
+
+    if resp.is_success:
+        data = resp.json()
+        if mount.version == 2:
+            return data["data"]["data"]
+        else:
+            return data["data"]
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        logger.error("Secret <data>%s</data> not found", path)
+        return
+
+    logger.error("Error occurred during query secret %s", path)
+    log_httpx_response(logger, resp)
+    return
 
 
 class _RawMountMetadata(BaseModel):
