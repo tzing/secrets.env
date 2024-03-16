@@ -4,7 +4,7 @@ import pytest
 from pydantic_core import Url
 
 from secrets_env.providers.vault.auth import create_auth_by_name
-from secrets_env.providers.vault.auth.base import Auth, NullAuth
+from secrets_env.providers.vault.auth.base import Auth, NoAuth
 
 
 @pytest.mark.parametrize(
@@ -12,7 +12,7 @@ from secrets_env.providers.vault.auth.base import Auth, NullAuth
     [
         ("basic", "secrets_env.providers.vault.auth.userpass.BasicAuth.create"),
         ("ldap", "secrets_env.providers.vault.auth.userpass.LDAPAuth.create"),
-        ("null", "secrets_env.providers.vault.auth.base.NullAuth.create"),
+        ("null", "secrets_env.providers.vault.auth.base.NoAuth.create"),
         ("oidc", "secrets_env.providers.vault.auth.oidc.OpenIDConnectAuth.create"),
         ("okta", "secrets_env.providers.vault.auth.userpass.OktaAuth.create"),
         ("radius", "secrets_env.providers.vault.auth.userpass.RADIUSAuth.create"),
@@ -30,10 +30,13 @@ def test_create_auth_by_name_fail():
         create_auth_by_name(Url("https://example.com/"), {"method": "invalid"})
 
 
-class TestNullAuth:
+class TestNoAuth:
     def test_login(self):
-        auth = NullAuth()
-        assert auth.login(object()) is None
+        auth = NoAuth()
+        assert auth.login(Mock()) == ""
+
+        auth = NoAuth(token="test")
+        assert auth.login(Mock()) == "test"
 
     def test_create(self):
-        assert isinstance(NullAuth.create(Url("https://example.com/"), {}), NullAuth)
+        assert isinstance(NoAuth.create(Url("https://example.com/"), {}), NoAuth)

@@ -27,8 +27,8 @@ def create_auth_by_name(url: Url, config: dict) -> Auth:
         from secrets_env.providers.vault.auth.userpass import LDAPAuth
         return LDAPAuth.create(url, config)
     elif method == "null":
-        from secrets_env.providers.vault.auth.base import NullAuth
-        return NullAuth.create(url, config)
+        from secrets_env.providers.vault.auth.base import NoAuth
+        return NoAuth.create(url, config)
     elif method == "oidc":
         from secrets_env.providers.vault.auth.oidc import OpenIDConnectAuth
         return OpenIDConnectAuth.create(url, config)
