@@ -8,6 +8,7 @@ import respx
 from pydantic_core import Url
 
 import secrets_env.providers.vault.auth.userpass as t
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.userpass import UserPasswordAuth
 
 
@@ -122,10 +123,7 @@ class TestUserPasswordAuth:
         assert auth_obj.login(unittest_client) == "client-token"
 
     def test_login_fail(
-        self,
-        unittest_respx: respx.MockRouter,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
+        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
     ):
         unittest_respx.post("/v1/auth/mock/login/user%40example.com").mock(
             return_value=httpx.Response(400)
@@ -136,8 +134,9 @@ class TestUserPasswordAuth:
             vault_name = "mock"
 
         auth_obj = MockAuth(username="user@example.com", password="password")
-        assert auth_obj.login(unittest_client) is None
-        assert "Failed to login with MOCK method" in caplog.text
+
+        with pytest.raises(AuthenticationError):
+            assert auth_obj.login(unittest_client) is None
 
 
 @pytest.mark.parametrize(

@@ -158,9 +158,6 @@ def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
             raise
         raise AuthenticationError("Encounter {} while retrieving token", reason) from e
 
-    if not token:
-        raise AuthenticationError("Absence of token information")
-
     # verify
     if not is_authenticated(client, token):
         raise AuthenticationError("Invalid token")

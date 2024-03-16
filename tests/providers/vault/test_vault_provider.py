@@ -81,7 +81,7 @@ class TestCreateHttpClient:
     def mock_httpx_client(self, monkeypatch: pytest.MonkeyPatch):
         client = Mock(httpx.Client)
         monkeypatch.setattr("httpx.Client", client)
-        yield client
+        return client
 
     def test_ca(self, mock_httpx_client: Mock):
         config = VaultUserConfig(
@@ -143,14 +143,6 @@ class TestGetToken:
             "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: True
         )
         assert get_token(client, auth) == "t0ken"
-
-    def test_no_token(self):
-        client = Mock(httpx.Client)
-        auth = Mock(Auth)
-        auth.login.return_value = None
-
-        with pytest.raises(AuthenticationError, match="Absence of token information"):
-            get_token(client, auth)
 
     def test_authenticate_fail(self, monkeypatch: pytest.MonkeyPatch):
         client = Mock(httpx.Client)
