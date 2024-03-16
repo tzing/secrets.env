@@ -316,7 +316,14 @@ class LruDict(collections.OrderedDict[TK, TV]):
         with self._lock:
             super().__delitem__(key)
 
-    def get(self, key: TK, default: TV | None = None) -> TV | None:
+    @overload
+    def get(self, key: TK) -> TV: ...
+    @overload
+    def get(self, key: TK, default: TV) -> TV: ...
+    @overload
+    def get(self, key: TK, default: T) -> TV | T: ...
+
+    def get(self, key: TK, default: TV | T | None = None) -> TV | T | None:
         try:
             return self[key]
         except KeyError:
