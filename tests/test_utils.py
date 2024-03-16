@@ -173,3 +173,28 @@ def test_create_keyring_login_key():
 def test_create_keyring_token_key():
     key = t.create_keyring_token_key(Url("https://Example.com/foo"))
     assert key == '{"host": "example.com", "type": "token"}'
+
+
+def test_lru_dict():
+    # basic
+    d = t.LruDict(max_size=3)
+    d["a"] = 1
+    d["b"] = 2
+    d["c"] = 3
+    assert d == {"a": 1, "b": 2, "c": 3}
+
+    # exceed max_size
+    d["d"] = 4
+    assert d == {"b": 2, "c": 3, "d": 4}
+
+    # update
+    d["b"] = 2
+    assert d == {"c": 3, "d": 4, "b": 2}
+
+    assert d.get("c") == 3
+    assert d.get("e") is None
+    assert d == {"d": 4, "b": 2, "c": 3}
+
+    # delete
+    del d["b"]
+    assert d == {"d": 4, "c": 3}
