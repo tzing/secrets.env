@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic_core import Url
 
-from secrets_env.providers.vault.auth.base import NullAuth
+from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.config import (
     TlsConfig,
@@ -56,7 +56,7 @@ class TestVaultUserConfig:
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.auth == NullAuth()
+        assert config.auth == NoAuth()
 
     def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
@@ -123,7 +123,7 @@ class TestGetConnectionInfo:
         )
         assert isinstance(parsed, dict)
         assert parsed["url"] == "https://example.com/"
-        assert parsed["auth"] == NullAuth()
+        assert parsed["auth"] == NoAuth()
 
     def test_success_2(self, tmp_path: Path):
         (tmp_path / "ca.cert").touch()

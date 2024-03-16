@@ -35,7 +35,7 @@ class Auth(pydantic.BaseModel, ABC):
         """Login and get token."""
 
 
-class NullAuth(Auth):
+class NoAuth(Auth):
     """No authentication.
 
     This class is used when no authentication is required.
@@ -46,7 +46,7 @@ class NullAuth(Auth):
     token: str = ""
 
     @classmethod
-    def create(cls, url: Any, config: dict[str, Any]) -> NullAuth:
+    def create(cls, url: Any, config: dict[str, Any]) -> NoAuth:
         return cls()
 
     def login(self, client: Any) -> str:
