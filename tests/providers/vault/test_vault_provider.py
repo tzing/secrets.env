@@ -6,8 +6,14 @@ import httpx
 import pytest
 import respx
 
+from secrets_env.exceptions import AuthenticationError
+from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.providers.vault.provider import create_http_client, is_authenticated
+from secrets_env.providers.vault.provider import (
+    create_http_client,
+    get_token,
+    is_authenticated,
+)
 
 
 class TestCreateHttpClient:
@@ -90,7 +96,47 @@ class TestCreateHttpClient:
         assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
 
 
-class TestGetToken: ...  # FIXME
+class TestGetToken:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        client = Mock(httpx.Client)
+        auth = NoAuth(token="t0ken")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: True
+        )
+        assert get_token(client, auth) == "t0ken"
+
+    def test_no_token(self):
+        client = Mock(httpx.Client)
+        auth = Mock(Auth)
+        auth.login.return_value = None
+
+        with pytest.raises(AuthenticationError, match="Absence of token information"):
+            get_token(client, auth)
+
+    def test_authenticate_fail(self, monkeypatch: pytest.MonkeyPatch):
+        client = Mock(httpx.Client)
+        auth = NoAuth(token="t0ken")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: False
+        )
+        with pytest.raises(AuthenticationError, match="Invalid token"):
+            get_token(client, auth)
+
+    def test_login_connection_error(self):
+        client = Mock(httpx.Client)
+        auth = Mock(Auth)
+        auth.login.side_effect = httpx.ProxyError("test")
+        with pytest.raises(
+            AuthenticationError, match="Encounter proxy error while retrieving token"
+        ):
+            get_token(client, auth)
+
+    def test_login_exception(self):
+        client = Mock(httpx.Client)
+        auth = Mock(Auth)
+        auth.login.side_effect = httpx.HTTPError("test")
+        with pytest.raises(httpx.HTTPError):
+            get_token(client, auth)
 
 
 class TestIsAuthenticated:

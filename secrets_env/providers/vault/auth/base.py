@@ -32,7 +32,13 @@ class Auth(pydantic.BaseModel, ABC):
 
     @abstractmethod
     def login(self, client: httpx.Client) -> str | None:
-        """Login and get token."""
+        """
+        Login and get Vault token.
+
+        Returns
+        -------
+        Token, or None if login failed.
+        """
 
 
 class NoAuth(Auth):
