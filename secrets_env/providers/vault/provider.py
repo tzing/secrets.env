@@ -1,17 +1,27 @@
 from __future__ import annotations
 
+import enum
 import logging
 import typing
 from functools import cached_property
+from http import HTTPStatus
+from typing import Literal
 
 import httpx
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    InstanceOf,
+    PrivateAttr,
+    model_validator,
+    validate_call,
+)
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
 from secrets_env.providers.vault.config import VaultUserConfig
-from secrets_env.utils import get_httpx_error_reason, log_httpx_response
+from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
     from typing import Self
@@ -22,11 +32,21 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class Marker(enum.Enum):
+    """Internal marker for cache handling."""
+
+    NoCache = enum.auto()
+    NotFound = enum.auto()
+
+
 class VaultPath(BaseModel):
     """Represents a path to a value in Vault."""
 
     path: str = Field(min_length=1)
     field: str = Field(min_length=1)
+
+    def __str__(self) -> str:
+        return f"{self.path}#{self.field}"
 
     @model_validator(mode="before")
     @classmethod
@@ -47,6 +67,8 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
     type = "vault"
 
+    _cache: dict[str, str | Marker] = PrivateAttr(default_factory=LruDict)
+
     @cached_property
     def client(self) -> httpx.Client:
         """Returns HTTP client."""
@@ -64,6 +86,22 @@ class VaultKvProvider(Provider, VaultUserConfig):
     def get(self, spec: RequestSpec) -> str:
         path = VaultPath.model_validate(spec)
         raise NotImplementedError
+
+    def _read_secret(self, path: VaultPath) -> str:
+        """
+        Get a secret from the Vault. A Vault "secret" is a object that contains
+        key-value pairs.
+
+        This method wraps the `read_secret` method and cache the result.
+        """
+        cache = self._cache.get(path.path, Marker.NoCache)
+
+        if cache == Marker.NoCache:
+            ...  # TODO
+        elif cache == Marker.NotFound:
+            raise LookupError(f'Secret "{path}" not found')
+        else:
+            return cache
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
@@ -148,3 +186,77 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
         resp.json(),
     )
     return False
+
+
+def read_secret(client: httpx.Client, path: str) -> dict | None:
+    """Read secret from Vault.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/secret/kv
+    """
+    raise NotImplementedError
+
+
+class _RawMountMetadata(BaseModel):
+    # {
+    #     "data": {
+    #         "options": {"version": "1"},
+    #         "path": "secrets/",
+    #         "type": "kv",
+    #     }
+    # }
+
+    data: _DataBlock
+
+    class _DataBlock(BaseModel):
+
+        options: _OptionBlock
+        path: str
+        type: str
+
+        class _OptionBlock(BaseModel):
+            version: str
+
+
+class MountMetadata(BaseModel):
+    """Represents a mount point and KV engine version to a secret."""
+
+    path: str
+    version: Literal[1, 2]
+
+
+@validate_call
+def get_mount(client: InstanceOf[httpx.Client], path: str) -> MountMetadata | None:
+    """Get mount point and KV engine version to a secret.
+
+    See also
+    --------
+    Vault HTTP API
+        https://developer.hashicorp.com/vault/api-docs/system/internal-ui-mounts
+    consul-template
+        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
+    """
+    try:
+        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during checking metadata for %s: %s", path, reason)
+        return
+
+    if resp.is_success:
+        parsed = _RawMountMetadata.model_validate_json(resp.read())
+        return MountMetadata(
+            path=parsed.data.path,
+            version=int(parsed.data.options.version),
+        )
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        # 404 is expected on an older version of vault, default to version 1
+        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
+        return MountMetadata(path="", version=1)
+
+    logger.error("Error occurred during checking metadata for %s", path)
+    log_httpx_response(logger, resp)
+    return
