@@ -67,7 +67,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
     type = "vault"
 
-    _cache: dict[str, str | Marker] = PrivateAttr(default_factory=LruDict)
+    _cache: dict[str, dict | Marker] = PrivateAttr(default_factory=LruDict)
 
     @cached_property
     def client(self) -> httpx.Client:
@@ -87,21 +87,30 @@ class VaultKvProvider(Provider, VaultUserConfig):
         path = VaultPath.model_validate(spec)
         raise NotImplementedError
 
-    def _read_secret(self, path: VaultPath) -> str:
+    def _read_secret(self, path: VaultPath) -> dict:
         """
         Get a secret from the Vault. A Vault "secret" is a object that contains
         key-value pairs.
 
         This method wraps the `read_secret` method and cache the result.
-        """
-        cache = self._cache.get(path.path, Marker.NoCache)
 
-        if cache == Marker.NoCache:
-            ...  # TODO
-        elif cache == Marker.NotFound:
+        Raises
+        ------
+        LookupError
+            If the secret is not found.
+        """
+        result = self._cache.get(path.path, Marker.NoCache)
+
+        if result == Marker.NoCache:
+            result = read_secret(self.client, path.path)
+            if result is None:
+                result = Marker.NotFound
+            self._cache[path.path] = result
+
+        if result == Marker.NotFound:
             raise LookupError(f'Secret "{path}" not found')
-        else:
-            return cache
+
+        return result
 
 
 @validate_call
@@ -233,13 +242,15 @@ def read_secret(client: InstanceOf[httpx.Client], path: str) -> dict | None:
 
 
 class _RawMountMetadata(BaseModel):
-    # {
-    #     "data": {
-    #         "options": {"version": "1"},
-    #         "path": "secrets/",
-    #         "type": "kv",
-    #     }
-    # }
+    """
+    {
+        "data": {
+            "options": {"version": "1"},
+            "path": "secrets/",
+            "type": "kv",
+        }
+    }
+    """
 
     data: _DataBlock
 
@@ -283,7 +294,7 @@ def get_mount(client: InstanceOf[httpx.Client], path: str) -> MountMetadata | No
         parsed = _RawMountMetadata.model_validate_json(resp.read())
         return MountMetadata(
             path=parsed.data.path,
-            version=int(parsed.data.options.version),
+            version=int(parsed.data.options.version),  # type: ignore[reportArgumentType]
         )
 
     elif resp.status_code == HTTPStatus.NOT_FOUND:
