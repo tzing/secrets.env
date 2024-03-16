@@ -13,7 +13,7 @@ import httpx
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
 from secrets_env.provider import ProviderBase, RequestSpec
-from secrets_env.utils import get_httpx_error_reason, log_httpx_response
+from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -60,7 +60,7 @@ class KvProvider(ProviderBase):
         self.ca_cert = ca_cert
         self.client_cert = client_cert
 
-        self._secrets: dict[str, VaultSecretQueryResult] = {}
+        self._secrets: LruDict[str, VaultSecretQueryResult] = LruDict()
 
     @property
     def type(self) -> str:
