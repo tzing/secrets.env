@@ -14,6 +14,7 @@ from secrets_env.providers.vault.provider import (
     MountMetadata,
     VaultKvProvider,
     VaultPath,
+    _split_field_str,
     create_http_client,
     get_mount,
     get_token,
@@ -38,21 +39,43 @@ def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
 
 class TestVaultPath:
     def test_success(self):
-        path = VaultPath.model_validate("foo#bar")
-        assert path == VaultPath(path="foo", field="bar")
-        assert str(path) == "foo#bar"
-
-    def test_empty(self):
-        with pytest.raises(ValidationError):
-            VaultPath.model_validate("a#")
-        with pytest.raises(ValidationError):
-            VaultPath.model_validate("#b")
+        path = VaultPath.model_validate('foo#"bar.baz".qux')
+        assert path == VaultPath(path="foo", field=("bar.baz", "qux"))
+        assert str(path) == 'foo#"bar.baz".qux'
 
     def test_invalid(self):
+        # missing path
+        with pytest.raises(ValidationError):
+            VaultPath(path="", field=("b"))
+
+        # missing path/field separator
         with pytest.raises(ValidationError):
             VaultPath.model_validate("foobar")
+
+        # too many path/field separator
         with pytest.raises(ValidationError):
             VaultPath.model_validate("foo#bar#baz")
+
+        # empty field subpath
+        with pytest.raises(ValidationError):
+            VaultPath(path="a", field=())
+        with pytest.raises(ValidationError):
+            VaultPath(path="a", field=("b", "", "c"))
+        with pytest.raises(ValidationError):
+            VaultPath(path="a", field=("b", ""))
+
+
+class TestSplitFieldStr:
+    def test_success(self):
+        assert list(_split_field_str("foo")) == ["foo"]
+        assert list(_split_field_str("foo.bar.baz")) == ["foo", "bar", "baz"]
+        assert list(_split_field_str('foo."bar.baz"')) == ["foo", "bar.baz"]
+        assert list(_split_field_str('"foo.bar".baz')) == ["foo.bar", "baz"]
+        assert list(_split_field_str("")) == []
+
+    def test_invalid(self):
+        with pytest.raises(ValueError, match=r"Failed to parse field:"):
+            list(_split_field_str('foo."bar.baz'))
 
 
 class TestVaultKvProvider:

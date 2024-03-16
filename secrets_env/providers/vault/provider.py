@@ -13,6 +13,7 @@ from pydantic import (
     Field,
     InstanceOf,
     PrivateAttr,
+    field_validator,
     model_validator,
     validate_call,
 )
@@ -25,7 +26,7 @@ from secrets_env.providers.vault.config import VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
-    from typing import Self
+    from typing import Iterable, Iterator, Self, Sequence
 
     from secrets_env.provider import RequestSpec
 
@@ -43,14 +44,21 @@ class VaultPath(BaseModel):
     """Represents a path to a value in Vault."""
 
     path: str = Field(min_length=1)
-    field: str = Field(min_length=1)
+    field: tuple[str, ...]
 
     def __str__(self) -> str:
-        return f"{self.path}#{self.field}"
+        seq = []
+        for f in self.field:
+            if "." in f:
+                seq.append(f'"{f}"')
+            else:
+                seq.append(f)
+        field_str = ".".join(seq)
+        return f"{self.path}#{field_str}"
 
     @model_validator(mode="before")
     @classmethod
-    def _from_str(cls, value: str | dict | Self) -> dict | Self:
+    def _create_from_str(cls, value: str | dict | Self) -> dict | Self:
         if not isinstance(value, str):
             return value
         if value.count("#") != 1:
@@ -60,6 +68,44 @@ class VaultPath(BaseModel):
             "path": path,
             "field": field,
         }
+
+    @field_validator("field", mode="before")
+    @classmethod
+    def _accept_str_for_field(cls, value) -> Iterable[str]:
+        if isinstance(value, str):
+            return _split_field_str(value)
+        return value
+
+    @field_validator("field", mode="after")
+    @classmethod
+    def _validate_field(cls, field: Sequence[str]) -> Sequence[str]:
+        if not field:
+            raise ValueError("Field cannot be empty")
+        if any(not f for f in field):
+            raise ValueError("Field cannot contain empty subpath")
+        return field
+
+
+def _split_field_str(f: str) -> Iterator[str]:
+    """Split a field name into subsequences. By default, this function splits
+    the name by dots, with supportting of preserving the quoted subpaths.
+    """
+    pos = 0
+    while pos < len(f):
+        if f[pos] == '"':
+            # quoted
+            end = f.find('"', pos + 1)
+            if end == -1:
+                raise ValueError(f"Failed to parse field: {f}")
+            yield f[pos + 1 : end]
+            pos = end + 2
+        else:
+            # simple
+            end = f.find(".", pos)
+            if end == -1:
+                end = len(f)
+            yield f[pos:end]
+            pos = end + 1
 
 
 class VaultKvProvider(Provider, VaultUserConfig):
