@@ -6,11 +6,13 @@ import httpx
 import httpx._config
 import pytest
 import respx
+from pydantic import ValidationError
 
 import secrets_env.providers.vault.provider as t
 from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
+from secrets_env.providers.vault.provider import VaultPath
 
 
 @pytest.fixture()
@@ -499,32 +501,19 @@ class TestGetSecretSourceStr:
             t.get_secret_source_str(input_)
 
 
-class TestGetSecretSourceDict:
+class TestVaultPath:
     def test_success(self):
-        out = t.get_secret_source_dict({"path": "foo", "field": "bar"})
-        assert out == ("foo", "bar")
+        path = VaultPath.model_validate("foo#bar")
+        assert path == VaultPath(path="foo", field="bar")
 
-    @pytest.mark.parametrize(
-        ("input_", "err_msg"),
-        [
-            (
-                {"field": "bar"},
-                "Missing secret path",
-            ),
-            (
-                {"path": "foo", "field": 1234},
-                'Expected "field" to be a string, got int',
-            ),
-            (
-                {"path": "foo"},
-                "Missing secret field",
-            ),
-            (
-                {"path": 1234, "field": "bar"},
-                'Expected "path" to be a string, got int',
-            ),
-        ],
-    )
-    def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):
-        with pytest.raises((ConfigError, TypeError), match=err_msg):
-            t.get_secret_source_dict(input_)
+    def test_empty(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("a#")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("#b")
+
+    def test_invalid(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foobar")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foo#bar#baz")
