@@ -9,7 +9,7 @@ import respx
 from pydantic import ValidationError
 
 import secrets_env.providers.vault.provider as t
-from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+from secrets_env.exceptions import AuthenticationError, ValueNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.provider import VaultPath

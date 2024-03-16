@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel, Field, model_validator
 
 import secrets_env.version
-from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+from secrets_env.exceptions import AuthenticationError, ValueNotFound
 from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
