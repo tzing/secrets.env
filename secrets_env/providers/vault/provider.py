@@ -9,15 +9,16 @@ from http import HTTPStatus
 from typing import Dict, Literal, Union
 
 import httpx
+from pydantic import BaseModel, Field, model_validator
 
 import secrets_env.version
-from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+from secrets_env.exceptions import AuthenticationError, ValueNotFound
 from secrets_env.provider import ProviderBase, RequestSpec
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Self
 
     from secrets_env.providers.vault.auth.base import Auth
     from secrets_env.providers.vault.config import CertTypes
@@ -105,19 +106,8 @@ class KvProvider(ProviderBase):
         return client
 
     def get(self, spec: RequestSpec) -> str:
-        if not spec:
-            raise ConfigError("Empty input")
-        if isinstance(spec, str):
-            # string input: path#key
-            src = get_secret_source_str(spec)
-        elif isinstance(spec, dict):
-            # dict input: {"path": "foo", "key": "bar"}
-            src = get_secret_source_dict(spec)
-        else:
-            raise TypeError(
-                f'Expected "spec" to match secret path spec, got {type(spec).__name__}'
-            )
-        return self.read_field(src.path, src.field)
+        path = VaultPath.model_validate(spec)
+        return self.read_field(path.path, path.field)
 
     def read_secret(self, path: str) -> VaultSecret:
         """Read secret from Vault.
@@ -380,31 +370,21 @@ def split_field(name: str) -> list[str]:
     return seq
 
 
-def get_secret_source_str(spec: str) -> SecretSource:
-    idx = spec.find("#")
-    if idx == -1:
-        raise ConfigError("Missing delimiter '#'")
-    elif idx == 0:
-        raise ConfigError("Missing secret path part")
-    elif idx == len(spec) - 1:
-        raise ConfigError("Missing secret field part")
+class VaultPath(BaseModel):
+    """Represents a path to a value in Vault."""
 
-    path = spec[:idx]
-    field = spec[idx + 1 :]
-    return SecretSource(path, field)
+    path: str = Field(min_length=1)
+    field: str = Field(min_length=1)
 
-
-def get_secret_source_dict(spec: dict) -> SecretSource:
-    path = spec.get("path")
-    if not path:
-        raise ConfigError("Missing secret path part")
-    elif not isinstance(path, str):
-        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
-
-    field = spec.get("field")
-    if not field:
-        raise ConfigError("Missing secret field part")
-    elif not isinstance(field, str):
-        raise TypeError(f'Expected "field" to be a string, got {type(field).__name__}')
-
-    return SecretSource(path, field)
+    @model_validator(mode="before")
+    @classmethod
+    def _from_str(cls, value: str | dict | Self) -> dict | Self:
+        if not isinstance(value, str):
+            return value
+        if value.count("#") != 1:
+            raise ValueError("Invalid format. Expected 'path#field'")
+        path, field = value.rsplit("#", 1)
+        return {
+            "path": path,
+            "field": field,
+        }

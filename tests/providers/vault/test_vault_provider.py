@@ -6,11 +6,13 @@ import httpx
 import httpx._config
 import pytest
 import respx
+from pydantic import ValidationError
 
 import secrets_env.providers.vault.provider as t
-from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+from secrets_env.exceptions import AuthenticationError, ValueNotFound
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.providers.vault.auth.token import TokenAuth
+from secrets_env.providers.vault.provider import VaultPath
 
 
 @pytest.fixture()
@@ -66,10 +68,7 @@ class TestKvProvider:
         assert isinstance(kwargs["verify"], Path)
         assert isinstance(kwargs["cert"], Path)
 
-    @pytest.mark.parametrize("spec", ["foo#bar", {"path": "foo", "field": "bar"}])
-    def test_get_success(
-        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider, spec
-    ):
+    def test_get_success(self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider):
         def mock_read_field(path, field):
             assert path == "foo"
             assert field == "bar"
@@ -77,13 +76,12 @@ class TestKvProvider:
 
         monkeypatch.setattr(provider, "read_field", mock_read_field)
 
-        assert provider.get(spec) == "secret"
+        assert provider.get("foo#bar") == "secret"
 
     def test_get_fail(self, provider: t.KvProvider):
-        with pytest.raises(ConfigError):
+        with pytest.raises(ValidationError):
             provider.get({})
-
-        with pytest.raises(TypeError):
+        with pytest.raises(ValidationError):
             provider.get(1234)
 
     def test_read_secret_success(
@@ -480,51 +478,19 @@ def test_split_field():
         t.split_field(".aa")
 
 
-class TestGetSecretSourceStr:
+class TestVaultPath:
     def test_success(self):
-        assert t.get_secret_source_str("foo#bar") == ("foo", "bar")
-        assert t.get_secret_source_str("foo#b") == ("foo", "b")
-        assert t.get_secret_source_str("f#bar") == ("f", "bar")
+        path = VaultPath.model_validate("foo#bar")
+        assert path == VaultPath(path="foo", field="bar")
 
-    @pytest.mark.parametrize(
-        ("input_", "err_msg"),
-        [
-            ("foo", "Missing delimiter '#'"),
-            ("#bar", "Missing secret path"),
-            ("foo#", "Missing secret field"),
-        ],
-    )
-    def test_fail(self, input_: str, err_msg: str):
-        with pytest.raises(ConfigError, match=err_msg):
-            t.get_secret_source_str(input_)
+    def test_empty(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("a#")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("#b")
 
-
-class TestGetSecretSourceDict:
-    def test_success(self):
-        out = t.get_secret_source_dict({"path": "foo", "field": "bar"})
-        assert out == ("foo", "bar")
-
-    @pytest.mark.parametrize(
-        ("input_", "err_msg"),
-        [
-            (
-                {"field": "bar"},
-                "Missing secret path",
-            ),
-            (
-                {"path": "foo", "field": 1234},
-                'Expected "field" to be a string, got int',
-            ),
-            (
-                {"path": "foo"},
-                "Missing secret field",
-            ),
-            (
-                {"path": 1234, "field": "bar"},
-                'Expected "path" to be a string, got int',
-            ),
-        ],
-    )
-    def test_fail(self, caplog: pytest.LogCaptureFixture, input_, err_msg: str):
-        with pytest.raises((ConfigError, TypeError), match=err_msg):
-            t.get_secret_source_dict(input_)
+    def test_invalid(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foobar")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foo#bar#baz")
