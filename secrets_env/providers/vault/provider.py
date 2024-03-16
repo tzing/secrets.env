@@ -33,7 +33,11 @@ class VaultKvProvider(Provider, VaultUserConfig):
             self.url,
             self.auth.method,
         )
-        return create_http_client(self)
+
+        client = create_http_client(self)
+        client.headers["X-Vault-Token"] = get_token(client, self.auth)
+
+        return client
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
