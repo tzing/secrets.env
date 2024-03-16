@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+import collections
 import json
 import logging
 import os
 import re
 import sys
+import threading
 import typing
 from pathlib import Path
-from typing import overload
+from typing import TypeVar, overload
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Literal, TypeVar
+    from typing import Any, Literal
 
     import click
     import httpx
@@ -282,3 +284,45 @@ def trimmed_str(o: Any) -> str:
     if len(s) > __max_len:
         s = s[: __max_len - 3] + "..."
     return s
+
+
+TK = TypeVar("TK")
+TV = TypeVar("TV")
+
+
+class LruDict(collections.OrderedDict[TK, TV]):
+    """A dict that implements LRU cache"""
+
+    def __init__(self, max_size=128):
+        super().__init__()
+        self.max_size = max_size
+        self._lock = threading.RLock()
+
+    def __getitem__(self, key: TK) -> TV:
+        with self._lock:
+            value = super().__getitem__(key)
+            self.move_to_end(key)
+            return value
+
+    def __setitem__(self, key: TK, value: TV) -> None:
+        with self._lock:
+            super().__setitem__(key, value)
+            self.move_to_end(key)
+            if len(self) > self.max_size:
+                first = next(iter(self))
+                self.__delitem__(first)
+
+    def __delitem__(self, key: TK) -> None:
+        with self._lock:
+            super().__delitem__(key)
+
+    @overload
+    def get(self, key: TK) -> TV | None: ...
+    @overload
+    def get(self, key: TK, default: T) -> TV | T: ...
+
+    def get(self, key: TK, default: TV | T | None = None) -> TV | T | None:
+        try:
+            return self[key]
+        except KeyError:
+            return default

@@ -5,15 +5,35 @@ from unittest.mock import Mock
 import httpx
 import pytest
 import respx
+from pydantic_core import ValidationError
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.providers.vault.provider import (
+    VaultPath,
     create_http_client,
     get_token,
     is_authenticated,
 )
+
+
+class TestVaultPath:
+    def test_success(self):
+        path = VaultPath.model_validate("foo#bar")
+        assert path == VaultPath(path="foo", field="bar")
+
+    def test_empty(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("a#")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("#b")
+
+    def test_invalid(self):
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foobar")
+        with pytest.raises(ValidationError):
+            VaultPath.model_validate("foo#bar#baz")
 
 
 class TestCreateHttpClient:

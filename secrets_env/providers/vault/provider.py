@@ -5,7 +5,7 @@ import typing
 from functools import cached_property
 
 import httpx
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
@@ -14,10 +14,32 @@ from secrets_env.providers.vault.config import VaultUserConfig
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
+    from typing import Self
+
     from secrets_env.provider import RequestSpec
     from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
+
+
+class VaultPath(BaseModel):
+    """Represents a path to a value in Vault."""
+
+    path: str = Field(min_length=1)
+    field: str = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_str(cls, value: str | dict | Self) -> dict | Self:
+        if not isinstance(value, str):
+            return value
+        if value.count("#") != 1:
+            raise ValueError("Invalid format. Expected 'path#field'")
+        path, field = value.rsplit("#", 1)
+        return {
+            "path": path,
+            "field": field,
+        }
 
 
 class VaultKvProvider(Provider, VaultUserConfig):
@@ -38,6 +60,10 @@ class VaultKvProvider(Provider, VaultUserConfig):
         client.headers["X-Vault-Token"] = get_token(client, self.auth)
 
         return client
+
+    def get(self, spec: RequestSpec) -> str:
+        path = VaultPath.model_validate(spec)
+        raise NotImplementedError
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
