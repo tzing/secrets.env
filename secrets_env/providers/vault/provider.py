@@ -85,6 +85,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
     def get(self, spec: RequestSpec) -> str:
         path = VaultPath.model_validate(spec)
+        secret = self._read_secret(path)
         raise NotImplementedError
 
     def _read_secret(self, path: VaultPath) -> dict:

@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, PropertyMock
 
 import httpx
 import pytest
@@ -40,6 +40,7 @@ class TestVaultPath:
     def test_success(self):
         path = VaultPath.model_validate("foo#bar")
         assert path == VaultPath(path="foo", field="bar")
+        assert str(path) == "foo#bar"
 
     def test_empty(self):
         with pytest.raises(ValidationError):
@@ -52,6 +53,53 @@ class TestVaultPath:
             VaultPath.model_validate("foobar")
         with pytest.raises(ValidationError):
             VaultPath.model_validate("foo#bar#baz")
+
+
+class TestVaultKvProvider:
+    def test_client(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.provider.create_http_client",
+            lambda _: Mock(httpx.Client, headers={}),
+        )
+        provider = VaultKvProvider(url="https://vault.example.com", auth="null")
+        assert isinstance(provider.client, httpx.Client)
+
+    @pytest.fixture()
+    def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            VaultKvProvider, "client", PropertyMock(return_value=Mock(httpx.Client))
+        )
+        return VaultKvProvider(url="https://vault.example.com", auth="null")
+
+    def test_read_secret__success(
+        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+    ):
+        func = Mock(return_value={"foo": "bar"})
+        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+
+        path = VaultPath(path="foo", field="bar")
+        assert unittest_provider._read_secret(path) == {"foo": "bar"}
+        assert unittest_provider._read_secret(path) == {"foo": "bar"}
+
+        assert func.call_count == 1
+
+        client, path = func.call_args[0]
+        assert isinstance(client, httpx.Client)
+        assert path == "foo"
+
+    def test_read_secret__not_found(
+        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+    ):
+        func = Mock(return_value=None)
+        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+
+        path = VaultPath(path="foo", field="bar")
+        with pytest.raises(LookupError):
+            unittest_provider._read_secret(path)
+        with pytest.raises(LookupError):
+            unittest_provider._read_secret(path)
+
+        assert func.call_count == 1
 
 
 class TestCreateHttpClient:
