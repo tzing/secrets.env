@@ -9,7 +9,7 @@ from http import HTTPStatus
 from typing import Dict, Literal, Union
 
 import httpx
-from pydantic import BaseModel, model_validator, Field
+from pydantic import BaseModel, Field, model_validator
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
@@ -106,19 +106,8 @@ class KvProvider(ProviderBase):
         return client
 
     def get(self, spec: RequestSpec) -> str:
-        if not spec:
-            raise ConfigError("Empty input")
-        if isinstance(spec, str):
-            # string input: path#key
-            src = get_secret_source_str(spec)
-        elif isinstance(spec, dict):
-            # dict input: {"path": "foo", "key": "bar"}
-            src = get_secret_source_dict(spec)
-        else:
-            raise TypeError(
-                f'Expected "spec" to match secret path spec, got {type(spec).__name__}'
-            )
-        return self.read_field(src.path, src.field)
+        path = VaultPath.model_validate(spec)
+        return self.read_field(path.path, path.field)
 
     def read_secret(self, path: str) -> VaultSecret:
         """Read secret from Vault.

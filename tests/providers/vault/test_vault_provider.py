@@ -68,10 +68,7 @@ class TestKvProvider:
         assert isinstance(kwargs["verify"], Path)
         assert isinstance(kwargs["cert"], Path)
 
-    @pytest.mark.parametrize("spec", ["foo#bar", {"path": "foo", "field": "bar"}])
-    def test_get_success(
-        self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider, spec
-    ):
+    def test_get_success(self, monkeypatch: pytest.MonkeyPatch, provider: t.KvProvider):
         def mock_read_field(path, field):
             assert path == "foo"
             assert field == "bar"
@@ -79,13 +76,12 @@ class TestKvProvider:
 
         monkeypatch.setattr(provider, "read_field", mock_read_field)
 
-        assert provider.get(spec) == "secret"
+        assert provider.get("foo#bar") == "secret"
 
     def test_get_fail(self, provider: t.KvProvider):
-        with pytest.raises(ConfigError):
+        with pytest.raises(ValidationError):
             provider.get({})
-
-        with pytest.raises(TypeError):
+        with pytest.raises(ValidationError):
             provider.get(1234)
 
     def test_read_secret_success(
@@ -480,25 +476,6 @@ def test_split_field():
         t.split_field("aa.")
     with pytest.raises(ValueError, match=r"Failed to parse name: .+"):
         t.split_field(".aa")
-
-
-class TestGetSecretSourceStr:
-    def test_success(self):
-        assert t.get_secret_source_str("foo#bar") == ("foo", "bar")
-        assert t.get_secret_source_str("foo#b") == ("foo", "b")
-        assert t.get_secret_source_str("f#bar") == ("f", "bar")
-
-    @pytest.mark.parametrize(
-        ("input_", "err_msg"),
-        [
-            ("foo", "Missing delimiter '#'"),
-            ("#bar", "Missing secret path"),
-            ("foo#", "Missing secret field"),
-        ],
-    )
-    def test_fail(self, input_: str, err_msg: str):
-        with pytest.raises(ConfigError, match=err_msg):
-            t.get_secret_source_str(input_)
 
 
 class TestVaultPath:
