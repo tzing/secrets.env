@@ -94,6 +94,34 @@ class TestVaultKvProvider:
         )
         return VaultKvProvider(url="https://vault.example.com", auth="null")
 
+    def test_get__success(
+        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+    ):
+        monkeypatch.setattr(
+            VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
+        )
+        assert unittest_provider.get({"path": "foo", "field": "bar"}) == "test"
+
+    def test_get__too_depth(
+        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+    ):
+        monkeypatch.setattr(
+            VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
+        )
+        with pytest.raises(LookupError, match='Field "bar.baz" not found in "foo"'):
+            unittest_provider.get({"path": "foo", "field": "bar.baz"})
+
+    def test_get__too_shallow(
+        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+    ):
+        monkeypatch.setattr(
+            VaultKvProvider, "_read_secret", Mock(return_value={"bar": {"baz": "test"}})
+        )
+        with pytest.raises(
+            LookupError, match='Field "bar" in "foo" is not point to a string value'
+        ):
+            unittest_provider.get({"path": "foo", "field": "bar"})
+
     def test_read_secret__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
@@ -123,6 +151,10 @@ class TestVaultKvProvider:
             unittest_provider._read_secret(path)
 
         assert func.call_count == 1
+
+    def test_integration(self, intl_provider: VaultKvProvider):
+        assert intl_provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
+        assert intl_provider.get('kv2/test#test."name.with-dot"') == "sample-value"
 
 
 class TestCreateHttpClient:

@@ -21,7 +21,6 @@ from pydantic import (
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
-from secrets_env.providers.vault.auth import Auth
 from secrets_env.providers.vault.config import VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
@@ -29,6 +28,7 @@ if typing.TYPE_CHECKING:
     from typing import Iterable, Iterator, Self, Sequence
 
     from secrets_env.provider import RequestSpec
+    from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +47,17 @@ class VaultPath(BaseModel):
     field: tuple[str, ...]
 
     def __str__(self) -> str:
+        return f"{self.path}#{self.field_str}"
+
+    @property
+    def field_str(self) -> str:
         seq = []
         for f in self.field:
             if "." in f:
                 seq.append(f'"{f}"')
             else:
                 seq.append(f)
-        field_str = ".".join(seq)
-        return f"{self.path}#{field_str}"
+        return ".".join(seq)
 
     @model_validator(mode="before")
     @classmethod
@@ -132,7 +135,21 @@ class VaultKvProvider(Provider, VaultUserConfig):
     def get(self, spec: RequestSpec) -> str:
         path = VaultPath.model_validate(spec)
         secret = self._read_secret(path)
-        raise NotImplementedError
+
+        for f in path.field:
+            try:
+                secret = secret[f]
+            except (KeyError, TypeError):
+                raise LookupError(
+                    f'Field "{path.field_str}" not found in "{path.path}"'
+                ) from None
+
+        if not isinstance(secret, str):
+            raise LookupError(
+                f'Field "{path.field_str}" in "{path.path}" is not point to a string value'
+            )
+
+        return secret
 
     def _read_secret(self, path: VaultPath) -> dict:
         """
@@ -196,7 +213,6 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
     return httpx.Client(**client_params)
 
 
-@validate_call
 def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
