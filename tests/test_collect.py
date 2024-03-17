@@ -10,7 +10,7 @@ from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFou
 
 def test_read_values(caplog: pytest.LogCaptureFixture):
     def create_provider(return_value: str):
-        provider = Mock(spec=secrets_env.provider.ProviderBase)
+        provider = Mock(spec=secrets_env.provider.Provider)
         provider.get.return_value = return_value
         return provider
 
@@ -50,7 +50,7 @@ def test_read_values(caplog: pytest.LogCaptureFixture):
 
 class TestRead1:
     def setup_method(self):
-        self.provider = Mock(spec=secrets_env.provider.ProviderBase)
+        self.provider = Mock(spec=secrets_env.provider.Provider)
         type(self.provider).name = PropertyMock(return_value="mock")
 
     def test_success(self):

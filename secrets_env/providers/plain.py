@@ -1,30 +1,21 @@
+from __future__ import annotations
+
 import typing
 
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import RequestSpec
 
 
-class PlainTextProvider(ProviderBase):
+class PlainTextProvider(Provider):
     """Plain text provider returns text that is copied directly from the
     configuration file."""
 
-    @property
-    def type(self) -> str:
-        return "plain"
+    type = "plain"
 
-    def get(self, spec: "RequestSpec") -> str:
+    def get(self, spec: RequestSpec) -> str:
         if isinstance(spec, str):
-            value = spec
+            return spec
         elif isinstance(spec, dict):
-            value = spec.get("value")
-        else:
-            raise TypeError(
-                f'Expected "spec" to be a string or dict, got {type(spec).__name__}'
-            )
-        return value or ""
-
-
-def get_provider(type_: str, data: dict) -> PlainTextProvider:
-    return PlainTextProvider()
+            return spec.get("value") or ""

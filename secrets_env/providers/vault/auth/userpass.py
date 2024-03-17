@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 from pydantic import PrivateAttr, SecretStr
 
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import (
     create_keyring_login_key,
@@ -76,7 +77,7 @@ class UserPasswordAuth(Auth):
 
         return prompt(f"Password for {username}", hide_input=True)
 
-    def login(self, client: httpx.Client) -> str | None:
+    def login(self, client: httpx.Client) -> str:
         username = urllib.parse.quote(self.username)
         resp = client.post(
             f"/v1/auth/{self.vault_name}/login/{username}",
@@ -88,14 +89,13 @@ class UserPasswordAuth(Auth):
         )
 
         if not resp.is_success:
-            logger.error("Failed to login with %s method", self.method)
             logger.debug(
                 "Login failed. URL= %s, Code= %d. Msg= %s",
                 resp.url,
                 resp.status_code,
                 resp.text,
             )
-            return
+            raise AuthenticationError("Failed to login with %s method", self.method)
 
         return resp.json()["auth"]["client_token"]
 

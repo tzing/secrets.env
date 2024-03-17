@@ -6,53 +6,46 @@ For secret provider implementations, see :py:mod:`secrets_env.providers`.
 from __future__ import annotations
 
 import abc
-import sys
-import typing
-from typing import Dict, Union
+from typing import ClassVar, Union
 
-if typing.TYPE_CHECKING and sys.version_info >= (3, 10):
-    from typing import TypeAlias
+from pydantic import BaseModel
 
+RequestSpec = Union[dict[str, str], str]
+""":py:class:`RequestSpec` represents a path spec to read the value.
 
-RequestSpec: TypeAlias = Union[Dict[str, str], str]
-""":py:class:`RequestSpec` represents a secret spec (name/path) to be loaded.
+It should be a :py:class:`dict` in most cases; or :py:class:`str` if this
+provider accepts shortcut.
 """
 
 
-class ProviderBase(abc.ABC):
-    """Abstract base class for secret provider. All secret provider must implement
+class Provider(BaseModel, abc.ABC):
+    """Abstract base class for secret provider. All provider must implement
     this interface.
     """
 
-    @property
-    @abc.abstractmethod
-    def type(self) -> str:
-        """Provider name."""
+    type: ClassVar[str]
 
     @abc.abstractmethod
     def get(self, spec: RequestSpec) -> str:
-        """Get secret value.
+        """Get secret.
 
         Parameters
         ----------
-        spec : dict | str
-            Raw input from config file.
-
-            It should be :py:class:`dict` in most cases; or :py:class:`str` if
-            this provider accepts shortcut.
+        path : dict | str
+            Raw input from config file for reading the secret value.
 
         Return
         ------
-        The secret value.
+        The value
 
         Raises
         ------
-        ConfigError
-            The path dict is malformed.
-        ValueNotFound
-            The path dict is correct but the secret not exists.
-
-        Note
-        ----
-        Key ``source`` is preserved in ``spec`` dictionary.
+        ValidationError
+            If the input format is invalid.
+        UnsupportedError
+            When this operation is not supported.
+        AuthenticationError
+            Failed during authentication.
+        LookupError
+            If the secret is not found.
         """

@@ -1,45 +1,70 @@
 from __future__ import annotations
 
+import logging
 import typing
+from typing import Literal
 
-import pydantic
+from pydantic import BaseModel, model_validator
 
-from secrets_env.exceptions import ConfigError
+from secrets_env.provider import Provider
+from secrets_env.providers.teleport.config import TeleportUserConfig
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase
-    from secrets_env.providers.teleport.provider import TeleportProvider
+    from typing import Self
 
-ADAPTER_PREFIX = "teleport+"
+    from secrets_env.provider import RequestSpec
+    from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
-
-def get_provider(type_: str, data: dict) -> TeleportProvider:
-    from .config import TeleportUserConfig
-    from .provider import TeleportProvider
-
-    cfg = TeleportUserConfig.model_validate(data)
-    return TeleportProvider(config=cfg)
+logger = logging.getLogger(__name__)
 
 
-def get_adapted_provider(type_: str, data: dict) -> ProviderBase:
-    from .adapters import get_adapter
-    from .config import TeleportUserConfig  # noqa: TCH001
+class TeleportRequestSpec(BaseModel):
+    field: Literal["uri", "ca", "cert", "key", "cert+key"]
+    format: Literal["path", "pem"] = "path"
 
-    class TeleportAdapterConfig(pydantic.BaseModel):
-        """Config layout for using Teleport as an adapter."""
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_shortcut(cls, data: RequestSpec | Self) -> dict[str, str] | Self:
+        if isinstance(data, str):
+            return {"field": data}
+        return data
 
-        teleport: TeleportUserConfig
 
-    iname = type_.lower()
-    if not iname.startswith(ADAPTER_PREFIX):
-        raise ConfigError("Not a Teleport compatible provider: {}", type_)
+class TeleportProvider(Provider, TeleportUserConfig):
+    """Read certificates from Teleport."""
 
-    subtype = type_[len(ADAPTER_PREFIX) :]
-    factory = get_adapter(subtype)
+    type = "teleport"
 
-    # get connection parameter
-    app_param = TeleportAdapterConfig.model_validate(data)
-    conn_param = app_param.teleport.get_connection_param()
+    def get(self, spec: RequestSpec) -> str:
+        ps = TeleportRequestSpec.model_validate(spec)
 
-    # forward parameters to corresponding provider
-    return factory(subtype, data, conn_param)
+        if ps.field == "uri":
+            return self.connection_param.uri
+        elif ps.field == "ca":
+            return get_ca(self.connection_param, ps.format)
+        elif ps.field == "cert":
+            if ps.format == "path":
+                return str(self.connection_param.path_cert)
+            elif ps.format == "pem":
+                return self.connection_param.cert.decode()
+        elif ps.field == "key":
+            if ps.format == "path":
+                return str(self.connection_param.path_key)
+            elif ps.format == "pem":
+                return self.connection_param.key.decode()
+        elif ps.field == "cert+key":
+            if ps.format == "path":
+                return str(self.connection_param.path_cert_and_key)
+            elif ps.format == "pem":
+                return self.connection_param.cert_and_key.decode()
+
+        raise RuntimeError
+
+
+def get_ca(param: TeleportConnectionParameter, fmt: Literal["path", "pem"]) -> str:
+    if param.ca is None:
+        raise LookupError("CA is not available")
+    if fmt == "path":
+        return str(param.path_ca)
+    elif fmt == "pem":
+        return param.ca.decode()

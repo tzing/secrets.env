@@ -1,22 +1,18 @@
+from __future__ import annotations
+
 import typing
 
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import RequestSpec
 
 
-class NullProvider(ProviderBase):
+class NullProvider(Provider):
     """A provider that always returns empty string. This provider is preserved
     for debugging."""
 
-    @property
-    def type(self) -> str:
-        return "null"
+    type = "null"
 
-    def get(self, spec: "RequestSpec") -> str:
+    def get(self, spec: RequestSpec) -> str:
         return ""
-
-
-def get_provider(type_: str, data: dict) -> NullProvider:
-    return NullProvider()

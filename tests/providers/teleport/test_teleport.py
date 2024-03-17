@@ -1,52 +1,82 @@
-from unittest.mock import Mock
+from pathlib import Path
+from unittest.mock import Mock, PropertyMock
 
 import pytest
 
-import secrets_env.providers.teleport as t
-from secrets_env.exceptions import ConfigError
-from secrets_env.provider import ProviderBase
-from secrets_env.providers.teleport.config import TeleportUserConfig
-from secrets_env.providers.teleport.provider import TeleportProvider
+from secrets_env.providers.teleport import TeleportProvider, TeleportRequestSpec, get_ca
+from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
 
-def test_get_provider():
-    provider = t.get_provider("teleport", {"app": "test"})
-    assert isinstance(provider, TeleportProvider)
+class TestTeleportRequestSpec:
+    def test_success(self):
+        spec = TeleportRequestSpec.model_validate({"field": "ca", "format": "pem"})
+        assert spec == TeleportRequestSpec(field="ca", format="pem")
+
+    def test_shortcut(self):
+        spec = TeleportRequestSpec.model_validate("uri")
+        assert spec == TeleportRequestSpec(field="uri", format="path")
 
 
-class TestGetAdaptedProvider:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_factory(subtype, data, param):
-            assert subtype == "Test"
-            assert isinstance(data, dict)
-            assert isinstance(param, TeleportUserConfig)
-            return Mock(spec=ProviderBase)
-
-        def mock_get_adapter(subtype):
-            assert subtype == "Test"
-            return mock_factory
-
+class TestTeleportProvider:
+    @pytest.fixture()
+    def provider(
+        self, monkeypatch: pytest.MonkeyPatch, conn_param: TeleportConnectionParameter
+    ):
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.adapters.get_adapter",
-            mock_get_adapter,
+            TeleportProvider, "connection_param", PropertyMock(return_value=conn_param)
         )
+        return TeleportProvider(app="test")
+
+    def test_get_uri(self, provider: TeleportProvider):
+        assert provider.get("uri") == "https://example.com"
+
+    def test_get_ca(self, provider: TeleportProvider):
+        expect = "subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
+        assert provider.get({"field": "ca", "format": "pem"}) == expect
+        with open(provider.get("ca")) as fd:
+            assert fd.read() == expect
+
+    def test_get_cert(self, provider: TeleportProvider):
+        expect = "-----MOCK CERTIFICATE-----"
+        assert provider.get({"field": "cert", "format": "pem"}) == expect
+        with open(provider.get("cert")) as fd:
+            assert fd.read() == expect
+
+    def test_get_key(self, provider: TeleportProvider):
+        expect = "-----MOCK PRIVATE KEY-----"
+        assert provider.get({"field": "key", "format": "pem"}) == expect
+        with open(provider.get("key")) as fd:
+            assert fd.read() == expect
+
+    def test_get_cert_and_key(self, provider: TeleportProvider):
+        expect = "-----MOCK CERTIFICATE-----\n-----MOCK PRIVATE KEY-----"
+        assert provider.get({"field": "cert+key", "format": "pem"}) == expect
+        with open(provider.get("cert+key")) as fd:
+            assert fd.read() == expect
+
+    def test_get_invalid(self, monkeypatch: pytest.MonkeyPatch):
+        spec = Mock(TeleportRequestSpec)
+        spec.field = "unknown"
         monkeypatch.setattr(
-            TeleportUserConfig,
-            "get_connection_param",
-            lambda _: Mock(spec=TeleportUserConfig),
+            TeleportRequestSpec, "model_validate", Mock(return_value=spec)
         )
 
-        config = {
-            "teleport": {
-                "app": "test",
-            }
-        }
-        provider = t.get_adapted_provider("teleport+Test", config)
+        with pytest.raises(RuntimeError):
+            TeleportProvider(app="test").get("unknown")
 
-        assert isinstance(provider, ProviderBase)
+
+class TestGetCa:
+    def test_success(self):
+        param = Mock(TeleportConnectionParameter)
+        param.ca = b"-----MOCK CERTIFICATE-----"
+        param.path_ca = Path("path/to/ca")
+
+        assert get_ca(param, "path") == "path/to/ca"
+        assert get_ca(param, "pem") == "-----MOCK CERTIFICATE-----"
 
     def test_fail(self):
-        with pytest.raises(ConfigError):
-            t.get_adapted_provider("not-teleport+other", {})
-        with pytest.raises(ConfigError):  # raise by get_adapter
-            t.get_adapted_provider("teleport+no-this-type", {})
+        param = Mock(TeleportConnectionParameter)
+        param.ca = None
+
+        with pytest.raises(LookupError, match="CA is not available"):
+            get_ca(param, "pem")

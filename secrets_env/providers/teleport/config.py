@@ -42,7 +42,8 @@ class TeleportUserConfig(BaseModel):
             return {"app": data}
         return data
 
-    def get_connection_param(self) -> TeleportConnectionParameter:
+    @cached_property
+    def connection_param(self) -> TeleportConnectionParameter:
         """Get app connection parameter from Teleport CLI.
 
         Raises

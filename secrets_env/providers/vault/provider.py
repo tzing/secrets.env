@@ -2,70 +2,121 @@ from __future__ import annotations
 
 import enum
 import logging
-import re
 import typing
 from functools import cached_property
 from http import HTTPStatus
-from typing import Dict, Literal, Union
+from typing import Literal
 
 import httpx
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    InstanceOf,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+    validate_call,
+)
 
 import secrets_env.version
-from secrets_env.exceptions import AuthenticationError, ValueNotFound
-from secrets_env.provider import ProviderBase, RequestSpec
+from secrets_env.exceptions import AuthenticationError
+from secrets_env.provider import Provider
+from secrets_env.providers.vault.config import VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
-    from pathlib import Path
-    from typing import Any, Self
+    from typing import Iterable, Iterator, Self, Sequence
 
-    from secrets_env.providers.vault.auth.base import Auth
-    from secrets_env.providers.vault.config import CertTypes
-
+    from secrets_env.provider import RequestSpec
+    from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
 
 
 class Marker(enum.Enum):
-    NoMatch = enum.auto()
-    SecretNotExist = enum.auto()
+    """Internal marker for cache handling."""
+
+    NoCache = enum.auto()
+    NotFound = enum.auto()
 
 
-class SecretSource(typing.NamedTuple):
-    path: str
-    field: str
+class VaultPath(BaseModel):
+    """Represents a path to a value in Vault."""
 
+    path: str = Field(min_length=1)
+    field: tuple[str, ...]
 
-if typing.TYPE_CHECKING:
-    KVVersion = Literal[1, 2]
-    VaultSecret = Dict[str, str]
-    VaultSecretQueryResult = Union[VaultSecret, Literal[Marker.SecretNotExist]]
-
-
-class KvProvider(ProviderBase):
-    """Read secrets from Vault KV engine."""
-
-    def __init__(
-        self,
-        url: str,
-        auth: Auth,
-        *,
-        proxy: str | None = None,
-        ca_cert: Path | None = None,
-        client_cert: CertTypes | None = None,
-    ) -> None:
-        self.url = url
-        self.auth = auth
-        self.proxy = proxy
-        self.ca_cert = ca_cert
-        self.client_cert = client_cert
-
-        self._secrets: LruDict[str, VaultSecretQueryResult] = LruDict()
+    def __str__(self) -> str:
+        return f"{self.path}#{self.field_str}"
 
     @property
-    def type(self) -> str:
-        return "vault"
+    def field_str(self) -> str:
+        seq = []
+        for f in self.field:
+            if "." in f:
+                seq.append(f'"{f}"')
+            else:
+                seq.append(f)
+        return ".".join(seq)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _create_from_str(cls, value: str | dict | Self) -> dict | Self:
+        if not isinstance(value, str):
+            return value
+        if value.count("#") != 1:
+            raise ValueError("Invalid format. Expected 'path#field'")
+        path, field = value.rsplit("#", 1)
+        return {
+            "path": path,
+            "field": field,
+        }
+
+    @field_validator("field", mode="before")
+    @classmethod
+    def _accept_str_for_field(cls, value) -> Iterable[str]:
+        if isinstance(value, str):
+            return _split_field_str(value)
+        return value
+
+    @field_validator("field", mode="after")
+    @classmethod
+    def _validate_field(cls, field: Sequence[str]) -> Sequence[str]:
+        if not field:
+            raise ValueError("Field cannot be empty")
+        if any(not f for f in field):
+            raise ValueError("Field cannot contain empty subpath")
+        return field
+
+
+def _split_field_str(f: str) -> Iterator[str]:
+    """Split a field name into subsequences. By default, this function splits
+    the name by dots, with supportting of preserving the quoted subpaths.
+    """
+    pos = 0
+    while pos < len(f):
+        if f[pos] == '"':
+            # quoted
+            end = f.find('"', pos + 1)
+            if end == -1:
+                raise ValueError(f"Failed to parse field: {f}")
+            yield f[pos + 1 : end]
+            pos = end + 2
+        else:
+            # simple
+            end = f.find(".", pos)
+            if end == -1:
+                end = len(f)
+            yield f[pos:end]
+            pos = end + 1
+
+
+class VaultKvProvider(Provider, VaultUserConfig):
+    """Read secrets from Hashicorp Vault KV engine."""
+
+    type = "vault"
+
+    _cache: dict[str, dict | Marker] = PrivateAttr(default_factory=LruDict)
 
     @cached_property
     def client(self) -> httpx.Client:
@@ -76,102 +127,101 @@ class KvProvider(ProviderBase):
             self.auth.method,
         )
 
-        # initialize client
-        client_params: dict[str, Any] = {"base_url": self.url}
-
-        if self.proxy:
-            logger.debug("Use proxy: %s", self.proxy)
-            client_params["proxies"] = self.proxy
-        if self.ca_cert:
-            logger.debug("CA installed: %s", self.ca_cert)
-            client_params["verify"] = self.ca_cert
-        if self.client_cert:
-            logger.debug("Client side certificate file installed: %s", self.client_cert)
-            client_params["cert"] = self.client_cert
-
-        client = httpx.Client(
-            **client_params,
-            headers={
-                "Accept": "application/json",
-                "User-Agent": (
-                    f"secrets.env/{secrets_env.version.__version__} "
-                    f"python-httpx/{httpx.__version__}"
-                ),
-            },
-        )
-
-        # install token
+        client = create_http_client(self)
         client.headers["X-Vault-Token"] = get_token(client, self.auth)
 
         return client
 
     def get(self, spec: RequestSpec) -> str:
         path = VaultPath.model_validate(spec)
-        return self.read_field(path.path, path.field)
+        secret = self._read_secret(path)
 
-    def read_secret(self, path: str) -> VaultSecret:
-        """Read secret from Vault.
+        for f in path.field:
+            try:
+                secret = secret[f]
+            except (KeyError, TypeError):
+                raise LookupError(
+                    f'Field "{path.field_str}" not found in "{path.path}"'
+                ) from None
 
-        Parameters
-        ----------
-        path : str
-            Secret path
-
-        Returns
-        -------
-        secret : dict
-            Secret data. Or 'SecretNotExist' marker when not found.
-        """
-        if not isinstance(path, str):
-            raise TypeError(
-                f'Expected "path" to be a string, got {type(path).__name__}'
+        if not isinstance(secret, str):
+            raise LookupError(
+                f'Field "{path.field_str}" in "{path.path}" is not point to a string value'
             )
 
-        # try cache
-        result = self._secrets.get(path, Marker.NoMatch)
+        return secret
 
-        if result == Marker.NoMatch:
-            # not found in cache - start query
-            if secret := read_secret(self.client, path):
-                result = secret
-            else:
-                result = Marker.SecretNotExist
-            self._secrets[path] = result
+    def _read_secret(self, path: VaultPath) -> dict:
+        """
+        Get a secret from the Vault. A Vault "secret" is a object that contains
+        key-value pairs.
 
-        # returns value
-        if result == Marker.SecretNotExist:
-            raise ValueNotFound("Secret {} not found", path)
+        This method wraps the `read_secret` method and cache the result.
+
+        Raises
+        ------
+        LookupError
+            If the secret is not found.
+        """
+        result = self._cache.get(path.path, Marker.NoCache)
+
+        if result == Marker.NoCache:
+            result = read_secret(self.client, path.path)
+            if result is None:
+                result = Marker.NotFound
+            self._cache[path.path] = result
+
+        if result == Marker.NotFound:
+            raise LookupError(f'Secret "{path}" not found')
+
         return result
 
-    def read_field(self, path: str, field: str) -> str:
-        """Read only one field from Vault.
 
-        Parameters
-        ----------
-        path : str
-            Secret path
-        field : str
-            Field name
+@validate_call
+def create_http_client(config: VaultUserConfig) -> httpx.Client:
+    logger.debug(
+        "Vault client initialization requested. URL= %s, Auth type= %s",
+        config.url,
+        config.auth.method,
+    )
 
-        Returns
-        -------
-        value : str
-            The secret value if matched
-        """
-        if not isinstance(field, str):
-            raise TypeError(
-                f'Expected "field" to be a string, got {type(field).__name__}'
-            )
+    client_params = {
+        "base_url": str(config.url),
+        "headers": {
+            "Accept": "application/json",
+            "User-Agent": (
+                f"secrets.env/{secrets_env.version.__version__} "
+                f"python-httpx/{httpx.__version__}"
+            ),
+        },
+    }
 
-        secret = self.read_secret(path)
-        value = get_field(secret, field)
+    if config.proxy:
+        logger.debug("Proxy is set: %s", config.proxy)
+        client_params["proxy"] = str(config.proxy)
+    if config.tls.ca_cert:
+        logger.debug("CA cert is set: %s", config.tls.ca_cert)
+        client_params["verify"] = config.tls.ca_cert
+    if config.tls.client_cert and config.tls.client_key:
+        cert_pair = (config.tls.client_cert, config.tls.client_key)
+        logger.debug("Client cert pair is set: %s ", cert_pair)
+        client_params["cert"] = cert_pair
+    elif config.tls.client_cert:
+        logger.debug("Client cert is set: %s", config.tls.client_cert)
+        client_params["cert"] = config.tls.client_cert
 
-        if value is None:
-            raise ValueNotFound("Secret {}#{} not found", path, field)
-        return value
+    return httpx.Client(**client_params)
 
 
-def get_token(client: httpx.Client, auth: Auth) -> str:
+def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
+    """
+    Request a token from the Vault server and verify it.
+
+    Raises
+    ------
+    AuthenticationError
+        If the token cannot be retrieved or is invalid.
+    """
     # login
     try:
         token = auth.login(client)
@@ -180,9 +230,6 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
             raise
         raise AuthenticationError("Encounter {} while retrieving token", reason) from e
 
-    if not token:
-        raise AuthenticationError("Absence of token information")
-
     # verify
     if not is_authenticated(client, token):
         raise AuthenticationError("Invalid token")
@@ -190,20 +237,14 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     return token
 
 
-def is_authenticated(client: httpx.Client, token: str) -> bool:
+@validate_call
+def is_authenticated(client: InstanceOf[httpx.Client], token: str) -> bool:
     """Check is a token is authenticated.
 
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/auth/token
     """
-    if not isinstance(client, httpx.Client):
-        raise TypeError(
-            f'Expected "client" to be a httpx client, got {type(client).__name__}'
-        )
-    if not isinstance(token, str):
-        raise TypeError(f'Expected "token" to be a string, got {type(token).__name__}')
-
     logger.debug("Validate token for %s", client.base_url)
 
     resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
@@ -211,24 +252,91 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
         return True
 
     logger.debug(
-        "Token verification failed. Code= %d. Msg= %s",
+        "Token verification failed. Code= %d (%s). Msg= %s",
         resp.status_code,
+        resp.reason_phrase,
         resp.json(),
     )
     return False
 
 
-def get_mount_point(
-    client: httpx.Client, path: str
-) -> tuple[str | None, KVVersion | None]:
-    """Get mount point and KV engine version to a secret.
+@validate_call
+def read_secret(client: InstanceOf[httpx.Client], path: str) -> dict | None:
+    """Read secret from Vault.
 
-    Returns
-    -------
-    mount_point : str
-        The path the secret engine mounted on.
-    version : int
-        The secret engine version
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/secret/kv
+    """
+    mount = get_mount(client, path)
+    if not mount:
+        return
+
+    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount.path, mount.version)
+
+    if mount.version == 2:
+        subpath = path.removeprefix(mount.path)
+        request_path = f"/v1/{mount.path}data/{subpath}"
+    else:
+        request_path = f"/v1/{path}"
+
+    try:
+        resp = client.get(request_path)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during query secret %s: %s", path, reason)
+        return
+
+    if resp.is_success:
+        data = resp.json()
+        if mount.version == 2:
+            return data["data"]["data"]
+        else:
+            return data["data"]
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        logger.error("Secret <data>%s</data> not found", path)
+        return
+
+    logger.error("Error occurred during query secret %s", path)
+    log_httpx_response(logger, resp)
+    return
+
+
+class _RawMountMetadata(BaseModel):
+    """
+    {
+        "data": {
+            "options": {"version": "1"},
+            "path": "secrets/",
+            "type": "kv",
+        }
+    }
+    """
+
+    data: _DataBlock
+
+    class _DataBlock(BaseModel):
+
+        options: _OptionBlock
+        path: str
+        type: str
+
+        class _OptionBlock(BaseModel):
+            version: str
+
+
+class MountMetadata(BaseModel):
+    """Represents a mount point and KV engine version to a secret."""
+
+    path: str
+    version: Literal[1, 2]
+
+
+@validate_call
+def get_mount(client: InstanceOf[httpx.Client], path: str) -> MountMetadata | None:
+    """Get mount point and KV engine version to a secret.
 
     See also
     --------
@@ -237,154 +345,26 @@ def get_mount_point(
     consul-template
         https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
     """
-    if not isinstance(client, httpx.Client):
-        raise TypeError(
-            f'Expected "client" to be a httpx client, got {type(client).__name__}'
-        )
-    if not isinstance(path, str):
-        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
-
     try:
         resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
     except httpx.HTTPError as e:
         if not (reason := get_httpx_error_reason(e)):
             raise
         logger.error("Error occurred during checking metadata for %s: %s", path, reason)
-        return None, None
+        return
 
     if resp.is_success:
-        data = resp.json().get("data", {})
-
-        mount_point = data.get("path")
-        version = data.get("options", {}).get("version")
-
-        if version == "2" and data.get("type") == "kv":
-            return mount_point, 2
-        elif version == "1":
-            return mount_point, 1
-
-        logging.error("Unknown version %s for path %s", version, path)
-        logging.debug("Raw response: %s", resp)
-        return None, None
+        parsed = _RawMountMetadata.model_validate_json(resp.read())
+        return MountMetadata(
+            path=parsed.data.path,
+            version=int(parsed.data.options.version),  # type: ignore[reportArgumentType]
+        )
 
     elif resp.status_code == HTTPStatus.NOT_FOUND:
         # 404 is expected on an older version of vault, default to version 1
         # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
-        return "", 1
+        return MountMetadata(path="", version=1)
 
     logger.error("Error occurred during checking metadata for %s", path)
     log_httpx_response(logger, resp)
-    return None, None
-
-
-def read_secret(client: httpx.Client, path: str) -> VaultSecret | None:
-    """Read secret from Vault.
-
-    See also
-    --------
-    https://developer.hashicorp.com/vault/api-docs/secret/kv
-    """
-    if not isinstance(client, httpx.Client):
-        raise TypeError(
-            f'Expected "client" to be a httpx client, got {type(client).__name__}'
-        )
-    if not isinstance(path, str):
-        raise TypeError(f'Expected "path" to be a string, got {type(path).__name__}')
-
-    mount_point, version = get_mount_point(client, path)
-    if not mount_point:
-        return None
-
-    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount_point, version)
-
-    if version == 1:
-        url = f"/v1/{path}"
-    else:
-        subpath = path.removeprefix(mount_point)
-        url = f"/v1/{mount_point}data/{subpath}"
-
-    try:
-        resp = client.get(url)
-    except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        logger.error("Error occurred during query secret %s: %s", path, reason)
-        return None
-
-    if resp.is_success:
-        data = resp.json()
-        if version == 1:
-            return data["data"]
-        elif version == 2:
-            return data["data"]["data"]
-
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
-        logger.error("Secret <data>%s</data> not found", path)
-        return None
-
-    logger.error("Error occurred during query secret %s", path)
-    log_httpx_response(logger, resp)
-    return None
-
-
-def get_field(secret: dict, name: str) -> str | None:
-    """Traverse the secret data to get the field along with the given name."""
-    for n in split_field(name):
-        if not isinstance(secret, dict):
-            return None
-        secret = typing.cast(dict, secret.get(n))
-
-    if not isinstance(secret, str):
-        return None
-
-    return secret
-
-
-def split_field(name: str) -> list[str]:
-    """Split a field name into subsequences. By default, this function splits
-    the name by dots, with supportting of preserving the quoted subpaths.
-    """
-    pattern_quoted = re.compile(r'"([^"]+)"')
-    pattern_simple = re.compile(r"([\w-]+)")
-
-    seq = []
-    pos = 0
-    while pos < len(name):
-        # try match pattern
-        if m := pattern_simple.match(name, pos):
-            pass
-        elif m := pattern_quoted.match(name, pos):
-            pass
-        else:
-            break
-
-        seq.append(m.group(1))
-
-        # check remaining part
-        # +1 for skipping the dot (if exists)
-        pos = m.end() + 1
-
-    if pos <= len(name):
-        raise ValueError(f"Failed to parse name: {name}")
-
-    return seq
-
-
-class VaultPath(BaseModel):
-    """Represents a path to a value in Vault."""
-
-    path: str = Field(min_length=1)
-    field: str = Field(min_length=1)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _from_str(cls, value: str | dict | Self) -> dict | Self:
-        if not isinstance(value, str):
-            return value
-        if value.count("#") != 1:
-            raise ValueError("Invalid format. Expected 'path#field'")
-        path, field = value.rsplit("#", 1)
-        return {
-            "path": path,
-            "field": field,
-        }
+    return

@@ -1,33 +1,50 @@
+from __future__ import annotations
+
+import logging
 import typing
 
-import secrets_env.exceptions
-
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase
+    from secrets_env.provider import Provider
 
 DEFAULT_PROVIDER = "vault"
 
+logger = logging.getLogger(__name__)
 
-def get_provider(data: dict) -> "ProviderBase":
-    type_ = data.get("type", DEFAULT_PROVIDER)
-    type_lower = type_.lower()
+
+def get_provider(config: dict) -> Provider:
+    """
+    Returns a provider instance based on the configuration.
+
+    Raises
+    ------
+    ValueError
+        If the provider type is not recognized.
+    ValidationError
+        If the provider configuration is invalid.
+    """
+    type_ = config.get("type")
+    if not type_:
+        type_ = DEFAULT_PROVIDER
+        logger.warning("Provider type unspecified, using default: %s", type_)
+
+    itype = type_.lower()
 
     # fmt: off
-    if type_lower == "null":
-        from . import null
-        return null.get_provider(type_, data)
-    if type_lower == "plain":
-        from . import plain
-        return plain.get_provider(type_, data)
-    if type_lower == "teleport":
-        from . import teleport
-        return teleport.get_provider(type_, data)
-    if type_lower == "vault":
-        from . import vault
-        return vault.get_provider(type_, data)
-    if type_lower.startswith("teleport+"):
-        from . import teleport
-        return teleport.get_adapted_provider(type_, data)
+    if itype == "null":
+        from secrets_env.providers.null import NullProvider
+        return NullProvider.model_validate(config)
+    if itype == "plain":
+        from secrets_env.providers.plain import PlainTextProvider
+        return PlainTextProvider.model_validate(config)
+    if itype == "teleport":
+        from secrets_env.providers.teleport import TeleportProvider
+        return TeleportProvider.model_validate(config)
+    if itype == "teleport+vault":
+        logger.error('"teleport+vault provider is not yet implemented')
+        raise NotImplementedError
+    if itype == "vault":
+        from secrets_env.providers.vault import VaultKvProvider
+        return VaultKvProvider.model_validate(config)
     # fmt: on
 
-    raise secrets_env.exceptions.ConfigError("Unknown provider type {}", type_)
+    raise ValueError(f"Unknown provider type {type_}")
