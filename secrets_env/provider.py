@@ -6,11 +6,11 @@ For secret provider implementations, see :py:mod:`secrets_env.providers`.
 from __future__ import annotations
 
 import abc
-from typing import ClassVar
+from typing import ClassVar, Union
 
 from pydantic import BaseModel
 
-RequestSpec = dict[str, str] | str
+RequestSpec = Union[dict[str, str], str]
 """:py:class:`RequestSpec` represents a path spec to read the value.
 
 It should be a :py:class:`dict` in most cases; or :py:class:`str` if this
