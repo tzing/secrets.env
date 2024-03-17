@@ -4,6 +4,7 @@ from secrets_env.providers import get_provider
 from secrets_env.providers.null import NullProvider
 from secrets_env.providers.plain import PlainTextProvider
 from secrets_env.providers.teleport import TeleportProvider
+from secrets_env.providers.vault import VaultKvProvider
 
 
 class TestGetProvider:
@@ -18,6 +19,14 @@ class TestGetProvider:
     def test_teleport(self):
         provider = get_provider({"type": "teleport", "app": "test"})
         assert isinstance(provider, TeleportProvider)
+
+    def test_teleport_adapter(self):
+        with pytest.raises(NotImplementedError):
+            get_provider({"type": "teleport+vault"})
+
+    def test_vault(self):
+        provider = get_provider({"url": "https://example.com/", "auth": "null"})
+        assert isinstance(provider, VaultKvProvider)
 
     def test_invalid(self):
         with pytest.raises(ValueError, match="Unknown provider type invalid"):
