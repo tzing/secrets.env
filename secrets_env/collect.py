@@ -5,7 +5,7 @@ import typing
 
 if typing.TYPE_CHECKING:
     from secrets_env.config0.parser import Config
-    from secrets_env.provider import ProviderBase, RequestSpec
+    from secrets_env.provider import Provider, RequestSpec
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +37,17 @@ def read_values(config: Config) -> dict[str, str]:
     return output_values
 
 
-def read1(provider: ProviderBase, name: str, spec: RequestSpec) -> str | None:
+def read1(provider: Provider, name: str, spec: RequestSpec) -> str | None:
     """Read single value.
 
     This function wraps :py:meth:`secrets_env.provider.ProviderBase.get` and
     captures all exceptions.
     """
     import secrets_env.exceptions
-    from secrets_env.provider import ProviderBase
+    from secrets_env.provider import Provider
 
     # type checking
-    if not isinstance(provider, ProviderBase):
+    if not isinstance(provider, Provider):
         raise TypeError(
             f'Expected "provider" to be a credential provider class, '
             f"got {type(provider).__name__}"

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import secrets_env.config0 as t
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 
 
 class TestLoadConfig:
@@ -32,7 +32,7 @@ class TestLoadConfig:
 
         for name, provider in cfg["providers"].items():
             assert isinstance(name, str)
-            assert isinstance(provider, ProviderBase)
+            assert isinstance(provider, Provider)
 
         for request in cfg["requests"]:
             assert isinstance(request["name"], str)

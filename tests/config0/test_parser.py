@@ -4,14 +4,14 @@ import pytest
 
 import secrets_env.config0.parser as t
 from secrets_env.exceptions import AuthenticationError, ConfigError
-from secrets_env.provider import ProviderBase
+from secrets_env.provider import Provider
 
 
 @pytest.fixture()
 def _patch_get_provider(monkeypatch: pytest.MonkeyPatch):
     def mock_parser(data: dict):
         assert isinstance(data, dict)
-        return Mock(spec=ProviderBase)
+        return Mock(spec=Provider)
 
     monkeypatch.setattr("secrets_env.providers.get_provider", mock_parser)
 
@@ -35,7 +35,7 @@ class TestParseConfig:
             }
         )
         assert isinstance(cfg, dict)
-        assert isinstance(cfg["providers"]["main"], ProviderBase)
+        assert isinstance(cfg["providers"]["main"], Provider)
         assert cfg["requests"][0]["spec"] == "foobar"
 
     def test_no_request(self):
@@ -73,15 +73,15 @@ class TestGetProviders:
             }
         )
         assert len(result) == 3
-        assert isinstance(result["main"], ProviderBase)
-        assert isinstance(result["provider 1"], ProviderBase)
-        assert isinstance(result["provider 2"], ProviderBase)
+        assert isinstance(result["main"], Provider)
+        assert isinstance(result["provider 1"], Provider)
+        assert isinstance(result["provider 2"], Provider)
 
     @pytest.mark.usefixtures("_patch_get_provider")
     def test_duplicated_name(self, caplog: pytest.LogCaptureFixture):
         result = t.get_providers({"source": [{"data": "dummy"}] * 2})
         assert len(result) == 1
-        assert isinstance(result["main"], ProviderBase)
+        assert isinstance(result["main"], Provider)
 
         assert "Duplicated source name <data>main</data>" in caplog.text
 
@@ -122,13 +122,13 @@ class TestParseSourceItem:
     def test_success_1(self):
         name, provider = t.parse_source_item({})
         assert name == "main"
-        assert isinstance(provider, ProviderBase)
+        assert isinstance(provider, Provider)
 
     @pytest.mark.usefixtures("_patch_get_provider")
     def test_success_2(self):
         name, provider = t.parse_source_item({"name": "test"})
         assert name == "test"
-        assert isinstance(provider, ProviderBase)
+        assert isinstance(provider, Provider)
 
     def test_name_error(self):
         assert t.parse_source_item({"name": object()}) is None

@@ -1,16 +1,17 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import re
 import typing
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict
+from typing import Any, Iterator, TypedDict
 
 import secrets_env.exceptions
 import secrets_env.providers
-from secrets_env.provider import RequestSpec
 from secrets_env.utils import ensure_dict, ensure_str
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import ProviderBase
+    from secrets_env.provider import Provider, RequestSpec
 
 DEFAULT_PROVIDER_NAME = "main"
 
@@ -29,11 +30,11 @@ class Request(TypedDict):
 class Config(TypedDict):
     """The parsed configurations."""
 
-    providers: Dict[str, "ProviderBase"]
-    requests: List[Request]
+    providers: dict[str, Provider]
+    requests: list[Request]
 
 
-def parse_config(data: dict) -> Optional[Config]:
+def parse_config(data: dict) -> Config | None:
     """Parse and validate configs, build it into structured object."""
     requests = get_requests(data)
     if not requests:
@@ -48,11 +49,11 @@ def parse_config(data: dict) -> Optional[Config]:
     return Config(providers=providers, requests=requests)
 
 
-def get_providers(data: dict) -> Dict[str, "ProviderBase"]:
+def get_providers(data: dict) -> dict[str, Provider]:
     sections = list(extract_sources(data))
     logger.debug("%d raw provider configs extracted", len(sections))
 
-    providers: Dict[str, "ProviderBase"] = {}
+    providers: dict[str, Provider] = {}
     for data in sections:
         result = parse_source_item(data)
         if not result:
@@ -75,7 +76,7 @@ def get_providers(data: dict) -> Dict[str, "ProviderBase"]:
     return providers
 
 
-def extract_sources(data: dict) -> Iterator[Dict[str, Any]]:
+def extract_sources(data: dict) -> Iterator[dict[str, Any]]:
     """Extracts both "source(s)" section and ensure the output is list of dict"""
     for item in itertools.chain(
         get_list(data, "source"),
@@ -97,7 +98,7 @@ def get_list(data: dict, key: str) -> Iterator[dict]:
         logger.warning("Found invalid value in field <mark>%s</mark>", key)
 
 
-def parse_source_item(config: dict) -> Optional[Tuple[str, "ProviderBase"]]:
+def parse_source_item(config: dict) -> tuple[str, Provider] | None:
     # check name
     name = config.get("name") or DEFAULT_PROVIDER_NAME
     name, ok = ensure_str("source.name", name)
@@ -117,7 +118,7 @@ def parse_source_item(config: dict) -> Optional[Tuple[str, "ProviderBase"]]:
     return name, provider
 
 
-def get_requests(data: dict) -> List[Request]:
+def get_requests(data: dict) -> list[Request]:
     # accept both keyword `secret(s)`
     raw = {}
 
