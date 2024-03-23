@@ -218,12 +218,12 @@ The method to use for authentication.
 
 Accepted values are:
 
-- ``basic``, applying the :ref:`vault.meth.userpass` method
 - ``ldap``, applying the :ref:`vault.meth.ldap` method
 - ``oidc``, applying the :ref:`vault.meth.oidc` method
 - ``okta``, applying the :ref:`vault.meth.okta` method
 - ``radius``, applying the :ref:`vault.meth.radius` method
 - ``token``, applying the :ref:`vault.meth.token` method
+- ``userpass``, applying the :ref:`vault.meth.userpass` method
 
 .. _vault.auth.role:
 
@@ -404,7 +404,7 @@ This method corresponds to the `RADIUS auth method`_ in Vault.
 :octicon:`chevron-right` Userpass auth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:method: ``basic``
+:method: ``userpass``
 
 A straightforward method for authenticating with Vault using a combination of username and password.
 This method corresponds to the `userpass auth method`_ in Vault.

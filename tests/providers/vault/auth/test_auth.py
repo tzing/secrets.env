@@ -10,13 +10,13 @@ from secrets_env.providers.vault.auth.base import Auth, NoAuth
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("basic", "secrets_env.providers.vault.auth.userpass.BasicAuth.create"),
         ("ldap", "secrets_env.providers.vault.auth.userpass.LDAPAuth.create"),
         ("null", "secrets_env.providers.vault.auth.base.NoAuth.create"),
         ("oidc", "secrets_env.providers.vault.auth.oidc.OpenIDConnectAuth.create"),
         ("okta", "secrets_env.providers.vault.auth.userpass.OktaAuth.create"),
         ("radius", "secrets_env.providers.vault.auth.userpass.RADIUSAuth.create"),
         ("token", "secrets_env.providers.vault.auth.token.TokenAuth.create"),
+        ("userpass", "secrets_env.providers.vault.auth.userpass.UserPassAuth.create"),
     ],
 )
 def test_create_auth_by_name(monkeypatch: pytest.MonkeyPatch, method: str, path: str):

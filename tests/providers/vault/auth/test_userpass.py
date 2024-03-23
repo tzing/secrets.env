@@ -142,10 +142,10 @@ class TestUserPasswordAuth:
 @pytest.mark.parametrize(
     ("method_class", "login_path"),
     [
-        (t.BasicAuth, "/v1/auth/userpass/login/user"),
-        (t.OktaAuth, "/v1/auth/okta/login/user"),
         (t.LDAPAuth, "/v1/auth/ldap/login/user"),
+        (t.OktaAuth, "/v1/auth/okta/login/user"),
         (t.RADIUSAuth, "/v1/auth/radius/login/user"),
+        (t.UserPassAuth, "/v1/auth/userpass/login/user"),
     ],
 )
 def test_auth_methods(

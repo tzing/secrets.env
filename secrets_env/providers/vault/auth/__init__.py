@@ -22,27 +22,27 @@ def create_auth_by_name(url: Url, config: dict) -> Auth:
     method: str = config["method"].lower()
 
     # fmt: off
-    if method == "basic":
-        from secrets_env.providers.vault.auth.userpass import BasicAuth
-        return BasicAuth.create(url, config)
-    elif method == "ldap":
+    if method == "ldap":
         from secrets_env.providers.vault.auth.userpass import LDAPAuth
         return LDAPAuth.create(url, config)
-    elif method == "null":
+    if method == "null":
         from secrets_env.providers.vault.auth.base import NoAuth
         return NoAuth.create(url, config)
-    elif method == "oidc":
+    if method == "oidc":
         from secrets_env.providers.vault.auth.oidc import OpenIDConnectAuth
         return OpenIDConnectAuth.create(url, config)
-    elif method == "okta":
+    if method == "okta":
         from secrets_env.providers.vault.auth.userpass import OktaAuth
         return OktaAuth.create(url, config)
-    elif method == "radius":
+    if method == "radius":
         from secrets_env.providers.vault.auth.userpass import RADIUSAuth
         return RADIUSAuth.create(url, config)
-    elif method == "token":
+    if method == "token":
         from secrets_env.providers.vault.auth.token import TokenAuth
         return TokenAuth.create(url, config)
+    if method == "userpass":
+        from secrets_env.providers.vault.auth.userpass import UserPassAuth
+        return UserPassAuth.create(url, config)
     # fmt: on
 
     raise ValueError(f"Unknown auth method: {method}")
