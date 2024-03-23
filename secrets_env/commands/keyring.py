@@ -25,14 +25,6 @@ def group():
     """Manage credential using system keyring service."""
 
 
-@group.command()
-def status():
-    """Check if keyring is available."""
-    if not is_keyring_available():
-        sys.exit(2)
-    click.echo("ok")
-
-
 @group.command("set")
 @click.argument("host", type=UrlParam())
 @click.argument("target")
