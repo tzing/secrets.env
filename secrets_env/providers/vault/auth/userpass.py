@@ -100,13 +100,6 @@ class UserPasswordAuth(Auth):
         return resp.json()["auth"]["client_token"]
 
 
-class BasicAuth(UserPasswordAuth):
-    """Login to Vault using user name and password."""
-
-    method = "basic"
-    vault_name = "userpass"
-
-
 class LDAPAuth(UserPasswordAuth):
     """Login with LDAP credentials."""
 
@@ -129,3 +122,10 @@ class RADIUSAuth(UserPasswordAuth):
 
     method = "RADIUS"
     vault_name = "radius"
+
+
+class UserPassAuth(UserPasswordAuth):
+    """Login to Vault using user name and password."""
+
+    method = "Userpass"
+    vault_name = "userpass"

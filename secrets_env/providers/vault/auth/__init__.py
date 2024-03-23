@@ -23,8 +23,8 @@ def create_auth_by_name(url: Url, config: dict) -> Auth:
 
     # fmt: off
     if method == "basic":
-        from secrets_env.providers.vault.auth.userpass import BasicAuth
-        return BasicAuth.create(url, config)
+        from secrets_env.providers.vault.auth.userpass import UserPassAuth
+        return UserPassAuth.create(url, config)
     elif method == "ldap":
         from secrets_env.providers.vault.auth.userpass import LDAPAuth
         return LDAPAuth.create(url, config)
