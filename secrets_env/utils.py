@@ -268,11 +268,6 @@ def create_keyring_login_key(url: pydantic_core.Url, user: str) -> str:
     return json.dumps({"host": url.host, "type": "login", "user": user.casefold()})
 
 
-def create_keyring_token_key(url: pydantic_core.Url):
-    """Build key for storing token in keyring."""
-    return json.dumps({"host": url.host, "type": "token"})
-
-
 def strip_ansi(value: str) -> str:
     """Strip ANSI escape codes from the string."""
     return _ansi_re.sub("", value)
