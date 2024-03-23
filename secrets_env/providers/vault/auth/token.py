@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 from pydantic import SecretStr
 
 from secrets_env.providers.vault.auth.base import Auth
-from secrets_env.utils import create_keyring_token_key, get_env_var, read_keyring
+from secrets_env.utils import get_env_var
 
 if TYPE_CHECKING:
     from typing import Any
@@ -46,12 +46,6 @@ class TokenAuth(Auth):
             with helper_path.open("r", encoding="utf-8") as fd:
                 # don't think the token could be this long
                 token = fd.read(256).strip()
-            token = cast(SecretStr, token)
-            return cls(token=token)
-
-        # keyring
-        if token := read_keyring(create_keyring_token_key(url)):
-            logger.debug("Found token from keyring")
             token = cast(SecretStr, token)
             return cls(token=token)
 

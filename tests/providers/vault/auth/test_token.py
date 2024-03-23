@@ -36,11 +36,6 @@ class TestTokenAuth:
         assert TokenAuth.create(Url("https://example.com/"), {}) == self.sample
 
     @pytest.mark.usefixtures("_disable_token_helper")
-    def test_create_from_keyring(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "read_keyring", lambda _: "T0ken")
-        assert TokenAuth.create(Url("https://example.com/"), {}) == self.sample
-
-    @pytest.mark.usefixtures("_disable_token_helper")
     def test_create_failed(self):
         with pytest.raises(ValueError, match="Missing token for Vault authentication."):
             assert TokenAuth.create(Url("https://example.com/"), {}) is None
