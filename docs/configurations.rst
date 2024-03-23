@@ -1,233 +1,220 @@
 Configurations
 ==============
 
+The configuration file is vital for secrets.env, enabling secure retrieval and storage of credentials.
+
 Filename
 --------
 
 The app looks for a file with one of the following names in the current working directory and its parent folders, and loads the configuration from it.
+
 If multiple files exist, the app will select the first one based on the order listed below:
 
-== ===================== =================
-#  Filename              Format
-== ===================== =================
-1  ``.secrets-env.toml`` TOML
-2  ``.secrets-env.yaml`` YAML [#use-yaml]_
-3  ``.secrets-env.yml``  YAML [#use-yaml]_
-4  ``.secrets-env.json`` JSON
-5  ``pyproject.toml``    TOML
-== ===================== =================
+1. ``.secrets-env.toml``
+2. ``.secrets-env.yaml`` [#use-yaml]_
+3. ``.secrets-env.yml`` [#use-yaml]_
+4. ``.secrets-env.json``
+5. ``pyproject.toml``
 
 .. [#use-yaml]
    YAML format is supported only if you have installed secrets.env with pip extra ``[yaml]``.
 
 
-Layouts
--------
+Layout
+------
 
-Typically, the configuration file should contain ``source`` section to specify the secret provider, and its connection parameters, and a ``secrets`` section to list the value(s) to be loaded:
+The configuration file should contain ``sources`` section to specify the secret provider, and its connection parameters, and ``secrets`` section to list the value(s) to be loaded:
 
-.. tabs::
+.. tab-set::
 
-   .. code-tab:: toml
+   .. tab-item:: toml
+      :sync: toml
 
-      [source]
-      type = "vault"
-      url = "https://example.com/"
-      auth = "oidc"
+      .. code-block:: toml
 
-      [secrets]
-      VAR = "secret/default#example"
+         [[sources]]
+         type = "vault"
+         name = "my-vault"
+         url = "https://example.com"
+         auth = "token"
 
-   .. code-tab:: yaml
+         [secrets]
+         DEMO_USERNAME = {source = "my-vault", path = "secrets/default", field = "username"}
 
-      source:
-        type: vault
-        url: https://example.com/
-        auth: oidc
+   .. tab-item:: toml :bdg:`simplified`
 
-      secrets:
-        VAR: "secret/default#example"
+      .. code-block:: toml
 
-   .. code-tab:: json
+         [source]
+         type = "vault"
+         url = "https://example.com"
+         auth = "token"
 
-      {
-        "source": {
-          "type": "vault",
-          "url": "https://example.com/",
-          "auth": "oidc"
-        },
-        "secrets": {
-          "VAR": "secret/default#example"
-        }
-      }
+         [secrets]
+         DEMO_USERNAME = {path = "secrets/default", field = "username"}
 
-   .. code-tab:: toml pyproject.toml
+   .. tab-item:: yaml
+      :sync: yaml
 
-      [tool.secrets-env.source]
-      type = "vault"
-      url = "https://example.com/"
-      auth = "oidc"
+      .. code-block:: yaml
 
-      [tool.secrets-env.secrets]
-      VAR = "secret/default#example"
+         sources:
+           - type: vault
+             name: my-vault
+             url: https://example.com
+             auth: token
+
+         secrets:
+           DEMO_USERNAME:
+             source: my-vault
+             field: username
+             path: secrets/default
+
+   .. tab-item:: yaml :bdg:`simplified`
+
+      .. code-block:: yaml
+
+         source:
+           type: vault
+           url: https://example.com
+           auth: token
+
+         secrets:
+           DEMO_USERNAME:
+             field: username
+             path: secrets/default
+
+   .. tab-item:: json
+      :sync: json
+
+      .. code-block:: json
+
+         {
+           "sources": [
+             {
+               "type": "vault",
+               "name": "my-vault",
+               "url": "https://example.com",
+               "auth": "token"
+             }
+           ],
+           "secrets": {
+             "DEMO_USERNAME": {
+               "source": "my-vault",
+               "path": "secrets/default",
+               "field": "username"
+             }
+           }
+         }
+
+   .. tab-item:: pyproject.toml
+      :sync: pyproject.toml
+
+      .. code-block:: toml
+
+         [[tool.secrets-env.sources]]
+         type = "vault"
+         name = "my-vault"
+         url = "https://example.com"
+         auth = "token"
+
+         [tool.secrets-env.secrets]
+         DEMO_USERNAME = {source = "my-vault", path = "secrets/default", field = "username"}
+
+.. tip::
+
+   The section names ``source`` / ``secrets`` can be either singular or plural.
+   The application will recognize them regardless of the naming convention.
+
+.. admonition:: About "simplified" layout
+
+   When there's only one source in the configuration, users can opt for a "simplified" layout.
+   In this layout, the source section can be formatted as a straightforward table instead of a list, and the ``name`` field can be excluded.
+   Similarly, in the secrets section, users can also choose to remove the ``source`` field for clarity.
+
+   The example section primarily showcases simplified versions in a few formats, but it's worth noting that the tool also supports various other formats.
 
 
-Source
-++++++
+Source section
+--------------
 
 Source section specifies secret provider information.
 
-This app uses :doc:`/provider/vault` as the default provider, the ``type`` field is not required but has been included for the sake of clarity and readability.
+The ``type`` field in the configuration specifies the provider to be utilized, while the ``name`` field allows users to assign a custom name.
+Additional arguments are passed into the corresponding provider, so users should refer to the provider's documentation for detailed information on these arguments.
 
-.. _multiple sources config:
+The supported provider types includes:
 
-Multiple sources
-^^^^^^^^^^^^^^^^
+- ``plain``
 
-Having more than one provider is also possible by modifying the "source" table to a list and giving each provider a unique ``name``:
+  This creates a :doc:`provider/plain`, allowing values to be read directly from the configuration. Essentially, it functions as a ``.env`` loader.
 
-.. tabs::
+- ``teleport``
 
-   .. code-tab:: toml
+  This creates a :doc:`provider/teleport`, designed to fetch credentials from `Gravitational Teleport <https://goteleport.com/teleport/>`_.
 
-      [[source]]
-      name = "vault-1"
-      url = "https://vault-1.example.com/"
-      auth = {method = "okta", username = "user@example.com"}
+- ``vault``
 
-      [[source]]
-      name = "vault-2"
-      url = "https://vault-2.example.com/"
-      auth = "oidc"
+  This creates a :doc:`provider/vault`, capable of retrieving secrets from `HashiCorp Vault <https://www.vaultproject.io/>`_.
 
-   .. code-tab:: yaml
 
-      source:
-        - name: vault-1
-          url: https://vault-1.example.com/
-          auth:
-            method: okta
-            username: user@example.com
+Secret section
+--------------
 
-        - name: vault-2
-          url: https://vault-2.example.com/
-          auth: oidc
-
-   .. code-tab:: json
-
-      {
-        "source": [
-          {
-            "name": "vault-1",
-            "url": "https://vault-1.example.com/",
-            "auth": {
-              "method": "okta",
-              "username": "user@example.com"
-            }
-          },
-          {
-            "name": "vault-2",
-            "url": "https://vault-2.example.com/",
-            "auth": "oidc"
-          }
-        ]
-      }
-
-   .. code-tab:: toml pyproject.toml
-
-      [[tool.secrets-env.source]]
-      name = "vault-1"
-      url = "https://vault-1.example.com/"
-      auth = {method = "okta", username = "user@example.com"}
-
-      [[tool.secrets-env.source]]
-      name = "vault-2"
-      url = "https://vault-2.example.com/"
-      auth = "oidc"
-
-Secrets
-+++++++
-
-The "secrets" section lists key-value pairs where the keys correspond to the environment variable names in which the values will be stored.
+The secrets section lists key-value pairs where the keys correspond to the environment variable names in which the values will be stored.
 The specific format of the value depends on the secret provider being used.
 
-For example, in the case of Vault, the value could be either a string in the format of ``path#field``, or a table that includes the ``path`` and ``field`` fields.
+When multiple providers are installed, it's necessary to include the ``source`` field to indicate the provider from which the value should be fetched.
+And the remaining fields are passed into the relevant provider.
 
-.. tabs::
+In the example, the value of ``DEMO_USERNAME`` is fetched from the ``my-vault`` source, and the ``path`` and ``field`` fields are passed into the the correspond provider.
 
-   .. code-tab:: toml
+.. tab-set::
 
-      [secrets]
-      VAR1 = {path = "secret/default", field = "example"}
+   .. tab-item:: toml
+      :sync: toml
 
-   .. code-tab:: yaml
+      .. code-block:: toml
 
-      secrets:
-        VAR1:
-          path: secret/default
-          field: example
+         [secrets]
+         DEMO_USERNAME = {source = "my-vault", path = "secrets/default", field = "username"}
 
-   .. code-tab:: json
+   .. tab-item:: yaml
+      :sync: yaml
 
-      {
-        "secrets": {
-          "VAR1": {
-            "path": "secret/default",
-            "field": "example"
-          }
-        }
-      }
+      .. code-block:: yaml
 
-   .. code-tab:: toml pyproject.toml
+         secrets:
+           DEMO_USERNAME:
+             source: my-vault
+             field: username
+             path: secrets/default
 
-      [tool.secrets-env.secrets]
-      VAR1 = {path = "secret/default", field = "example"}
 
-Multiple sources
-^^^^^^^^^^^^^^^^
+Simplified specification
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-If multiple providers are installed, you must provide ``source`` for each of them:
+When the configuration is arranged in the simplified layout, users have the option to specify secrets in a simplified manner:
 
-.. tabs::
+.. tab-set::
 
-   .. code-tab:: toml
+   .. tab-item:: toml
+      :sync: toml
 
-      [secrets]
-      VAR1 = {source = "vault-1", path = "secret/default", field = "example"}
+      .. code-block:: toml
 
-   .. code-tab:: yaml
+         [secrets]
+         DEMO_USERNAME = "secrets/default#username"
 
-      secrets:
-        VAR1:
-          source: vault-1
-          path: secret/default
-          field: example
+   .. tab-item:: yaml
+      :sync: yaml
 
-   .. code-tab:: json
+      .. code-block:: yaml
 
-      {
-        "secrets": {
-          "VAR1": {
-            "source": "vault-1",
-            "path": "secret/default",
-            "field": "example"
-          }
-        }
-      }
+         secrets:
+           DEMO_USERNAME: "secrets/default#username"
 
-   .. code-tab:: toml pyproject.toml
+A simplified approach involves representing the entire secret specification using a string.
+The specific format of this string depends on the chosen provider.
 
-      [tool.secrets-env.secrets]
-      VAR1 = {source = "vault-1", path = "secret/default", field = "example"}
-
-Providers
----------
-
-For information on how to use it and its specifications, please refer to the following links.
-
-.. toctree::
-   :maxdepth: 2
-
-   provider/plain
-   provider/teleport
-   provider/vault
+For instance, the Vault provider recommends using the format ``path#field`` as demonstrated in this example.

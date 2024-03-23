@@ -1,146 +1,203 @@
 Teleport Provider
 =================
 
-This provider reads connection information of a `Teleport`_-protected application and pastes them to environment variables.
+This provider retrieves connection information from the `Teleport client tool`_ and transfers it to environment variables.
 
-This component is introduced to do the *tsh login* and *export* things for me:
+Introduced to automate tasks such as ``tsh login`` and ``export``, this component eliminates the need for manual copy-paste commands like:
 
 .. code-block:: bash
 
-   tsh app login --proxy=proxy.blah.com my-app
-   export SSL_CERT_FILE=$(tsh app config --proxy=proxy.blah.com -f=ca my-app)
+   tsh app login --proxy=teleport.example.com my-app
+   export SSL_CERT_FILE=$(tsh app config --proxy=teleport.example.com -f=ca my-app)
 
-.. _Teleport: https://goteleport.com/
-
-type
-   ``teleport``
+.. _Teleport client tool: https://goteleport.com/docs/connect-your-client/tsh/
 
 .. important::
 
-   This provider requires extra dependency to work, read :doc:`Teleport add-on <../addon/teleport>` for more details.
+   This provider requires command ``tsh`` installed in the system.
+   Please refer to the :doc:`../advanced/teleport` for more details.
 
 
-Configuration template
-----------------------
+Configuration layout
+--------------------
 
-.. note::
+.. tab-set::
 
-   These templates use :ref:`multiple sources config` format.
+   .. tab-item:: toml
+      :sync: toml
 
-.. tabs::
+      .. code-block:: toml
 
-   .. code-tab:: toml
+         [[sources]]
+         name = "tsh"
+         type = "teleport"
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         app = "my-app"
 
-      [[source]]
-      name = "tsh"
-      type = "teleport"
-      proxy = "teleport.example.com"
-      app = "demo"
+         [secrets]
+         HOST = { source = "tsh", field = "uri" }
+         SSL_CERT_FILE = { source = "tsh", field = "ca", format = "path" }
 
-      [secrets]
-      HOST = { source = "tsh", field = "uri" }
-      CLIENT_CERT = { source = "tsh", field = "cert", format = "path" }
+   .. tab-item:: yaml
+      :sync: yaml
 
-   .. code-tab:: yaml
+      .. code-block:: yaml
 
-      source:
-        - name: tsh
-          type: teleport
-          proxy: teleport.example.com
-          app: demo
+         sources:
+           - name: tsh
+             type: teleport
+             proxy: teleport.example.com
+             cluster: dev.example.com
+             app: my-app
 
-      secrets:
-        HOST:
-          source: tsh
-          field: uri
-        CLIENT_CERT:
-          source: tsh
-          field: cert
-          format: path
+         secrets:
+           HOST:
+             source: tsh
+             field: uri
+           SSL_CERT_FILE:
+             source: tsh
+             field: ca
+             format: path
 
-   .. code-tab:: json
+   .. tab-item:: json
 
-      {
-        "source": [
-          {
-            "name": "tsh",
-            "type": "teleport",
-            "proxy": "teleport.example.com",
-            "app": "demo"
-          }
-        ],
-        "secrets": {
-          "HOST": {
-            "source": "tsh",
-            "field": "uri"
-          },
-          "CLIENT_CERT": {
-            "source": "tsh",
-            "field": "cert",
-            "format": "path"
-          }
-        }
-      }
+      .. code-block:: json
 
-   .. code-tab:: toml pyproject.toml
+         {
+           "sources": [
+             {
+               "name": "tsh",
+               "type": "teleport",
+               "proxy": "teleport.example.com",
+               "cluster": "dev.example.com",
+               "app": "my-app"
+             }
+           ],
+           "secrets": {
+             "HOST": {
+               "source": "tsh",
+               "field": "uri"
+             },
+             "SSL_CERT_FILE": {
+               "source": "tsh",
+               "field": "ca",
+               "format": "path"
+             }
+           }
+         }
 
-      [[tool.secrets-env.source]]
-      name = "tsh"
-      type = "teleport"
-      proxy = "teleport.example.com"
-      app = "demo"
+   .. tab-item:: pyproject.toml
 
-      [tool.secrets-env.secrets]
-      HOST = { source = "tsh", field = "uri" }
-      CLIENT_CERT = { source = "tsh", field = "cert", format = "path" }
+      .. code-block:: toml
+
+         [[tool.secrets-env.sources]]
+         name = "tsh"
+         type = "teleport"
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         app = "my-app"
+
+         [tool.secrets-env.secrets]
+         HOST = { source = "tsh", field = "uri" }
+         SSL_CERT_FILE = { source = "tsh", field = "ca", format = "path" }
 
 
 Source section
 --------------
 
-You must specify the application in this section.
+   A field name followed by a bookmark icon (:octicon:`bookmark`) indicates that it is a required parameter.
 
-This provider will run the Teleport client in the background to fetch information.
-The following parameters will be filled by Teleport when not specified.
+To retrieve connection information, it's necessary to provide the application name.
+If the remaining parameters are left unspecified, Teleport will automatically populate them with default values.
 
-``app`` *(required)*
-   Application name to request connection information for.
+``app`` :octicon:`bookmark`
++++++++++++++++++++++++++++
+
+Application name to request connection information for.
 
 ``proxy``
-   Address to Teleport `proxy <https://goteleport.com/docs/architecture/proxy/>`_ service.
++++++++++
+
+Address to Teleport `proxy <https://goteleport.com/docs/architecture/proxy/>`_ service.
 
 ``cluster``
-   Teleport cluster to connect.
++++++++++++
+
+Teleport cluster to connect.
 
 ``user``
-   Teleport user name.
+++++++++
 
-Values
-------
+Teleport user name.
 
-The configurations in ``secrets`` section specified the item to output:
 
-``field`` *(required)*
-   Item to output. It could be:
+Secrets section
+---------------
 
-   ``uri``
-      URI to the app.
-   ``ca``
-      Certificate authority (CA) certificate. The certificate to verify the peer.
-   ``cert``
-      Client certificate.
-   ``key``
-      Private key.
-   ``cert+key``
-      Client certificate and private key bundle.
+The configurations within the ``secrets`` section determine which items are to be output.
+
+``field`` :octicon:`bookmark`
++++++++++++++++++++++++++++++
+
+Specifies the item to output, which could be:
+
+``uri``
+   URI to the application.
+``ca``
+   Certificate authority (CA) certificate used to verify the peer.
+``cert``
+   Client certificate.
+``key``
+   Private key.
+``cert+key``
+   Bundle containing both client certificate and private key.
 
 ``format``
-   Output format for certificates. The value is discarded when ``field`` is set to ``uri``.
-   The value could be:
+++++++++++
 
-   ``path`` *(default)*
-      Path to the certificate file. Note this file would be burned after secrets.env session terminated.
-   ``pem``
-      Output text in `PEM`_ format.
+Determines the format in which certificates are outputted.
+The value is ignored when ``field`` is set to ``uri``, and could be:
 
-.. _PEM: https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail
+``path`` :bdg-success-line:`default`
+   Path to the certificate file.
+   Secrets.env will create a temporary file and set the environment variable to its path.
+``pem``
+   Outputs text in `PEM <https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail>`_ format.
+
+Simplified layout
+-----------------
+
+When utilizing this provider with simplified configuration, the string value will be interpreted as ``field``, and the default format will be applied:
+
+.. tab-set::
+
+   .. tab-item:: toml :bdg:`simplified`
+      :sync: toml
+
+      .. code-block:: toml
+
+         [source]
+         type = "teleport"
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         app = "my-app"
+
+         [secrets]
+         HOST = "uri"
+         SSL_CERT_FILE = "ca"
+
+   .. tab-item:: yaml :bdg:`simplified`
+      :sync: yaml
+
+      .. code-block:: yaml
+
+         source:
+           type: teleport
+           proxy: teleport.example.com
+           cluster: dev.example.com
+           app: my-app
+
+         secrets:
+           HOST: uri
+           SSL_CERT_FILE: ca

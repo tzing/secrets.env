@@ -1,18 +1,12 @@
 Commands
 --------
 
-Secrets.env comes with command line interface.
-To get help from the command-line, call ``secrets.env`` to read the complete command list.
-
-**Usage**
-
-.. code-block:: bash
-
-   secrets.env [OPTIONS] COMMAND [ARGS]...
+Secrets.env includes a command-line interface.
+To access assistance from the command line, simply run ``secrets.env --help`` to view the full list of available commands.
 
 
-completion
-==========
+``completion``
+==============
 
 This command prints shell completion script for the program.
 
@@ -23,25 +17,18 @@ You can enable completion by running following command in your terminal:
    eval "$(secrets.env completion)"
 
 
-.. _command-keyring:
-
-keyring
-=======
-
-Manage credential using system keyring service.
-
-keyring del
-+++++++++++
+``keyring del``
+===============
 
 Remove a credential from system keyring.
 
-**Usage**
+*Usage:*
 
 .. code-block:: bash
 
    secrets.env keyring del HOST TARGET
 
-**Arguments**
+*Arguments:*
 
 ``HOST``
    The hostname/url to the vault that uses this credential.
@@ -49,16 +36,21 @@ Remove a credential from system keyring.
 ``TARGET``
    The target credential name. It could be ``token`` for auth token, or the username for login.
 
-keyring set
-+++++++++++
+
+.. _cmd.keyring.set:
+
+``keyring set``
+===============
 
 Command to store credential in system keyring.
+
+*Usage:*
 
 .. code-block:: bash
 
    secrets.env keyring set HOST TARGET [VALUE]
 
-**Arguments**
+*Arguments:*
 
 ``HOST``
    The hostname/url to the vault that uses this credential.
@@ -69,30 +61,31 @@ Command to store credential in system keyring.
 ``VALUE``
    The credential value. This app will prompt for input when it is not passed as an argument.
 
-keyring status
-++++++++++++++
+
+``keyring status``
+==================
 
 Command to check if keyring is available.
 
-**Usage**
+*Usage:*
 
 .. code-block:: bash
 
     secrets.env keyring status
 
 
-run
-===
+``run``
+=======
 
-This command loads secrets into environment variable then run the command.
+This command loads secrets into environment variable and run the command.
 
-**Usage**
+*Usage:*
 
 .. code-block:: bash
 
    secrets.env run [OPTIONS] -- CMD [ARGS]...
 
-**Options**
+*Options:*
 
 ``-C, --config FILE``
    Specify an alternative configuration file.

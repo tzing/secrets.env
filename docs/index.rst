@@ -19,20 +19,29 @@ While security remains paramount, it shouldn't hinder your progress. While we va
 Enter our solution: designed to seamlessly integrate secrets into your development workflow without storing data on disk. Easily replicate environments and mitigate the risk of inadvertently exposing secrets.
 
 
-User guide
-----------
+Table of Contents
+-----------------
 
 .. toctree::
+   :caption: User Guide
    :maxdepth: 1
 
    introduction
-   commands
    configurations
-   addon/index
+   commands
 
 .. toctree::
-   :caption: Links
-   :hidden:
+   :caption: Providers
+   :maxdepth: 1
 
-   GitHub <https://github.com/tzing/secrets.env/>
-   PyPI <https://pypi.org/project/secrets-env/>
+   provider/plain
+   provider/teleport
+   provider/vault
+
+.. toctree::
+   :caption: Advanced Features
+   :maxdepth: 1
+
+   advanced/keyring
+   advanced/poetry
+   advanced/teleport
