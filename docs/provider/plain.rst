@@ -1,70 +1,74 @@
 Plain Text Provider
 ===================
 
-Plain text provider returns text that is copied directly from the configuration file.
+The Plain Text provider directly transfers values from the configuration file to the environment variables.
+Essentially functioning like an ``.env`` loader, it's ideal for configuring all environment variables from a single file.
 
-In other words, this provider can be used as an alternative to an ``.env`` loader, which is useful for putting all environment variables in a single configuration file.
-However, if you only need an ``.env`` loader, please refer to other more mature solutions, such as `python-dotenv`_.
+However, if you solely require an ``.env`` loader, consider exploring simpler solutions like `python-dotenv`_.
 
-type
-   ``plain``
+.. _python-dotenv: https://saurabh-kumar.com/python-dotenv/
 
-.. _python-dotenv: https://github.com/theskumar/python-dotenv
+Configuration layout
+--------------------
 
-Configuration template
-----------------------
+.. tab-set::
 
-.. note::
+   .. tab-item:: toml
+      :sync: toml
 
-   These templates use :ref:`multiple sources config` format.
+      .. code-block:: toml
 
-.. tabs::
+         [[sources]]
+         name = "typewriter"
+         type = "plain"
 
-   .. code-tab:: toml
+         [secrets]
+         FOO = { source = "typewriter", value = "baz" }
 
-      [[source]]
-      name = "text"
-      type = "plain"
+   .. tab-item:: yaml
+      :sync: yaml
 
-      [secrets]
-      FOO = { source = "text", value = "bar" }
+      .. code-block:: yaml
 
-   .. code-tab:: yaml
+         sources:
+           - name: typewriter
+             type: plain
 
-      source:
-      - name: text
-        type: plain
+         secrets:
+           FOO:
+             source: typewriter
+             value: bar
 
-      secrets:
-        FOO:
-          source: text
-          value: bar
+   .. tab-item:: json
 
-   .. code-tab:: json
+      .. code-block:: json
 
-      {
-        "source": [
-          {
-            "name": "text",
-            "type": "plain"
-          }
-        ],
-        "secrets": {
-          "FOO": {
-            "source": "text",
-            "value": "bar"
-          }
-        }
-      }
+         {
+           "sources": [
+             {
+               "name": "typewriter",
+               "type": "plain"
+             }
+           ],
+           "secrets": {
+             "FOO": {
+               "source": "typewriter",
+               "value": "bar"
+             }
+           }
+         }
 
-   .. code-tab:: toml pyproject.toml
+   .. tab-item:: pyproject.toml
 
-      [[tool.secrets-env.source]]
-      name = "text"
-      type = "plain"
+      .. code-block:: toml
 
-      [tool.secrets-env.secrets]
-      FOO = { source = "text", value = "bar" }
+         [[tool.secrets-env.sources]]
+         name = "typewriter"
+         type = "plain"
+
+         [tool.secrets-env.secrets]
+         FOO = { source = "typewriter", value = "baz" }
+
 
 
 Source section
@@ -72,7 +76,31 @@ Source section
 
 Simply set ``type`` to ``plain``. No additional parameters are used by this provider.
 
-Values
-------
+Secrets section
+---------------
 
-Values should be placed in ``value`` field, or a string could be used directly when used as the primary provider.
+Values should be placed in ``value`` field, or a string could be used directly when used in simplified mode:
+
+.. tab-set::
+
+   .. tab-item:: toml :bdg:`simplified`
+      :sync: toml
+
+      .. code-block:: toml
+
+          [sources]
+          type = "plain"
+
+          [secrets]
+          FOO = "baz"
+
+   .. tab-item:: yaml :bdg:`simplified`
+      :sync: yaml
+
+      .. code-block:: yaml
+
+          sources:
+            type: plain
+
+          secrets:
+            FOO: bar
