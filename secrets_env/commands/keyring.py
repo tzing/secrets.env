@@ -66,7 +66,7 @@ def command_set(host: Url, username: str, password: str, password_stdin: bool):
     try:
         keyring.set_password("secrets.env", key, password)
     except keyring.errors.PasswordSetError:
-        click.secho("Failed to save password", fg="red", err=True)
+        click.secho("Failed to save password", fg="red")
         sys.exit(1)
 
     click.echo("Password saved")
@@ -93,7 +93,7 @@ def command_del(host: Url, username: str):
         click.echo("Password removed")
     except keyring.errors.PasswordDeleteError:
         logger.debug("Failed to remove %s from keyring", key)
-        click.echo("Password not found", err=True)
+        click.echo("Password not found")
 
 
 def assert_keyring_available():
