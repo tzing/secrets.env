@@ -170,11 +170,6 @@ def test_create_keyring_login_key():
     assert key == '{"host": "example.com", "type": "login", "user": "user@example.com"}'
 
 
-def test_create_keyring_token_key():
-    key = t.create_keyring_token_key(Url("https://Example.com/foo"))
-    assert key == '{"host": "example.com", "type": "token"}'
-
-
 def test_lru_dict():
     # basic
     d = t.LruDict(max_size=3)

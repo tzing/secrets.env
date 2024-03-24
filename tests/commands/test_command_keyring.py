@@ -7,131 +7,130 @@ import keyring.errors
 import pytest
 from pydantic_core import Url
 
-import secrets_env.commands.keyring as t
+from secrets_env.commands.keyring import UrlParam, assert_keyring_available, group
 
 
 @pytest.fixture()
-def _patch_is_keyring_available(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(t, "is_keyring_available", lambda: True)
-
-
-def test_status():
-    runner = click.testing.CliRunner()
-
-    with patch.object(t, "is_keyring_available", return_value=True):
-        assert runner.invoke(t.group, ["status"]).exit_code == 0
-
-    with patch.object(t, "is_keyring_available", return_value=False):
-        assert runner.invoke(t.group, ["status"]).exit_code != 0
-
-
-class TestSet:
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_success_token(self):
-        runner = click.testing.CliRunner()
-        with patch("keyring.set_password") as keyring:
-            rv = runner.invoke(
-                t.group, ["set", "https://example.com", "token", "t0ken"]
-            )
-
-        assert rv.exit_code == 0
-        keyring.assert_any_call(
-            "secrets.env", '{"host": "example.com", "type": "token"}', "t0ken"
-        )
-
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_success_login(self):
-        runner = click.testing.CliRunner()
-        with patch("click.prompt", return_value="P@ssw0rd"), patch(
-            "keyring.set_password"
-        ) as keyring:
-            rv = runner.invoke(t.group, ["set", "https://example.com", "demo"])
-
-        assert rv.exit_code == 0
-        keyring.assert_any_call(
-            "secrets.env",
-            '{"host": "example.com", "type": "login", "user": "demo"}',
-            "P@ssw0rd",
-        )
-
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_no_password(self):
-        runner = click.testing.CliRunner(mix_stderr=False)
-        with patch("click.prompt", return_value=""):
-            rv = runner.invoke(t.group, ["set", "https://example.com", "demo"])
-
-        assert rv.exit_code != 0
-        assert "Missing credential value." in rv.stderr
-
-    def test_no_keyring(self):
-        runner = click.testing.CliRunner()
-        with patch.object(t, "is_keyring_available", return_value=False):
-            rv = runner.invoke(t.group, ["set", "https://example.com", "token"])
-        assert rv.exit_code != 0
-
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_keyring_error(self):
-        runner = click.testing.CliRunner(mix_stderr=False)
-        with patch("keyring.set_password", side_effect=keyring.errors.PasswordSetError):
-            rv = runner.invoke(t.group, ["set", "https://example.com", "demo", "0000"])
-        assert rv.exit_code != 0
-        assert "Failed to save password" in rv.stderr
-
-
-class TestDel:
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_success_token(self):
-        runner = click.testing.CliRunner()
-        with patch("keyring.delete_password") as keyring:
-            rv = runner.invoke(t.group, ["del", "https://example.com", "token"])
-
-        assert rv.exit_code == 0
-        keyring.assert_any_call(
-            "secrets.env", '{"host": "example.com", "type": "token"}'
-        )
-
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_success_password(self):
-        runner = click.testing.CliRunner()
-        with patch("keyring.delete_password") as keyring:
-            rv = runner.invoke(t.group, ["del", "https://example.com", "demo"])
-
-        assert rv.exit_code == 0
-        keyring.assert_any_call(
-            "secrets.env", '{"host": "example.com", "type": "login", "user": "demo"}'
-        )
-
-    def test_no_keyring(self):
-        runner = click.testing.CliRunner()
-        with patch.object(t, "is_keyring_available", return_value=False):
-            rv = runner.invoke(t.group, ["del", "https://example.com", "token"])
-        assert rv.exit_code != 0
-
-    @pytest.mark.usefixtures("_patch_is_keyring_available")
-    def test_del_error(self):
-        runner = click.testing.CliRunner()
-        with patch(
-            "keyring.set_password", side_effect=keyring.errors.PasswordDeleteError
-        ):
-            rv = runner.invoke(t.group, ["del", "https://example.com", "token"])
-        assert rv.exit_code == 0
-
-
-def test_is_keyring_available():
-    # success
-    with patch("keyring.get_keyring", return_value=keyring.backends.null.Keyring()):
-        assert t.is_keyring_available() is True
-
-    # test import error
-    with patch.dict("sys.modules", {"keyring": None}):
-        assert t.is_keyring_available() is False
-
-    # keyring unavailable
-    with patch("keyring.get_keyring", return_value=keyring.backends.fail.Keyring()):
-        assert t.is_keyring_available() is False
+def _assume_keyring_available(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "secrets_env.commands.keyring.assert_keyring_available", lambda: None
+    )
 
 
 def test_url_param():
-    pt = t.UrlParam()
+    pt = UrlParam()
     assert pt("https://example.com") == Url("https://example.com/")
-    assert pt("EXAMPLE.COM") == Url("http://EXAMPLE.COM/")
+    assert pt("EXAMPLE.COM") == Url("https://EXAMPLE.COM/")
+
+
+class TestSet:
+    @pytest.mark.usefixtures("_assume_keyring_available")
+    def test_success_1(self, monkeypatch: pytest.MonkeyPatch):
+        def _set_password(svc, user, passwd):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+            assert passwd == "P@ssw0rd"
+
+        monkeypatch.setattr("keyring.set_password", _set_password)
+
+        runner = click.testing.CliRunner()
+        rv = runner.invoke(
+            group, ["set", "https://example.com", "test", "-p", "P@ssw0rd"]
+        )
+
+        assert rv.exit_code == 0
+
+    @pytest.mark.usefixtures("_assume_keyring_available")
+    def test_success_2(self, monkeypatch: pytest.MonkeyPatch):
+        def _set_password(svc, user, passwd):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+            assert passwd == "P@ssw0rd"
+
+        monkeypatch.setattr("keyring.set_password", _set_password)
+
+        runner = click.testing.CliRunner()
+        rv = runner.invoke(
+            group,
+            ["set", "https://example.com", "test", "--password-stdin"],
+            input="P@ssw0rd\n",
+        )
+
+        assert rv.exit_code == 0
+
+    def test_invalid_args(self):
+        runner = click.testing.CliRunner()
+
+        rv = runner.invoke(group, ["set", "example.com", "test"])
+        assert rv.exit_code == 2
+
+        rv = runner.invoke(
+            group, ["set", "example.com", "test", "-p", "P@ssw0rd", "--password-stdin"]
+        )
+        assert rv.exit_code == 2
+
+    @pytest.mark.usefixtures("_assume_keyring_available")
+    def test_keyring_error(self, monkeypatch: pytest.MonkeyPatch):
+        def _set_password(svc, user, passwd):
+            raise keyring.errors.PasswordSetError
+
+        monkeypatch.setattr("keyring.set_password", _set_password)
+
+        runner = click.testing.CliRunner()
+        rv = runner.invoke(
+            group, ["set", "https://example.com", "test", "-p", "P@ssw0rd"]
+        )
+
+        assert rv.exit_code == 1
+        assert "Failed to save password" in rv.stdout
+
+
+class TestDel:
+    @pytest.mark.usefixtures("_assume_keyring_available")
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        def _del_password(svc, user):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+
+        monkeypatch.setattr("keyring.delete_password", _del_password)
+
+        runner = click.testing.CliRunner()
+        rv = runner.invoke(group, ["del", "https://example.com", "test"])
+
+        assert rv.exit_code == 0
+        assert "Password removed" in rv.stdout
+
+    @pytest.mark.usefixtures("_assume_keyring_available")
+    def test_error(self, monkeypatch: pytest.MonkeyPatch):
+        def _del_password(svc, user):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+            raise keyring.errors.PasswordDeleteError
+
+        monkeypatch.setattr("keyring.delete_password", _del_password)
+
+        runner = click.testing.CliRunner()
+        rv = runner.invoke(group, ["del", "https://example.com", "test"])
+
+        assert rv.exit_code == 0
+        assert "Password not found" in rv.stdout
+
+
+def test_assert_keyring_available():
+    # success
+    with patch("keyring.get_keyring", return_value=keyring.backends.null.Keyring()):
+        assert assert_keyring_available() is None
+
+    # test import error
+    with (
+        patch.dict("sys.modules", {"keyring": None}),
+        pytest.raises(SystemExit),
+    ):
+        assert_keyring_available()
+
+    # keyring unavailable
+    with (
+        patch("keyring.get_keyring", return_value=keyring.backends.fail.Keyring()),
+        pytest.raises(SystemExit),
+    ):
+        assert_keyring_available()

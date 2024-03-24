@@ -62,18 +62,6 @@ Command to store credential in system keyring.
    The credential value. This app will prompt for input when it is not passed as an argument.
 
 
-``keyring status``
-==================
-
-Command to check if keyring is available.
-
-*Usage:*
-
-.. code-block:: bash
-
-    secrets.env keyring status
-
-
 ``run``
 =======
 
