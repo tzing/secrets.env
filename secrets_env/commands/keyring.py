@@ -12,12 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 class UrlParam(click.ParamType):
+    """Parameter type for URL."""
+
     name = "url"
 
     def convert(self, value: str, param, ctx):
+        """Convert value to URL object.
+
+        The schema does not matter. It will be discarded later in `create_keyring_login_key`.
+        """
         if "://" in value:
             return Url(value)
-        return Url(f"http://{value}")
+        return Url(f"https://{value}")
 
 
 @entrypoint.group("keyring")
@@ -27,87 +33,70 @@ def group():
 
 @group.command("set")
 @click.argument("host", type=UrlParam())
-@click.argument("target")
-@click.argument("value", required=False)
+@click.argument("username")
+@click.option("-p", "--password", help="Password for login")
+@click.option("--password-stdin", is_flag=True, help="Read the password from stdin")
 @add_output_options
-def command_set(host: Url, target: str, value: str):
-    """Store credential in system keyring.
-
-    HOST is the hostname/url to the vault that uses this credential.
-
-    TARGET is the target credential name. It could be `token` for auth token, or
-    the username for login.
-
-    VALUE is the credential value. This app will prompt for input when it is not
-    passed as an argument.
+def command_set(host: Url, username: str, password: str, password_stdin: bool):
     """
-    if not is_keyring_available():
-        sys.exit(2)
+    Store credential in system keyring.
+    """
+    assert_keyring_available()
 
-    # build key
-    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
+    # validate arguments
+    if password is None and not password_stdin:
+        raise click.UsageError("Missing option: '--password' or '--password-stdin'")
+    if password is not None and password_stdin:
+        raise click.UsageError(
+            "Cannot use '--password' and '--password-stdin' together"
+        )
 
-    if target == "token":
-        key = create_keyring_token_key(host)
-        name = "token"
-    else:
-        key = create_keyring_login_key(host, target)
-        name = "password"
+    if password_stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
 
-    # get value
-    if not value:
-        value = click.prompt(name, hide_input=True)
-    if not value:
-        raise click.UsageError("Missing credential value.")
-
-    # save value
+    # proceed
     import keyring
     import keyring.errors
 
+    from secrets_env.utils import create_keyring_login_key
+
+    key = create_keyring_login_key(host, username)
     logger.debug("Set keyring value with key %s", key)
 
     try:
-        keyring.set_password("secrets.env", key, value)
+        keyring.set_password("secrets.env", key, password)
     except keyring.errors.PasswordSetError:
-        click.secho(f"Failed to save {name}", fg="red", err=True)
+        click.secho("Failed to save password", fg="red", err=True)
         sys.exit(1)
+
+    click.echo("Password saved")
 
 
 @group.command("del")
 @click.argument("host", type=UrlParam())
-@click.argument("target")
+@click.argument("username")
 @add_output_options
-def command_del(host: Url, target: str):
-    """Remove a credential from system keyring.
+def command_del(host: Url, username: str):
+    """Remove a credential from system keyring."""
+    assert_keyring_available()
 
-    HOST is the hostname/url to the vault that uses this credential.
-
-    TARGET is the target credential name. It could be `token` for auth token, or
-    the username for login.
-    """
-    if not is_keyring_available():
-        sys.exit(2)
-
-    # build key
-    from secrets_env.utils import create_keyring_login_key, create_keyring_token_key
-
-    if target == "token":
-        key = create_keyring_token_key(host)
-    else:
-        key = create_keyring_login_key(host, target)
-
-    # remove
     import keyring
     import keyring.errors
 
+    from secrets_env.utils import create_keyring_login_key
+
+    key = create_keyring_login_key(host, username)
+    logger.debug("Remove %s from keyring", key)
+
     try:
         keyring.delete_password("secrets.env", key)
-        logger.debug("Remove %s from keyring", key)
+        click.echo("Password removed")
     except keyring.errors.PasswordDeleteError:
         logger.debug("Failed to remove %s from keyring", key)
+        click.echo("Password not found", err=True)
 
 
-def is_keyring_available() -> bool:
+def assert_keyring_available():
     try:
         import keyring
         import keyring.backends.fail
@@ -118,10 +107,8 @@ def is_keyring_available() -> bool:
             fg="red",
             err=True,
         )
-        return False
+        sys.exit(7)
 
     if isinstance(keyring.get_keyring(), keyring.backends.fail.Keyring):
         click.secho("Keyring service is not available", fg="red", err=True)
-        return False
-
-    return True
+        sys.exit(7)
