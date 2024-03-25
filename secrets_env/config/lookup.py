@@ -12,8 +12,6 @@ import platformdirs
 if typing.TYPE_CHECKING:
     from typing import Iterable
 
-APP_NAME = "secrets.env"
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,25 +34,8 @@ def find_local_config_file(cwd: Path | None = None) -> Path | None:
     return None
 
 
-def find_global_config_files() -> Iterable[Path]:
-    """Find user/site config files."""
-    CONFIG_NAME_CANDIDATES = (
-        "config.toml",
-        "config.yaml",
-        "config.yml",
-        "config.json",
-    )
-
-    for dir_ in (
-        platformdirs.user_config_path(APP_NAME),
-        platformdirs.site_config_path(APP_NAME),
-    ):
-        if f := find_readable_file(dir_, CONFIG_NAME_CANDIDATES):
-            yield f
-
-
 def get_user_config_file_path() -> Path:
-    return platformdirs.user_config_path(APP_NAME) / "config.toml"
+    return platformdirs.user_config_path("secrets.env") / "config.toml"
 
 
 def find_readable_file(dirpath: Path, candidates: Iterable[str]) -> Path | None:
