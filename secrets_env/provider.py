@@ -25,6 +25,8 @@ class Provider(BaseModel, abc.ABC):
 
     type: ClassVar[str]
 
+    name: str | None = None
+
     @abc.abstractmethod
     def get(self, spec: RequestSpec) -> str:
         """Get secret.
