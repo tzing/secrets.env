@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from secrets_env.config.parser import ProviderBuilder
+from secrets_env.config.parser import LocalConfig, ProviderBuilder
 from secrets_env.providers.null import NullProvider
 
 
@@ -90,3 +90,15 @@ class TestProviderBuilder:
             match="source must have unique names when using multiple sources",
         ):
             model.collect()
+
+
+class TestLocalConfig:
+    def test(self):
+        cfg = LocalConfig.model_validate(
+            {
+                "source": {"name": "source-1", "type": "null"},
+                "secret": {"key1": {"source": "source-1", "path": "/mock/path"}},
+            }
+        )
+        assert isinstance(cfg.providers["source-1"], NullProvider)
+        assert cfg.secrets["key1"] == {"source": "source-1", "path": "/mock/path"}

@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import (
-    BaseModel,
-    Field,
-    PrivateAttr,
-    ValidationError,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from secrets_env.provider import Provider, RequestSpec
 from secrets_env.providers import get_provider
@@ -105,3 +98,27 @@ class ProviderBuilder(BaseModel):
             )
 
         return providers
+
+
+class LocalConfig(BaseModel):
+    """
+    Data model that represents a local configuration file.
+    """
+
+    providers: dict[str, Provider] = Field(default_factory=dict)
+    secrets: dict[str, RequestSpec] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _before_validator(cls, values):
+        if isinstance(values, dict):
+            # create providers
+            builder = ProviderBuilder.model_validate(values)
+            values["providers"] = builder.collect()
+
+            # allow 'secret' keyword
+            secrets = values.pop("secret", {})
+            secrets.update(values.pop("secrets", {}))
+            values["secrets"] = secrets
+
+        return values
