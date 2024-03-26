@@ -32,6 +32,14 @@ class ProviderBuilder(BaseModel):
         return value
 
     def __iter__(self) -> Iterator[Provider]:
+        """
+        Returns an iterator of provider instances based on the configuration.
+
+        Raises
+        ------
+        ValidationError
+            If the provider configuration is invalid.
+        """
         errors = []
 
         def to_provider(loc: str, data: list[dict]) -> Iterator[Provider]:
@@ -51,3 +59,49 @@ class ProviderBuilder(BaseModel):
             raise ValidationError.from_exception_data(
                 title="sources", line_errors=errors
             )
+
+    def collect(self) -> dict[str, Provider]:
+        """
+        Returns a dictionary of provider instances by name.
+
+        Raises
+        ------
+        ValidationError
+            If the source names are not unique.
+        """
+        providers = {}
+        errors = []
+
+        for provider in self:
+            if provider.name in providers:
+                errors.append(
+                    {
+                        "type": "value_error",
+                        "loc": ("sources", "*", "name"),
+                        "input": provider.name or "(anonymous)",
+                        "ctx": {
+                            "error": "duplicate source name",
+                        },
+                    }
+                )
+            else:
+                providers[provider.name] = provider
+
+        if len(providers) > 1 and None in providers:
+            errors.append(
+                {
+                    "type": "value_error",
+                    "loc": ("sources", "*", "name"),
+                    "input": None,
+                    "ctx": {
+                        "error": "source must have unique names when using multiple sources",
+                    },
+                }
+            )
+
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="sources", line_errors=errors
+            )
+
+        return providers
