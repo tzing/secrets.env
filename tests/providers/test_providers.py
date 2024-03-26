@@ -29,7 +29,7 @@ class TestGetProvider:
         assert isinstance(provider, VaultKvProvider)
 
     def test_invalid(self):
-        with pytest.raises(ValueError, match="Unknown provider type invalid"):
+        with pytest.raises(ValueError, match="Unknown provider type 'invalid'"):
             get_provider({"type": "invalid"})
 
 

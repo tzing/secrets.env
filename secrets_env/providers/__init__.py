@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import typing
 
+from pydantic_core import ValidationError
+
 if typing.TYPE_CHECKING:
     from secrets_env.provider import Provider
 
@@ -17,8 +19,6 @@ def get_provider(config: dict) -> Provider:
 
     Raises
     ------
-    ValueError
-        If the provider type is not recognized.
     ValidationError
         If the provider configuration is invalid.
     """
@@ -47,4 +47,16 @@ def get_provider(config: dict) -> Provider:
         return VaultKvProvider.model_validate(config)
     # fmt: on
 
-    raise ValueError(f"Unknown provider type {type_}")
+    raise ValidationError.from_exception_data(
+        title="Provider",
+        line_errors=[
+            {
+                "type": "value_error",
+                "loc": ("type",),
+                "input": type_,
+                "ctx": {
+                    "error": f"Unknown provider type '{type_}'",
+                },
+            }
+        ],
+    )
