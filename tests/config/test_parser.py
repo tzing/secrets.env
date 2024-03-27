@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from secrets_env.config.parser import LocalConfig, ProviderBuilder
+from secrets_env.config.parser import (
+    LocalConfig,
+    ProviderBuilder,
+    Request,
+    RequestBuilder,
+)
 from secrets_env.providers.null import NullProvider
 
 
@@ -94,12 +99,62 @@ class TestProviderBuilder:
 
 class TestRequest:
     def test_success(self):
-        cfg = Request.model_validate({"name": "foo", "spec": "bar"})
-        assert cfg == Request(name="foo", spec="bar")
+        cfg = Request.model_validate({"name": "foo", "value": "bar"})
+        assert cfg == Request(name="foo", value="bar")
 
     def test_fail(self):
         with pytest.raises(ValidationError, match="Invalid environment variable name"):
             Request.model_validate({"name": "0foo"})
+
+
+class TestRequestBuilder:
+    def test_list(self):
+        model = RequestBuilder.model_validate(
+            {
+                "secret": [{"name": "item1", "path": "/path/item1"}],
+            }
+        )
+        assert list(model) == [
+            Request(name="item1", path="/path/item1"),
+        ]
+
+    def test_list_error(self):
+        with pytest.raises(ValidationError, match="secret.0.name"):
+            RequestBuilder.model_validate(
+                {
+                    "secret": [{"name": "1nvalid"}],
+                }
+            )
+
+    def test_dict(self):
+        model = RequestBuilder.model_validate(
+            {
+                "secret": {
+                    "item1": {"path": "/path/item1"},
+                    "item2": "value2",
+                },
+            }
+        )
+        assert list(model) == [
+            Request(name="item1", path="/path/item1"),
+            Request(name="item2", value="value2"),
+        ]
+
+    def test_dict_error(self):
+        with pytest.raises(ValidationError, match="secret.1nvalid.name"):
+            RequestBuilder.model_validate(
+                {
+                    "secret": {
+                        "1nvalid": {},
+                    },
+                }
+            )
+
+    def test_error_type(self):
+        with pytest.raises(
+            ValidationError, match="Input must be a list or a dictionary"
+        ):
+            RequestBuilder.model_validate({"secret": 1234})
 
 
 class TestLocalConfig:
