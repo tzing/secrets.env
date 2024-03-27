@@ -40,14 +40,14 @@ class ProviderBuilder(BaseModel):
         """
         errors = []
 
-        def to_provider(loc: str, data: list[dict]) -> Iterator[Provider]:
+        def to_provider(prefix: str, data: list[dict]) -> Iterator[Provider]:
             nonlocal errors
             for i, item in enumerate(data):
                 try:
                     yield get_provider(item)
                 except ValidationError as e:
                     for err in e.errors():
-                        err["loc"] = (loc, i, *err["loc"])
+                        err["loc"] = (prefix, i, *err["loc"])
                         errors.append(err)
 
         yield from to_provider("source", self.source or [])
@@ -164,7 +164,7 @@ class RequestBuilder(BaseModel):
 class LocalConfig(BaseModel):
     """Data model that represents a local configuration file."""
 
-    providers: dict[str, Provider] = Field(default_factory=dict)
+    providers: dict[str | None, Provider] = Field(default_factory=dict)
     requests: list[Request] = Field(default_factory=list)
 
     @model_validator(mode="before")
