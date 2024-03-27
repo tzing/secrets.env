@@ -92,6 +92,16 @@ class TestProviderBuilder:
             model.collect()
 
 
+class TestRequest:
+    def test_success(self):
+        cfg = Request.model_validate({"name": "foo", "spec": "bar"})
+        assert cfg == Request(name="foo", spec="bar")
+
+    def test_fail(self):
+        with pytest.raises(ValidationError, match="Invalid environment variable name"):
+            Request.model_validate({"name": "0foo"})
+
+
 class TestLocalConfig:
     def test(self):
         cfg = LocalConfig.model_validate(

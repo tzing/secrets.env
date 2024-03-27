@@ -99,6 +99,19 @@ class ProviderBuilder(BaseModel):
         return providers
 
 
+class Request(BaseModel):
+    name: str
+    source: str | None = None
+    spec: RequestSpec
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def _check_name_format(cls, value: str):
+        if not re.fullmatch(r"[a-zA-Z_]\w*", value):
+            raise ValueError("Invalid environment variable name")
+        return value
+
+
 class LocalConfig(BaseModel):
     """
     Data model that represents a local configuration file.
