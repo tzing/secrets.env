@@ -34,7 +34,7 @@ class TestProviderBuilder:
             source=[{"name": "item1", "type": "null"}],
             sources=[{"name": "item2", "type": "null"}],
         )
-        assert list(model) == [
+        assert list(model.iter()) == [
             NullProvider(name="item1"),
             NullProvider(name="item2"),
         ]
@@ -52,7 +52,7 @@ class TestProviderBuilder:
         )
 
         with pytest.raises(ValidationError, match="sources") as exc_info:
-            list(model)
+            list(model.iter())
 
         exc_info.match("source.1.type")
         exc_info.match("sources.0.url")
@@ -114,7 +114,7 @@ class TestRequestBuilder:
                 "secret": [{"name": "item1", "path": "/path/item1"}],
             }
         )
-        assert list(model) == [
+        assert list(model.iter()) == [
             Request(name="item1", path="/path/item1"),
         ]
 
@@ -135,7 +135,7 @@ class TestRequestBuilder:
                 },
             }
         )
-        assert list(model) == [
+        assert list(model.iter()) == [
             Request(name="item1", path="/path/item1"),
             Request(name="item2", value="value2"),
         ]
@@ -165,5 +165,8 @@ class TestLocalConfig:
                 "secret": {"key1": {"source": "source-1", "path": "/mock/path"}},
             }
         )
-        assert isinstance(cfg.providers["source-1"], NullProvider)
-        assert cfg.secrets["key1"] == {"source": "source-1", "path": "/mock/path"}
+
+        assert cfg.providers["source-1"] == NullProvider(name="source-1")
+        assert cfg.requests[0] == Request(
+            name="key1", source="source-1", path="/mock/path"
+        )

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from secrets_env.provider import Provider, RequestSpec
+from secrets_env.provider import Provider  # noqa: TCH001
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
     from typing import Iterator
 
     from pydantic import ValidationInfo
+
+    from secrets_env.provider import RequestSpec
 
 
 class ProviderBuilder(BaseModel):
@@ -27,7 +29,7 @@ class ProviderBuilder(BaseModel):
             return [value]
         return value
 
-    def __iter__(self) -> Iterator[Provider]:
+    def iter(self) -> Iterator[Provider]:
         """
         Returns an iterator of provider instances based on the configuration.
 
@@ -68,7 +70,7 @@ class ProviderBuilder(BaseModel):
         providers = {}
         errors = []
 
-        for provider in self:
+        for provider in self.iter():
             if provider.name in providers:
                 errors.append(
                     {
@@ -128,7 +130,9 @@ class RequestBuilder(BaseModel):
 
     @field_validator("secret", "secrets", mode="before")
     @classmethod
-    def _transform(cls, value, info: ValidationInfo):
+    def _transform(cls, value: list | dict[str, RequestSpec], info: ValidationInfo):
+        field_name = cast(str, info.field_name)
+
         if isinstance(value, list):
             yield from value
 
@@ -142,17 +146,17 @@ class RequestBuilder(BaseModel):
                         yield Request(name=name, value=spec)
                 except ValidationError as e:
                     for err in e.errors():
-                        err["loc"] = (info.field_name, name, *err["loc"])
+                        err["loc"] = (field_name, name, *err["loc"])
                         errors.append(err)
             if errors:
                 raise ValidationError.from_exception_data(
-                    title=info.field_name, line_errors=errors
+                    title=field_name, line_errors=errors
                 )
 
         else:
             raise TypeError("Input must be a list or a dictionary")
 
-    def __iter__(self) -> Iterator[Request]:
+    def iter(self) -> Iterator[Request]:
         yield from self.secret
         yield from self.secrets
 
@@ -162,19 +166,13 @@ class LocalConfig(BaseModel):
 
     providers: dict[str, Provider] = Field(default_factory=dict)
     requests: list[Request] = Field(default_factory=list)
-    # TODO secrets: dict[str, RequestSpec] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
         if isinstance(values, dict):
-            # create providers
-            builder = ProviderBuilder.model_validate(values)
-            values["providers"] = builder.collect()
-
-            # allow 'secret' keyword
-            secrets = values.pop("secret", {})
-            secrets.update(values.pop("secrets", {}))
-            values["secrets"] = secrets
-
+            providers = ProviderBuilder.model_validate(values)
+            requests = RequestBuilder.model_validate(values)
+            values["providers"] = providers.collect()
+            values["requests"] = requests.iter()
         return values
