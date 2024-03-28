@@ -12,7 +12,7 @@ from secrets_env.providers.plain import PlainTextProvider
 
 class TestProviderBuilder:
 
-    def test_init_dict(self):
+    def test_success__dict(self):
         model = ProviderBuilder.model_validate(
             {
                 "source": {"name": "item1", "type": "plain"},
@@ -24,13 +24,13 @@ class TestProviderBuilder:
             sources=[PlainTextProvider(name="item2")],
         )
 
-    def test_init_empty(self):
+    def test_success__empty(self):
         model = ProviderBuilder.model_validate({})
         assert model == ProviderBuilder()
         assert model.source == []
         assert model.sources == []
 
-    def test_init_error(self):
+    def test_value_error(self):
         with pytest.raises(ValidationError, match="sources") as exc_info:
             ProviderBuilder(
                 source=[
@@ -46,6 +46,10 @@ class TestProviderBuilder:
         exc_info.match("source.1.type")
         exc_info.match("sources.0.value")
         exc_info.match("Unknown provider type 'invalid'")
+
+    def test_type_error(self):
+        with pytest.raises(ValidationError, match="sources"):
+            ProviderBuilder(sources=1234)
 
     def test_iter(self):
         model = ProviderBuilder(
