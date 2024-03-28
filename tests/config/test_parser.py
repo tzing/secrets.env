@@ -95,7 +95,7 @@ class TestProviderBuilder:
 
         with pytest.raises(
             ValidationError,
-            match="source must have names when using multiple sources",
+            match="Naming each source is mandatory when using multiple sources",
         ):
             model.collect()
 

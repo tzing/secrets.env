@@ -5,7 +5,6 @@ import re
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
-from pydantic_core import InitErrorDetails
 
 from secrets_env.provider import Provider  # noqa: TCH001
 from secrets_env.providers import get_provider
@@ -28,8 +27,6 @@ class ProviderBuilder(BaseModel):
     @field_validator("source", "sources", mode="before")
     @classmethod
     def _transform(cls, value, info: ValidationInfo):
-        field_name = cast(str, info.field_name)
-
         if isinstance(value, dict):
             value = [value]
 
@@ -45,22 +42,12 @@ class ProviderBuilder(BaseModel):
 
             if errors:
                 raise ValidationError.from_exception_data(
-                    title="sources", line_errors=errors
+                    title=cast(str, info.field_name), line_errors=errors
                 )
             return providers
 
         else:
-            raise ValidationError.from_exception_data(
-                title=field_name,
-                line_errors=[
-                    InitErrorDetails(
-                        type="value_error",
-                        loc=(field_name,),
-                        input=value,
-                        ctx={"error": "Input must be a list or a dictionary"},
-                    ),
-                ],
-            )
+            raise ValueError("Input must be a list or a dictionary")
 
     def iter(self) -> Iterator[Provider]:
         yield from self.source
@@ -97,7 +84,7 @@ class ProviderBuilder(BaseModel):
                     "type": "value_error",
                     "loc": ("sources", "*", "name"),
                     "ctx": {
-                        "error": "source must have names when using multiple sources",
+                        "error": "Naming each source is mandatory when using multiple sources",
                     },
                 }
             )
@@ -137,8 +124,6 @@ class RequestBuilder(BaseModel):
     @field_validator("secret", "secrets", mode="before")
     @classmethod
     def _transform(cls, value: list | dict[str, RequestSpec], info: ValidationInfo):
-        field_name = cast(str, info.field_name)
-
         if isinstance(value, list):
             return value
 
@@ -156,22 +141,12 @@ class RequestBuilder(BaseModel):
 
             if errors:
                 raise ValidationError.from_exception_data(
-                    title=field_name, line_errors=errors
+                    title=cast(str, info.field_name), line_errors=errors
                 )
             return requests
 
         else:
-            raise ValidationError.from_exception_data(
-                title=field_name,
-                line_errors=[
-                    InitErrorDetails(
-                        type="value_error",
-                        loc=(field_name,),
-                        input=value,
-                        ctx={"error": "Input must be a list or a dictionary"},
-                    ),
-                ],
-            )
+            raise ValueError("Input must be a list or a dictionary")
 
     def iter(self) -> Iterator[Request]:
         yield from self.secret
