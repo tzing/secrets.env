@@ -4,6 +4,7 @@ import pytest
 
 from secrets_env.config import load_local_config
 from secrets_env.config.parser import Request
+from secrets_env.exceptions import ConfigError
 from secrets_env.providers.null import NullProvider
 
 
@@ -51,3 +52,28 @@ class TestLoadLocalConfig:
         assert config.providers[None] == NullProvider()
         assert len(config.requests) == 1
         assert config.requests[0] == Request(name="TEST_VAR", value="foo")
+
+    def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.config.find_local_config_file", lambda: None)
+        with pytest.raises(ConfigError, match="Config file not found"):
+            load_local_config(None)
+
+    def test_parse_error(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """
+            [[sources]]
+            name = "pandora's box"
+            type = "vault"
+            auth = "token"
+
+            [[secrets]]
+            name = "1nvalid"
+            source = "pandora's box"
+            """
+        )
+
+        with pytest.raises(ConfigError, match="Failed to parse the config"):
+            load_local_config(config_path)
+
+        assert "sources.0.url (input= None)" in caplog.text

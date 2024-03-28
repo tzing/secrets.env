@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+import typing
 
 from pydantic import ValidationError
 
@@ -9,6 +9,9 @@ from secrets_env.config.lookup import find_local_config_file
 from secrets_env.config.parser import LocalConfig
 from secrets_env.config.reader import read
 from secrets_env.exceptions import ConfigError
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,9 @@ def load_local_config(path: Path | None) -> LocalConfig:
     except ValidationError as e:
         logger.error("Failed to parse the config file: %s", path)
         for err in e.errors():
-            logger.error("  %s (input= %s)", ".".join(err["loc"]), err["input"])
+            if err["type"] == "iteration_error":
+                continue
+            field_name = ".".join(str(ll) for ll in err["loc"])
+            logger.error("  %s (input= %s)", field_name, err["input"])
             logger.error("    %s", err["msg"])
-        raise ConfigError("Failed to parse the config", path)
+        raise ConfigError("Failed to parse the config", path) from e
