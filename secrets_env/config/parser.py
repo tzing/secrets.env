@@ -84,7 +84,7 @@ class ProviderBuilder(BaseModel):
                     "type": "value_error",
                     "loc": ("sources", "*", "name"),
                     "ctx": {
-                        "error": "source must have names when using multiple sources",
+                        "error": "Naming each source is mandatory when using multiple sources",
                     },
                 }
             )
