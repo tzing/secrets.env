@@ -157,7 +157,7 @@ class TestRequestBuilder:
 
 
 class TestLocalConfig:
-    def test(self):
+    def test_success(self):
         cfg = LocalConfig.model_validate(
             {
                 "source": {"name": "source-1", "type": "null"},
@@ -169,3 +169,15 @@ class TestLocalConfig:
         assert cfg.requests[0] == Request(
             name="key1", source="source-1", path="/mock/path"
         )
+
+    def test_error(self):
+        with pytest.raises(ValidationError) as exc_info:
+            LocalConfig.model_validate(
+                {
+                    "sources": {"type": "vault"},
+                    "secret": [{"name": "invalid.x"}],
+                }
+            )
+
+        exc_info.match("sources.0.url")
+        exc_info.match("secret.0.name")

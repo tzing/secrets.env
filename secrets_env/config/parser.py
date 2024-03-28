@@ -157,10 +157,17 @@ class LocalConfig(BaseModel):
     @classmethod
     def _before_validator(cls, values):
         if isinstance(values, dict):
-            providers = ProviderBuilder.model_validate(values)
-            requests = RequestBuilder.model_validate(values)
-            values["providers"] = providers.collect()
-            values["requests"] = requests.iter()
+            errors = []
+            with capture_line_errors(errors, ()):
+                builder = ProviderBuilder.model_validate(values)
+                values["providers"] = builder.collect()
+            with capture_line_errors(errors, ()):
+                builder = RequestBuilder.model_validate(values)
+                values["requests"] = builder.iter()
+            if errors:
+                raise ValidationError.from_exception_data(
+                    title="local config", line_errors=errors
+                )
         return values
 
 
