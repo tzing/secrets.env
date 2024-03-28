@@ -5,6 +5,7 @@ import re
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic_core import InitErrorDetails
 
 from secrets_env.provider import Provider  # noqa: TCH001
 from secrets_env.providers import get_provider
@@ -52,11 +53,12 @@ class ProviderBuilder(BaseModel):
             raise ValidationError.from_exception_data(
                 title=field_name,
                 line_errors=[
-                    {
-                        "type": "value_error",
-                        "loc": (field_name,),
-                        "ctx": {"error": "Input must be a list or a dictionary"},
-                    }
+                    InitErrorDetails(
+                        type="value_error",
+                        loc=(field_name,),
+                        input=value,
+                        ctx={"error": "Input must be a list or a dictionary"},
+                    ),
                 ],
             )
 
@@ -162,11 +164,12 @@ class RequestBuilder(BaseModel):
             raise ValidationError.from_exception_data(
                 title=field_name,
                 line_errors=[
-                    {
-                        "type": "value_error",
-                        "loc": (field_name,),
-                        "ctx": {"error": "Input must be a list or a dictionary"},
-                    }
+                    InitErrorDetails(
+                        type="value_error",
+                        loc=(field_name,),
+                        input=value,
+                        ctx={"error": "Input must be a list or a dictionary"},
+                    ),
                 ],
             )
 
