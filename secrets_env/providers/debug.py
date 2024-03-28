@@ -8,11 +8,12 @@ if typing.TYPE_CHECKING:
     from secrets_env.provider import RequestSpec
 
 
-class NullProvider(Provider):
-    """A provider that always returns empty string. This provider is preserved
-    for debugging."""
+class DebugProvider(Provider):
+    """Internal provider for debugging purposes."""
 
-    type = "null"
+    type = "debug"
+
+    value: str
 
     def get(self, spec: RequestSpec) -> str:
-        return ""
+        return self.value

@@ -1,16 +1,16 @@
 import pytest
 
 from secrets_env.providers import get_provider
-from secrets_env.providers.null import NullProvider
+from secrets_env.providers.debug import DebugProvider
 from secrets_env.providers.plain import PlainTextProvider
 from secrets_env.providers.teleport import TeleportProvider
 from secrets_env.providers.vault import VaultKvProvider
 
 
 class TestGetProvider:
-    def test_null(self):
-        provider = get_provider({"type": "null"})
-        assert isinstance(provider, NullProvider)
+    def test_debug(self):
+        provider = get_provider({"type": "debug", "value": "test"})
+        assert isinstance(provider, DebugProvider)
 
     def test_plain(self):
         provider = get_provider({"type": "plain"})
@@ -33,11 +33,11 @@ class TestGetProvider:
             get_provider({"type": "invalid"})
 
 
-class TestNullProvider:
+class TestDebugProvider:
     def test_get(self):
-        provider = NullProvider()
-        assert provider.get("test") == ""
-        assert provider.get({"value": "test"}) == ""
+        provider = DebugProvider(value="test")
+        assert provider.get("test") == "test"
+        assert provider.get({"value": "test"}) == "test"
 
 
 class TestPlainTextProvider:

@@ -30,9 +30,9 @@ def get_provider(config: dict) -> Provider:
     itype = type_.lower()
 
     # fmt: off
-    if itype == "null":
-        from secrets_env.providers.null import NullProvider
-        return NullProvider.model_validate(config)
+    if itype == "debug":
+        from secrets_env.providers.debug import DebugProvider
+        return DebugProvider.model_validate(config)
     if itype == "plain":
         from secrets_env.providers.plain import PlainTextProvider
         return PlainTextProvider.model_validate(config)
