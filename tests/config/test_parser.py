@@ -107,7 +107,18 @@ class TestRequest:
 
 
 class TestRequestBuilder:
-    def test_list(self):
+    def test_success__model(self):
+        model = RequestBuilder.model_validate(
+            {
+                "secret": {
+                    "item1": Request(name="item1"),
+                }
+            }
+        )
+        assert model.secret == [Request(name="item1")]
+        assert model.secrets == []
+
+    def test_success__list(self):
         model = RequestBuilder.model_validate(
             {
                 "secret": [{"name": "item1", "path": "/path/item1"}],
@@ -117,15 +128,7 @@ class TestRequestBuilder:
             Request(name="item1", path="/path/item1"),
         ]
 
-    def test_list_error(self):
-        with pytest.raises(ValidationError, match="secret.0.name"):
-            RequestBuilder.model_validate(
-                {
-                    "secret": [{"name": "1nvalid"}],
-                }
-            )
-
-    def test_dict(self):
+    def test_success__dict(self):
         model = RequestBuilder.model_validate(
             {
                 "secret": {
@@ -139,7 +142,15 @@ class TestRequestBuilder:
             Request(name="item2", value="value2"),
         ]
 
-    def test_dict_error(self):
+    def test_error__list(self):
+        with pytest.raises(ValidationError, match="secret.0.name"):
+            RequestBuilder.model_validate(
+                {
+                    "secret": [{"name": "1nvalid"}],
+                }
+            )
+
+    def test_error__dict(self):
         with pytest.raises(ValidationError, match="secret.1nvalid.name"):
             RequestBuilder.model_validate(
                 {

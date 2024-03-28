@@ -36,7 +36,7 @@ class ProviderBuilder(BaseModel):
             providers = []
             errors = []
             for i, item in enumerate(value):
-                with capture_line_errors(errors, (field_name, i)):
+                with capture_line_errors(errors, (i,)):
                     if isinstance(item, dict):
                         providers.append(get_provider(item))
                     else:
@@ -144,7 +144,7 @@ class RequestBuilder(BaseModel):
             requests = []
             errors = []
             for name, spec in value.items():
-                with capture_line_errors(errors, (field_name, name)):
+                with capture_line_errors(errors, (name,)):
                     if isinstance(spec, dict):
                         requests.append(Request(name=name, **spec))
                     elif isinstance(spec, str):
