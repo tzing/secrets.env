@@ -7,7 +7,7 @@ from secrets_env.config.parser import (
     Request,
     RequestBuilder,
 )
-from secrets_env.providers.null import NullProvider
+from secrets_env.providers.plain import PlainTextProvider
 
 
 class TestProviderBuilder:
@@ -15,13 +15,13 @@ class TestProviderBuilder:
     def test_init_dict(self):
         model = ProviderBuilder.model_validate(
             {
-                "source": {"name": "item1", "type": "null"},
-                "sources": {"name": "item2", "type": "null"},
+                "source": {"name": "item1", "type": "plain"},
+                "sources": {"name": "item2", "type": "plain"},
             }
         )
         assert model == ProviderBuilder(
-            source=[NullProvider(name="item1")],
-            sources=[NullProvider(name="item2")],
+            source=[PlainTextProvider(name="item1")],
+            sources=[PlainTextProvider(name="item2")],
         )
 
     def test_init_empty(self):
@@ -34,47 +34,47 @@ class TestProviderBuilder:
         with pytest.raises(ValidationError, match="sources") as exc_info:
             ProviderBuilder(
                 source=[
-                    {"name": "item1", "type": "null"},
+                    {"name": "item1", "type": "plain"},
                     {"name": "item2", "type": "invalid"},
                 ],
                 sources=[
-                    {"name": "item3", "type": "vault"},
-                    {"name": "item4", "type": "null"},
+                    {"name": "item3", "type": "debug"},
+                    {"name": "item4", "type": "plain"},
                 ],
             )
 
         exc_info.match("source.1.type")
-        exc_info.match("sources.0.url")
+        exc_info.match("sources.0.value")
         exc_info.match("Unknown provider type 'invalid'")
 
     def test_iter(self):
         model = ProviderBuilder(
-            source=[{"name": "item1", "type": "null"}],
-            sources=[{"name": "item2", "type": "null"}],
+            source=[{"name": "item1", "type": "plain"}],
+            sources=[{"name": "item2", "type": "plain"}],
         )
         assert list(model.iter()) == [
-            NullProvider(name="item1"),
-            NullProvider(name="item2"),
+            PlainTextProvider(name="item1"),
+            PlainTextProvider(name="item2"),
         ]
 
     def test_collect(self):
         model = ProviderBuilder(
             sources=[
-                {"name": "item1", "type": "null"},
-                {"name": "item2", "type": "null"},
+                {"name": "item1", "type": "plain"},
+                {"name": "item2", "type": "plain"},
             ],
         )
         assert model.collect() == {
-            "item1": NullProvider(name="item1"),
-            "item2": NullProvider(name="item2"),
+            "item1": PlainTextProvider(name="item1"),
+            "item2": PlainTextProvider(name="item2"),
         }
 
     def test_collect_error_1(self):
         model = ProviderBuilder(
             sources=[
-                {"name": "item1", "type": "null"},
-                {"name": "item1", "type": "null"},
-                {"type": "null"},
+                {"name": "item1", "type": "plain"},
+                {"name": "item1", "type": "plain"},
+                {"type": "plain"},
             ],
         )
 
@@ -84,8 +84,8 @@ class TestProviderBuilder:
     def test_collect_error_2(self):
         model = ProviderBuilder(
             sources=[
-                {"name": "item1", "type": "null"},
-                {"type": "null"},
+                {"name": "item1", "type": "plain"},
+                {"type": "plain"},
             ],
         )
 
@@ -160,12 +160,12 @@ class TestLocalConfig:
     def test_success(self):
         cfg = LocalConfig.model_validate(
             {
-                "source": {"name": "source-1", "type": "null"},
+                "source": {"name": "source-1", "type": "plain"},
                 "secret": {"key1": {"source": "source-1", "path": "/mock/path"}},
             }
         )
 
-        assert cfg.providers["source-1"] == NullProvider(name="source-1")
+        assert cfg.providers["source-1"] == PlainTextProvider(name="source-1")
         assert cfg.requests[0] == Request(
             name="key1", source="source-1", path="/mock/path"
         )
@@ -174,10 +174,10 @@ class TestLocalConfig:
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
-                    "sources": {"type": "vault"},
+                    "sources": {"type": "debug"},
                     "secret": [{"name": "invalid.x"}],
                 }
             )
 
-        exc_info.match("sources.0.url")
+        exc_info.match("sources.0.value")
         exc_info.match("secret.0.name")
