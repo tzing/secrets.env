@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
@@ -9,9 +10,10 @@ from secrets_env.provider import Provider  # noqa: TCH001
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
-    from typing import Iterator
+    from typing import Iterator, Sequence
 
     from pydantic import ValidationInfo
+    from pydantic_core import ErrorDetails
 
     from secrets_env.provider import RequestSpec
 
@@ -19,44 +21,35 @@ if TYPE_CHECKING:
 class ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
-    source: list[dict[str, Any]] = Field(default_factory=list)
-    sources: list[dict[str, Any]] = Field(default_factory=list)
+    source: list[Provider] = Field(default_factory=list)
+    sources: list[Provider] = Field(default_factory=list)
 
     @field_validator("source", "sources", mode="before")
     @classmethod
-    def _accept_dict(cls, value):
+    def _transform(cls, value, info: ValidationInfo):
         if isinstance(value, dict):
-            return [value]
-        return value
+            value = [value]
+
+        if isinstance(value, list):
+            field_name = cast(str, info.field_name)
+            errors = []
+            for i, item in enumerate(value):
+                with capture_line_errors(errors, (field_name, i)):
+                    if isinstance(item, dict):
+                        yield get_provider(item)
+                    else:
+                        yield item
+            if errors:
+                raise ValidationError.from_exception_data(
+                    title="sources", line_errors=errors
+                )
+
+        else:
+            raise TypeError("Input must be a list or a dictionary")
 
     def iter(self) -> Iterator[Provider]:
-        """
-        Returns an iterator of provider instances based on the configuration.
-
-        Raises
-        ------
-        ValidationError
-            If the provider configuration is invalid.
-        """
-        errors = []
-
-        def to_provider(prefix: str, data: list[dict]) -> Iterator[Provider]:
-            nonlocal errors
-            for i, item in enumerate(data):
-                try:
-                    yield get_provider(item)
-                except ValidationError as e:
-                    for err in e.errors():
-                        err["loc"] = (prefix, i, *err["loc"])
-                        errors.append(err)
-
-        yield from to_provider("source", self.source or [])
-        yield from to_provider("sources", self.sources or [])
-
-        if errors:
-            raise ValidationError.from_exception_data(
-                title="sources", line_errors=errors
-            )
+        yield from self.source
+        yield from self.sources
 
     def collect(self) -> dict[str, Provider]:
         """
@@ -77,9 +70,7 @@ class ProviderBuilder(BaseModel):
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "input": provider.name or "(anonymous)",
-                        "ctx": {
-                            "error": "duplicate source name",
-                        },
+                        "ctx": {"error": "duplicate source name"},
                     }
                 )
             else:
@@ -131,23 +122,18 @@ class RequestBuilder(BaseModel):
     @field_validator("secret", "secrets", mode="before")
     @classmethod
     def _transform(cls, value: list | dict[str, RequestSpec], info: ValidationInfo):
-        field_name = cast(str, info.field_name)
-
         if isinstance(value, list):
             yield from value
 
         elif isinstance(value, dict):
+            field_name = cast(str, info.field_name)
             errors = []
             for name, spec in value.items():
-                try:
+                with capture_line_errors(errors, (field_name, name)):
                     if isinstance(spec, dict):
                         yield Request(name=name, **spec)
                     else:
                         yield Request(name=name, value=spec)
-                except ValidationError as e:
-                    for err in e.errors():
-                        err["loc"] = (field_name, name, *err["loc"])
-                        errors.append(err)
             if errors:
                 raise ValidationError.from_exception_data(
                     title=field_name, line_errors=errors
@@ -176,3 +162,14 @@ class LocalConfig(BaseModel):
             values["providers"] = providers.collect()
             values["requests"] = requests.iter()
         return values
+
+
+@contextlib.contextmanager
+def capture_line_errors(line_errors: list[ErrorDetails], prefix: Sequence[str | int]):
+    try:
+        yield
+    except ValidationError as e:
+        for err in e.errors():
+            err = err.copy()
+            err["loc"] = (*prefix, *err["loc"])
+            line_errors.append(err)
