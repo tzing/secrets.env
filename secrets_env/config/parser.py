@@ -27,25 +27,38 @@ class ProviderBuilder(BaseModel):
     @field_validator("source", "sources", mode="before")
     @classmethod
     def _transform(cls, value, info: ValidationInfo):
+        field_name = cast(str, info.field_name)
+
         if isinstance(value, dict):
             value = [value]
 
         if isinstance(value, list):
-            field_name = cast(str, info.field_name)
+            providers = []
             errors = []
             for i, item in enumerate(value):
                 with capture_line_errors(errors, (field_name, i)):
                     if isinstance(item, dict):
-                        yield get_provider(item)
+                        providers.append(get_provider(item))
                     else:
-                        yield item
+                        providers.append(item)
+
             if errors:
                 raise ValidationError.from_exception_data(
                     title="sources", line_errors=errors
                 )
+            return providers
 
         else:
-            raise TypeError("Input must be a list or a dictionary")
+            raise ValidationError.from_exception_data(
+                title=field_name,
+                line_errors=[
+                    {
+                        "type": "value_error",
+                        "loc": (field_name,),
+                        "ctx": {"error": "Input must be a list or a dictionary"},
+                    }
+                ],
+            )
 
     def iter(self) -> Iterator[Provider]:
         yield from self.source
@@ -122,25 +135,40 @@ class RequestBuilder(BaseModel):
     @field_validator("secret", "secrets", mode="before")
     @classmethod
     def _transform(cls, value: list | dict[str, RequestSpec], info: ValidationInfo):
+        field_name = cast(str, info.field_name)
+
         if isinstance(value, list):
-            yield from value
+            return value
 
         elif isinstance(value, dict):
-            field_name = cast(str, info.field_name)
+            requests = []
             errors = []
             for name, spec in value.items():
                 with capture_line_errors(errors, (field_name, name)):
                     if isinstance(spec, dict):
-                        yield Request(name=name, **spec)
+                        requests.append(Request(name=name, **spec))
+                    elif isinstance(spec, str):
+                        requests.append(Request(name=name, value=spec))
                     else:
-                        yield Request(name=name, value=spec)
+                        requests.append(spec)
+
             if errors:
                 raise ValidationError.from_exception_data(
                     title=field_name, line_errors=errors
                 )
+            return requests
 
         else:
-            raise TypeError("Input must be a list or a dictionary")
+            raise ValidationError.from_exception_data(
+                title=field_name,
+                line_errors=[
+                    {
+                        "type": "value_error",
+                        "loc": (field_name,),
+                        "ctx": {"error": "Input must be a list or a dictionary"},
+                    }
+                ],
+            )
 
     def iter(self) -> Iterator[Request]:
         yield from self.secret
