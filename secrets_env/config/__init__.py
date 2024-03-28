@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import typing
 
@@ -34,9 +35,15 @@ def load_local_config(path: Path | None) -> LocalConfig:
     except ValidationError as e:
         logger.error("Failed to parse the config file: %s", path)
         for err in e.errors():
-            if err["type"] == "iteration_error":
-                continue
             field_name = ".".join(str(ll) for ll in err["loc"])
-            logger.error("  %s (input= %s)", field_name, err["input"])
+
+            user_input = err["input"]
+            if isinstance(user_input, dict):
+                user_input = json.dumps(user_input)
+
+            logger.error(
+                "  <mark>%s</mark> (input= <data>%s</data>)", field_name, user_input
+            )
             logger.error("    %s", err["msg"])
+
         raise ConfigError("Failed to parse the config", path) from e

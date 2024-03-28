@@ -5,7 +5,8 @@ import pytest
 from secrets_env.config import load_local_config
 from secrets_env.config.parser import Request
 from secrets_env.exceptions import ConfigError
-from secrets_env.providers.null import NullProvider
+from secrets_env.providers.debug import DebugProvider
+from secrets_env.providers.plain import PlainTextProvider
 
 
 class TestLoadLocalConfig:
@@ -15,28 +16,29 @@ class TestLoadLocalConfig:
         config_path.write_text(
             """
             [[sources]]
-            type = "null"
-            name = "pandora's box"
+            name = "strangers"
+            type = "plain"
 
             [[secrets]]
             name = "TEST_VAR"
-            source = "pandora's box"
+            source = "strangers"
             """
         )
 
         config = load_local_config(config_path)
 
         assert len(config.providers) == 1
-        assert config.providers["pandora's box"] == NullProvider(name="pandora's box")
+        assert config.providers["strangers"] == PlainTextProvider(name="strangers")
         assert len(config.requests) == 1
-        assert config.requests[0] == Request(name="TEST_VAR", source="pandora's box")
+        assert config.requests[0] == Request(name="TEST_VAR", source="strangers")
 
     def test_success_2(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
             """
             sources:
-              type: "null"
+              type: "debug"
+              value: "never gonna give you up"
 
             secrets:
               TEST_VAR: foo
@@ -49,7 +51,7 @@ class TestLoadLocalConfig:
         config = load_local_config(None)
 
         assert len(config.providers) == 1
-        assert config.providers[None] == NullProvider()
+        assert config.providers[None] == DebugProvider(value="never gonna give you up")
         assert len(config.requests) == 1
         assert config.requests[0] == Request(name="TEST_VAR", value="foo")
 
@@ -63,17 +65,20 @@ class TestLoadLocalConfig:
         config_path.write_text(
             """
             [[sources]]
-            name = "pandora's box"
-            type = "vault"
-            auth = "token"
+            type = "debug"
 
             [[secrets]]
-            name = "1nvalid"
-            source = "pandora's box"
+            name = "invalid.x"
             """
         )
 
         with pytest.raises(ConfigError, match="Failed to parse the config"):
             load_local_config(config_path)
 
-        assert "sources.0.url (input= None)" in caplog.text
+        assert (
+            '<mark>sources.0.value</mark> (input= <data>{"type": "debug"}</data>)'
+            in caplog.text
+        )
+        assert (
+            "<mark>secrets.0.name</mark> (input= <data>invalid.x</data>)" in caplog.text
+        )
