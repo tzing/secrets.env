@@ -22,8 +22,10 @@ Configuration layout
          name = "typewriter"
          type = "plain"
 
-         [secrets]
-         FOO = { source = "typewriter", value = "baz" }
+         [[secrets]]
+         name = "FOO"
+         source = "typewriter"
+         value = "baz"
 
    .. tab-item:: yaml
       :sync: yaml
@@ -35,7 +37,7 @@ Configuration layout
              type: plain
 
          secrets:
-           FOO:
+           - name: FOO
              source: typewriter
              value: bar
 
@@ -50,12 +52,13 @@ Configuration layout
                "type": "plain"
              }
            ],
-           "secrets": {
-             "FOO": {
+           "secrets": [
+             {
+               "name": "FOO",
                "source": "typewriter",
                "value": "bar"
              }
-           }
+           ]
          }
 
    .. tab-item:: pyproject.toml
@@ -66,9 +69,10 @@ Configuration layout
          name = "typewriter"
          type = "plain"
 
-         [tool.secrets-env.secrets]
-         FOO = { source = "typewriter", value = "baz" }
-
+         [[tool.secrets-env.secrets]]
+         name = "FOO"
+         source = "typewriter"
+         value = "baz"
 
 
 Source section

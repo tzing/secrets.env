@@ -38,8 +38,11 @@ The configuration file should contain ``sources`` section to specify the secret 
          url = "https://example.com"
          auth = "token"
 
-         [secrets]
-         DEMO_USERNAME = {source = "my-vault", path = "secrets/default", field = "username"}
+         [[secrets]]
+         name = "DEMO_USERNAME"
+         source = "my-vault"
+         path = "secrets/default"
+         field = "username"
 
    .. tab-item:: toml :bdg:`simplified`
 
@@ -65,7 +68,7 @@ The configuration file should contain ``sources`` section to specify the secret 
              auth: token
 
          secrets:
-           DEMO_USERNAME:
+           - name: DEMO_USERNAME
              source: my-vault
              field: username
              path: secrets/default
@@ -99,7 +102,8 @@ The configuration file should contain ``sources`` section to specify the secret 
              }
            ],
            "secrets": {
-             "DEMO_USERNAME": {
+             {
+               "name": "DEMO_USERNAME",
                "source": "my-vault",
                "path": "secrets/default",
                "field": "username"
@@ -118,21 +122,20 @@ The configuration file should contain ``sources`` section to specify the secret 
          url = "https://example.com"
          auth = "token"
 
-         [tool.secrets-env.secrets]
-         DEMO_USERNAME = {source = "my-vault", path = "secrets/default", field = "username"}
+         [[tool.secrets-env.secrets]]
+         name = "DEMO_USERNAME"
+         source = "my-vault"
+         path = "secrets/default"
+         field = "username"
 
 .. tip::
 
    The section names ``source`` / ``secrets`` can be either singular or plural.
    The application will recognize them regardless of the naming convention.
 
-.. admonition:: About "simplified" layout
+.. admonition:: Simplified layout
 
-   When there's only one source in the configuration, users can opt for a "simplified" layout.
-   In this layout, the source section can be formatted as a straightforward table instead of a list, and the ``name`` field can be excluded.
-   Similarly, in the secrets section, users can also choose to remove the ``source`` field for clarity.
-
-   The example section primarily showcases simplified versions in a few formats, but it's worth noting that the tool also supports various other formats.
+   The configuration file can be simplified under certain conditions. Read sections below for more information.
 
 
 Source section
@@ -156,6 +159,92 @@ The supported provider types includes:
 - ``vault``
 
   This creates a :doc:`provider/vault`, capable of retrieving secrets from `HashiCorp Vault <https://www.vaultproject.io/>`_.
+
+
+Single source
+^^^^^^^^^^^^^
+
+When there's only one source in the configuration, several things can be omitted:
+
+* Field ``name`` can be excluded from source section.
+* Field ``source`` can be omitted from the secrets section.
+* The source metadata can be set directly under the source(s) key (rather than under a list).
+
+.. tab-set::
+
+   .. tab-item:: toml
+      :sync: toml
+
+      .. grid:: 1 1 2 2
+
+         .. grid-item::
+
+            .. code-block:: toml
+
+               # Standard layout
+               [[sources]]
+               type = "vault"
+               name = "my-vault"
+               url = "https://example.com"
+               auth = "token"
+
+               [[secrets]]
+               name = "DEMO"
+               source = "my-vault"
+               path = "secrets/default"
+               field = "token"
+
+         .. grid-item::
+
+            .. code-block:: toml
+
+               # Simplified layout
+               [source]
+               type = "vault"
+               url = "https://example.com"
+               auth = "token"
+
+               [[secrets]]
+               name = "DEMO"
+               path = "secrets/default"
+               field = "token"
+
+   .. tab-item:: yaml
+      :sync: yaml
+
+      .. grid:: 1 1 2 2
+
+         .. grid-item::
+
+            .. code-block:: yaml
+
+               # Standard layout
+               sources:
+                 - type: vault
+                   name: my-vault
+                   url: https://example.com
+                   auth: token
+
+               secrets:
+                 - name: DEMO
+                   source: my-vault
+                   path: secrets/default
+                   field: token
+
+         .. grid-item::
+
+            .. code-block:: yaml
+
+               # Simplified layout
+               source:
+                 type: vault
+                 url: https://example.com
+                 auth: token
+
+               secrets:
+                 - name: DEMO
+                   path: secrets/default
+                   field: token
 
 
 Secret section
@@ -194,7 +283,9 @@ In the example, the value of ``DEMO_USERNAME`` is fetched from the ``my-vault`` 
 Simplified specification
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-When the configuration is arranged in the simplified layout, users have the option to specify secrets in a simplified manner:
+Certain providers offer a simplified method for specifying secrets retrieval.
+In these instances, you can represent the secret specification as a string.
+Simply assign the desired string to the ``value`` field:
 
 .. tab-set::
 
@@ -214,7 +305,99 @@ When the configuration is arranged in the simplified layout, users have the opti
          secrets:
            DEMO_USERNAME: "secrets/default#username"
 
-A simplified approach involves representing the entire secret specification using a string.
-The specific format of this string depends on the chosen provider.
+The specific format of the string depends on the provider you've selected.
+For example, the Vault provider suggests using the format ``path#field``, as illustrated in this example.
 
-For instance, the Vault provider recommends using the format ``path#field`` as demonstrated in this example.
+Use key-value pairs
+^^^^^^^^^^^^^^^^^^^
+
+The secrets section can be formatted either as a list or as a table.
+
+If you choose to use a table format, the key-value pairs should be directly listed under the secrets key.
+Each key will be treated as the environment variable name, and the corresponding value will represent the secret specification.
+
+Here are some examples in different formats, demonstrating the same configuration:
+
+.. tab-set::
+
+   .. tab-item:: toml
+      :sync: toml
+
+      .. grid:: 1 1 2 2
+
+         .. grid-item::
+
+            .. code-block:: toml
+
+               # List
+               [[secrets]]
+               name = "DEMO"
+               path = "secrets/default"
+               field = "token"
+
+         .. grid-item::
+
+            .. code-block:: toml
+
+               # Table
+               [secrets]
+               DEMO = {path = "secrets/default", field = "token"}
+
+         .. grid-item::
+
+            .. code-block:: toml
+
+                  # List, simplified specification
+                  [[secrets]]
+                  name = "DEMO"
+                  value = "secrets/default#token"
+
+         .. grid-item::
+
+               .. code-block:: toml
+
+                  # Table, simplified specification
+                  [secrets]
+                  DEMO = "secrets/default#token"
+
+   .. tab-item:: yaml
+      :sync: yaml
+
+      .. grid:: 1 1 2 2
+
+         .. grid-item::
+
+            .. code-block:: yaml
+
+               # List
+               secrets:
+                 - name: DEMO
+                   path: secrets/default
+                   field: token
+
+         .. grid-item::
+
+               .. code-block:: yaml
+
+                  # Table
+                  secrets:
+                    DEMO:
+                      path: secrets/default
+                      field: token
+
+         .. grid-item::
+
+               .. code-block:: yaml
+
+                  # List, simplified specification
+                  secrets:
+                    - name: DEMO
+                      value: "secrets/default#token"
+
+         .. grid-item::
+
+               .. code-block:: yaml
+
+                  # Table, simplified specification
+                  secrets:
+                    DEMO: "secrets/default#token"

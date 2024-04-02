@@ -43,8 +43,8 @@ Installation
 Unlock additional functionalities by installing secrets.env with extras. Choose from several options tailored to enhance your experience:
 
 - ``all`` - Install everything below for comprehensive functionality.
-- ``keyring`` - Enable :doc:`keyring add-on <addon/keyring>` for secure credential storage.
-- ``teleport`` - Opt for the :doc:`teleport add-on <addon/teleport>` to streamline operations and reduce overhead when connecting through `Gravitational Teleport`_.
+- ``keyring`` - Enable :doc:`keyring add-on <advanced/keyring>` for secure credential storage.
+- ``teleport`` - Opt for the :doc:`teleport add-on <advanced/teleport>` to streamline operations and reduce overhead when connecting through `Gravitational Teleport`_.
 - ``yaml`` - Gain support for YAML configuration, ensuring flexibility and ease of use.
 
 Select the extras that best suit your needs to optimize your secrets.env experience.
@@ -89,9 +89,15 @@ The configuration file is crucial, providing essential details for the tool to r
          url = "https://example.com"
          auth = "token"
 
-         [secrets]
-         DEMO_USERNAME = {path = "secrets/default", field = "username"}
-         DEMO_PASSWORD = "secrets/default#password"
+         [[secrets]]
+         name = "DEMO_USERNAME"
+         path = "secrets/default"
+         field = "username"
+
+         [[secrets]]
+         name = "DEMO_PASSWORD"
+         path = "secrets/default"
+         field = "password"
 
    .. tab-item:: yaml
 
@@ -104,11 +110,17 @@ The configuration file is crucial, providing essential details for the tool to r
              auth: token
 
          secrets:
-           DEMO_USERNAME:
-             field: username
+           - name: DEMO_USERNAME
              path: secrets/default
+             field: username
 
-           DEMO_PASSWORD: secrets/default#password
+           - name: DEMO_PASSWORD
+             path: secrets/default
+             field: password
+
+      .. note::
+
+         YAML format is not enabled by default. See installation instructions above.
 
    .. tab-item:: json
 
@@ -123,13 +135,18 @@ The configuration file is crucial, providing essential details for the tool to r
                "auth": "token"
              }
            ],
-           "secrets": {
-             "DEMO_USERNAME": {
+           "secrets": [
+             {
+               "name": "DEMO_USERNAME",
                "path": "secrets/default",
                "field": "username"
              },
-             "DEMO_PASSWORD": "secrets/default#password"
-           }
+             {
+               "name": "DEMO_PASSWORD",
+               "path": "secrets/default",
+               "field": "password"
+             }
+           ]
          }
 
    .. tab-item:: pyproject.toml
@@ -142,9 +159,15 @@ The configuration file is crucial, providing essential details for the tool to r
          url = "https://example.com"
          auth = "token"
 
-         [tool.secrets-env.secrets]
-         DEMO_USERNAME = {path = "secrets/default", field = "username"}
-         DEMO_PASSWORD = "secrets/default#password"
+         [[tool.secrets-env.secrets]]
+         name = "DEMO_USERNAME"
+         path = "secrets/default"
+         field = "username"
+
+         [[tool.secrets-env.secrets]]
+         name = "DEMO_PASSWORD"
+         path = "secrets/default"
+         field = "password"
 
 This configuration instructs secrets.env to retrieve two values from the Vault and assign them to ``DEMO_USERNAME`` and ``DEMO_PASSWORD``.
 

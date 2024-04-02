@@ -21,6 +21,19 @@
 
 ### ✨ Enhancements
 
+* The secrets section in the config file now supports list as well as dictionary.
+
+  ```yaml
+  secrets:
+    - name: secret1
+      source: vault
+      path: secret/sample
+      field: token
+    - name: secret2
+      source: plaintext
+      value: example
+  ```
+
 * Command `keyring set` now accepts password from stdin
 
 ### 🚧 Internal changes

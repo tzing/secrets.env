@@ -35,9 +35,16 @@ Configuration layout
          cluster = "dev.example.com"
          app = "my-app"
 
-         [secrets]
-         HOST = { source = "tsh", field = "uri" }
-         SSL_CERT_FILE = { source = "tsh", field = "ca", format = "path" }
+         [[secrets]]
+         name = "HOST"
+         source = "tsh"
+         field = "uri"
+
+         [[secrets]]
+         name = "SSL_CERT_FILE"
+         source = "tsh"
+         field = "ca"
+         format = "path"
 
    .. tab-item:: yaml
       :sync: yaml
@@ -52,10 +59,10 @@ Configuration layout
              app: my-app
 
          secrets:
-           HOST:
+           - name: HOST
              source: tsh
              field: uri
-           SSL_CERT_FILE:
+           - name: SSL_CERT_FILE
              source: tsh
              field: ca
              format: path
@@ -74,17 +81,19 @@ Configuration layout
                "app": "my-app"
              }
            ],
-           "secrets": {
-             "HOST": {
+           "secrets": [
+             {
+               "name": "HOST",
                "source": "tsh",
                "field": "uri"
              },
-             "SSL_CERT_FILE": {
+             {
+               "name": "SSL_CERT_FILE",
                "source": "tsh",
                "field": "ca",
                "format": "path"
              }
-           }
+           ]
          }
 
    .. tab-item:: pyproject.toml
@@ -98,9 +107,16 @@ Configuration layout
          cluster = "dev.example.com"
          app = "my-app"
 
-         [tool.secrets-env.secrets]
-         HOST = { source = "tsh", field = "uri" }
-         SSL_CERT_FILE = { source = "tsh", field = "ca", format = "path" }
+         [[tool.secrets-env.secrets]]
+         name = "HOST"
+         source = "tsh"
+         field = "uri"
+
+         [[tool.secrets-env.secrets]]
+         name = "SSL_CERT_FILE"
+         source = "tsh"
+         field = "ca"
+         format = "path"
 
 
 Source section

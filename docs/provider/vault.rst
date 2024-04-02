@@ -41,13 +41,21 @@ Configuration layout
          client_cert = "/path/client.cert"
          client_key = "/path/client.key"
 
-         [secrets]
-         DEMO_TOKEN = { source = "strongbox", path = "secret/default", field = "token" }
-         NESTED_SECRET = { source = "strongbox", path = "secret/default", field = [
+         [[secrets]]
+         name = "DEMO_TOKEN"
+         source = "strongbox"
+         path = "secret/default"
+         field = "token"
+
+         [[secrets]]
+         name = "NESTED_SECRET"
+         source = "strongbox"
+         path = "secret/default"
+         field = [
             "subpath",
             "to",
             "secret",
-         ] }
+         ]
 
    .. tab-item:: yaml
       :sync: yaml
@@ -68,12 +76,12 @@ Configuration layout
                client_key: /path/client.key
 
          secrets:
-           DEMO_TOKEN:
+           - name: DEMO_TOKEN
              source: strongbox
              path: secret/default
              field: token
 
-           NESTED_SECRET:
+           - name: NESTED_SECRET
              source: strongbox
              path: secret/default
              field:
@@ -103,13 +111,15 @@ Configuration layout
                }
              }
            ],
-           "secrets": {
-             "DEMO_TOKEN": {
+           "secrets": [
+             {
+               "name": "DEMO_TOKEN",
                "source": "strongbox",
                "path": "secret/default",
                "field": "token"
              },
-             "NESTED_SECRET": {
+             {
+               "name": "NESTED_SECRET",
                "source": "strongbox",
                "path": "secret/default",
                "field": [
@@ -118,7 +128,7 @@ Configuration layout
                  "secret"
                ]
              }
-           }
+           ]
          }
 
    .. tab-item:: pyproject.toml
@@ -140,13 +150,21 @@ Configuration layout
          client_cert = "/path/client.cert"
          client_key = "/path/client.key"
 
-         [tool.secrets-env.secrets]
-         DEMO_TOKEN = { source = "strongbox", path = "secret/default", field = "token" }
-         NESTED_SECRET = { source = "strongbox", path = "secret/default", field = [
+         [[tool.secrets-env.secrets]]
+         name = "DEMO_TOKEN"
+         source = "strongbox"
+         path = "secret/default"
+         field = "token"
+
+         [[tool.secrets-env.secrets]]
+         name = "NESTED_SECRET"
+         source = "strongbox"
+         path = "secret/default"
+         field = [
             "subpath",
             "to",
             "secret",
-         ] }
+         ]
 
 
 Environment variables
