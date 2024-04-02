@@ -1,11 +1,12 @@
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
     ProviderBuilder,
     Request,
     RequestBuilder,
+    capture_line_errors,
 )
 from secrets_env.providers.plain import PlainTextProvider
 
@@ -196,3 +197,41 @@ class TestLocalConfig:
 
         exc_info.match("sources.0.value")
         exc_info.match("secret.0.name")
+
+
+class TestCaptureLineErrors:
+
+    def test_pass(self):
+        class Demo(BaseModel): ...
+
+        errors = []
+        with capture_line_errors(errors, ("test")):
+            Demo()
+
+        assert errors == []
+
+    def test_capture_1(self):
+        class Demo(BaseModel):
+            name: str
+            file: FilePath
+
+        errors = []
+        with capture_line_errors(errors, ("test",)):
+            Demo(name=1234, file="/not/a/file")
+
+        assert errors == [
+            {
+                "input": 1234,
+                "loc": ("test", "name"),
+                "msg": "Input should be a valid string",
+                "type": "string_type",
+                "url": "https://errors.pydantic.dev/2.6/v/string_type",
+            },
+            {
+                "input": "/not/a/file",
+                "loc": ("test", "file"),
+                "msg": "Path does not point to a file",
+                "type": "value_error",
+                "ctx": {"error": "Path does not point to a file"},
+            },
+        ]
