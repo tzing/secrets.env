@@ -102,7 +102,7 @@ class Request(BaseModel):
     source: str | None = None
 
     # all possible fields
-    field: str | None = None
+    field: str | list[str] | None = None
     format: str | None = None
     path: str | None = None
     value: str | None = None
@@ -184,5 +184,10 @@ def capture_line_errors(line_errors: list[ErrorDetails], prefix: Sequence[str | 
     except ValidationError as e:
         for err in e.errors():
             err = err.copy()
+            if err["type"] == "path_not_file":
+                # workaround; `path_not_file` is raised by Pydantic's PathType
+                # but this type is not acceptable by `from_exception_data`
+                err["type"] = "value_error"
+                err["ctx"] = {"error": err["msg"]}
             err["loc"] = (*prefix, *err["loc"])
             line_errors.append(err)
