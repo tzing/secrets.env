@@ -3,18 +3,9 @@ from unittest.mock import Mock, PropertyMock
 
 import pytest
 
+from secrets_env.provider import Request
 from secrets_env.providers.teleport import TeleportProvider, TeleportRequestSpec, get_ca
 from secrets_env.providers.teleport.config import TeleportConnectionParameter
-
-
-class TestTeleportRequestSpec:
-    def test_success(self):
-        spec = TeleportRequestSpec.model_validate({"field": "ca", "format": "pem"})
-        assert spec == TeleportRequestSpec(field="ca", format="pem")
-
-    def test_shortcut(self):
-        spec = TeleportRequestSpec.model_validate("uri")
-        assert spec == TeleportRequestSpec(field="uri", format="path")
 
 
 class TestTeleportProvider:
@@ -28,41 +19,43 @@ class TestTeleportProvider:
         return TeleportProvider(app="test")
 
     def test_get_uri(self, provider: TeleportProvider):
-        assert provider.get("uri") == "https://example.com"
+        assert provider(Request(name="test", value="uri")) == "https://example.com"
 
     def test_get_ca(self, provider: TeleportProvider):
         expect = "subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
-        assert provider.get({"field": "ca", "format": "pem"}) == expect
-        with open(provider.get("ca")) as fd:
+        assert provider(Request(name="test", field="ca", format="pem")) == expect
+        with open(provider(Request(name="test", value="ca"))) as fd:
             assert fd.read() == expect
 
     def test_get_cert(self, provider: TeleportProvider):
         expect = "-----MOCK CERTIFICATE-----"
-        assert provider.get({"field": "cert", "format": "pem"}) == expect
-        with open(provider.get("cert")) as fd:
+        assert provider(Request(name="test", field="cert", format="pem")) == expect
+        with open(provider(Request(name="test", value="cert"))) as fd:
             assert fd.read() == expect
 
     def test_get_key(self, provider: TeleportProvider):
         expect = "-----MOCK PRIVATE KEY-----"
-        assert provider.get({"field": "key", "format": "pem"}) == expect
-        with open(provider.get("key")) as fd:
+        assert provider(Request(name="test", field="key", format="pem")) == expect
+        with open(provider(Request(name="test", value="key"))) as fd:
             assert fd.read() == expect
 
     def test_get_cert_and_key(self, provider: TeleportProvider):
         expect = "-----MOCK CERTIFICATE-----\n-----MOCK PRIVATE KEY-----"
-        assert provider.get({"field": "cert+key", "format": "pem"}) == expect
-        with open(provider.get("cert+key")) as fd:
+        assert provider(Request(name="test", field="cert+key", format="pem")) == expect
+        with open(provider(Request(name="test", value="cert+key"))) as fd:
             assert fd.read() == expect
 
     def test_get_invalid(self, monkeypatch: pytest.MonkeyPatch):
         spec = Mock(TeleportRequestSpec)
         spec.field = "unknown"
         monkeypatch.setattr(
-            TeleportRequestSpec, "model_validate", Mock(return_value=spec)
+            "secrets_env.providers.teleport.TeleportRequestSpec",
+            Mock(return_value=spec),
         )
 
+        provider = TeleportProvider(app="test")
         with pytest.raises(RuntimeError):
-            TeleportProvider(app="test").get("unknown")
+            provider(Request(name="test"))
 
 
 class TestGetCa:
