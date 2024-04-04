@@ -5,7 +5,7 @@ import typing
 from secrets_env.provider import Provider
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import RequestSpec
+    from secrets_env.provider import Request
 
 
 class PlainTextProvider(Provider):
@@ -14,8 +14,5 @@ class PlainTextProvider(Provider):
 
     type = "plain"
 
-    def get(self, spec: RequestSpec) -> str:
-        if isinstance(spec, str):
-            return spec
-        elif isinstance(spec, dict):
-            return spec.get("value") or ""
+    def _get_value_(self, spec: Request) -> str:
+        return spec.value or ""

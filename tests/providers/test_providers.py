@@ -1,5 +1,6 @@
 import pytest
 
+from secrets_env.provider import Request
 from secrets_env.providers import get_provider
 from secrets_env.providers.debug import DebugProvider
 from secrets_env.providers.plain import PlainTextProvider
@@ -34,20 +35,14 @@ class TestGetProvider:
 
 
 class TestDebugProvider:
-    def test_get(self):
-        provider = DebugProvider(value="test")
-        assert provider.get("test") == "test"
-        assert provider.get({"value": "test"}) == "test"
+    def test(self):
+        provider = DebugProvider(value="bar")
+        assert provider(Request(name="test", value="foo")) == "bar"
 
 
 class TestPlainTextProvider:
     def test(self):
         provider = PlainTextProvider()
-        assert provider.get("test") == "test"
-        assert provider.get("") == ""
-
-        assert provider.get({"value": "test"}) == "test"
-        assert provider.get({"value": None}) == ""
-        assert provider.get({"value": ""}) == ""
-
-        assert provider.get({"invalid": "foo"}) == ""
+        assert provider(Request(name="test", value="foo")) == "foo"
+        assert provider(Request(name="test", value="")) == ""
+        assert provider(Request(name="test")) == ""
