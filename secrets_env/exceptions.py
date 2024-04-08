@@ -27,8 +27,3 @@ class ConfigError(SecretsEnvError, builtins.ValueError):
 
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
-
-
-class ValueNotFound(SecretsEnvError, builtins.LookupError):
-    """Requested value does not exist, or the user does not have permission to
-    read it."""

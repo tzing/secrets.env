@@ -5,7 +5,7 @@ import pytest
 
 import secrets_env.collect as t
 import secrets_env.provider
-from secrets_env.exceptions import AuthenticationError, ConfigError, ValueNotFound
+from secrets_env.exceptions import AuthenticationError, ConfigError
 from secrets_env.provider import Request
 
 
@@ -79,7 +79,7 @@ class TestRead1:
         assert "Config for test is malformed" in caplog.text
 
     def test_not_found(self, caplog: pytest.LogCaptureFixture):
-        self.provider.side_effect = ValueNotFound("test")
+        self.provider.side_effect = LookupError("test")
 
         assert t.read1(self.provider, "test", "foo#bar") is None
         assert "Secret for test not found" in caplog.text
