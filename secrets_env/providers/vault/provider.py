@@ -27,7 +27,7 @@ from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_respons
 if typing.TYPE_CHECKING:
     from typing import Iterable, Iterator, Self, Sequence
 
-    from secrets_env.provider import RequestSpec
+    from secrets_env.provider import Request
     from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
@@ -61,16 +61,17 @@ class VaultPath(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _create_from_str(cls, value: str | dict | Self) -> dict | Self:
-        if not isinstance(value, str):
-            return value
-        if value.count("#") != 1:
-            raise ValueError("Invalid format. Expected 'path#field'")
-        path, field = value.rsplit("#", 1)
-        return {
-            "path": path,
-            "field": field,
-        }
+    def _accept_shortcut(cls, data):
+        if isinstance(data, dict):
+            if value := data.get("value"):
+                if value.count("#") != 1:
+                    raise ValueError("Invalid format. Expected 'path#field'")
+                path, field = value.rsplit("#", 1)
+                return {
+                    "path": path,
+                    "field": field,
+                }
+        return data
 
     @field_validator("field", mode="before")
     @classmethod
@@ -132,8 +133,8 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
         return client
 
-    def get(self, spec: RequestSpec) -> str:
-        path = VaultPath.model_validate(spec)
+    def _get_value_(self, spec: Request) -> str:
+        path = VaultPath.model_validate(spec.model_dump())
         secret = self._read_secret(path)
 
         for f in path.field:

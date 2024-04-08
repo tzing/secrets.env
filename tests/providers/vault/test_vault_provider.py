@@ -8,6 +8,7 @@ import respx
 from pydantic_core import ValidationError
 
 from secrets_env.exceptions import AuthenticationError
+from secrets_env.provider import Request
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.providers.vault.provider import (
@@ -38,8 +39,16 @@ def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
 
 
 class TestVaultPath:
-    def test_success(self):
-        path = VaultPath.model_validate('foo#"bar.baz".qux')
+    @pytest.mark.parametrize(
+        "req",
+        [
+            Request(name="test", value='foo#"bar.baz".qux'),
+            Request(name="test", path="foo", field='"bar.baz".qux'),
+            Request(name="test", path="foo", field=["bar.baz", "qux"]),
+        ],
+    )
+    def test_success(self, req: Request):
+        path = VaultPath.model_validate(req.model_dump())
         assert path == VaultPath(path="foo", field=("bar.baz", "qux"))
         assert str(path) == 'foo#"bar.baz".qux'
 
@@ -50,11 +59,11 @@ class TestVaultPath:
 
         # missing path/field separator
         with pytest.raises(ValidationError):
-            VaultPath.model_validate("foobar")
+            VaultPath.model_validate(Request(value="foobar"))
 
         # too many path/field separator
         with pytest.raises(ValidationError):
-            VaultPath.model_validate("foo#bar#baz")
+            VaultPath.model_validate(Request(value="foo#bar#baz"))
 
         # empty field subpath
         with pytest.raises(ValidationError):
@@ -100,7 +109,9 @@ class TestVaultKvProvider:
         monkeypatch.setattr(
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
         )
-        assert unittest_provider.get({"path": "foo", "field": "bar"}) == "test"
+        assert (
+            unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
+        )
 
     def test_get__too_depth(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
@@ -109,7 +120,7 @@ class TestVaultKvProvider:
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
         )
         with pytest.raises(LookupError, match='Field "bar.baz" not found in "foo"'):
-            unittest_provider.get({"path": "foo", "field": "bar.baz"})
+            unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
 
     def test_get__too_shallow(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
@@ -120,7 +131,7 @@ class TestVaultKvProvider:
         with pytest.raises(
             LookupError, match='Field "bar" in "foo" is not point to a string value'
         ):
-            unittest_provider.get({"path": "foo", "field": "bar"})
+            unittest_provider({"name": "test", "path": "foo", "field": "bar"})
 
     def test_read_secret__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
@@ -153,8 +164,14 @@ class TestVaultKvProvider:
         assert func.call_count == 1
 
     def test_integration(self, intl_provider: VaultKvProvider):
-        assert intl_provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
-        assert intl_provider.get('kv2/test#test."name.with-dot"') == "sample-value"
+        assert (
+            intl_provider({"name": "test", "path": "kv2/test", "field": "foo"})
+            == "hello, world"
+        )
+        assert (
+            intl_provider({"name": "test", "value": 'kv2/test#test."name.with-dot"'})
+            == "sample-value"
+        )
 
 
 class TestCreateHttpClient:
