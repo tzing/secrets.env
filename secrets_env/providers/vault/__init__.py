@@ -229,7 +229,7 @@ def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
     except httpx.HTTPError as e:
         if not (reason := get_httpx_error_reason(e)):
             raise
-        raise AuthenticationError("Encounter {} while retrieving token", reason) from e
+        raise AuthenticationError(f"Encounter {reason} while retrieving token") from e
 
     # verify
     if not is_authenticated(client, token):
