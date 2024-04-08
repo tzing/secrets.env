@@ -9,9 +9,7 @@ from pydantic_core import ValidationError
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Request
-from secrets_env.providers.vault.auth.base import Auth, NoAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.providers.vault.provider import (
+from secrets_env.providers.vault import (
     MountMetadata,
     VaultKvProvider,
     VaultPath,
@@ -22,6 +20,8 @@ from secrets_env.providers.vault.provider import (
     is_authenticated,
     read_secret,
 )
+from secrets_env.providers.vault.auth.base import Auth, NoAuth
+from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 
 
 @pytest.fixture()
@@ -90,7 +90,7 @@ class TestSplitFieldStr:
 class TestVaultKvProvider:
     def test_client(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.create_http_client",
+            "secrets_env.providers.vault.create_http_client",
             lambda _: Mock(httpx.Client, headers={}),
         )
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
@@ -137,7 +137,7 @@ class TestVaultKvProvider:
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         func = Mock(return_value={"foo": "bar"})
-        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
         path = VaultPath(path="foo", field="bar")
         assert unittest_provider._read_secret(path) == {"foo": "bar"}
@@ -153,7 +153,7 @@ class TestVaultKvProvider:
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         func = Mock(return_value=None)
-        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
         path = VaultPath(path="foo", field="bar")
         with pytest.raises(LookupError):
@@ -260,7 +260,7 @@ class TestGetToken:
         client = Mock(httpx.Client)
         auth = NoAuth(token="t0ken")
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: True
+            "secrets_env.providers.vault.is_authenticated", lambda c, t: True
         )
         assert get_token(client, auth) == "t0ken"
 
@@ -268,7 +268,7 @@ class TestGetToken:
         client = Mock(httpx.Client)
         auth = NoAuth(token="t0ken")
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: False
+            "secrets_env.providers.vault.is_authenticated", lambda c, t: False
         )
         with pytest.raises(AuthenticationError, match="Invalid token"):
             get_token(client, auth)
@@ -323,7 +323,7 @@ class TestReadSecret:
     @pytest.fixture()
     def _set_mount_kv2(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount",
+            "secrets_env.providers.vault.get_mount",
             lambda c, p: MountMetadata(path="secrets/", version=2),
         )
 
@@ -373,7 +373,7 @@ class TestReadSecret:
         unittest_client: httpx.Client,
     ):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount",
+            "secrets_env.providers.vault.get_mount",
             lambda c, p: MountMetadata(path="secrets/", version=1),
         )
         respx_mock.get("https://example.com/v1/secrets/test").mock(
@@ -413,9 +413,7 @@ class TestReadSecret:
     def test_get_mount_error(
         self, monkeypatch: pytest.MonkeyPatch, unittest_client: httpx.Client
     ):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount", lambda c, p: None
-        )
+        monkeypatch.setattr("secrets_env.providers.vault.get_mount", lambda c, p: None)
         assert read_secret(unittest_client, "secrets/test") is None
 
     @pytest.mark.usefixtures("_set_mount_kv2")
