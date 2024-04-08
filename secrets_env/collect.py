@@ -64,7 +64,7 @@ def read1(provider: Provider, name: str, spec: Request) -> str | None:
         )
     except secrets_env.exceptions.ConfigError as e:
         logger.warning("Config for %s is malformed: %s. Skip this variable.", name, e)
-    except secrets_env.exceptions.ValueNotFound:
+    except LookupError:
         logger.warning("Secret for %s not found. Skip this variable.", name)
     except Exception as e:
         logger.error("Error requesting secret for %s. Skip this variable.", name)
