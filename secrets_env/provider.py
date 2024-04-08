@@ -5,11 +5,16 @@ For secret provider implementations, see :py:mod:`secrets_env.providers`.
 
 from __future__ import annotations
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from pydantic import BaseModel, field_validator, validate_call
+from pydantic import BaseModel, ValidationError, field_validator, validate_call
+
+from secrets_env.exceptions import AuthenticationError, NoValue, UnsupportedError
+
+logger = logging.getLogger(__name__)
 
 
 class Request(BaseModel):
@@ -54,20 +59,32 @@ class Provider(BaseModel, ABC):
 
         Raises
         ------
-        ValidationError
-            If the input format is invalid.
-        UnsupportedError
-            When this operation is not supported.
-        AuthenticationError
-            Failed during authentication.
-        LookupError
-            If the secret is not found.
+        NoValue
+            When failed to get value.
         """
-        if isinstance(spec, str):
-            spec = Request(name="TEMP", value=spec)
-        elif isinstance(spec, dict):
-            spec = Request.model_validate(spec)
-        return self._get_value_(spec)
+        try:
+            return self._get_value_(spec)
+        except AuthenticationError as e:
+            logger.warning(f"Authentication failed for <data>{spec.name}</data>: {e}")
+            raise NoValue from e
+        except LookupError as e:
+            logger.warning(f"Value not found for <data>{spec.name}</data>")
+            raise NoValue from e
+        except UnsupportedError as e:
+            logger.warning(f"Operation not supported for <data>{spec.name}</data>: {e}")
+            raise NoValue from e
+        except ValidationError as e:
+            logger.warning(f"Config malformed for <data>{spec.name}</data>:")
+            for i, err in enumerate(e.errors(), 1):
+                loc = ".".join(map(str, err["loc"]))
+                msg = err["msg"]
+                logger.warning(f"  [#{i}] {loc}: {msg}")
+            raise NoValue from e
+        except Exception as e:
+            logger.error(f"Error requesting value for <data>{spec.name}</data>")
+            logger.debug(f"Request= {spec!r}")
+            logger.debug(f"Error= {type(e).__name__}, Msg= {e}", exc_info=True)
+            raise NoValue from e
 
     @abstractmethod
     def _get_value_(self, spec: Request) -> str:
@@ -84,12 +101,12 @@ class Provider(BaseModel, ABC):
 
         Raises
         ------
-        ValidationError
-            If the input format is invalid.
-        UnsupportedError
-            When this operation is not supported.
         AuthenticationError
             Failed during authentication.
         LookupError
             If the secret is not found.
+        UnsupportedError
+            When this operation is not supported.
+        ValidationError
+            If the input format is invalid.
         """

@@ -23,3 +23,10 @@ class ConfigError(SecretsEnvError, builtins.ValueError):
 
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
+
+
+class NoValue(SecretsEnvError):
+    """No value was returned from the provider."""
+
+    def __init__(self) -> None:
+        super().__init__("No value was returned from the provider")
