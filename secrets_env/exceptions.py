@@ -4,10 +4,6 @@
 from __future__ import annotations
 
 import builtins
-import typing
-
-if typing.TYPE_CHECKING:
-    from typing import Any
 
 
 class SecretsEnvError(Exception):
