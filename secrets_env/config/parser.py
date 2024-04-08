@@ -156,6 +156,25 @@ class LocalConfig(BaseModel):
                 )
         return values
 
+    @model_validator(mode="after")
+    def _check_source_exists(self):
+        errors = []
+        for i, request in enumerate(self.requests):
+            if request.source not in self.providers:
+                errors.append(
+                    {
+                        "type": "value_error",
+                        "loc": ("requests", i, "source"),
+                        "input": request.source,
+                        "ctx": {"error": f'source "{request.source}" not found'},
+                    }
+                )
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="local config", line_errors=errors
+            )
+        return self
+
 
 @contextlib.contextmanager
 def capture_line_errors(line_errors: list[ErrorDetails], prefix: Sequence[str | int]):
