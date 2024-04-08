@@ -7,16 +7,9 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from typing import ClassVar, Union
+from typing import ClassVar
 
 from pydantic import BaseModel, field_validator, validate_call
-
-RequestSpec = Union[dict[str, str], str]
-""":py:class:`RequestSpec` represents a path spec to read the value.
-
-It should be a :py:class:`dict` in most cases; or :py:class:`str` if this
-provider accepts shortcut.
-"""
 
 
 class Request(BaseModel):
@@ -47,7 +40,7 @@ class Provider(BaseModel, ABC):
     name: str | None = None
 
     @validate_call
-    def __call__(self, spec: Request | RequestSpec) -> str:
+    def __call__(self, spec: Request) -> str:
         """Get value.
 
         Parameters
