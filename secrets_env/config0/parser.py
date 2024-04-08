@@ -4,33 +4,25 @@ import itertools
 import logging
 import re
 import typing
-from typing import Any, Iterator, TypedDict
+from typing import Any, Iterator, TypedDict, cast
 
 import secrets_env.exceptions
 import secrets_env.providers
+from secrets_env.provider import Request
 from secrets_env.utils import ensure_dict, ensure_str
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import Provider, RequestSpec
+    from secrets_env.provider import Provider
 
 DEFAULT_PROVIDER_NAME = "main"
 
 logger = logging.getLogger(__name__)
 
 
-class Request(TypedDict):
-    """:py:class:`Request` for loading secret value. Secrets.env would fetch
-    the secret value from the provider and load it into environment."""
-
-    name: str
-    provider: str
-    spec: RequestSpec
-
-
 class Config(TypedDict):
     """The parsed configurations."""
 
-    providers: dict[str, Provider]
+    providers: dict[str | None, Provider]
     requests: list[Request]
 
 
@@ -46,7 +38,13 @@ def parse_config(data: dict) -> Config | None:
         logger.error("Secret provider config error")
         return None
 
-    return Config(providers=providers, requests=requests)
+    return cast(
+        Config,
+        {
+            "providers": providers,
+            "requests": requests,
+        },
+    )
 
 
 def get_providers(data: dict) -> dict[str, Provider]:
@@ -137,8 +135,8 @@ def get_requests(data: dict) -> list[Request]:
             output.append(
                 Request(
                     name=name,
-                    provider=DEFAULT_PROVIDER_NAME,
-                    spec=data,
+                    source=DEFAULT_PROVIDER_NAME,
+                    value=data,
                 )
             )
 
@@ -146,8 +144,8 @@ def get_requests(data: dict) -> list[Request]:
             output.append(
                 Request(
                     name=name,
-                    provider=data.get("source") or DEFAULT_PROVIDER_NAME,
-                    spec=data,
+                    source=data.get("source") or DEFAULT_PROVIDER_NAME,
+                    **data,
                 )
             )
 

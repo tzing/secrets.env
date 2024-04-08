@@ -8,9 +8,8 @@ import respx
 from pydantic_core import ValidationError
 
 from secrets_env.exceptions import AuthenticationError
-from secrets_env.providers.vault.auth.base import Auth, NoAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.providers.vault.provider import (
+from secrets_env.provider import Request
+from secrets_env.providers.vault import (
     MountMetadata,
     VaultKvProvider,
     VaultPath,
@@ -21,6 +20,8 @@ from secrets_env.providers.vault.provider import (
     is_authenticated,
     read_secret,
 )
+from secrets_env.providers.vault.auth.base import Auth, NoAuth
+from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 
 
 @pytest.fixture()
@@ -38,8 +39,16 @@ def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
 
 
 class TestVaultPath:
-    def test_success(self):
-        path = VaultPath.model_validate('foo#"bar.baz".qux')
+    @pytest.mark.parametrize(
+        "req",
+        [
+            Request(name="test", value='foo#"bar.baz".qux'),
+            Request(name="test", path="foo", field='"bar.baz".qux'),
+            Request(name="test", path="foo", field=["bar.baz", "qux"]),
+        ],
+    )
+    def test_success(self, req: Request):
+        path = VaultPath.model_validate(req.model_dump())
         assert path == VaultPath(path="foo", field=("bar.baz", "qux"))
         assert str(path) == 'foo#"bar.baz".qux'
 
@@ -50,11 +59,11 @@ class TestVaultPath:
 
         # missing path/field separator
         with pytest.raises(ValidationError):
-            VaultPath.model_validate("foobar")
+            VaultPath.model_validate(Request(value="foobar"))
 
         # too many path/field separator
         with pytest.raises(ValidationError):
-            VaultPath.model_validate("foo#bar#baz")
+            VaultPath.model_validate(Request(value="foo#bar#baz"))
 
         # empty field subpath
         with pytest.raises(ValidationError):
@@ -81,7 +90,7 @@ class TestSplitFieldStr:
 class TestVaultKvProvider:
     def test_client(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.create_http_client",
+            "secrets_env.providers.vault.create_http_client",
             lambda _: Mock(httpx.Client, headers={}),
         )
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
@@ -100,7 +109,9 @@ class TestVaultKvProvider:
         monkeypatch.setattr(
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
         )
-        assert unittest_provider.get({"path": "foo", "field": "bar"}) == "test"
+        assert (
+            unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
+        )
 
     def test_get__too_depth(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
@@ -109,7 +120,7 @@ class TestVaultKvProvider:
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
         )
         with pytest.raises(LookupError, match='Field "bar.baz" not found in "foo"'):
-            unittest_provider.get({"path": "foo", "field": "bar.baz"})
+            unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
 
     def test_get__too_shallow(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
@@ -120,13 +131,13 @@ class TestVaultKvProvider:
         with pytest.raises(
             LookupError, match='Field "bar" in "foo" is not point to a string value'
         ):
-            unittest_provider.get({"path": "foo", "field": "bar"})
+            unittest_provider({"name": "test", "path": "foo", "field": "bar"})
 
     def test_read_secret__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         func = Mock(return_value={"foo": "bar"})
-        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
         path = VaultPath(path="foo", field="bar")
         assert unittest_provider._read_secret(path) == {"foo": "bar"}
@@ -142,7 +153,7 @@ class TestVaultKvProvider:
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         func = Mock(return_value=None)
-        monkeypatch.setattr("secrets_env.providers.vault.provider.read_secret", func)
+        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
         path = VaultPath(path="foo", field="bar")
         with pytest.raises(LookupError):
@@ -153,8 +164,14 @@ class TestVaultKvProvider:
         assert func.call_count == 1
 
     def test_integration(self, intl_provider: VaultKvProvider):
-        assert intl_provider.get({"path": "kv2/test", "field": "foo"}) == "hello, world"
-        assert intl_provider.get('kv2/test#test."name.with-dot"') == "sample-value"
+        assert (
+            intl_provider({"name": "test", "path": "kv2/test", "field": "foo"})
+            == "hello, world"
+        )
+        assert (
+            intl_provider({"name": "test", "value": 'kv2/test#test."name.with-dot"'})
+            == "sample-value"
+        )
 
 
 class TestCreateHttpClient:
@@ -243,7 +260,7 @@ class TestGetToken:
         client = Mock(httpx.Client)
         auth = NoAuth(token="t0ken")
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: True
+            "secrets_env.providers.vault.is_authenticated", lambda c, t: True
         )
         assert get_token(client, auth) == "t0ken"
 
@@ -251,7 +268,7 @@ class TestGetToken:
         client = Mock(httpx.Client)
         auth = NoAuth(token="t0ken")
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.is_authenticated", lambda c, t: False
+            "secrets_env.providers.vault.is_authenticated", lambda c, t: False
         )
         with pytest.raises(AuthenticationError, match="Invalid token"):
             get_token(client, auth)
@@ -306,7 +323,7 @@ class TestReadSecret:
     @pytest.fixture()
     def _set_mount_kv2(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount",
+            "secrets_env.providers.vault.get_mount",
             lambda c, p: MountMetadata(path="secrets/", version=2),
         )
 
@@ -356,7 +373,7 @@ class TestReadSecret:
         unittest_client: httpx.Client,
     ):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount",
+            "secrets_env.providers.vault.get_mount",
             lambda c, p: MountMetadata(path="secrets/", version=1),
         )
         respx_mock.get("https://example.com/v1/secrets/test").mock(
@@ -396,9 +413,7 @@ class TestReadSecret:
     def test_get_mount_error(
         self, monkeypatch: pytest.MonkeyPatch, unittest_client: httpx.Client
     ):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.provider.get_mount", lambda c, p: None
-        )
+        monkeypatch.setattr("secrets_env.providers.vault.get_mount", lambda c, p: None)
         assert read_secret(unittest_client, "secrets/test") is None
 
     @pytest.mark.usefixtures("_set_mount_kv2")

@@ -5,7 +5,7 @@ import typing
 
 if typing.TYPE_CHECKING:
     from secrets_env.config0.parser import Config
-    from secrets_env.provider import Provider, RequestSpec
+    from secrets_env.provider import Provider, Request
 
 logger = logging.getLogger(__name__)
 
@@ -14,30 +14,28 @@ def read_values(config: Config) -> dict[str, str]:
     """Request values from providers."""
     output_values = {}
     for request in config["requests"]:
-        name = request["name"]
-
-        provider = config["providers"].get(request["provider"])
+        provider = config["providers"].get(request.source)
         if not provider:
             logger.warning(
                 "Provider <data>%s</data> not exists. Skip <data>$%s</data>.",
-                request["provider"],
-                request["name"],
+                request.source,
+                request.name,
             )
             continue
 
-        logger.debug("Read %s from %s", name, request["spec"])
-        value = read1(provider, name, request["spec"])
+        logger.debug("Read %s from %s", request.name, request)
+        value = read1(provider, request.name, request)
 
         if value:
-            logger.debug("Read <data>$%s</data> successfully", name)
-            output_values[name] = value
+            logger.debug("Read <data>$%s</data> successfully", request.name)
+            output_values[request.name] = value
         else:
-            logger.warning("Failed to read <data>$%s</data>", name)
+            logger.warning("Failed to read <data>$%s</data>", request.name)
 
     return output_values
 
 
-def read1(provider: Provider, name: str, spec: RequestSpec) -> str | None:
+def read1(provider: Provider, name: str, spec: Request) -> str | None:
     """Read single value.
 
     This function wraps :py:meth:`secrets_env.provider.ProviderBase.get` and
@@ -54,14 +52,10 @@ def read1(provider: Provider, name: str, spec: RequestSpec) -> str | None:
         )
     if not isinstance(name, str):
         raise TypeError(f'Expected "name" to be a string, got {type(name).__name__}')
-    if not isinstance(spec, (str, dict)):
-        raise TypeError(
-            f'Expected "spec" to be a string or dict, got {type(spec).__name__}'
-        )
 
     # run
     try:
-        return provider.get(spec)
+        return provider(spec)
     except secrets_env.exceptions.AuthenticationError as e:
         logger.error(
             "<!important>\u26D4 Authentication error on %s provider: %s.",

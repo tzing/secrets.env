@@ -6,13 +6,10 @@ from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
-from secrets_env.provider import Provider
+from secrets_env.provider import Provider, Request
 from secrets_env.providers.teleport.config import TeleportUserConfig
 
 if typing.TYPE_CHECKING:
-    from typing import Self
-
-    from secrets_env.provider import RequestSpec
     from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
 logger = logging.getLogger(__name__)
@@ -24,9 +21,10 @@ class TeleportRequestSpec(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _accept_shortcut(cls, data: RequestSpec | Self) -> dict[str, str] | Self:
-        if isinstance(data, str):
-            return {"field": data}
+    def _accept_shortcut(cls, data):
+        if isinstance(data, dict):
+            if not data.get("field"):
+                return {"field": data.get("value")}
         return data
 
 
@@ -35,8 +33,8 @@ class TeleportProvider(Provider, TeleportUserConfig):
 
     type = "teleport"
 
-    def get(self, spec: RequestSpec) -> str:
-        ps = TeleportRequestSpec.model_validate(spec)
+    def _get_value_(self, spec: Request) -> str:
+        ps = TeleportRequestSpec.model_validate(spec.model_dump())
 
         if ps.field == "uri":
             return self.connection_param.uri

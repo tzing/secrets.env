@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from pydantic import ValidationInfo
     from pydantic_core import ErrorDetails
 
-    from secrets_env.provider import RequestSpec
-
 
 class ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
@@ -123,7 +121,7 @@ class RequestBuilder(BaseModel):
 
     @field_validator("secret", "secrets", mode="before")
     @classmethod
-    def _transform(cls, value: list | dict[str, RequestSpec], info: ValidationInfo):
+    def _transform(cls, value: list | dict[str, dict | str], info: ValidationInfo):
         if isinstance(value, list):
             return value
 
