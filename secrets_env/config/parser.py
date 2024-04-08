@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from secrets_env.provider import Provider  # noqa: TCH001
+from secrets_env.provider import Provider, Request  # noqa: TCH001
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
@@ -93,24 +93,6 @@ class ProviderBuilder(BaseModel):
             )
 
         return providers
-
-
-class Request(BaseModel):
-    name: str
-    source: str | None = None
-
-    # all possible fields
-    field: str | list[str] | None = None
-    format: str | None = None
-    path: str | None = None
-    value: str | None = None
-
-    @field_validator("name", mode="after")
-    @classmethod
-    def _check_name_format(cls, value: str):
-        if not re.fullmatch(r"[a-zA-Z_]\w*", value):
-            raise ValueError("Invalid environment variable name")
-        return value
 
 
 class RequestBuilder(BaseModel):
