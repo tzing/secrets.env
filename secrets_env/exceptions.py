@@ -16,37 +16,6 @@ class SecretsEnvError(Exception):
     :meta private:
     """
 
-    def __init__(self, fmt: str, *args: Any, **extras: Any) -> None:
-        """
-        Constructor that applies :py:meth:`str.format` to message template.
-
-        Parameters
-        ----------
-        fmt : str
-            Error message template.
-        args : Any
-            Unnamed values to substitute the ``{}`` in the message template
-        extras : Any
-            Extra attributes to be attached to this exception instance.
-
-        Example
-        -------
-
-        .. code-block:: python
-
-           exc = SecretsEnvError("Demo exception for {}", "testing", key="kwarg example")
-
-           print(exc)
-           # Demo exception for testing
-
-           print(f"{exc.key=}")
-           # exc.key='kwarg example'
-        """
-        msg = fmt.format(*args)
-        super().__init__(msg)
-        for name, value in extras.items():
-            setattr(self, name, value)
-
 
 class AuthenticationError(SecretsEnvError):
     """Authentication failed."""
