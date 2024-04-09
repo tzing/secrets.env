@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import contextlib
-import re
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from secrets_env.provider import Provider, Request  # noqa: TCH001
+from secrets_env.provider import Provider, Request
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
