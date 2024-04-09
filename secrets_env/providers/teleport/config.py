@@ -249,41 +249,50 @@ def call_app_login(config: TeleportUserConfig) -> None:
     AuthenticationError
         Login failed
     """
+    import pexpect
+
     # build arguments
-    cmd = [TELEPORT_APP_NAME, "app", "login"]
+    args = ["app", "login"]
     if config.proxy:
-        cmd.append(f"--proxy={config.proxy}")
+        args.append(f"--proxy={config.proxy}")
     if config.cluster:
-        cmd.append(f"--cluster={config.cluster}")
+        args.append(f"--cluster={config.cluster}")
     if config.user:
-        cmd.append(f"--user={config.user}")
-    cmd.append(config.app)
+        args.append(f"--user={config.user}")
+    args.append(config.app)
+
+    logger.debug("$ %s %s", TELEPORT_APP_NAME, " ".join(args))
 
     # run
-    runner = Run(cmd)
+    proc = pexpect.spawn(TELEPORT_APP_NAME, args, timeout=None)
 
-    for line in runner.iter_any_output():
-        # early escape on detect 'success' message from stdout
-        if line.startswith("Logged into app"):
+    while True:
+        match = proc.expect(
+            [
+                "Logged into app",
+                pexpect.EOF,
+                f'app "{config.app}" not found',
+                r"http://127\.0\.0\.1:\d+/([0-9a-f-]{36})",
+            ]
+        )
+
+        if match in (0, 1):
             break
 
-        # capture auth url from stderr
-        line = line.lstrip()
-        if line.startswith("http://127.0.0.1:"):
+        elif match == 1:
+            link = proc.match.group(0)
             logger.info(
                 "<!important>"
                 "Waiting for response from Teleport...\n"
                 "If browser does not open automatically, open the link:\n"
-                f"  <link>{line}</link>"
+                f"  <link>{link}</link>"
             )
 
-    runner.wait()
+        elif match == 2:
+            raise AuthenticationError(f"Teleport app '{config.app}' not found")
 
-    if runner.return_code == 0:
-        logger.info("Successfully logged into app %s", config.app)
-        return None
+    proc.close()
+    if proc.exitstatus != 0:
+        raise AuthenticationError(f"Teleport error: {proc.stderr}")
 
-    if f'app "{config.app}" not found' in runner.stderr:
-        raise AuthenticationError(f"Teleport app '{config.app}' not found")
-
-    raise AuthenticationError(f"Teleport error: {runner.stderr}")
+    logger.info("Successfully logged into app %s", config.app)
