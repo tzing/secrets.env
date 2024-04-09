@@ -15,4 +15,6 @@ class PlainTextProvider(Provider):
     type = "plain"
 
     def _get_value_(self, spec: Request) -> str:
-        return spec.value or ""
+        if spec.value is None:
+            raise LookupError("No value found in the request")
+        return spec.value
