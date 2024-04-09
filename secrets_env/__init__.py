@@ -3,67 +3,77 @@ from __future__ import annotations
 import logging
 import typing
 
+import secrets_env.config
+import secrets_env.exceptions
 from secrets_env.version import __version__  # noqa: F401
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
 
-def read_values(
-    config_file: Path | None = None, strict: bool = False
-) -> dict[str, str] | None:
-    """Load secrets from vault and put them to environment variable.
+def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
+    """
+    Load values from the providers and return them as a dictionary.
 
     Parameters
     ----------
-    config_file : Path
+    config : Path | None
         Path to config file. It searchs for config file when not given.
     strict : bool
-        Enable strict mode. Returns :py:obj:`None` when not all of the secrets
+        Enable strict mode. Raises an error when not all of the requests are
         successfully loaded.
+
+    Returns
+    -------
+    dict[str, str]
+        A dictionary of the loaded values.
+
+    Raises
+    ------
+    ConfigError
+        When the configuration is malformed.
+    NoValue
+        When failed to load a value and strict mode is enabled.
     """
-    import secrets_env.collect
-    import secrets_env.config0
-
-    # parse config
-    config = secrets_env.config0.load_config(config_file)
-    if not config:
-        # skip logging. already show error in `load_config`
-        return None
-
-    # load values
-    output_values = secrets_env.collect.read_values(config)
-
-    # report
     logger = logging.getLogger(__name__)
 
-    num_expected = len(config["requests"])
-    num_loaded = len(output_values)
+    # parse config
+    cfg = secrets_env.config.load_local_config(config)
 
-    if not num_expected:
-        return {}
+    # load values
+    output_values = {}
+    is_success = True
 
-    elif num_expected == num_loaded:
+    for request in cfg.requests:
+        provider = cfg.providers[request.source]
+        try:
+            output_values[request.name] = provider(request)
+            logger.debug(f"Loaded <data>{request.name}</data>")
+        except secrets_env.exceptions.NoValue:
+            is_success = False
+
+    # report
+    if is_success:
         logger.info(
-            "<!important>\U0001F511 <mark>%d</mark> secrets loaded", num_expected
+            "<!important>\U0001F511 <mark>%d</mark> secrets loaded", len(cfg.requests)
         )
 
     elif strict:
         logger.error(
             # NOTE need extra whitespace after the modifier (\uFE0F)
-            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets read. "
+            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets loaded. "
             "Not satisfied the requirement.",
-            num_loaded,
-            num_expected,
+            len(output_values),
+            len(cfg.requests),
         )
-        return None
+        raise secrets_env.exceptions.NoValue
 
     else:
         logger.warning(
             # NOTE need extra whitespace after the modifier (\uFE0F)
             "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets loaded",
-            num_loaded,
-            num_expected,
+            len(output_values),
+            len(cfg.requests),
         )
 
     return output_values

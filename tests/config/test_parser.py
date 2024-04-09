@@ -4,10 +4,10 @@ from pydantic import BaseModel, FilePath, ValidationError
 from secrets_env.config.parser import (
     LocalConfig,
     ProviderBuilder,
-    Request,
     RequestBuilder,
     capture_line_errors,
 )
+from secrets_env.provider import Request
 from secrets_env.providers.plain import PlainTextProvider
 
 
@@ -101,16 +101,6 @@ class TestProviderBuilder:
             model.collect()
 
 
-class TestRequest:
-    def test_success(self):
-        cfg = Request.model_validate({"name": "foo", "value": "bar"})
-        assert cfg == Request(name="foo", value="bar")
-
-    def test_fail(self):
-        with pytest.raises(ValidationError, match="Invalid environment variable name"):
-            Request.model_validate({"name": "0foo"})
-
-
 class TestRequestBuilder:
     def test_success__model(self):
         model = RequestBuilder.model_validate(
@@ -186,7 +176,7 @@ class TestLocalConfig:
             name="key1", source="source-1", path="/mock/path"
         )
 
-    def test_error(self):
+    def test_nested_error(self):
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
@@ -197,6 +187,18 @@ class TestLocalConfig:
 
         exc_info.match("sources.0.value")
         exc_info.match("secret.0.name")
+
+    def test_source_name_error(self):
+        with pytest.raises(ValidationError) as exc_info:
+            LocalConfig.model_validate(
+                {
+                    "sources": {"type": "plain"},
+                    "secret": [{"name": "demo", "source": "invalid"}],
+                }
+            )
+
+        exc_info.match("requests.0.source")
+        exc_info.match('source "invalid" not found')
 
 
 class TestCaptureLineErrors:

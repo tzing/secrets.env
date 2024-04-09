@@ -1,5 +1,6 @@
 import pytest
 
+from secrets_env.exceptions import NoValue
 from secrets_env.provider import Request
 from secrets_env.providers import get_provider
 from secrets_env.providers.debug import DebugProvider
@@ -45,4 +46,6 @@ class TestPlainTextProvider:
         provider = PlainTextProvider()
         assert provider(Request(name="test", value="foo")) == "foo"
         assert provider(Request(name="test", value="")) == ""
-        assert provider(Request(name="test")) == ""
+
+        with pytest.raises(NoValue):
+            provider(Request(name="test"))

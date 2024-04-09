@@ -36,7 +36,7 @@ from secrets_env.click import add_output_options, entrypoint
 def run(args: Sequence[str], config: Path, strict: bool):
     """Loads secrets into environment variable then run the command."""
     # prepare environment variable set
-    secrets = secrets_env.read_values(config, strict)
+    secrets = secrets_env.read_values(config=config, strict=strict)
     if secrets is None:
         sys.exit(128)
 

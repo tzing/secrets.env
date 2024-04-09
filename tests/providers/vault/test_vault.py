@@ -7,7 +7,7 @@ import pytest
 import respx
 from pydantic_core import ValidationError
 
-from secrets_env.exceptions import AuthenticationError
+from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
 from secrets_env.providers.vault import (
     MountMetadata,
@@ -114,24 +114,30 @@ class TestVaultKvProvider:
         )
 
     def test_get__too_depth(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        unittest_provider: VaultKvProvider,
     ):
         monkeypatch.setattr(
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
         )
-        with pytest.raises(LookupError, match='Field "bar.baz" not found in "foo"'):
+        with pytest.raises(NoValue):
             unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
+        assert 'Field "bar.baz" not found in "foo"' in caplog.text
 
     def test_get__too_shallow(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        unittest_provider: VaultKvProvider,
     ):
         monkeypatch.setattr(
             VaultKvProvider, "_read_secret", Mock(return_value={"bar": {"baz": "test"}})
         )
-        with pytest.raises(
-            LookupError, match='Field "bar" in "foo" is not point to a string value'
-        ):
+        with pytest.raises(NoValue):
             unittest_provider({"name": "test", "path": "foo", "field": "bar"})
+        assert 'Field "bar" in "foo" is not point to a string value' in caplog.text
 
     def test_read_secret__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
