@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,35 @@ from secrets_env.exceptions import ConfigError, NoValue
 
 
 class TestReadValues:
+    def test_vault(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        if "VAULT_ADDR" not in os.environ:
+            raise pytest.skip("VAULT_ADDR is not set")
+        if "VAULT_TOKEN" not in os.environ:
+            raise pytest.skip("VAULT_TOKEN is not set")
+
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            """
+            [[sources]]
+            name = "strongbox"
+            type = "vault"
+            auth = "token"
+
+            [[secrets]]
+            name = "DEMO"
+            source = "strongbox"
+            path = "kv2/test"
+            field = ["test", "name.with-dot"]
+            """
+        )
+
+        with caplog.at_level("DEBUG"):
+            values = read_values(config=config_file, strict=True)
+
+        assert values == {"DEMO": "sample-value"}
+        assert "Loaded <data>DEMO</data>" in caplog.text
+        assert "<mark>1</mark> secrets loaded" in caplog.text
+
     def test_plain_text(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
