@@ -3,6 +3,7 @@ from unittest.mock import Mock, PropertyMock
 
 import pytest
 
+from secrets_env.exceptions import NoValue
 from secrets_env.provider import Request
 from secrets_env.providers.teleport import TeleportProvider, TeleportRequestSpec, get_ca
 from secrets_env.providers.teleport.config import TeleportConnectionParameter
@@ -54,7 +55,7 @@ class TestTeleportProvider:
         )
 
         provider = TeleportProvider(app="test")
-        with pytest.raises(RuntimeError):
+        with pytest.raises(NoValue):
             provider(Request(name="test"))
 
 

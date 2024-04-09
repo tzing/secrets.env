@@ -5,7 +5,7 @@ import secrets_env.commands.run as t
 
 
 def test_success(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(c, s):
+    def mock_read_values(config, strict):
         return {"foo": "bar"}
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)
@@ -17,7 +17,7 @@ def test_success(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_program_fail(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(c, s):
+    def mock_read_values(config, strict):
         return {"foo": "bar"}
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)
@@ -29,7 +29,7 @@ def test_program_fail(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_config_empty(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(c, s):
+    def mock_read_values(config, strict):
         return {}
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)
@@ -41,7 +41,7 @@ def test_config_empty(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_config_error(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(c, s):
+    def mock_read_values(config, strict):
         return None
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)
