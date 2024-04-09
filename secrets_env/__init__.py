@@ -35,6 +35,8 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
     NoValue
         When failed to load a value and strict mode is enabled.
     """
+    logger = logging.getLogger(__name__)
+
     # parse config
     cfg = secrets_env.config.load_local_config(config)
 
@@ -46,12 +48,11 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
         provider = cfg.providers[request.source]
         try:
             output_values[request.name] = provider(request)
+            logger.debug(f"Loaded <data>{request.name}</data>")
         except secrets_env.exceptions.NoValue:
             is_success = False
 
     # report
-    logger = logging.getLogger(__name__)
-
     if is_success:
         logger.info(
             "<!important>\U0001F511 <mark>%d</mark> secrets loaded", len(cfg.requests)
@@ -60,7 +61,7 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
     elif strict:
         logger.error(
             # NOTE need extra whitespace after the modifier (\uFE0F)
-            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets read. "
+            "<!important>\u26A0\uFE0F  <error>%d</error> / %d secrets loaded. "
             "Not satisfied the requirement.",
             len(output_values),
             len(cfg.requests),
