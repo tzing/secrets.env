@@ -68,7 +68,7 @@ class Provider(BaseModel, ABC):
             logger.warning(f"Authentication failed for <data>{spec.name}</data>: {e}")
             raise NoValue from e
         except LookupError as e:
-            logger.warning(f"Value not found for <data>{spec.name}</data>")
+            logger.warning(f"Value not found for <data>{spec.name}</data>: {e}")
             raise NoValue from e
         except UnsupportedError as e:
             logger.warning(f"Operation not supported for <data>{spec.name}</data>: {e}")
