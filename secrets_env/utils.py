@@ -13,15 +13,11 @@ import typing
 from typing import TypeVar, overload
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Literal
-
     import click
     import httpx
     import pydantic_core
 
     T = TypeVar("T")
-    TL_True = Literal[True]
-    TL_False = Literal[False]
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +77,11 @@ def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
 
 def prompt(
     text: str,
-    default: Any | None = None,
+    default: T | None = None,
     hide_input: bool = False,
-    type: click.types.ParamType | type | None = None,
+    type: click.types.ParamType | type[T] | None = None,
     show_default: bool = True,
-) -> Any:
+) -> T | None:
     """Wrap :py:func:`click.prompt`, shows the prompt when this feature is not disabled.
 
     Parameters
@@ -97,7 +93,7 @@ def prompt(
         will prompt until it's aborted.
     hide_input : bool
         If this is set to true then the input value will be hidden.
-    type : click.types.ParamType | Any | None
+    type : click.types.ParamType | type | None
         The type to use to check the value against.
     show_default : bool
         Shows or hides the default value in the prompt.
