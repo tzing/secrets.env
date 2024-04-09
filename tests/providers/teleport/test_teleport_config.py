@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import shutil
+import subprocess
 import textwrap
 from pathlib import Path
 from unittest.mock import Mock
@@ -277,9 +278,10 @@ class TestCallVersion:
         assert re.search(r"< Teleport v\d+\.\d+\.\d+", caplog.text)
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
-        mock = Mock(spec=Run, return_code=1)
-        mock.return_code = 1
-        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: mock)
+        monkeypatch.setattr(
+            "subprocess.check_output",
+            Mock(side_effect=subprocess.CalledProcessError(1, "mock")),
+        )
         assert call_version() is False
 
 

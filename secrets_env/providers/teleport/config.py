@@ -195,9 +195,18 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
 
 def call_version() -> bool:
     """Call version command and print it to log."""
-    runner = Run([TELEPORT_APP_NAME, "version"])
-    runner.wait()
-    return runner.return_code == 0
+    import subprocess
+
+    cmd = [TELEPORT_APP_NAME, "version"]
+    logger.debug("$ %s", " ".join(cmd))
+
+    try:
+        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    except subprocess.CalledProcessError:
+        return False
+
+    logger.debug("< %s", stdout)
+    return True
 
 
 def _drop_on_not_exist(path: Path | None) -> Path | None:
