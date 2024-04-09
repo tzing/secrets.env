@@ -10,138 +10,18 @@ import re
 import sys
 import threading
 import typing
-from pathlib import Path
 from typing import TypeVar, overload
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Literal
-
     import click
     import httpx
     import pydantic_core
 
     T = TypeVar("T")
-    TL_True = Literal[True]
-    TL_False = Literal[False]
 
 logger = logging.getLogger(__name__)
 
 _ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
-
-
-@overload
-def ensure_type(
-    value_name: str,
-    value: Any,
-    type_name: str,
-    expect_type: type[T],
-    cast: bool,
-    default: T,
-) -> tuple[T, TL_True] | tuple[T, TL_False]: ...
-
-
-@overload
-def ensure_type(
-    value_name: str,
-    value: Any,
-    type_name: str,
-    expect_type: type[T],
-    cast: bool,
-) -> tuple[T, TL_True] | tuple[Literal[None], TL_False]: ...
-
-
-def ensure_type(
-    value_name: str,
-    value: Any,
-    type_name: str,
-    expect_type: type[T],
-    cast: bool,
-    default: T | None = None,
-) -> tuple[T, TL_True] | tuple[T | None, TL_False]:
-    """Check if the given value is the expected type, fallback to default value
-    and report errors on failed.
-
-    This is a helper function to be used for config parsing. You may prefer
-    :py:func:`ensure_dict`, :py:func:`ensure_path` or :py:func:`ensure_str`,
-    which offers a simpler solution for the same purpose.
-
-    Parameters
-    ----------
-    value_name : str
-        Value name to be used on error reporting.
-    value
-        Value to be checked.
-    type_name : str
-        Name of expected type(s) to be used on error reporting.
-    expect_type
-        Type(s) could be used in :py:func:`isinstance`.
-    cast : bool
-        Try to cast ``value`` to ``expect_type`` when :py:func:`isinstance` failed.
-    default
-        Default value when all checks failed.
-
-    Returns
-    -------
-    ok : bool
-        Type check success
-    value
-        Value that matches expect type
-    """
-    # returns ok if already the desired type
-    if isinstance(value, expect_type):
-        return value, True
-
-    # try type casting
-    if cast:
-        try:
-            return expect_type(value), True
-        except Exception:
-            ...
-
-    # show warning and returns default value
-    logger.warning(
-        "Expect <mark>%s</mark> type for config <mark>%s</mark>, "
-        "got <data>%s</data> (<mark>%s</mark> type)",
-        type_name,
-        value_name,
-        trimmed_str(value),
-        type(value).__name__,
-    )
-    return default, False
-
-
-def ensure_dict(name: str, d: Any) -> tuple[dict, bool]:
-    """Ensure the input is :py:class:`dict`. Read :py:func:`ensure_type` for
-    more details."""
-    return ensure_type(name, d, "dict", dict, False, {})
-
-
-def ensure_path(
-    name: str, p: Any, is_file: bool = True
-) -> tuple[Path, TL_True] | tuple[None, TL_False]:
-    """Ensure the input is :py:class:`pathlib.Path`. Read :py:func:`ensure_type`
-    for more details."""
-    path: Path | None
-    path, _ = ensure_type(name, p, "path", Path, True)
-    if not path:
-        return None, False
-
-    if is_file and not path.is_file():
-        logger.warning(
-            "Expect valid path for config <mark>%s</mark>: "
-            "file <data>%s</data> not exists",
-            name,
-            path,
-        )
-        return None, False
-
-    return path, True
-
-
-def ensure_str(name: str, s: Any) -> tuple[str, TL_True] | tuple[None, TL_False]:
-    """Ensure the input is :py:class:`str`. Read :py:func:`ensure_type` for
-    more details."""
-    return ensure_type(name, s, "str", str, False)
 
 
 def get_env_var(*names: str) -> str | None:
@@ -197,11 +77,11 @@ def log_httpx_response(logger_: logging.Logger, resp: httpx.Response):
 
 def prompt(
     text: str,
-    default: Any | None = None,
+    default: T | None = None,
     hide_input: bool = False,
-    type: click.types.ParamType | type | None = None,
+    type: click.types.ParamType | type[T] | None = None,
     show_default: bool = True,
-) -> Any:
+) -> T | None:
     """Wrap :py:func:`click.prompt`, shows the prompt when this feature is not disabled.
 
     Parameters
@@ -213,7 +93,7 @@ def prompt(
         will prompt until it's aborted.
     hide_input : bool
         If this is set to true then the input value will be hidden.
-    type : click.types.ParamType | Any | None
+    type : click.types.ParamType | type | None
         The type to use to check the value against.
     show_default : bool
         Shows or hides the default value in the prompt.
@@ -271,14 +151,6 @@ def create_keyring_login_key(url: pydantic_core.Url, user: str) -> str:
 def strip_ansi(value: str) -> str:
     """Strip ANSI escape codes from the string."""
     return _ansi_re.sub("", value)
-
-
-def trimmed_str(o: Any) -> str:
-    __max_len = 20
-    s = str(o)
-    if len(s) > __max_len:
-        s = s[: __max_len - 3] + "..."
-    return s
 
 
 TK = TypeVar("TK")
