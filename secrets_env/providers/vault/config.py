@@ -15,6 +15,7 @@ from pydantic import (
     model_validator,
 )
 
+from secrets_env.providers.teleport import TeleportUserConfig
 from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.utils import get_env_var
 
@@ -66,10 +67,11 @@ class TlsConfig(BaseModel):
 
 
 class VaultUserConfig(BaseModel):
-    url: HttpUrl
+    url: HttpUrl | None = None
     auth_config: dict[str, str] = Field(alias="auth")
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
+    teleport: TeleportUserConfig | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -111,6 +113,28 @@ class VaultUserConfig(BaseModel):
             if "method" not in value:
                 raise ValueError("Missing required config <mark>auth method</mark>")
         return value
+
+    @model_validator(mode="after")
+    def _check_teleport_config(self):
+        if self.teleport:
+            if self.url:
+                logger.warning("'url' would be ignored when 'teleport' is set")
+            if self.tls.ca_cert:
+                logger.warning('"tls.ca_cert" would be ignored when "teleport" is set')
+
+        elif not self.url:
+            raise ValidationError.from_exception_data(
+                title=type(self).__name__,
+                line_errors=[
+                    {
+                        "type": "missing",
+                        "loc": ("url",),
+                        "msg": "Field required",
+                    }
+                ],
+            )
+
+        return self
 
     @cached_property
     def auth(self) -> Auth:

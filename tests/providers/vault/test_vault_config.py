@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
-from pydantic_core import Url
+from pydantic_core import Url, ValidationError
 
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
@@ -45,11 +45,23 @@ class TestVaultUserConfig:
             client_key=tmp_path / "client.key",
         )
 
-    def test_url(self, monkeypatch: pytest.MonkeyPatch):
+    def test_url__envvar(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_ADDR", "https://env.example.com")
         config = VaultUserConfig.model_validate({"auth": "null"})
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://env.example.com")
+
+    def test_url__teleport(self):
+        #  allow None when teleport is set
+        config = VaultUserConfig.model_validate(
+            {"auth": "null", "teleport": {"app": "test"}}
+        )
+        assert isinstance(config, VaultUserConfig)
+        assert config.url is None
+
+    def test_url__missing(self):
+        with pytest.raises(ValidationError):
+            VaultUserConfig.model_validate({"auth": "null"})
 
     def test_auth__shortcut(self):
         config = VaultUserConfig.model_validate(
