@@ -9,6 +9,10 @@ from pydantic_core import ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
+from secrets_env.providers.teleport.config import (
+    TeleportConnectionParameter,
+    TeleportUserConfig,
+)
 from secrets_env.providers.vault import (
     MountMetadata,
     VaultKvProvider,
@@ -258,6 +262,24 @@ class TestCreateHttpClient:
         create_http_client(config)
 
         _, kwargs = mock_httpx_client.call_args
+        assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
+
+    def test_teleport(self, mock_httpx_client: Mock):
+        teleport_user_config = Mock(TeleportUserConfig)
+        teleport_user_config.connection_param = Mock(
+            TeleportConnectionParameter,
+            uri="https://vault.teleport.example.com",
+            path_ca=None,
+            path_cert=Path("/mock/client.pem"),
+            path_key=Path("/mock/client.key"),
+        )
+
+        config = VaultUserConfig(auth="null", teleport=teleport_user_config)
+
+        create_http_client(config)
+
+        _, kwargs = mock_httpx_client.call_args
+        assert kwargs["base_url"] == "https://vault.teleport.example.com"
         assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
 
 
