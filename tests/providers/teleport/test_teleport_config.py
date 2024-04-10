@@ -21,9 +21,9 @@ from secrets_env.providers.teleport.config import (
     call_app_config,
     call_app_login,
     call_version,
+    ensure_dependencies,
     try_get_app_config,
 )
-from secrets_env.subprocess import Run
 
 tsh_not_installed = shutil.which("tsh") is None
 
@@ -48,10 +48,12 @@ class TestTeleportUserConfig:
         assert cfg.app == "test"
 
     @pytest.fixture()
-    def _patch_which(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
+    def _ensure_dependencies(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.ensure_dependencies", lambda: None
+        )
 
-    @pytest.mark.usefixtures("_patch_which")
+    @pytest.mark.usefixtures("_ensure_dependencies")
     def test_connection_param_1(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_version",
@@ -65,7 +67,7 @@ class TestTeleportUserConfig:
         cfg = TeleportUserConfig(app="test")
         assert isinstance(cfg.connection_param, TeleportConnectionParameter)
 
-    @pytest.mark.usefixtures("_patch_which")
+    @pytest.mark.usefixtures("_ensure_dependencies")
     def test_connection_param_2(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_version",
@@ -87,13 +89,7 @@ class TestTeleportUserConfig:
         cfg = TeleportUserConfig(app="test")
         assert isinstance(cfg.connection_param, TeleportConnectionParameter)
 
-    def test_connection_param_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("shutil.which", lambda _: None)
-        cfg = TeleportUserConfig(app="test")
-        with pytest.raises(UnsupportedError):
-            cfg.connection_param  # noqa: B018
-
-    @pytest.mark.usefixtures("_patch_which")
+    @pytest.mark.usefixtures("_ensure_dependencies")
     def test_connection_param_version_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_version",
@@ -103,7 +99,7 @@ class TestTeleportUserConfig:
         with pytest.raises(RuntimeError):
             cfg.connection_param  # noqa: B018
 
-    @pytest.mark.usefixtures("_patch_which")
+    @pytest.mark.usefixtures("_ensure_dependencies")
     def test_connection_param_no_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_version",
@@ -125,6 +121,24 @@ class TestTeleportUserConfig:
         cfg = TeleportUserConfig(app="test")
         with pytest.raises(AuthenticationError):
             cfg.connection_param  # noqa: B018
+
+
+class TestEnsureDependencies:
+
+    def test_pass(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
+        assert ensure_dependencies() is None
+
+    def test_missing_tsh(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: None)
+        with pytest.raises(UnsupportedError):
+            ensure_dependencies()
+
+    def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
+        monkeypatch.setattr("importlib.util.find_spec", lambda _: None)
+        with pytest.raises(UnsupportedError):
+            ensure_dependencies()
 
 
 class TestTeleportConnectionParameter:
@@ -251,10 +265,6 @@ class TestTryGetAppConfig:
             lambda _: conn_param,
         )
         assert try_get_app_config("test") == conn_param
-
-    def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("importlib.util.find_spec", lambda _: False)
-        assert try_get_app_config("test") is None
 
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import datetime
-import importlib.util
 import logging
 import os
-import shutil
 from functools import cached_property
 from pathlib import Path
 from typing import Annotated
@@ -50,11 +48,7 @@ class TeleportUserConfig(BaseModel):
         UnsupportedError
             When Teleport CLI not installed.
         """
-        # ensure teleport cli is installed
-        if not shutil.which(TELEPORT_APP_NAME):
-            raise UnsupportedError(
-                f"Teleport CLI ({TELEPORT_APP_NAME}) is required for teleport addon"
-            )
+        ensure_dependencies()
 
         # it might take a while for teleport RPC. show the message to indicate that
         # the script is not freeze
@@ -78,6 +72,27 @@ class TeleportUserConfig(BaseModel):
             raise AuthenticationError("Failed to get connection info from Teleport")
 
         return param
+
+
+def ensure_dependencies():
+    """Ensure that the required dependencies are installed."""
+    import importlib.util
+    import shutil
+
+    if not shutil.which(TELEPORT_APP_NAME):
+        raise UnsupportedError(
+            f"Teleport CLI ({TELEPORT_APP_NAME}) is required for teleport support"
+        )
+
+    if (
+        False
+        or not importlib.util.find_spec("cryptography")
+        or not importlib.util.find_spec("pexpect")
+    ):
+        logger.error("Optional dependency for teleport support is missing.")
+        logger.error("Please reinstall with the extras <mark>teleport</mark>:")
+        logger.error("  pip install 'secrets.env[teleport]'")
+        raise UnsupportedError("Missing optional dependencies for teleport support")
 
 
 def _path_to_bytes(data):
@@ -176,10 +191,6 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
     use the one stored on disk. Teleport sometimes responds the file path without
     expiration check. Therefore we need to check it by ourself.
     """
-    # need cryptography package to read cert file
-    if not importlib.util.find_spec("cryptography"):
-        return
-
     logger.debug("Try to get config directly")
     param = call_app_config(app)
     if not param:
