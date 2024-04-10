@@ -3,17 +3,12 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import re
 from functools import cached_property
 from pathlib import Path
-from typing import Annotated
+from typing import cast
 
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    BeforeValidator,
-    FilePath,
-    model_validator,
-)
+from pydantic import BaseModel, FilePath, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
 
@@ -95,26 +90,6 @@ def ensure_dependencies():
         raise UnsupportedError("Missing optional dependencies for teleport support")
 
 
-def _path_to_bytes(data):
-    if isinstance(data, Path):
-        return data.read_bytes()
-    return data
-
-
-def _create_temp_file(suffix: str, data: bytes) -> Path:
-    import atexit
-    import tempfile
-
-    fd, path = tempfile.mkstemp(suffix=suffix)
-
-    os.write(fd, data)
-    os.close(fd)
-
-    atexit.register(os.remove, path)
-
-    return Path(path)
-
-
 class TeleportConnectionParameter(BaseModel):
     """App URI and the short-lived certificate for Teleport.
 
@@ -125,13 +100,13 @@ class TeleportConnectionParameter(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: Annotated[bytes | None, BeforeValidator(_path_to_bytes)]
+    ca: bytes | None
     """Certificate authority (CA) certificate."""
 
-    cert: Annotated[bytes, BeforeValidator(_path_to_bytes)]
+    cert: bytes
     """Client side certificate."""
 
-    key: Annotated[bytes, BeforeValidator(_path_to_bytes)]
+    key: bytes
     """Client side private key."""
 
     @model_validator(mode="before")
@@ -141,6 +116,27 @@ class TeleportConnectionParameter(BaseModel):
             return values.model_dump()
         return values
 
+    @field_validator("ca", "cert", "key", mode="before")
+    @classmethod
+    def _read_bytes_from_path(cls, value: Path | None) -> bytes | None:
+        if isinstance(value, Path):
+            return value.read_bytes()
+        return value
+
+    @staticmethod
+    def _create_temp_file(suffix: str, data: bytes) -> Path:
+        import atexit
+        import tempfile
+
+        fd, path = tempfile.mkstemp(suffix=suffix)
+
+        os.write(fd, data)
+        os.close(fd)
+
+        atexit.register(os.remove, path)
+
+        return Path(path)
+
     @cached_property
     def cert_and_key(self) -> bytes:
         return self.cert + b"\n" + self.key
@@ -149,19 +145,19 @@ class TeleportConnectionParameter(BaseModel):
     def path_ca(self) -> Path | None:
         if not self.ca:
             return None
-        return _create_temp_file(".crt", self.ca)
+        return self._create_temp_file(".crt", self.ca)
 
     @cached_property
     def path_cert(self) -> Path:
-        return _create_temp_file(".cert", self.cert)
+        return self._create_temp_file(".cert", self.cert)
 
     @cached_property
     def path_key(self) -> Path:
-        return _create_temp_file(".key", self.key)
+        return self._create_temp_file(".key", self.key)
 
     @cached_property
     def path_cert_and_key(self) -> Path:
-        return _create_temp_file(".pem", self.cert_and_key)
+        return self._create_temp_file(".pem", self.cert_and_key)
 
     def is_cert_valid(self) -> bool:
         """Check if the certificate is still valid now.
@@ -220,20 +216,13 @@ def call_version() -> bool:
     return True
 
 
-def _drop_on_not_exist(path: Path | None) -> Path | None:
-    if isinstance(path, Path):
-        if not path.is_file():
-            return None
-    return path
-
-
 class TshAppConfigResponse(BaseModel):
     """Layout returned by `tsh app config` command."""
 
     uri: str
     """URI to the app."""
 
-    ca: Annotated[Path | None, AfterValidator(_drop_on_not_exist)]
+    ca: Path | None
     """Certificate authority (CA) certificate."""
 
     cert: FilePath
@@ -241,6 +230,14 @@ class TshAppConfigResponse(BaseModel):
 
     key: FilePath
     """Client side private key."""
+
+    @field_validator("ca", mode="after")
+    @classmethod
+    def _drop_on_not_exist(cls, path: Path | None) -> Path | None:
+        if isinstance(path, Path):
+            if not path.is_file():
+                return None
+        return path
 
 
 def call_app_config(app: str) -> TeleportConnectionParameter | None:
@@ -289,20 +286,18 @@ def call_app_login(config: TeleportUserConfig) -> None:
         proc.stderr = capture_stderr
 
         while True:
-            match = proc.expect(
+            index = proc.expect(
                 [
-                    "Logged into app",
+                    re.escape(f"Logged into app {config.app}"),
                     r"http://127\.0\.0\.1:\d+/[0-9a-f-]+",
-                    f'app "{config.app}" not found',
+                    re.escape(f'app "{config.app}" not found'),
                     pexpect.EOF,
                 ]
             )
 
-            if match in (0, 3):
-                break
-
-            elif match == 1:
-                link = proc.match.group(0)
+            if index == 1:
+                match = cast(re.Match, proc.match)
+                link = match.group(0)
                 logger.info(
                     "<!important>"
                     "Waiting for response from Teleport...\n"
@@ -310,8 +305,11 @@ def call_app_login(config: TeleportUserConfig) -> None:
                     f"  <link>{link}</link>"
                 )
 
-            elif match == 2:
+            elif index == 2:
                 raise AuthenticationError(f"Teleport app '{config.app}' not found")
+
+            else:
+                break
 
         proc.close()
 
@@ -325,4 +323,4 @@ def call_app_login(config: TeleportUserConfig) -> None:
             error = capture_stderr.getvalue().rstrip()
             raise AuthenticationError(f"Teleport error: {error}")
 
-    logger.info("Successfully logged into app %s", config.app)
+    logger.info(f"Successfully logged into teleport app: {config.app}")

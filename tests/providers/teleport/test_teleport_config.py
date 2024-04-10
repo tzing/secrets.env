@@ -435,7 +435,7 @@ class TestCallAppLogin:
             call_app_login(config)
 
         assert "Waiting for response from Teleport..." in caplog.text
-        assert "Successfully logged into app test" in caplog.text
+        assert "Successfully logged into teleport app: test" in caplog.text
         assert "<[stdout] If browser..." in caplog.text
         assert "<[stderr] mock stderr" in caplog.text
 
