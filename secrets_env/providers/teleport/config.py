@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import atexit
 import datetime
 import importlib.util
 import logging
 import os
 import shutil
-import tempfile
 from functools import cached_property
 from pathlib import Path
 from typing import Annotated
@@ -90,6 +88,9 @@ def _path_to_bytes(data):
 
 
 def _create_temp_file(suffix: str, data: bytes) -> Path:
+    import atexit
+    import tempfile
+
     fd, path = tempfile.mkstemp(suffix=suffix)
 
     os.write(fd, data)
@@ -205,7 +206,7 @@ def call_version() -> bool:
     except subprocess.CalledProcessError:
         return False
 
-    logger.debug("< %s", stdout)
+    logger.debug("<[stdout] %s", stdout)
     return True
 
 
@@ -249,6 +250,8 @@ def call_app_login(config: TeleportUserConfig) -> None:
     AuthenticationError
         Login failed
     """
+    import io
+
     import pexpect
 
     # build arguments
@@ -264,35 +267,46 @@ def call_app_login(config: TeleportUserConfig) -> None:
     logger.debug("$ %s %s", TELEPORT_APP_NAME, " ".join(args))
 
     # run
-    proc = pexpect.spawn(TELEPORT_APP_NAME, args, timeout=None)
+    with io.StringIO() as capture_stdout, io.StringIO() as capture_stderr:
+        proc = pexpect.spawn(TELEPORT_APP_NAME, args, timeout=None, encoding="utf-8")
+        proc.logfile = capture_stdout
+        proc.stderr = capture_stderr
 
-    while True:
-        match = proc.expect(
-            [
-                "Logged into app",
-                pexpect.EOF,
-                f'app "{config.app}" not found',
-                r"http://127\.0\.0\.1:\d+/([0-9a-f-]{36})",
-            ]
-        )
-
-        if match in (0, 1):
-            break
-
-        elif match == 1:
-            link = proc.match.group(0)
-            logger.info(
-                "<!important>"
-                "Waiting for response from Teleport...\n"
-                "If browser does not open automatically, open the link:\n"
-                f"  <link>{link}</link>"
+        while True:
+            match = proc.expect(
+                [
+                    "Logged into app",
+                    r"http://127\.0\.0\.1:\d+/[0-9a-f-]+",
+                    f'app "{config.app}" not found',
+                    pexpect.EOF,
+                ]
             )
 
-        elif match == 2:
-            raise AuthenticationError(f"Teleport app '{config.app}' not found")
+            if match in (0, 3):
+                break
 
-    proc.close()
-    if proc.exitstatus != 0:
-        raise AuthenticationError(f"Teleport error: {proc.stderr}")
+            elif match == 1:
+                link = proc.match.group(0)
+                logger.info(
+                    "<!important>"
+                    "Waiting for response from Teleport...\n"
+                    "If browser does not open automatically, open the link:\n"
+                    f"  <link>{link}</link>"
+                )
+
+            elif match == 2:
+                raise AuthenticationError(f"Teleport app '{config.app}' not found")
+
+        proc.close()
+
+        logger.debug("< return code: %s", proc.exitstatus)
+        for line in capture_stdout.getvalue().splitlines():
+            logger.debug("<[stdout] %s", line)
+        for line in capture_stderr.getvalue().splitlines():
+            logger.debug("<[stderr] %s", line)
+
+        if proc.exitstatus != 0:
+            error = capture_stderr.getvalue().rstrip()
+            raise AuthenticationError(f"Teleport error: {error}")
 
     logger.info("Successfully logged into app %s", config.app)

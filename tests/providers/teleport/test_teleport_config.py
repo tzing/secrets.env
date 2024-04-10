@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import logging
 import re
@@ -9,6 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import cryptography.x509
+import pexpect
 import pytest
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
@@ -275,7 +277,7 @@ class TestCallVersion:
     def test_success(self, caplog: pytest.LogCaptureFixture):
         with caplog.at_level(logging.DEBUG):
             assert call_version() is True
-        assert re.search(r"< Teleport v\d+\.\d+\.\d+", caplog.text)
+        assert re.search(r"<\[stdout\] Teleport v\d+\.\d+\.\d+", caplog.text)
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -380,10 +382,9 @@ class TestCallAppLogin:
         caplog: pytest.LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        # setup mock
-        def mock_run_command(cmd: list):
-            assert cmd == [
-                "tsh",
+        def mock_spawn(command, args, **kwargs):
+            assert command == "tsh"
+            assert args == [
                 "app",
                 "login",
                 "--proxy=proxy.example.com",
@@ -392,53 +393,67 @@ class TestCallAppLogin:
                 "test",
             ]
 
-            run = Mock(Run, return_code=0)
-            run.iter_any_output.return_value = [
-                "If browser...",
-                " http://127.0.0.1:12345/mock",
-                "Logged into app test",
-            ]
-            return run
+            proc = Mock(pexpect.spawn)
+            proc.expect = Mock(side_effect=[1, 3])
 
+            pattern = re.compile(r"http://127\.0\.0\.1:\d+/[0-9a-f-]+")
+            proc.match = pattern.match("http://127.0.0.1:12345/0000-0000-0000-0000")
+
+            proc.close = Mock()
+            proc.exitstatus = 0
+
+            return proc
+
+        monkeypatch.setattr("pexpect.spawn", mock_spawn)
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.config.Run", mock_run_command
+            "io.StringIO",
+            Mock(
+                side_effect=[
+                    io.StringIO("If browser..."),
+                    io.StringIO("mock stderr"),
+                ]
+            ),
         )
 
-        # run
         config = TeleportUserConfig(
             proxy="proxy.example.com",
             cluster="stg.example.com",
             user="user",
             app="test",
         )
+        with caplog.at_level("DEBUG"):
+            call_app_login(config)
 
-        with caplog.at_level(logging.INFO):
-            assert call_app_login(config) is None
-
-        # test
         assert "Waiting for response from Teleport..." in caplog.text
         assert "Successfully logged into app test" in caplog.text
+        assert "<[stdout] If browser..." in caplog.text
+        assert "<[stderr] mock stderr" in caplog.text
 
     def test_app_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        run = Mock(Run, return_code=1)
-        run.iter_any_output.return_value = [
-            'ERROR: app "test" not found',
-        ]
-        run.stderr = 'ERROR: app "test" not found'
+        def mock_spawn(command, args, **kwargs):
+            proc = Mock(pexpect.spawn)
+            proc.expect = Mock(return_value=2)
+            proc.close = Mock()
+            proc.exitstatus = 1
+            return proc
 
-        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: run)
+        monkeypatch.setattr("pexpect.spawn", mock_spawn)
 
         with pytest.raises(AuthenticationError, match="Teleport app 'test' not found"):
-            assert call_app_login(TeleportUserConfig(app="test")) is None
+            call_app_login(TeleportUserConfig(app="test"))
 
     def test_other_error(self, monkeypatch: pytest.MonkeyPatch):
-        run = Mock(Run, return_code=1)
-        run.iter_any_output.return_value = [
-            "ERROR: mocked",
-        ]
-        run.stderr = "ERROR: mocked"
+        def mock_spawn(command, args, **kwargs):
+            proc = Mock(pexpect.spawn)
+            proc.expect = Mock(return_value=3)
+            proc.close = Mock()
+            proc.exitstatus = 1
+            return proc
 
-        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: run)
+        monkeypatch.setattr("pexpect.spawn", mock_spawn)
+        monkeypatch.setattr(
+            "io.StringIO", Mock(return_value=io.StringIO("mock stderr"))
+        )
 
-        with pytest.raises(AuthenticationError, match="Teleport error: ERROR: mocked"):
-            assert call_app_login(TeleportUserConfig(app="test")) is None
+        with pytest.raises(AuthenticationError, match="Teleport error: mock stderr"):
+            call_app_login(TeleportUserConfig(app="test"))
