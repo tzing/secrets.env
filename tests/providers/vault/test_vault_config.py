@@ -88,6 +88,25 @@ class TestVaultUserConfig:
                 }
             )
 
+    def test_teleport(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
+        (tmp_path / "ca.cert").touch()
+
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://example.com",
+                "auth": "null",
+                "tls": {"ca_cert": str(tmp_path / "ca.cert")},
+                "teleport": {"app": "test"},
+            }
+        )
+
+        assert config.teleport is not None
+        assert config.url is None
+        assert config.tls == TlsConfig()
+
+        assert "Any provided URL would be discarded" in caplog.text
+        assert "TLS configuration would be overlooked" in caplog.text
+
     def test_proxy(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_PROXY", "http://env.proxy.example.com")
         config = VaultUserConfig.model_validate(

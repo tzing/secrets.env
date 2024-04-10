@@ -65,6 +65,9 @@ class TlsConfig(BaseModel):
             raise ValueError("client_cert is required when client_key is provided")
         return self
 
+    def __bool__(self) -> bool:
+        return bool(self.ca_cert or self.client_cert or self.client_key)
+
 
 class VaultUserConfig(BaseModel):
     url: HttpUrl | None = None
@@ -118,9 +121,15 @@ class VaultUserConfig(BaseModel):
     def _check_teleport_config(self):
         if self.teleport:
             if self.url:
-                logger.warning("'url' would be ignored when 'teleport' is set")
-            if self.tls.ca_cert:
-                logger.warning('"tls.ca_cert" would be ignored when "teleport" is set')
+                self.url = None
+                logger.warning(
+                    "Any provided URL would be discarded when 'teleport' config is set"
+                )
+            if self.tls:
+                self.tls = TlsConfig()
+                logger.warning(
+                    "TLS configuration would be overlooked when 'teleport' config is set"
+                )
 
         elif not self.url:
             raise ValidationError.from_exception_data(
