@@ -1,26 +1,16 @@
 from __future__ import annotations
 
-import atexit
 import datetime
-import importlib.util
 import logging
 import os
-import shutil
-import tempfile
+import re
 from functools import cached_property
 from pathlib import Path
-from typing import Annotated
+from typing import cast
 
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    BeforeValidator,
-    FilePath,
-    model_validator,
-)
+from pydantic import BaseModel, FilePath, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
-from secrets_env.subprocess import Run
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -53,11 +43,7 @@ class TeleportUserConfig(BaseModel):
         UnsupportedError
             When Teleport CLI not installed.
         """
-        # ensure teleport cli is installed
-        if not shutil.which(TELEPORT_APP_NAME):
-            raise UnsupportedError(
-                f"Teleport CLI ({TELEPORT_APP_NAME}) is required for teleport addon"
-            )
+        ensure_dependencies()
 
         # it might take a while for teleport RPC. show the message to indicate that
         # the script is not freeze
@@ -83,21 +69,25 @@ class TeleportUserConfig(BaseModel):
         return param
 
 
-def _path_to_bytes(data):
-    if isinstance(data, Path):
-        return data.read_bytes()
-    return data
+def ensure_dependencies():
+    """Ensure that the required dependencies are installed."""
+    import importlib.util
+    import shutil
 
+    if not shutil.which(TELEPORT_APP_NAME):
+        raise UnsupportedError(
+            f"Teleport CLI ({TELEPORT_APP_NAME}) is required for teleport support"
+        )
 
-def _create_temp_file(suffix: str, data: bytes) -> Path:
-    fd, path = tempfile.mkstemp(suffix=suffix)
-
-    os.write(fd, data)
-    os.close(fd)
-
-    atexit.register(os.remove, path)
-
-    return Path(path)
+    if (
+        False
+        or not importlib.util.find_spec("cryptography")
+        or not importlib.util.find_spec("pexpect")
+    ):
+        logger.error("Optional dependency for teleport support is missing.")
+        logger.error("Please reinstall with the extras <mark>teleport</mark>:")
+        logger.error("  pip install 'secrets.env[teleport]'")
+        raise UnsupportedError("Missing optional dependencies for teleport support")
 
 
 class TeleportConnectionParameter(BaseModel):
@@ -110,13 +100,13 @@ class TeleportConnectionParameter(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: Annotated[bytes | None, BeforeValidator(_path_to_bytes)]
+    ca: bytes | None
     """Certificate authority (CA) certificate."""
 
-    cert: Annotated[bytes, BeforeValidator(_path_to_bytes)]
+    cert: bytes
     """Client side certificate."""
 
-    key: Annotated[bytes, BeforeValidator(_path_to_bytes)]
+    key: bytes
     """Client side private key."""
 
     @model_validator(mode="before")
@@ -126,6 +116,27 @@ class TeleportConnectionParameter(BaseModel):
             return values.model_dump()
         return values
 
+    @field_validator("ca", "cert", "key", mode="before")
+    @classmethod
+    def _read_bytes_from_path(cls, value: Path | None) -> bytes | None:
+        if isinstance(value, Path):
+            return value.read_bytes()
+        return value
+
+    @staticmethod
+    def _create_temp_file(suffix: str, data: bytes) -> Path:
+        import atexit
+        import tempfile
+
+        fd, path = tempfile.mkstemp(suffix=suffix)
+
+        os.write(fd, data)
+        os.close(fd)
+
+        atexit.register(os.remove, path)
+
+        return Path(path)
+
     @cached_property
     def cert_and_key(self) -> bytes:
         return self.cert + b"\n" + self.key
@@ -134,19 +145,19 @@ class TeleportConnectionParameter(BaseModel):
     def path_ca(self) -> Path | None:
         if not self.ca:
             return None
-        return _create_temp_file(".crt", self.ca)
+        return self._create_temp_file(".crt", self.ca)
 
     @cached_property
     def path_cert(self) -> Path:
-        return _create_temp_file(".cert", self.cert)
+        return self._create_temp_file(".cert", self.cert)
 
     @cached_property
     def path_key(self) -> Path:
-        return _create_temp_file(".key", self.key)
+        return self._create_temp_file(".key", self.key)
 
     @cached_property
     def path_cert_and_key(self) -> Path:
-        return _create_temp_file(".pem", self.cert_and_key)
+        return self._create_temp_file(".pem", self.cert_and_key)
 
     def is_cert_valid(self) -> bool:
         """Check if the certificate is still valid now.
@@ -176,10 +187,6 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
     use the one stored on disk. Teleport sometimes responds the file path without
     expiration check. Therefore we need to check it by ourself.
     """
-    # need cryptography package to read cert file
-    if not importlib.util.find_spec("cryptography"):
-        return
-
     logger.debug("Try to get config directly")
     param = call_app_config(app)
     if not param:
@@ -195,16 +202,18 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
 
 def call_version() -> bool:
     """Call version command and print it to log."""
-    runner = Run([TELEPORT_APP_NAME, "version"])
-    runner.wait()
-    return runner.return_code == 0
+    import subprocess
 
+    cmd = [TELEPORT_APP_NAME, "version"]
+    logger.debug("$ %s", " ".join(cmd))
 
-def _drop_on_not_exist(path: Path | None) -> Path | None:
-    if isinstance(path, Path):
-        if not path.is_file():
-            return None
-    return path
+    try:
+        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    except subprocess.CalledProcessError:
+        return False
+
+    logger.debug("<[stdout] %s", stdout)
+    return True
 
 
 class TshAppConfigResponse(BaseModel):
@@ -213,7 +222,7 @@ class TshAppConfigResponse(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: Annotated[Path | None, AfterValidator(_drop_on_not_exist)]
+    ca: Path | None
     """Certificate authority (CA) certificate."""
 
     cert: FilePath
@@ -222,13 +231,27 @@ class TshAppConfigResponse(BaseModel):
     key: FilePath
     """Client side private key."""
 
+    @field_validator("ca", mode="after")
+    @classmethod
+    def _drop_on_not_exist(cls, path: Path | None) -> Path | None:
+        if isinstance(path, Path):
+            if not path.is_file():
+                return None
+        return path
+
 
 def call_app_config(app: str) -> TeleportConnectionParameter | None:
-    runner = Run([TELEPORT_APP_NAME, "app", "config", "--format=json", app])
-    if runner.return_code != 0:
+    import subprocess
+
+    cmd = [TELEPORT_APP_NAME, "app", "config", "--format=json", app]
+    logger.debug("$ %s", " ".join(cmd))
+
+    try:
+        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    except subprocess.CalledProcessError:
         return
 
-    config = TshAppConfigResponse.model_validate_json(runner.stdout)
+    config = TshAppConfigResponse.model_validate_json(stdout)
     return TeleportConnectionParameter.model_validate(config)
 
 
@@ -240,41 +263,64 @@ def call_app_login(config: TeleportUserConfig) -> None:
     AuthenticationError
         Login failed
     """
+    import io
+
+    import pexpect
+
     # build arguments
-    cmd = [TELEPORT_APP_NAME, "app", "login"]
+    args = ["app", "login"]
     if config.proxy:
-        cmd.append(f"--proxy={config.proxy}")
+        args.append(f"--proxy={config.proxy}")
     if config.cluster:
-        cmd.append(f"--cluster={config.cluster}")
+        args.append(f"--cluster={config.cluster}")
     if config.user:
-        cmd.append(f"--user={config.user}")
-    cmd.append(config.app)
+        args.append(f"--user={config.user}")
+    args.append(config.app)
+
+    logger.debug("$ %s %s", TELEPORT_APP_NAME, " ".join(args))
 
     # run
-    runner = Run(cmd)
+    with io.StringIO() as capture_stdout, io.StringIO() as capture_stderr:
+        proc = pexpect.spawn(TELEPORT_APP_NAME, args, timeout=None, encoding="utf-8")
+        proc.logfile = capture_stdout
+        proc.stderr = capture_stderr
 
-    for line in runner.iter_any_output():
-        # early escape on detect 'success' message from stdout
-        if line.startswith("Logged into app"):
-            break
-
-        # capture auth url from stderr
-        line = line.lstrip()
-        if line.startswith("http://127.0.0.1:"):
-            logger.info(
-                "<!important>"
-                "Waiting for response from Teleport...\n"
-                "If browser does not open automatically, open the link:\n"
-                f"  <link>{line}</link>"
+        while True:
+            index = proc.expect(
+                [
+                    re.escape(f"Logged into app {config.app}"),
+                    r"http://127\.0\.0\.1:\d+/[0-9a-f-]+",
+                    re.escape(f'app "{config.app}" not found'),
+                    pexpect.EOF,
+                ]
             )
 
-    runner.wait()
+            if index == 1:
+                match = cast(re.Match, proc.match)
+                link = match.group(0)
+                logger.info(
+                    "<!important>"
+                    "Waiting for response from Teleport...\n"
+                    "If browser does not open automatically, open the link:\n"
+                    f"  <link>{link}</link>"
+                )
 
-    if runner.return_code == 0:
-        logger.info("Successfully logged into app %s", config.app)
-        return None
+            elif index == 2:
+                raise AuthenticationError(f"Teleport app '{config.app}' not found")
 
-    if f'app "{config.app}" not found' in runner.stderr:
-        raise AuthenticationError(f"Teleport app '{config.app}' not found")
+            else:
+                break
 
-    raise AuthenticationError(f"Teleport error: {runner.stderr}")
+        proc.close()
+
+        logger.debug("< return code: %s", proc.exitstatus)
+        for line in capture_stdout.getvalue().splitlines():
+            logger.debug("<[stdout] %s", line)
+        for line in capture_stderr.getvalue().splitlines():
+            logger.debug("<[stderr] %s", line)
+
+        if proc.exitstatus != 0:
+            error = capture_stderr.getvalue().rstrip()
+            raise AuthenticationError(f"Teleport error: {error}")
+
+    logger.info(f"Successfully logged into teleport app: {config.app}")

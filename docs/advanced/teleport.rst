@@ -17,7 +17,7 @@ In addition to optional dependencies, using this feature necessitates having the
 
    https://goteleport.com/docs/installation/
 
-2. For enhanced functionality, consider installing secrets.env with the extras:
+2. Installing secrets.env with the extras ``teleport``:
 
    .. tab-set::
 
