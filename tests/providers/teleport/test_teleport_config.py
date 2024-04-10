@@ -348,30 +348,30 @@ class TestCallAppConfig:
         tmp_path: Path,
         conn_param: TeleportConnectionParameter,
     ):
-        (tmp_path / "ca.crt").write_bytes(
-            b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
-        )
-        (tmp_path / "cert.crt").write_bytes(b"-----MOCK CERTIFICATE-----")
-        (tmp_path / "key.key").write_bytes(b"-----MOCK PRIVATE KEY-----")
+        def mock_check_output(cmd, **kwargs):
+            (tmp_path / "ca.crt").write_bytes(
+                b"subject=/C=XX/L=Default City/O=Test\n-----MOCK CERTIFICATE-----"
+            )
+            (tmp_path / "cert.crt").write_bytes(b"-----MOCK CERTIFICATE-----")
+            (tmp_path / "key.key").write_bytes(b"-----MOCK PRIVATE KEY-----")
 
-        mock = Mock(spec=Run, return_code=0)
-        mock.return_code = 0
-        mock.stdout = json.dumps(
-            {
-                "uri": "https://example.com",
-                "ca": str(tmp_path / "ca.crt"),
-                "cert": str(tmp_path / "cert.crt"),
-                "key": str(tmp_path / "key.key"),
-            }
-        )
-        monkeypatch.setattr("secrets_env.providers.teleport.config.Run", lambda _: mock)
+            return json.dumps(
+                {
+                    "uri": "https://example.com",
+                    "ca": str(tmp_path / "ca.crt"),
+                    "cert": str(tmp_path / "cert.crt"),
+                    "key": str(tmp_path / "key.key"),
+                }
+            )
+
+        monkeypatch.setattr("subprocess.check_output", mock_check_output)
 
         assert call_app_config("test") == conn_param
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.config.Run",
-            lambda _: Mock(spec=Run, return_code=1),
+            "subprocess.check_output",
+            Mock(side_effect=subprocess.CalledProcessError(1, "mock")),
         )
         assert call_app_config("test") is None
 

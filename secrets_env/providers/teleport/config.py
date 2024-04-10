@@ -18,7 +18,6 @@ from pydantic import (
 )
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
-from secrets_env.subprocess import Run
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -234,11 +233,17 @@ class TshAppConfigResponse(BaseModel):
 
 
 def call_app_config(app: str) -> TeleportConnectionParameter | None:
-    runner = Run([TELEPORT_APP_NAME, "app", "config", "--format=json", app])
-    if runner.return_code != 0:
+    import subprocess
+
+    cmd = [TELEPORT_APP_NAME, "app", "config", "--format=json", app]
+    logger.debug("$ %s", " ".join(cmd))
+
+    try:
+        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    except subprocess.CalledProcessError:
         return
 
-    config = TshAppConfigResponse.model_validate_json(runner.stdout)
+    config = TshAppConfigResponse.model_validate_json(stdout)
     return TeleportConnectionParameter.model_validate(config)
 
 
