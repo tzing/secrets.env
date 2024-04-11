@@ -47,8 +47,4 @@ Secrets.env includes a :doc:`../provider/teleport` that interacts with the Telep
 TLS adapter
 -----------
 
-.. error::
-
-   This feature is temporary disabled. It still works in the stable version.
-
 This feature is used by :doc:`../provider/vault` for fetching certificates from Teleport.

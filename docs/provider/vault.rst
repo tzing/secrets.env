@@ -41,6 +41,12 @@ Configuration layout
          client_cert = "/path/client.cert"
          client_key = "/path/client.key"
 
+         [sources.teleport]
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         user = "demo-user"
+         app = "my-app"
+
          [[secrets]]
          name = "DEMO_TOKEN"
          source = "strongbox"
@@ -74,6 +80,11 @@ Configuration layout
                ca_cert: /path/ca.cert
                client_cert: /path/client.cert
                client_key: /path/client.key
+             teleport:
+               proxy: teleport.example.com
+               cluster: dev.example.com
+               user: demo-user
+               app: my-app
 
          secrets:
            - name: DEMO_TOKEN
@@ -108,6 +119,12 @@ Configuration layout
                  "ca_cert": "/path/ca.cert",
                  "client_cert": "/path/client.cert",
                  "client_key": "/path/client.key"
+               },
+               "teleport": {
+                 "proxy": "teleport.example.com",
+                 "cluster": "dev.example.com",
+                 "user": "demo-user",
+                 "app": "my-app"
                }
              }
            ],
@@ -149,6 +166,12 @@ Configuration layout
          ca_cert = "/path/ca.cert"
          client_cert = "/path/client.cert"
          client_key = "/path/client.key"
+
+         [tool.secrets-env.sources.teleport]
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         user = "demo-user"
+         app = "my-app"
 
          [[tool.secrets-env.secrets]]
          name = "DEMO_TOKEN"
@@ -220,7 +243,8 @@ Source section
 
 The URL to the Vault server.
 
-Could be set via environment variable :envvar:`SECRETS_ENV_ADDR` or ``VAULT_ADDR``.
+You can set this field using the environment variables :envvar:`SECRETS_ENV_ADDR` or ``VAULT_ADDR``.
+However, if the :ref:`vault.teleport` section is configured, it will be ignored.
 
 ``auth`` :octicon:`bookmark`
 ++++++++++++++++++++++++++++
@@ -327,6 +351,34 @@ Specifies the path to the client's private key for authenticating to the server.
 If your client certificate already includes the client key in its format, please disregard this field.
 
 This value could be set via environment variable :envvar:`SECRETS_ENV_CLIENT_KEY` or ``VAULT_CLIENT_KEY``.
+
+.. _vault.teleport:
+
+``teleport``
+++++++++++++
+
+Configuration for :ref:`vault.feat.teleport`.
+
+``teleport.app`` :octicon:`bookmark`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Specify the name of the Teleport application to request connection information from.
+This field is necessary when utilizing :ref:`vault.feat.teleport`.
+
+``teleport.proxy``
+^^^^^^^^^^^^^^^^^^
+
+Address to Teleport `proxy <https://goteleport.com/docs/architecture/proxy/>`_ service.
+
+``teleport.cluster``
+^^^^^^^^^^^^^^^^^^^^
+
+Teleport cluster to connect.
+
+``teleport.user``
+^^^^^^^^^^^^^^^^^
+
+Teleport user name.
 
 
 Authentication methods
@@ -476,6 +528,67 @@ The only argument used for this method is the token itself, which can be set via
    This means that you will be automatically authenticated after executing the ``vault login`` command, but not the other way around.
 
    .. _token helper: https://developer.hashicorp.com/vault/docs/commands/token-helper
+
+
+.. _vault.feat.teleport:
+
+Teleport integration
+--------------------
+
+If your Vault is secured using `Teleport`_, you can employ the this feature to establish a connection with Vault.
+
+.. _Teleport: https://goteleport.com/
+
+Enabling
+++++++++
+
+.. important::
+
+   To use this feature, additional dependencies are needed.
+   Please check the :doc:`../advanced/teleport` page for further information.
+
+Once :ref:`vault.teleport` configurations are configured, the Vault provider will request access from Teleport and utilize it to establish a connection to Vault.
+
+Example
++++++++
+
+This configuration instructs secrets.env to request access for "my-vault" from Teleport and establish a connection to the application:
+
+.. tab-set::
+
+   .. tab-item:: toml
+      :sync: toml
+
+      .. code-block:: toml
+
+         [[sources]]
+         type = "vault"
+
+         [sources.teleport]
+         proxy = "teleport.example.com"
+         cluster = "dev.example.com"
+         app = "my-vault"
+
+   .. tab-item:: yaml
+      :sync: yaml
+
+      .. code-block:: yaml
+
+         sources:
+           type: vault
+           teleport:
+             proxy: teleport.example.com
+             cluster: dev.example.com
+             app: my-vault
+
+Since Teleport manages the connection, any URL and TLS configuration provided in the config file will be ignored.
+
+Configuration
++++++++++++++
+
+Just like with the :doc:`teleport`, the ``app`` field is always mandatory for this functionality.
+
+Other fields are optional. Read :ref:`vault.teleport` section above for more information.
 
 
 Secrets section
