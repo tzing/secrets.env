@@ -5,7 +5,7 @@ from secrets_env.provider import Request
 from secrets_env.providers import get_provider
 from secrets_env.providers.debug import DebugProvider
 from secrets_env.providers.plain import PlainTextProvider
-from secrets_env.providers.teleport import TeleportProvider
+from secrets_env.providers.teleport import TeleportProvider, TeleportUserConfig
 from secrets_env.providers.vault import VaultKvProvider
 
 
@@ -23,8 +23,11 @@ class TestGetProvider:
         assert isinstance(provider, TeleportProvider)
 
     def test_teleport_adapter(self):
-        with pytest.raises(NotImplementedError):
-            get_provider({"type": "teleport+vault"})
+        provider = get_provider(
+            {"type": "teleport+vault", "auth": "null", "teleport": {"app": "test"}}
+        )
+        assert isinstance(provider, VaultKvProvider)
+        assert isinstance(provider.teleport, TeleportUserConfig)
 
     def test_vault(self):
         provider = get_provider({"url": "https://example.com/", "auth": "null"})

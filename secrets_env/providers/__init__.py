@@ -40,8 +40,9 @@ def get_provider(config: dict) -> Provider:
         from secrets_env.providers.teleport import TeleportProvider
         return TeleportProvider.model_validate(config)
     if itype == "teleport+vault":
-        logger.error('"teleport+vault provider is not yet implemented')
-        raise NotImplementedError
+        logger.warning("Type 'teleport+vault' is deprecated, use 'vault' instead")
+        from secrets_env.providers.vault import VaultKvProvider
+        return VaultKvProvider.model_validate(config)
     if itype == "vault":
         from secrets_env.providers.vault import VaultKvProvider
         return VaultKvProvider.model_validate(config)
