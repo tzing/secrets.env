@@ -6,11 +6,7 @@ from pydantic_core import Url
 
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
-from secrets_env.providers.vault.config import (
-    TlsConfig,
-    VaultUserConfig,
-    get_connection_info,
-)
+from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 
 
 class TestVaultUserConfig:
@@ -108,68 +104,3 @@ class TestTlsConfig:
             ValueError, match="client_cert is required when client_key is provided"
         ):
             TlsConfig(client_key=tmp_path / "client.key")
-
-
-class TestGetConnectionInfo:
-    def test_success_1(self):
-        if "VAULT_ADDR" in os.environ:
-            pytest.skip("VAULT_ADDR is set. Skipping test.")
-
-        parsed = get_connection_info(
-            {
-                "url": "https://example.com",
-                "auth": "null",
-            }
-        )
-        assert isinstance(parsed, dict)
-        assert parsed["url"] == "https://example.com/"
-        assert parsed["auth"] == NoAuth()
-
-    def test_success_2(self, tmp_path: Path):
-        (tmp_path / "ca.cert").touch()
-        (tmp_path / "client.pem").touch()
-        (tmp_path / "client.key").touch()
-
-        parsed = get_connection_info(
-            {
-                "url": "https://example.com",
-                "auth": "null",
-                "tls": {
-                    "ca_cert": tmp_path / "ca.cert",
-                    "client_cert": tmp_path / "client.pem",
-                    "client_key": tmp_path / "client.key",
-                },
-            }
-        )
-        assert isinstance(parsed, dict)
-        assert parsed["ca_cert"] == tmp_path / "ca.cert"
-        assert parsed["client_cert"] == (
-            tmp_path / "client.pem",
-            tmp_path / "client.key",
-        )
-
-    def test_success_3(self, tmp_path: Path):
-        (tmp_path / "client.pem").touch()
-
-        parsed = get_connection_info(
-            {
-                "url": "https://example.com",
-                "auth": "null",
-                "proxy": "http://proxy.example.com",
-                "tls": {
-                    "client_cert": tmp_path / "client.pem",
-                },
-            }
-        )
-        assert isinstance(parsed, dict)
-        assert parsed["proxy"] == "http://proxy.example.com/"
-        assert parsed["client_cert"] == tmp_path / "client.pem"
-
-    def test_fail_1(self):
-        if "VAULT_ADDR" in os.environ:
-            pytest.skip("VAULT_ADDR is set. Skipping test.")
-        assert get_connection_info({"auth": "null"}) is None
-
-    def test_fail_2(self):
-        out = get_connection_info({"url": "https://example.com", "auth": "invalid"})
-        assert out is None
