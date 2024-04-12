@@ -53,10 +53,6 @@ class TestFindLocalConfigFile:
         )
 
 
-def test_get_user_config_file_path():
-    assert isinstance(t.get_user_config_file_path(), Path)
-
-
 def test_is_readable_format():
     assert t.is_readable_format(".toml") is True
     assert t.is_readable_format(".yaml") is True

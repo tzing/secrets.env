@@ -3,14 +3,12 @@ from __future__ import annotations
 import logging
 import typing
 from functools import cached_property
-from typing import TypedDict
 
 from pydantic import (
     BaseModel,
     Field,
     FilePath,
     HttpUrl,
-    ValidationError,
     field_validator,
     model_validator,
 )
@@ -157,47 +155,3 @@ class VaultUserConfig(BaseModel):
             If auth config is invalid.
         """
         return create_auth_by_name(self.url, self.auth_config)
-
-
-class VaultConnectionInfo(TypedDict):
-    url: str
-    auth: Auth
-    proxy: str
-
-    # tls
-    ca_cert: Path
-    client_cert: CertTypes
-
-
-def get_connection_info(data: dict) -> VaultConnectionInfo | None:
-    try:
-        parsed = VaultUserConfig.model_validate(data)
-    except (ValidationError, TypeError):
-        return
-
-    try:
-        auth = create_auth_by_name(parsed.url, parsed.auth_config)
-    except ValueError:
-        logger.error(
-            "Unknown auth method: <data>%s</data>", parsed.auth_config.get("method")
-        )
-        return
-
-    conn_info = typing.cast(
-        VaultConnectionInfo,
-        {
-            "url": str(parsed.url),
-            "auth": auth,
-        },
-    )
-
-    if parsed.proxy:
-        conn_info["proxy"] = str(parsed.proxy)
-    if parsed.tls.ca_cert:
-        conn_info["ca_cert"] = parsed.tls.ca_cert
-    if parsed.tls.client_cert and parsed.tls.client_key:
-        conn_info["client_cert"] = (parsed.tls.client_cert, parsed.tls.client_key)
-    elif parsed.tls.client_cert:
-        conn_info["client_cert"] = parsed.tls.client_cert
-
-    return conn_info
