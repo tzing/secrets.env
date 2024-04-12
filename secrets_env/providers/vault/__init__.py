@@ -21,7 +21,7 @@ from pydantic import (
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
-from secrets_env.providers.vault.config import VaultUserConfig
+from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:
@@ -187,20 +187,23 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
-    logger.debug(
-        "Vault client initialization requested. URL= %s, Auth type= %s",
-        config.url,
-        config.auth.method,
-    )
+    logger.debug(f"Vault client initialization requested. URL= {config.url}")
 
     if config.teleport:
         logger.debug("Teleport configuration is set. Use it for connecting Vault.")
         param = config.teleport.connection_param
         logger.debug(f"Teleport connection parameter: {param!r}")
-        config = config.model_copy(update={"url": param.uri})
-        config.tls.ca_cert = param.path_ca
-        config.tls.client_cert = param.path_cert
-        config.tls.client_key = param.path_key
+        config = config.model_copy(
+            update={
+                "teleport": None,
+                "url": param.uri,
+                "tls": TlsConfig(
+                    ca_cert=param.path_ca,
+                    client_cert=param.path_cert,
+                    client_key=param.path_key,
+                ),
+            }
+        )
 
     client_params = {
         "base_url": str(config.url),

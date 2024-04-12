@@ -121,7 +121,7 @@ class VaultUserConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _override_configs_by_teleport(cls, values):
-        if isinstance(values, dict) and "teleport" in values:
+        if isinstance(values, dict) and values.get("teleport"):
             if values.get("url"):
                 logger.warning(
                     "Any provided URL would be discarded when 'teleport' config is set"
