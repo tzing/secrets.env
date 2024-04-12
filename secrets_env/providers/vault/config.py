@@ -9,6 +9,7 @@ from pydantic import (
     Field,
     FilePath,
     HttpUrl,
+    ValidationError,
     field_validator,
     model_validator,
 )
