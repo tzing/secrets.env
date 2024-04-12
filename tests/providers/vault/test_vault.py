@@ -264,14 +264,17 @@ class TestCreateHttpClient:
         _, kwargs = mock_httpx_client.call_args
         assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
 
-    def test_teleport(self, mock_httpx_client: Mock):
+    def test_teleport(self, tmp_path: Path, mock_httpx_client: Mock):
+        (tmp_path / "client.pem").touch()
+        (tmp_path / "client.key").touch()
+
         teleport_user_config = Mock(TeleportUserConfig)
         teleport_user_config.connection_param = Mock(
             TeleportConnectionParameter,
             uri="https://vault.teleport.example.com",
             path_ca=None,
-            path_cert=Path("/mock/client.pem"),
-            path_key=Path("/mock/client.key"),
+            path_cert=tmp_path / "client.pem",
+            path_key=tmp_path / "client.key",
         )
 
         config = VaultUserConfig(auth="null", teleport=teleport_user_config)
@@ -280,7 +283,7 @@ class TestCreateHttpClient:
 
         _, kwargs = mock_httpx_client.call_args
         assert kwargs["base_url"] == "https://vault.teleport.example.com"
-        assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
+        assert kwargs["cert"] == (tmp_path / "client.pem", tmp_path / "client.key")
 
 
 class TestGetToken:
