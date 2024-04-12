@@ -14,8 +14,8 @@ Introduced to automate tasks such as ``tsh login`` and ``export``, this componen
 
 .. important::
 
-   This provider requires command ``tsh`` installed in the system.
-   Please refer to the :doc:`../advanced/teleport` for more details.
+   To use this provider, additional dependencies are needed.
+   Please check the :doc:`../advanced/teleport` page for further information.
 
 
 Configuration layout
