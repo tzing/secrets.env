@@ -212,7 +212,8 @@ def call_version() -> bool:
     except subprocess.CalledProcessError:
         return False
 
-    logger.debug("<[stdout] %s", stdout)
+    for line in stdout.rstrip().splitlines():
+        logger.debug("<[stdout] %s", line)
     return True
 
 

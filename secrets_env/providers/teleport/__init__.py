@@ -34,7 +34,7 @@ class TeleportProvider(Provider, TeleportUserConfig):
     type = "teleport"
 
     def _get_value_(self, spec: Request) -> str:
-        ps = TeleportRequestSpec.model_validate(spec.model_dump())
+        ps = TeleportRequestSpec.model_validate(spec.model_dump(exclude_none=True))
 
         if ps.field == "uri":
             return self.connection_param.uri
