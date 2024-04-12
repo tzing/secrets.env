@@ -9,7 +9,7 @@ from pydantic import (
     Field,
     FilePath,
     HttpUrl,
-    ValidationError,
+    InstanceOf,
     field_validator,
     model_validator,
 )
@@ -67,8 +67,11 @@ class TlsConfig(BaseModel):
         return bool(self.ca_cert or self.client_cert or self.client_key)
 
 
+class ProvidedByTeleportMarker: ...
+
+
 class VaultUserConfig(BaseModel):
-    url: HttpUrl | None = None
+    url: HttpUrl | InstanceOf[ProvidedByTeleportMarker]
     auth_config: dict[str, str] = Field(alias="auth")
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
@@ -115,33 +118,21 @@ class VaultUserConfig(BaseModel):
                 raise ValueError("Missing required config <mark>auth method</mark>")
         return value
 
-    @model_validator(mode="after")
-    def _check_teleport_config(self):
-        if self.teleport:
-            if self.url:
-                self.url = None
+    @model_validator(mode="before")
+    @classmethod
+    def _override_configs_by_teleport(cls, values):
+        if isinstance(values, dict) and "teleport" in values:
+            if values.get("url"):
                 logger.warning(
                     "Any provided URL would be discarded when 'teleport' config is set"
                 )
-            if self.tls:
-                self.tls = TlsConfig()
+            if values.get("tls"):
                 logger.warning(
                     "TLS configuration would be overlooked when 'teleport' config is set"
                 )
-
-        elif not self.url:
-            raise ValidationError.from_exception_data(
-                title=type(self).__name__,
-                line_errors=[
-                    {
-                        "type": "missing",
-                        "loc": ("url",),
-                        "msg": "Field required",
-                    }
-                ],
-            )
-
-        return self
+            values["url"] = ProvidedByTeleportMarker()
+            values["tls"] = TlsConfig()
+        return values
 
     @cached_property
     def auth(self) -> Auth:
@@ -154,4 +145,6 @@ class VaultUserConfig(BaseModel):
         ValidationError
             If auth config is invalid.
         """
+        if isinstance(self.url, ProvidedByTeleportMarker):
+            raise RuntimeError("Vault URL is not loaded yet")
         return create_auth_by_name(self.url, self.auth_config)

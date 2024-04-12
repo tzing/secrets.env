@@ -6,7 +6,11 @@ from pydantic_core import Url, ValidationError
 
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
+from secrets_env.providers.vault.config import (
+    ProvidedByTeleportMarker,
+    TlsConfig,
+    VaultUserConfig,
+)
 
 
 class TestVaultUserConfig:
@@ -53,7 +57,7 @@ class TestVaultUserConfig:
             {"auth": "null", "teleport": {"app": "test"}}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.url is None
+        assert isinstance(config.url, ProvidedByTeleportMarker)
 
     def test_url__missing(self):
         with pytest.raises(ValidationError):
@@ -97,7 +101,7 @@ class TestVaultUserConfig:
         )
 
         assert config.teleport is not None
-        assert config.url is None
+        assert isinstance(config.url, ProvidedByTeleportMarker)
         assert config.tls == TlsConfig()
 
         assert "Any provided URL would be discarded" in caplog.text
