@@ -14,7 +14,7 @@ from pydantic import (
     model_validator,
 )
 
-from secrets_env.providers.teleport import TeleportUserConfig
+from secrets_env.providers.teleport import TeleportUserConfig  # noqa: TCH001
 from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.utils import get_env_var
 
