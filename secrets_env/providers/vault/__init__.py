@@ -193,17 +193,11 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
         logger.debug("Teleport configuration is set. Use it for connecting Vault.")
         param = config.teleport.connection_param
         logger.debug(f"Teleport connection parameter: {param!r}")
-        config = config.model_copy(
-            update={
-                "teleport": None,
-                "url": param.uri,
-                "tls": TlsConfig(
-                    ca_cert=param.path_ca,
-                    client_cert=param.path_cert,
-                    client_key=param.path_key,
-                ),
-            }
-        )
+        config = config.model_copy(update={"teleport": None})
+        config.url = param.uri
+        config.tls.ca_cert = param.path_ca
+        config.tls.client_cert = param.path_cert
+        config.tls.client_key = param.path_key
 
     client_params = {
         "base_url": str(config.url),
