@@ -20,7 +20,6 @@ from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Self
 
     from secrets_env.providers.vault.auth.base import Auth
 
@@ -39,7 +38,7 @@ class TlsConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+    def _use_env_var(cls, values):
         if isinstance(values, dict):
             if ca_cert := get_env_var(
                 "SECRETS_ENV_CA_CERT",
@@ -59,7 +58,7 @@ class TlsConfig(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def _require_client_cert(self) -> Self:
+    def _require_client_cert(self):
         if self.client_key and not self.client_cert:
             raise ValueError("client_cert is required when client_key is provided")
         return self
@@ -77,7 +76,7 @@ class VaultUserConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+    def _use_env_var(cls, values):
         if isinstance(values, dict):
             if url := get_env_var(
                 "SECRETS_ENV_ADDR",
@@ -94,7 +93,7 @@ class VaultUserConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _setdefault_auth(cls, values: Self | dict) -> Self | dict:
+    def _set_default_auth(cls, values):
         if isinstance(values, dict):
             if not values.get("auth"):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
