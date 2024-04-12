@@ -134,7 +134,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
         return client
 
     def _get_value_(self, spec: Request) -> str:
-        path = VaultPath.model_validate(spec.model_dump())
+        path = VaultPath.model_validate(spec.model_dump(exclude_none=True))
         secret = self._read_secret(path)
 
         for f in path.field:
