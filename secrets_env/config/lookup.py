@@ -7,8 +7,6 @@ import logging
 import typing
 from pathlib import Path
 
-import platformdirs
-
 if typing.TYPE_CHECKING:
     from typing import Iterable
 
@@ -32,10 +30,6 @@ def find_local_config_file(cwd: Path | None = None) -> Path | None:
         if f := find_readable_file(dir_, CONFIG_NAME_CANDIDATES):
             return f
     return None
-
-
-def get_user_config_file_path() -> Path:
-    return platformdirs.user_config_path("secrets.env") / "config.toml"
 
 
 def find_readable_file(dirpath: Path, candidates: Iterable[str]) -> Path | None:
