@@ -16,8 +16,8 @@ from pydantic import (
     field_validator,
     model_validator,
     validate_call,
-    HttpUrl,
 )
+from pydantic_core import Url
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
@@ -140,7 +140,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
             logger.debug(f"Teleport connection parameter: {param!r}")
 
             self.teleport = None
-            self.url = HttpUrl(param.uri)
+            self.url = Url(param.uri)
             self.tls.ca_cert = param.path_ca
             self.tls.client_cert = param.path_cert
             self.tls.client_key = param.path_key

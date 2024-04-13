@@ -5,7 +5,7 @@ from unittest.mock import Mock, PropertyMock
 import httpx
 import pytest
 import respx
-from pydantic_core import ValidationError, Url
+from pydantic_core import Url, ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
