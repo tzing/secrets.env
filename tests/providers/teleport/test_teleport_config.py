@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import cryptography.x509
 import pexpect
 import pytest
+from pydantic import SecretBytes
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
 from secrets_env.providers.teleport.config import (
@@ -187,13 +188,13 @@ class TestTeleportConnectionParameter:
             {
                 "uri": "https://example.com",
                 "ca": None,
-                "cert": "string input",
-                "key": b"bytes input",
+                "cert": b"cert data",
+                "key": b"key data",
             }
         )
 
-        assert param.cert == b"string input"
-        assert param.key == b"bytes input"
+        assert param.cert == SecretBytes(b"cert data")
+        assert param.key == SecretBytes(b"key data")
 
     def test_cert_valid(
         self, monkeypatch: pytest.MonkeyPatch, conn_param: TeleportConnectionParameter
@@ -244,7 +245,7 @@ class TestTeleportConnectionParameter:
             dlJU64TVUXlETsMiwhRLRSo7W5PJnxLnMFbsKaHyTBH/ioBEuF0GRpO93medyTA=
             -----END CERTIFICATE-----
             """
-        )
+        ).encode()
 
         param = TeleportConnectionParameter(
             uri="https://example.com",

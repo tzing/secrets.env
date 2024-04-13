@@ -101,13 +101,13 @@ class TeleportConnectionParameter(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: bytes | None
+    ca: SecretBytes | None
     """Certificate authority (CA) certificate."""
 
-    cert: bytes
+    cert: SecretBytes
     """Client side certificate."""
 
-    key: bytes
+    key: SecretBytes
     """Client side private key."""
 
     @model_validator(mode="before")
@@ -140,21 +140,21 @@ class TeleportConnectionParameter(BaseModel):
 
     @cached_property
     def cert_and_key(self) -> bytes:
-        return self.cert + b"\n" + self.key
+        return self.cert.get_secret_value() + b"\n" + self.key.get_secret_value()
 
     @cached_property
     def path_ca(self) -> Path | None:
         if not self.ca:
             return None
-        return self._create_temp_file(".crt", self.ca)
+        return self._create_temp_file(".crt", self.ca.get_secret_value())
 
     @cached_property
     def path_cert(self) -> Path:
-        return self._create_temp_file(".cert", self.cert)
+        return self._create_temp_file(".cert", self.cert.get_secret_value())
 
     @cached_property
     def path_key(self) -> Path:
-        return self._create_temp_file(".key", self.key)
+        return self._create_temp_file(".key", self.key.get_secret_value())
 
     @cached_property
     def path_cert_and_key(self) -> Path:
@@ -170,7 +170,7 @@ class TeleportConnectionParameter(BaseModel):
         """
         import cryptography.x509
 
-        cert = cryptography.x509.load_pem_x509_certificate(self.cert)
+        cert = cryptography.x509.load_pem_x509_certificate(self.cert.get_secret_value())
         now = datetime.datetime.now().astimezone()
         if now > cert.not_valid_after_utc:
             logger.debug(
