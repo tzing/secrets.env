@@ -9,16 +9,17 @@ from pydantic import (
     Field,
     FilePath,
     HttpUrl,
+    InstanceOf,
     field_validator,
     model_validator,
 )
 
+from secrets_env.providers.teleport import TeleportUserConfig  # noqa: TCH001
 from secrets_env.providers.vault.auth import create_auth_by_name
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Self
 
     from secrets_env.providers.vault.auth.base import Auth
 
@@ -37,7 +38,7 @@ class TlsConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+    def _use_env_var(cls, values):
         if isinstance(values, dict):
             if ca_cert := get_env_var(
                 "SECRETS_ENV_CA_CERT",
@@ -57,22 +58,31 @@ class TlsConfig(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def _require_client_cert(self) -> Self:
+    def _require_client_cert(self):
         if self.client_key and not self.client_cert:
             raise ValueError("client_cert is required when client_key is provided")
         return self
 
+    def __bool__(self) -> bool:
+        return bool(self.ca_cert or self.client_cert or self.client_key)
+
+
+class ProvidedByTeleportMarker:
+    """Placeholder for values that would be provided by Teleport later."""
+
 
 class VaultUserConfig(BaseModel):
-    url: HttpUrl
+    url: HttpUrl | InstanceOf[ProvidedByTeleportMarker]
     auth_config: dict[str, str] = Field(alias="auth")
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
+    teleport: TeleportUserConfig | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values: Self | dict) -> Self | dict:
+    def _before_validator(cls, values):
         if isinstance(values, dict):
+            # read field value from env vars
             if url := get_env_var(
                 "SECRETS_ENV_ADDR",
                 "VAULT_ADDR",
@@ -84,12 +94,8 @@ class VaultUserConfig(BaseModel):
                 "VAULT_HTTP_PROXY",
             ):
                 values["proxy"] = proxy
-        return values
 
-    @model_validator(mode="before")
-    @classmethod
-    def _setdefault_auth(cls, values: Self | dict) -> Self | dict:
-        if isinstance(values, dict):
+            # set default auth value
             if not values.get("auth"):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
                 logger.warning(
@@ -97,6 +103,20 @@ class VaultUserConfig(BaseModel):
                     "Use default method <data>%s</data>",
                     DEFAULT_AUTH_METHOD,
                 )
+
+            # overrides related fields when teleport is set
+            if values.get("teleport"):
+                if values.get("url"):
+                    logger.warning(
+                        "Any provided URL would be discarded when 'teleport' config is set"
+                    )
+                if values.get("tls"):
+                    logger.warning(
+                        "TLS configuration would be overlooked when 'teleport' config is set"
+                    )
+                values["url"] = ProvidedByTeleportMarker()
+                values["tls"] = TlsConfig()
+
         return values
 
     @field_validator("auth_config", mode="before")
@@ -121,4 +141,6 @@ class VaultUserConfig(BaseModel):
         ValidationError
             If auth config is invalid.
         """
+        if isinstance(self.url, ProvidedByTeleportMarker):
+            raise RuntimeError("Vault URL is not loaded yet")
         return create_auth_by_name(self.url, self.auth_config)

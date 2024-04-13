@@ -41,7 +41,7 @@ class TeleportUserConfig(BaseModel):
         AuthenticationError
             Failed to login to Teleport.
         UnsupportedError
-            When Teleport CLI not installed.
+            When dependency not satisfied.
         """
         ensure_dependencies()
 

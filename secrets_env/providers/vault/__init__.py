@@ -17,6 +17,7 @@ from pydantic import (
     model_validator,
     validate_call,
 )
+from pydantic_core import Url
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
@@ -121,12 +122,28 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
     @cached_property
     def client(self) -> httpx.Client:
-        """Returns HTTP client."""
-        logger.debug(
-            "Vault client initialization requested. URL= %s, Auth type= %s",
-            self.url,
-            self.auth.method,
-        )
+        """Returns HTTP client.
+
+        Raises
+        ------
+        AuthenticationError
+            If the token cannot be retrieved or is invalid.
+        UnsupportedError
+            If the operation is unsupported.
+        """
+        logger.debug("Vault client initialization requested. URL= %s", self.url)
+
+        if self.teleport:
+            logger.debug("Teleport configuration is set. Use it for connecting Vault.")
+
+            param = self.teleport.connection_param
+            logger.debug(f"Teleport connection parameter: {param!r}")
+
+            self.teleport = None
+            self.url = Url(param.uri)
+            self.tls.ca_cert = param.path_ca
+            self.tls.client_cert = param.path_cert
+            self.tls.client_key = param.path_key
 
         client = create_http_client(self)
         client.headers["X-Vault-Token"] = get_token(client, self.auth)
@@ -178,7 +195,6 @@ class VaultKvProvider(Provider, VaultUserConfig):
         return result
 
 
-@validate_call
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
     logger.debug(
         "Vault client initialization requested. URL= %s, Auth type= %s",

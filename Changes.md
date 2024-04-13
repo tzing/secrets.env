@@ -34,6 +34,11 @@
       value: example
   ```
 
+* Deprecate the `teleport+vault` keyword
+
+  This keyword was used to configure the Teleport-integrated Vault secret provider.
+  It is now covered by `vault`.
+
 * Command `keyring set` now accepts password from stdin
 
 ### 🚧 Internal changes

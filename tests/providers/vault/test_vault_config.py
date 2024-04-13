@@ -2,11 +2,15 @@ import os
 from pathlib import Path
 
 import pytest
-from pydantic_core import Url
+from pydantic_core import Url, ValidationError
 
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
+from secrets_env.providers.vault.config import (
+    ProvidedByTeleportMarker,
+    TlsConfig,
+    VaultUserConfig,
+)
 
 
 class TestVaultUserConfig:
@@ -41,11 +45,25 @@ class TestVaultUserConfig:
             client_key=tmp_path / "client.key",
         )
 
-    def test_url(self, monkeypatch: pytest.MonkeyPatch):
+    def test_url__envvar(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_ADDR", "https://env.example.com")
         config = VaultUserConfig.model_validate({"auth": "null"})
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://env.example.com")
+
+    def test_url__teleport(self):
+        #  allow None when teleport is set
+        config = VaultUserConfig.model_validate(
+            {"auth": "null", "teleport": {"app": "test"}}
+        )
+        assert isinstance(config, VaultUserConfig)
+        assert isinstance(config.url, ProvidedByTeleportMarker)
+
+    def test_url__missing(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
+        with pytest.raises(ValidationError):
+            VaultUserConfig.model_validate({"auth": "null"})
 
     def test_auth__shortcut(self):
         config = VaultUserConfig.model_validate(
@@ -71,6 +89,25 @@ class TestVaultUserConfig:
                     "auth": {"foo": "bar"},
                 }
             )
+
+    def test_teleport(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
+        (tmp_path / "ca.cert").touch()
+
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://example.com",
+                "auth": "null",
+                "tls": {"ca_cert": str(tmp_path / "ca.cert")},
+                "teleport": {"app": "test"},
+            }
+        )
+
+        assert config.teleport is not None
+        assert isinstance(config.url, ProvidedByTeleportMarker)
+        assert config.tls == TlsConfig()
+
+        assert "Any provided URL would be discarded" in caplog.text
+        assert "TLS configuration would be overlooked" in caplog.text
 
     def test_proxy(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_PROXY", "http://env.proxy.example.com")

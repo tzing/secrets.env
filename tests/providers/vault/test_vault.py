@@ -5,10 +5,14 @@ from unittest.mock import Mock, PropertyMock
 import httpx
 import pytest
 import respx
-from pydantic_core import ValidationError
+from pydantic_core import Url, ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
+from secrets_env.providers.teleport.config import (
+    TeleportConnectionParameter,
+    TeleportUserConfig,
+)
 from secrets_env.providers.vault import (
     MountMetadata,
     VaultKvProvider,
@@ -96,6 +100,35 @@ class TestVaultKvProvider:
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
         assert isinstance(provider.client, httpx.Client)
 
+    def test_client__with_teleport(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_create_http_client(config: VaultUserConfig):
+            assert config.url == Url("https://vault.teleport.example.com/")
+            assert config.teleport is None
+            assert config.tls.ca_cert is None
+            assert config.tls.client_cert == Path("/mock/client.pem")
+            assert config.tls.client_key == Path("/mock/client.key")
+
+            client = Mock(httpx.Client)
+            client.headers = {}
+            return client
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.create_http_client", mock_create_http_client
+        )
+
+        teleport_user_config = Mock(TeleportUserConfig)
+        teleport_user_config.connection_param = Mock(
+            TeleportConnectionParameter,
+            uri="https://vault.teleport.example.com",
+            path_ca=None,
+            path_cert=Path("/mock/client.pem"),
+            path_key=Path("/mock/client.key"),
+        )
+
+        provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
+        client = provider.client
+        assert isinstance(client, httpx.Client)
+
     @pytest.fixture()
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -103,7 +136,7 @@ class TestVaultKvProvider:
         )
         return VaultKvProvider(url="https://vault.example.com", auth="null")
 
-    def test_get__success(
+    def test_get_value__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         monkeypatch.setattr(
@@ -113,7 +146,7 @@ class TestVaultKvProvider:
             unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
         )
 
-    def test_get__too_depth(
+    def test_get_value__too_depth(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
@@ -126,7 +159,7 @@ class TestVaultKvProvider:
             unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
         assert 'Field "bar.baz" not found in "foo"' in caplog.text
 
-    def test_get__too_shallow(
+    def test_get_value__too_shallow(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
