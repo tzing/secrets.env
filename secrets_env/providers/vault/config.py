@@ -67,7 +67,8 @@ class TlsConfig(BaseModel):
         return bool(self.ca_cert or self.client_cert or self.client_key)
 
 
-class ProvidedByTeleportMarker: ...
+class ProvidedByTeleportMarker:
+    """Placeholder for values that would be provided by Teleport later."""
 
 
 class VaultUserConfig(BaseModel):
@@ -79,8 +80,9 @@ class VaultUserConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _use_env_var(cls, values):
+    def _before_validator(cls, values):
         if isinstance(values, dict):
+            # read field value from env vars
             if url := get_env_var(
                 "SECRETS_ENV_ADDR",
                 "VAULT_ADDR",
@@ -92,12 +94,8 @@ class VaultUserConfig(BaseModel):
                 "VAULT_HTTP_PROXY",
             ):
                 values["proxy"] = proxy
-        return values
 
-    @model_validator(mode="before")
-    @classmethod
-    def _set_default_auth(cls, values):
-        if isinstance(values, dict):
+            # set default auth value
             if not values.get("auth"):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
                 logger.warning(
@@ -105,6 +103,20 @@ class VaultUserConfig(BaseModel):
                     "Use default method <data>%s</data>",
                     DEFAULT_AUTH_METHOD,
                 )
+
+            # overrides related fields when teleport is set
+            if values.get("teleport"):
+                if values.get("url"):
+                    logger.warning(
+                        "Any provided URL would be discarded when 'teleport' config is set"
+                    )
+                if values.get("tls"):
+                    logger.warning(
+                        "TLS configuration would be overlooked when 'teleport' config is set"
+                    )
+                values["url"] = ProvidedByTeleportMarker()
+                values["tls"] = TlsConfig()
+
         return values
 
     @field_validator("auth_config", mode="before")
@@ -117,22 +129,6 @@ class VaultUserConfig(BaseModel):
             if "method" not in value:
                 raise ValueError("Missing required config <mark>auth method</mark>")
         return value
-
-    @model_validator(mode="before")
-    @classmethod
-    def _override_configs_by_teleport(cls, values):
-        if isinstance(values, dict) and values.get("teleport"):
-            if values.get("url"):
-                logger.warning(
-                    "Any provided URL would be discarded when 'teleport' config is set"
-                )
-            if values.get("tls"):
-                logger.warning(
-                    "TLS configuration would be overlooked when 'teleport' config is set"
-                )
-            values["url"] = ProvidedByTeleportMarker()
-            values["tls"] = TlsConfig()
-        return values
 
     @cached_property
     def auth(self) -> Auth:
