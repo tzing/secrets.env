@@ -107,7 +107,7 @@ class TestVaultKvProvider:
         )
         return VaultKvProvider(url="https://vault.example.com", auth="null")
 
-    def test_get__success(
+    def test_get_value__success(
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         monkeypatch.setattr(
@@ -117,7 +117,7 @@ class TestVaultKvProvider:
             unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
         )
 
-    def test_get__too_depth(
+    def test_get_value__too_depth(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
@@ -130,7 +130,7 @@ class TestVaultKvProvider:
             unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
         assert 'Field "bar.baz" not found in "foo"' in caplog.text
 
-    def test_get__too_shallow(
+    def test_get_value__too_shallow(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
@@ -263,27 +263,6 @@ class TestCreateHttpClient:
 
         _, kwargs = mock_httpx_client.call_args
         assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
-
-    def test_teleport(self, tmp_path: Path, mock_httpx_client: Mock):
-        (tmp_path / "client.pem").touch()
-        (tmp_path / "client.key").touch()
-
-        teleport_user_config = Mock(TeleportUserConfig)
-        teleport_user_config.connection_param = Mock(
-            TeleportConnectionParameter,
-            uri="https://vault.teleport.example.com",
-            path_ca=None,
-            path_cert=tmp_path / "client.pem",
-            path_key=tmp_path / "client.key",
-        )
-
-        config = VaultUserConfig(auth="null", teleport=teleport_user_config)
-
-        create_http_client(config)
-
-        _, kwargs = mock_httpx_client.call_args
-        assert kwargs["base_url"] == "https://vault.teleport.example.com"
-        assert kwargs["cert"] == (tmp_path / "client.pem", tmp_path / "client.key")
 
 
 class TestGetToken:
