@@ -8,9 +8,10 @@ from functools import cached_property
 from pathlib import Path
 from typing import cast
 
-from pydantic import BaseModel, FilePath, field_validator, model_validator
+from pydantic import BaseModel, FilePath, SecretBytes, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
+from secrets_env.utils import strip_ansi
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -100,13 +101,13 @@ class TeleportConnectionParameter(BaseModel):
     uri: str
     """URI to the app."""
 
-    ca: bytes | None
+    ca: SecretBytes | None
     """Certificate authority (CA) certificate."""
 
-    cert: bytes
+    cert: SecretBytes
     """Client side certificate."""
 
-    key: bytes
+    key: SecretBytes
     """Client side private key."""
 
     @model_validator(mode="before")
@@ -139,21 +140,21 @@ class TeleportConnectionParameter(BaseModel):
 
     @cached_property
     def cert_and_key(self) -> bytes:
-        return self.cert + b"\n" + self.key
+        return self.cert.get_secret_value() + b"\n" + self.key.get_secret_value()
 
     @cached_property
     def path_ca(self) -> Path | None:
         if not self.ca:
             return None
-        return self._create_temp_file(".crt", self.ca)
+        return self._create_temp_file(".crt", self.ca.get_secret_value())
 
     @cached_property
     def path_cert(self) -> Path:
-        return self._create_temp_file(".cert", self.cert)
+        return self._create_temp_file(".cert", self.cert.get_secret_value())
 
     @cached_property
     def path_key(self) -> Path:
-        return self._create_temp_file(".key", self.key)
+        return self._create_temp_file(".key", self.key.get_secret_value())
 
     @cached_property
     def path_cert_and_key(self) -> Path:
@@ -169,7 +170,7 @@ class TeleportConnectionParameter(BaseModel):
         """
         import cryptography.x509
 
-        cert = cryptography.x509.load_pem_x509_certificate(self.cert)
+        cert = cryptography.x509.load_pem_x509_certificate(self.cert.get_secret_value())
         now = datetime.datetime.now().astimezone()
         if now > cert.not_valid_after_utc:
             logger.debug(
@@ -212,8 +213,7 @@ def call_version() -> bool:
     except subprocess.CalledProcessError:
         return False
 
-    for line in stdout.rstrip().splitlines():
-        logger.debug("<[stdout] %s", line)
+    log_output("stdout", stdout)
     return True
 
 
@@ -315,13 +315,18 @@ def call_app_login(config: TeleportUserConfig) -> None:
         proc.close()
 
         logger.debug("< return code: %s", proc.exitstatus)
-        for line in capture_stdout.getvalue().splitlines():
-            logger.debug("<[stdout] %s", line)
-        for line in capture_stderr.getvalue().splitlines():
-            logger.debug("<[stderr] %s", line)
+        log_output("stdout", capture_stdout.getvalue())
+        log_output("stderr", capture_stderr.getvalue())
 
         if proc.exitstatus != 0:
-            error = capture_stderr.getvalue().rstrip()
-            raise AuthenticationError(f"Teleport error: {error}")
+            log_output("stdout", capture_stdout.getvalue(), logging.ERROR)
+            log_output("stderr", capture_stderr.getvalue(), logging.ERROR)
+            raise AuthenticationError("Teleport error")
 
     logger.info(f"Successfully logged into teleport app: {config.app}")
+
+
+def log_output(channel: str, message: str, level: int = logging.DEBUG):
+    message = strip_ansi(message.rstrip())
+    for line in message.splitlines():
+        logger.log(level, f"<[{channel}] {line}")

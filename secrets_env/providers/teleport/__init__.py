@@ -44,12 +44,12 @@ class TeleportProvider(Provider, TeleportUserConfig):
             if ps.format == "path":
                 return str(self.connection_param.path_cert)
             elif ps.format == "pem":
-                return self.connection_param.cert.decode()
+                return self.connection_param.cert.get_secret_value().decode()
         elif ps.field == "key":
             if ps.format == "path":
                 return str(self.connection_param.path_key)
             elif ps.format == "pem":
-                return self.connection_param.key.decode()
+                return self.connection_param.key.get_secret_value().decode()
         elif ps.field == "cert+key":
             if ps.format == "path":
                 return str(self.connection_param.path_cert_and_key)
@@ -65,4 +65,4 @@ def get_ca(param: TeleportConnectionParameter, fmt: Literal["path", "pem"]) -> s
     if fmt == "path":
         return str(param.path_ca)
     elif fmt == "pem":
-        return param.ca.decode()
+        return param.ca.get_secret_value().decode()

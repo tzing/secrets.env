@@ -60,12 +60,21 @@ class TestTeleportProvider:
 
 
 class TestGetCa:
-    def test_success(self):
-        param = Mock(TeleportConnectionParameter)
-        param.ca = b"-----MOCK CERTIFICATE-----"
-        param.path_ca = Path("path/to/ca")
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        param = TeleportConnectionParameter(
+            uri="https://example.com",
+            ca=b"-----MOCK CERTIFICATE-----",
+            cert=b"Not relevant",
+            key=b"Not relevant",
+        )
 
-        assert get_ca(param, "path") == "path/to/ca"
+        monkeypatch.setattr(
+            TeleportConnectionParameter,
+            "path_ca",
+            PropertyMock(return_value=Path("/path/to/ca")),
+        )
+
+        assert get_ca(param, "path") == "/path/to/ca"
         assert get_ca(param, "pem") == "-----MOCK CERTIFICATE-----"
 
     def test_fail(self):
