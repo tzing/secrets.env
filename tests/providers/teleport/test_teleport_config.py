@@ -452,7 +452,9 @@ class TestCallAppLogin:
         with pytest.raises(AuthenticationError, match="Teleport app 'test' not found"):
             call_app_login(TeleportUserConfig(app="test"))
 
-    def test_other_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_other_error(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         def mock_spawn(command, args, **kwargs):
             proc = Mock(pexpect.spawn)
             proc.expect = Mock(return_value=3)
@@ -465,5 +467,8 @@ class TestCallAppLogin:
             "io.StringIO", Mock(return_value=io.StringIO("mock stderr"))
         )
 
-        with pytest.raises(AuthenticationError, match="Teleport error: mock stderr"):
+        with pytest.raises(AuthenticationError, match="Teleport error"):
             call_app_login(TeleportUserConfig(app="test"))
+
+        assert "<[stdout] mock stderr" in caplog.text
+        assert "<[stderr] mock stderr" in caplog.text

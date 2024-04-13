@@ -319,13 +319,14 @@ def call_app_login(config: TeleportUserConfig) -> None:
         log_output("stderr", capture_stderr.getvalue())
 
         if proc.exitstatus != 0:
-            error = capture_stderr.getvalue().rstrip()
-            raise AuthenticationError(f"Teleport error: {error}")
+            log_output("stdout", capture_stdout.getvalue(), logging.ERROR)
+            log_output("stderr", capture_stderr.getvalue(), logging.ERROR)
+            raise AuthenticationError("Teleport error")
 
     logger.info(f"Successfully logged into teleport app: {config.app}")
 
 
-def log_output(channel: str, message: str):
+def log_output(channel: str, message: str, level: int = logging.DEBUG):
     message = strip_ansi(message.rstrip())
     for line in message.splitlines():
-        logger.debug(f"<[{channel}] {line}")
+        logger.log(level, f"<[{channel}] {line}")
