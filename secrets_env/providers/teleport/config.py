@@ -8,9 +8,10 @@ from functools import cached_property
 from pathlib import Path
 from typing import cast
 
-from pydantic import BaseModel, FilePath, field_validator, model_validator
+from pydantic import BaseModel, FilePath, SecretBytes, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
+from secrets_env.utils import strip_ansi
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -212,8 +213,7 @@ def call_version() -> bool:
     except subprocess.CalledProcessError:
         return False
 
-    for line in stdout.rstrip().splitlines():
-        logger.debug("<[stdout] %s", line)
+    log_output("stdout", stdout)
     return True
 
 
@@ -315,13 +315,17 @@ def call_app_login(config: TeleportUserConfig) -> None:
         proc.close()
 
         logger.debug("< return code: %s", proc.exitstatus)
-        for line in capture_stdout.getvalue().splitlines():
-            logger.debug("<[stdout] %s", line)
-        for line in capture_stderr.getvalue().splitlines():
-            logger.debug("<[stderr] %s", line)
+        log_output("stdout", capture_stdout.getvalue())
+        log_output("stderr", capture_stderr.getvalue())
 
         if proc.exitstatus != 0:
             error = capture_stderr.getvalue().rstrip()
             raise AuthenticationError(f"Teleport error: {error}")
 
     logger.info(f"Successfully logged into teleport app: {config.app}")
+
+
+def log_output(channel: str, message: str):
+    message = strip_ansi(message.rstrip())
+    for line in message.splitlines():
+        logger.debug(f"<[{channel}] {line}")
