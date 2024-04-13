@@ -60,6 +60,8 @@ class TestVaultUserConfig:
         assert isinstance(config.url, ProvidedByTeleportMarker)
 
     def test_url__missing(self):
+        if "VAULT_ADDR" in os.environ:
+            pytest.skip("VAULT_ADDR is set. Skipping test.")
         with pytest.raises(ValidationError):
             VaultUserConfig.model_validate({"auth": "null"})
 
