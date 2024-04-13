@@ -16,6 +16,7 @@ from pydantic import (
     field_validator,
     model_validator,
     validate_call,
+    HttpUrl,
 )
 
 import secrets_env.version
@@ -131,6 +132,18 @@ class VaultKvProvider(Provider, VaultUserConfig):
             If the operation is unsupported.
         """
         logger.debug("Vault client initialization requested. URL= %s", self.url)
+
+        if self.teleport:
+            logger.debug("Teleport configuration is set. Use it for connecting Vault.")
+
+            param = self.teleport.connection_param
+            logger.debug(f"Teleport connection parameter: {param!r}")
+
+            self.teleport = None
+            self.url = HttpUrl(param.uri)
+            self.tls.ca_cert = param.path_ca
+            self.tls.client_cert = param.path_cert
+            self.tls.client_key = param.path_key
 
         client = create_http_client(self)
         client.headers["X-Vault-Token"] = get_token(client, self.auth)

@@ -5,7 +5,7 @@ from unittest.mock import Mock, PropertyMock
 import httpx
 import pytest
 import respx
-from pydantic_core import ValidationError
+from pydantic_core import ValidationError, Url
 
 from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
@@ -99,6 +99,35 @@ class TestVaultKvProvider:
         )
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
         assert isinstance(provider.client, httpx.Client)
+
+    def test_client__with_teleport(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_create_http_client(config: VaultUserConfig):
+            assert config.url == Url("https://vault.teleport.example.com/")
+            assert config.teleport is None
+            assert config.tls.ca_cert is None
+            assert config.tls.client_cert == Path("/mock/client.pem")
+            assert config.tls.client_key == Path("/mock/client.key")
+
+            client = Mock(httpx.Client)
+            client.headers = {}
+            return client
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.create_http_client", mock_create_http_client
+        )
+
+        teleport_user_config = Mock(TeleportUserConfig)
+        teleport_user_config.connection_param = Mock(
+            TeleportConnectionParameter,
+            uri="https://vault.teleport.example.com",
+            path_ca=None,
+            path_cert=Path("/mock/client.pem"),
+            path_key=Path("/mock/client.key"),
+        )
+
+        provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
+        client = provider.client
+        assert isinstance(client, httpx.Client)
 
     @pytest.fixture()
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
