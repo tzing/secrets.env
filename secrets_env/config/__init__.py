@@ -33,7 +33,7 @@ def load_local_config(path: Path | None) -> LocalConfig:
     try:
         return LocalConfig.model_validate(data)
     except ValidationError as e:
-        logger.error("Failed to parse the config file: %s", path)
+        logger.error("Failed to parse config <data>%s</data>", path)
         for err in e.errors():
             field_name = ".".join(str(ll) for ll in err["loc"])
 
