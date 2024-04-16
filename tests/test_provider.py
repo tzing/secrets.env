@@ -82,8 +82,8 @@ class TestProvider:
             provider(Request(name="foo"))
 
         assert "Config malformed for <data>foo</data>:" in caplog.text
-        assert "[#1] path: Input should be a valid string" in caplog.text
-        assert "[#2] foobar: Field required" in caplog.text
+        assert "➜ <mark>path</mark>: Input should be a valid string" in caplog.text
+        assert "➜ <mark>foobar</mark>: Field required" in caplog.text
 
     def test_exception(self, caplog: pytest.LogCaptureFixture):
         class DummyProvider(Provider):

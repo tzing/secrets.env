@@ -158,16 +158,24 @@ class LocalConfig(BaseModel):
     @model_validator(mode="after")
     def _check_source_exists(self):
         errors = []
-        for i, request in enumerate(self.requests):
+        for request in self.requests:
             if request.source not in self.providers:
-                errors.append(
-                    {
-                        "type": "value_error",
-                        "loc": ("requests", i, "source"),
-                        "input": request.source,
-                        "ctx": {"error": f'source "{request.source}" not found'},
-                    }
-                )
+                if request.source is None:
+                    errors.append(
+                        {
+                            "type": "missing",
+                            "loc": ("secrets", request.name, "source"),
+                        }
+                    )
+                else:
+                    errors.append(
+                        {
+                            "type": "value_error",
+                            "loc": ("secrets", request.name, "source"),
+                            "input": request.source,
+                            "ctx": {"error": f'source "{request.source}" not found'},
+                        }
+                    )
         if errors:
             raise ValidationError.from_exception_data(
                 title="local config", line_errors=errors

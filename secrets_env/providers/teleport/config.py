@@ -49,7 +49,7 @@ class TeleportUserConfig(BaseModel):
         # it might take a while for teleport RPC. show the message to indicate that
         # the script is not freeze
         logger.info(
-            f"<!important>Get connection information from Teleport for {self.app}"
+            f"<!important>Requesting connection information for <data>{self.app}</data> from Teleport"
         )
         logger.debug(f"Teleport app parameters= {self!r}")
 

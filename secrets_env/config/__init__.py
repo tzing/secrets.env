@@ -33,7 +33,7 @@ def load_local_config(path: Path | None) -> LocalConfig:
     try:
         return LocalConfig.model_validate(data)
     except ValidationError as e:
-        logger.error("Failed to parse the config file: %s", path)
+        logger.error("Failed to parse config <data>%s</data>", path)
         for err in e.errors():
             field_name = ".".join(str(ll) for ll in err["loc"])
 
@@ -42,8 +42,10 @@ def load_local_config(path: Path | None) -> LocalConfig:
                 user_input = json.dumps(user_input)
 
             logger.error(
-                "  <mark>%s</mark> (input= <data>%s</data>)", field_name, user_input
+                "  \u279C <mark>%s</mark> (input= <data>%s</data>)",
+                field_name,
+                user_input,
             )
             logger.error("    %s", err["msg"])
 
-        raise ConfigError("Failed to parse the config", path) from e
+        raise ConfigError("Failed to parse config") from e
