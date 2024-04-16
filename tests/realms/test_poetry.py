@@ -15,7 +15,7 @@ import pytest
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import secrets_env.poetry as plugin
+import secrets_env.realms.poetry as plugin
 
 
 @pytest.mark.usefixtures("_reset_logging")
