@@ -75,10 +75,10 @@ class Provider(BaseModel, ABC):
             raise NoValue from e
         except ValidationError as e:
             logger.warning(f"Config malformed for <data>{spec.name}</data>:")
-            for i, err in enumerate(e.errors(), 1):
+            for err in e.errors():
                 loc = ".".join(map(str, err["loc"]))
                 msg = err["msg"]
-                logger.warning(f"  [#{i}] {loc}: {msg}")
+                logger.warning(f"  \u279C <mark>{loc}</mark>: {msg}")
             raise NoValue from e
         except Exception as e:
             logger.error(f"Error requesting value for <data>{spec.name}</data>")

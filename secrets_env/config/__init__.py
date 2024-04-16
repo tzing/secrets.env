@@ -42,7 +42,9 @@ def load_local_config(path: Path | None) -> LocalConfig:
                 user_input = json.dumps(user_input)
 
             logger.error(
-                "  <mark>%s</mark> (input= <data>%s</data>)", field_name, user_input
+                "  \u279C <mark>%s</mark> (input= <data>%s</data>)",
+                field_name,
+                user_input,
             )
             logger.error("    %s", err["msg"])
 
