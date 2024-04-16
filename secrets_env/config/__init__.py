@@ -48,4 +48,4 @@ def load_local_config(path: Path | None) -> LocalConfig:
             )
             logger.error("    %s", err["msg"])
 
-        raise ConfigError("Failed to parse the config", path) from e
+        raise ConfigError("Failed to parse config") from e
