@@ -48,7 +48,7 @@ yaml = ["PyYAML"]
 "secrets.env" = "secrets_env.commands:main"
 
 [tool.poetry.plugins."poetry.application.plugin"]
-poetry-secrets-env-plugin = "secrets_env.poetry:SecretsEnvPlugin"
+poetry-secrets-env-plugin = "secrets_env.realms.poetry:SecretsEnvPlugin"
 
 [build-system]
 requires = ["poetry-core"]

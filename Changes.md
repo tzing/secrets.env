@@ -45,7 +45,7 @@
 
 * Revise the documentation to ensure consistency across different providers.
 * Refactor the configuration parser. Internally switch from using `dict` to [Pydantic](https://docs.pydantic.dev/latest/) models.
-
+* Refactor layout of the adapter classes to make the code more extensible.
 
 ## Prior to 0.29
 
