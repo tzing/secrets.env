@@ -188,17 +188,33 @@ class TestLocalConfig:
         exc_info.match("sources.0.value")
         exc_info.match("secret.0.name")
 
-    def test_source_name_error(self):
+    def test_source_name_error_1(self):
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
                     "sources": {"type": "plain"},
-                    "secret": [{"name": "demo", "source": "invalid"}],
+                    "secret": [
+                        {"name": "DEMO", "source": "invalid"},
+                    ],
                 }
             )
 
-        exc_info.match("requests.0.source")
+        exc_info.match("secrets.DEMO.source")
         exc_info.match('source "invalid" not found')
+
+    def test_source_name_error_2(self):
+        with pytest.raises(ValidationError) as exc_info:
+            LocalConfig.model_validate(
+                {
+                    "sources": {"type": "plain", "name": "blah"},
+                    "secret": [
+                        {"name": "FOOBAR"},
+                    ],
+                }
+            )
+
+        exc_info.match("secrets.FOOBAR.source")
+        exc_info.match("Field required")
 
 
 class TestCaptureLineErrors:
