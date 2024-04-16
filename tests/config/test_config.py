@@ -72,7 +72,7 @@ class TestLoadLocalConfig:
             """
         )
 
-        with pytest.raises(ConfigError, match="Failed to parse the config"):
+        with pytest.raises(ConfigError, match="Failed to parse config"):
             load_local_config(config_path)
 
         assert (
