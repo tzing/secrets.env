@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-import typing
+from pathlib import Path
 
 from pydantic import ValidationError
 
@@ -10,9 +10,7 @@ from secrets_env.config.lookup import find_local_config_file
 from secrets_env.config.parser import LocalConfig
 from secrets_env.config.reader import read
 from secrets_env.exceptions import ConfigError
-
-if typing.TYPE_CHECKING:
-    from pathlib import Path
+from secrets_env.utils import get_env_var
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +19,10 @@ def load_local_config(path: Path | None) -> LocalConfig:
     """
     Load the configurations and formated in to the typed structure.
     """
+    if not path:
+        if path_raw := get_env_var("SECRETS_ENV_CONFIG_FILE"):
+            path = Path(path_raw)
+            logger.debug(f"Get config file path from env var: {path}")
     if not path:
         path = find_local_config_file()
     if not path:

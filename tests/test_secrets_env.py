@@ -92,11 +92,11 @@ class TestReadValues:
             """
         )
 
-        with caplog.at_level("INFO"):
+        with caplog.at_level("DEBUG"):
             values = read_values(config=config_file, strict=True)
 
         assert values == {}
-        assert "<mark>0</mark> secrets loaded" in caplog.text
+        assert "Requests are absent." in caplog.text
 
     def test_no_value__strict(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         config_file = tmp_path / "config.toml"
@@ -151,3 +151,27 @@ class TestReadValues:
 
         with pytest.raises(ConfigError):
             read_values(config=config_file, strict=True)
+
+    def test_disable(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(
+            """
+            [[sources]]
+            type = "plain"
+
+            [[secrets]]
+            name = "DEMO"
+            """
+        )
+
+        monkeypatch.setenv("SECRETS_ENV_DISABLE", "1")
+
+        values = read_values(config=config_file, strict=True)
+        assert values == {}
+
+        assert "The value loading process will be bypassed" in caplog.text
