@@ -5,6 +5,7 @@ import typing
 
 import secrets_env.config
 import secrets_env.exceptions
+import secrets_env.utils
 from secrets_env.version import __version__  # noqa: F401
 
 if typing.TYPE_CHECKING:
@@ -36,6 +37,13 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
         When failed to load a value and strict mode is enabled.
     """
     logger = logging.getLogger(__name__)
+
+    if secrets_env.utils.get_bool_from_env_var("SECRETS_ENV_DISABLE"):
+        logger.warning(
+            "The environment variable 'SECRETS_ENV_DISABLE' is configured. "
+            "The value loading process will be bypassed."
+        )
+        return {}
 
     # parse config
     cfg = secrets_env.config.load_local_config(config)

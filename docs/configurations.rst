@@ -414,3 +414,7 @@ Environment variables
 .. envvar:: SECRETS_ENV_CONFIG_FILE
 
    Specify the configuration file to be loaded.
+
+.. envvar:: SECRETS_ENV_DISABLE
+
+   Disable secrets.env, preventing it from loading any values.
