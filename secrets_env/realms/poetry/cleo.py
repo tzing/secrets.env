@@ -3,12 +3,38 @@ from __future__ import annotations
 import logging
 import typing
 
+from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
 if typing.TYPE_CHECKING:
     from typing import ClassVar
 
     from cleo.io.outputs.output import Output
+
+
+def setup_output(output: Output) -> None:
+    """Forwards internal messages to :py:mod:`cleo`.
+
+    Secrets.env writes all messages using :py:mod:`logging`. But cleo hides
+    all the logs by default, including warning and error messages.
+
+    This method forwards all internal logs from secrets.env to cleo. (Re)assign
+    the verbosity level in the customized Handler and colored the output using
+    the custom format, powered with cleo's formatter."""
+    # set output format
+    output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
+    output.formatter.set_style("warning", Style("yellow", options=["bold"]))
+    output.formatter.set_style("link", Style(options=["underline"]))
+
+    # send internal message to cleo
+    # see docstring in Handler for details
+    handler = CleoHandler(output)
+    handler.setFormatter(CleoFormatter())
+
+    root_logger = logging.getLogger("secrets_env")
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.propagate = False
+    root_logger.addHandler(handler)
 
 
 class CleoHandler(logging.Handler):
