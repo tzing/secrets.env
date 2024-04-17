@@ -55,6 +55,20 @@ class TestLoadLocalConfig:
         assert len(config.requests) == 1
         assert config.requests[0] == Request(name="TEST_VAR", value="foo")
 
+    def test_success_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            """
+            sources:
+              type: plain
+            """
+        )
+        monkeypatch.setenv("SECRETS_ENV_CONFIG_FILE", str(config_path))
+
+        config = load_local_config(None)
+        assert len(config.providers) == 1
+        assert len(config.requests) == 0
+
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("secrets_env.config.find_local_config_file", lambda: None)
         with pytest.raises(ConfigError, match="Config file not found"):

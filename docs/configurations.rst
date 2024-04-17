@@ -401,3 +401,16 @@ Here are some examples in different formats, demonstrating the same configuratio
                   # Table, simplified specification
                   secrets:
                     DEMO: "secrets/default#token"
+
+
+Global configurations
+---------------------
+
+Here are some global configurations that can impact the behavior of secrets.env.
+
+Environment variables
+^^^^^^^^^^^^^^^^^^^^^
+
+.. envvar:: SECRETS_ENV_CONFIG_FILE
+
+   Specify the configuration file to be loaded.
