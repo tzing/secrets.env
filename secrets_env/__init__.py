@@ -40,6 +40,10 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
     # parse config
     cfg = secrets_env.config.load_local_config(config)
 
+    if not cfg.requests:
+        logger.debug("Requests are absent. Skipping values loading.")
+        return {}
+
     # load values
     output_values = {}
     is_success = True

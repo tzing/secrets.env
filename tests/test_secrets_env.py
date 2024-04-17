@@ -92,11 +92,11 @@ class TestReadValues:
             """
         )
 
-        with caplog.at_level("INFO"):
+        with caplog.at_level("DEBUG"):
             values = read_values(config=config_file, strict=True)
 
         assert values == {}
-        assert "<mark>0</mark> secrets loaded" in caplog.text
+        assert "Requests are absent." in caplog.text
 
     def test_no_value__strict(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         config_file = tmp_path / "config.toml"
