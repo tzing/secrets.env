@@ -14,45 +14,48 @@ import poetry.console.commands.run
 import pytest
 from cleo.io.outputs.output import Verbosity
 
-import secrets_env.realms.poetry as plugin
+from secrets_env.realms.poetry import SecretsEnvPlugin
 from secrets_env.realms.poetry.cleo import CleoFormatter, CleoHandler, setup_output
 
 
 @pytest.mark.usefixtures("_reset_logging")
 class TestSecretsEnvPlugin:
-    def setup_method(self):
-        self.plugin = plugin.SecretsEnvPlugin()
-
-        self.event = Mock(spec=cleo.events.console_command_event.ConsoleCommandEvent)
-        self.event.command = Mock(spec=poetry.console.commands.run.RunCommand)
-        self.event.command.name = "run"
-
-        self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
-
-    def teardown_method(self):
-        # reset env
-        with contextlib.suppress(KeyError):
-            os.environ.pop("VAR1")
+    @pytest.fixture()
+    def event(self):
+        e = Mock(cleo.events.console_command_event.ConsoleCommandEvent)
+        e.command = Mock(poetry.console.commands.run.RunCommand)
+        e.command.name = "run"
+        return e
 
     @pytest.fixture()
-    def patch_setup_output(self):
-        with patch.object(self.plugin, "setup_output") as mock:
-            yield mock
+    def dispatcher(self):
+        return Mock(cleo.events.event_dispatcher.EventDispatcher)
 
-    @pytest.mark.usefixtures("patch_setup_output")
-    def test_load_secret(self):
-        with patch("secrets_env.read_values", return_value={"VAR1": "test"}):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
-        assert os.getenv("VAR1") == "test"
+    def test_load_values(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
+        monkeypatch.setattr("secrets_env.realms.poetry.setup_output", lambda _: None)
+        monkeypatch.setattr(
+            "secrets_env.read_values", lambda config, strict: {"VAR1": "bar"}
+        )
+        monkeypatch.setenv("VAR1", "foo")
 
-    def test_load_secret_not_related_command(self, patch_setup_output: Mock):
-        # command is not `run` or `shell`
-        self.event.command = Mock(spec=cleo.commands.command.Command)
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)
 
-        # if it does not exit in the beginning, then it triggerred errors at
-        # setup_output
-        patch_setup_output.side_effect = RuntimeError("should not raised")
-        self.plugin.load_secret(self.event, "test", self.dispatcher)
+        assert os.getenv("VAR1") == "bar"
+
+    def test_load_values__skip(
+        self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
+    ):
+        func = Mock()
+        monkeypatch.setattr("secrets_env.read_values", func)
+        monkeypatch.setenv("VAR1", "foo")
+        event.command.name = "not-related-command"
+
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)
+
+        assert os.getenv("VAR1") == "foo"
+        assert func.call_count == 0
 
 
 class TestCleoHandler:
