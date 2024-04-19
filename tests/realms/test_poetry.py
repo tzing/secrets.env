@@ -1,4 +1,3 @@
-import contextlib
 import io
 import logging
 import os
@@ -12,65 +11,57 @@ import cleo.io.outputs.section_output
 import cleo.io.outputs.stream_output
 import poetry.console.commands.run
 import pytest
-from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
-import secrets_env.realms.poetry as plugin
+from secrets_env.realms.poetry import SecretsEnvPlugin
+from secrets_env.realms.poetry.cleo import CleoFormatter, CleoHandler, setup_output
 
 
 @pytest.mark.usefixtures("_reset_logging")
 class TestSecretsEnvPlugin:
-    def setup_method(self):
-        self.plugin = plugin.SecretsEnvPlugin()
-
-        self.event = Mock(spec=cleo.events.console_command_event.ConsoleCommandEvent)
-        self.event.command = Mock(spec=poetry.console.commands.run.RunCommand)
-        self.event.command.name = "run"
-
-        self.dispatcher = Mock(spec=cleo.events.event_dispatcher.EventDispatcher)
-
-    def teardown_method(self):
-        # reset env
-        with contextlib.suppress(KeyError):
-            os.environ.pop("VAR1")
+    @pytest.fixture()
+    def event(self):
+        e = Mock(cleo.events.console_command_event.ConsoleCommandEvent)
+        e.command = Mock(poetry.console.commands.run.RunCommand)
+        e.command.name = "run"
+        return e
 
     @pytest.fixture()
-    def patch_setup_output(self):
-        with patch.object(self.plugin, "setup_output") as mock:
-            yield mock
+    def dispatcher(self):
+        return Mock(cleo.events.event_dispatcher.EventDispatcher)
 
-    @pytest.mark.usefixtures("patch_setup_output")
-    def test_load_secret(self):
-        with patch("secrets_env.read_values", return_value={"VAR1": "test"}):
-            self.plugin.load_secret(self.event, "test", self.dispatcher)
-        assert os.getenv("VAR1") == "test"
+    def test_load_values(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
+        monkeypatch.setattr("secrets_env.realms.poetry.setup_output", lambda _: None)
+        monkeypatch.setattr(
+            "secrets_env.read_values", lambda config, strict: {"VAR1": "bar"}
+        )
+        monkeypatch.setenv("VAR1", "foo")
 
-    def test_load_secret_not_related_command(self, patch_setup_output: Mock):
-        # command is not `run` or `shell`
-        self.event.command = Mock(spec=cleo.commands.command.Command)
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)
 
-        # if it does not exit in the beginning, then it triggerred errors at
-        # setup_output
-        patch_setup_output.side_effect = RuntimeError("should not raised")
-        self.plugin.load_secret(self.event, "test", self.dispatcher)
+        assert os.getenv("VAR1") == "bar"
 
-    def test_setup_output(self):
-        # NOTE: text coloring test are in TestTextColoring
-        buffer = io.StringIO()
-        output = cleo.io.outputs.stream_output.StreamOutput(buffer, decorated=False)
+    def test_load_values__skip(
+        self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
+    ):
+        func = Mock()
+        monkeypatch.setattr("secrets_env.read_values", func)
+        monkeypatch.setenv("VAR1", "foo")
+        event.command.name = "not-related-command"
 
-        self.plugin.setup_output(output)
-        logging.getLogger("secrets_env.test").error("test message")
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)
 
-        buffer.seek(0)
-        assert buffer.read() == "test message\n"
+        assert os.getenv("VAR1") == "foo"
+        assert func.call_count == 0
 
 
-class TestHandler:
+class TestCleoHandler:
     def setup_method(self):
         self.buffer = io.StringIO()
         self.output = cleo.io.outputs.stream_output.StreamOutput(self.buffer)
-        self.handler = plugin.CleoHandler(self.output)
+        self.handler = CleoHandler(self.output)
         self.handler.setLevel(logging.NOTSET)
 
     @pytest.mark.parametrize(
@@ -144,11 +135,29 @@ class TestHandler:
             self.handler.handle(record)
 
 
-class TestFormatter:
-    def setup_method(self):
-        self.formatter = plugin.CleoFormatter()
-
-    def format(self, level: int) -> str:
+class TestCleoFormatter:
+    @pytest.mark.parametrize(
+        ("level", "expected"),
+        [
+            (
+                logging.ERROR,
+                "<error>test <info>emphasized</info> msg with <comment>data</comment></error>",
+            ),
+            (
+                logging.WARNING,
+                "<warning>test <info>emphasized</info> msg with <comment>data</comment></warning>",
+            ),
+            (
+                logging.INFO,
+                "test <info>emphasized</info> msg with <comment>data</comment>",
+            ),
+            (
+                logging.DEBUG,
+                "[secrets.env] <debug>test <info>emphasized</info> msg with <comment>data</comment></debug>",
+            ),
+        ],
+    )
+    def test_format(self, level: int, expected: str):
         record = logging.makeLogRecord(
             {
                 "name": "test",
@@ -159,31 +168,9 @@ class TestFormatter:
             }
         )
 
-        return self.formatter.format(record)
-
-    def test_info(self):
-        assert (
-            self.format(logging.INFO)
-            == "test <info>emphasized</info> msg with <comment>data</comment>"
-        )
-
-    def test_debug(self):
-        assert self.format(logging.DEBUG) == (
-            "[secrets_env] <debug>test <info>emphasized</info> msg with <comment>"
-            "data</comment></debug>"
-        )
-
-    def test_warning(self):
-        assert self.format(logging.WARNING) == (
-            "<warning>test <info>emphasized</info> msg with <comment>data"
-            "</comment></warning>"
-        )
-
-    def test_error(self):
-        assert self.format(logging.ERROR) == (
-            "<error>test <info>emphasized</info> msg with <comment>data"
-            "</comment></error>"
-        )
+        formatter = CleoFormatter()
+        output = formatter.format(record)
+        assert output == expected
 
     def test_important(self):
         record = logging.makeLogRecord(
@@ -195,47 +182,33 @@ class TestFormatter:
                 "created": time.time(),
             }
         )
-        assert self.formatter.format(record) == (
-            "[secrets_env] <debug>test <info>important</info> message</debug>"
+
+        formatter = CleoFormatter()
+        assert formatter.format(record) == (
+            "[secrets.env] <debug>test <info>important</info> message</debug>"
         )
 
 
-class TestTextColoring:
-    def setup_method(self):
-        self.buffer = io.StringIO()
-
-    def get_handler(self, decorated) -> logging.Handler:
-        output = cleo.io.outputs.stream_output.StreamOutput(
-            self.buffer, Verbosity.DEBUG, decorated=decorated
-        )
-
-        output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
-        output.formatter.set_style("warning", Style("yellow"))
-
-        handler = plugin.CleoHandler(output)
-        handler.setLevel(logging.NOTSET)
-        handler.setFormatter(plugin.CleoFormatter())
-
-        return handler
+class TestSetupOutput:
 
     # plain styles
     BLUE = "\033[34m"
     GREEN = "\033[32m"
-    YELLOW = "\033[33m"
     WHITE = "\033[97m"
     DEFAULT = "\033[39m"
 
     # bold styles
     BDEFAULT = "\033[39;22m"
     BRED = "\033[31;1m"
+    BYELLOW = "\033[33;1m"
     DWHITE = "\033[37;2m"
 
     @pytest.mark.parametrize(
-        ("log_level", "output"),
+        ("level", "expected"),
         [
             (
                 logging.DEBUG,
-                f"[secrets_env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
+                f"[secrets.env] {DWHITE}test {BDEFAULT}{BLUE}emphasized{DEFAULT}"
                 f"{DWHITE} msg with {BDEFAULT}{GREEN}data{DEFAULT}{DWHITE}."
                 f"{BDEFAULT}\n",
             ),
@@ -245,8 +218,8 @@ class TestTextColoring:
             ),
             (
                 logging.WARNING,
-                f"{YELLOW}test {DEFAULT}{BLUE}emphasized{DEFAULT}{YELLOW} msg "
-                f"with {DEFAULT}{GREEN}data{DEFAULT}{YELLOW}.{DEFAULT}\n",
+                f"{BYELLOW}test {BDEFAULT}{BLUE}emphasized{DEFAULT}{BYELLOW} msg "
+                f"with {BDEFAULT}{GREEN}data{DEFAULT}{BYELLOW}.{BDEFAULT}\n",
             ),
             (
                 logging.ERROR,
@@ -255,43 +228,31 @@ class TestTextColoring:
             ),
         ],
     )
-    def test_color(self, log_level: int, output: str):
-        # send log
-        record = logging.makeLogRecord(
-            {
-                "name": "test",
-                "levelno": log_level,
-                "levelname": logging.getLevelName(log_level),
-                "msg": "test <mark>emphasized</mark> msg with <data>data</data>.",
-                "created": time.time(),
-            }
+    def test_colored(self, level: int, expected: str):
+        buffer = io.StringIO()
+        output = cleo.io.outputs.stream_output.StreamOutput(
+            buffer, Verbosity.DEBUG, True
         )
 
-        self.get_handler(True).handle(record)
+        setup_output(output)
 
-        # check output
-        # compare in bytes for error message readability
-        self.buffer.seek(0)
-        assert self.buffer.read().encode() == output.encode()
+        logger = logging.getLogger("secrets_env.test")
+        logger.log(level, "test <mark>emphasized</mark> msg with <data>data</data>.")
 
-    @pytest.mark.parametrize(
-        ("log_level"), [logging.DEBUG, logging.INFO, logging.ERROR]
-    )
-    def test_no_color(self, log_level: int):
-        # send log
-        record = logging.makeLogRecord(
-            {
-                "name": "test",
-                "levelno": log_level,
-                "levelname": logging.getLevelName(log_level),
-                "msg": "test <mark>emphasized</mark> msg with <data>data</data>.",
-                "created": time.time(),
-            }
+        assert buffer.getvalue() == expected
+
+    @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.ERROR])
+    def test_no_color(self, level: int):
+        buffer = io.StringIO()
+        output = cleo.io.outputs.stream_output.StreamOutput(
+            buffer, Verbosity.DEBUG, False
         )
 
-        self.get_handler(False).handle(record)
+        setup_output(output)
+
+        logger = logging.getLogger("secrets_env.test")
+        logger.log(level, "test <mark>emphasized</mark> msg with <data>data</data>.")
 
         # check output
-        # `debug` message has extra prefix
-        self.buffer.seek(0)
-        assert self.buffer.read().endswith("test emphasized msg with data.\n")
+        # `debug` message has extra prefix so use `endswith`
+        assert buffer.getvalue().endswith("test emphasized msg with data.\n")
