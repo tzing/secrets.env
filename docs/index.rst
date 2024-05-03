@@ -7,16 +7,18 @@ Secrets.env
 
    Please refer to the `stable version <https://secrets-env.readthedocs.io/en/stable/>`_ or the `source code <https://github.com/tzing/secrets.env>`_ for more details.
 
-Secrets.env connects the credential store to your development environment.
+Secrets.env connects the credential store to your app.
 
 Safeguard your sensitive data by securely retrieving and injecting credentials into your environment variables.
 Just like a ``.env`` loader, but without landing credentials on disk.
 
 .. image:: imgs/screenshot.png
 
-While security remains paramount, it shouldn't hinder your progress. While we value secret management services, obtaining secrets for local development can be cumbersome.
+We understand the importance of secret management services, but also recognize the challenges they can pose for local scripts.
+Our solution is designed to effortlessly weave secrets into your workflow, without the risk of storing data on disk.
 
-Enter our solution: designed to seamlessly integrate secrets into your development workflow without storing data on disk. Easily replicate environments and mitigate the risk of inadvertently exposing secrets.
+Enjoy the ease of replicating environments and significantly reduce the risk of accidental secret exposure.
+We're here to make your progress unhindered, while keeping security at the forefront.
 
 
 Table of Contents
