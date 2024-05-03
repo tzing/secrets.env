@@ -13,23 +13,51 @@ Enabling
 
 .. note::
 
-   Please be aware that even if you've installed secrets.env via pip, you still need to execute the above command to activate it in Poetry.
+   Please be aware that poetry are usually installed in a standalone environment, and the plugin must be installed in that environment.
 
-   Poetry stores plugin packages separately and does not retain installed packages in the current environment.
+   This means even if you've installed secrets.env via pip/pipx, you might still need to execute the following command to activate it in Poetry.
 
-To use this feature, make sure you have Poetry version 1.2 or higher installed.
+The installation command depends on how you installed Poetry:
 
-Run the following command to instruct Poetry to install it:
+.. tab-set::
 
-.. code-block:: bash
+   .. tab-item:: With pipx
+      :sync: pipx
 
-   poetry self add secrets.env
+      When your Poetry installation is managed by pipx, you can enable the plugin with the following command:
+
+      .. code-block:: bash
+
+         pipx inject poetry add secrets.env
+
+   .. tab-item:: Others
+      :sync: self-add
+
+      When Poetry is installed via other methods, you can utilize the `self add`_ command to enable the plugin:
+
+      .. code-block:: bash
+
+         poetry self add secrets.env
+
+      .. _self add: https://python-poetry.org/docs/cli/#self-add
 
 Note that YAML config format is not enabled by default (while TOML and JSON are enabled by default). If you require YAML support, install it with extras:
 
-.. code-block:: bash
+.. tab-set::
 
-   poetry self add secrets.env --extras yaml
+   .. tab-item:: With pipx
+      :sync: pipx
+
+      .. code-block:: bash
+
+         pipx inject poetry add 'secrets.env[yaml]'
+
+   .. tab-item:: Others
+      :sync: self-add
+
+      .. code-block:: bash
+
+         poetry self add secrets.env --extras yaml
 
 Read :doc:`../introduction` for more details on optional dependencies.
 
