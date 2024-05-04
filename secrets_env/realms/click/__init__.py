@@ -81,6 +81,26 @@ class SecretsEnvFormatter(ColorFormatter):
         return msg
 
 
+class LevelFilter(logging.Filter):
+    """Filter logs based on log level."""
+
+    def __init__(self, level: int):
+        super().__init__()
+        self.level = level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno >= self.level
+
+
+class SecretsEnvFilter(LevelFilter):
+    """Filter logs based on log level but allow <!important> tag to penetrate."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.msg.startswith("<!important>"):
+            return True
+        return super().filter(record)
+
+
 class ClickHandler(logging.Handler):
     """
     Send the logs to :py:func:`click.echo`.
@@ -91,13 +111,6 @@ class ClickHandler(logging.Handler):
     converting them to the format in corresponding framework, powered with their
     features like color stripping on non-interactive terminal.
     """
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        """Overrides :py:meth:`logging.Handler.filter` rules to make ``<!important>``
-        tag penetrate all the filters."""
-        if record.msg.startswith("<!important>"):
-            return True
-        return record.levelno >= self.level
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
