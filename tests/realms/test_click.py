@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from secrets_env.realms.click import ColorFormatter, SecretsEnvFormatter
+from secrets_env.realms.click import ClickHandler, ColorFormatter, SecretsEnvFormatter
 
 
 def test_color_formatter():
@@ -64,3 +64,94 @@ def test_secrets_env_formatter(levelno: int, msg: str):
 
     formatter = SecretsEnvFormatter()
     assert formatter.format(record) == msg
+
+
+class TestClickHandler:
+    def test_handle(self, capsys: pytest.CaptureFixture):
+        handler = ClickHandler(logging.WARNING)
+
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.INFO,
+                    "levelname": "INFO",
+                    "msg": "test info message",
+                    "created": time.time(),
+                }
+            )
+        )
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.WARNING,
+                    "levelname": "WARNING",
+                    "msg": "test warning message",
+                    "created": time.time(),
+                }
+            )
+        )
+
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.INFO,
+                    "levelname": "INFO",
+                    "msg": "<!important> test important info message",
+                    "created": time.time(),
+                }
+            )
+        )
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.INFO,
+                    "levelname": "INFO",
+                    "msg": "test info message that contains <!important>",
+                    "created": time.time(),
+                }
+            )
+        )
+
+        captured = capsys.readouterr()
+        assert "test warning message" in captured.err
+        assert "test info message" not in captured.err
+        assert "test important info message" in captured.err
+
+    def test_emit__success(self, capsys: pytest.CaptureFixture):
+        handler = ClickHandler()
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.INFO,
+                    "levelname": "INFO",
+                    "msg": "test message",
+                    "created": time.time(),
+                }
+            )
+        )
+
+        captured = capsys.readouterr()
+        assert captured.err == "test message\n"
+
+    def test_emit__error(self, capsys: pytest.CaptureFixture):
+        handler = ClickHandler()
+        handler.handle(
+            logging.makeLogRecord(
+                {
+                    "name": "test",
+                    "levelno": logging.ERROR,
+                    "levelname": "INFO",
+                    "msg": "%d",
+                    "created": time.time(),
+                    "args": ("not-a-num"),
+                }
+            )
+        )
+
+        captured = capsys.readouterr()
+        assert "Message: '%d'" in captured.err

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import sys
+
+import click
 
 
 class ColorFormatter(logging.Formatter):
@@ -76,3 +79,30 @@ class SecretsEnvFormatter(ColorFormatter):
         msg = msg.replace("</link>", self.SGR_UNDERLINE_RESET)
 
         return msg
+
+
+class ClickHandler(logging.Handler):
+    """
+    Send the logs to :py:func:`click.echo`.
+
+    This app has more than one entry point: command line tool and poetry plugin,
+    which use different frameworks. This app reports the information using the
+    built-in :py:mod:`logging` module. Then use this customized handler for
+    converting them to the format in corresponding framework, powered with their
+    features like color stripping on non-interactive terminal.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Overrides :py:meth:`logging.Handler.filter` rules to make ``<!important>``
+        tag penetrate all the filters."""
+        if record.msg.startswith("<!important>"):
+            return True
+        return record.levelno >= self.level
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+        except Exception:
+            self.handleError(record)
+            return
+        click.echo(msg, file=sys.stderr)
