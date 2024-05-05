@@ -1,14 +1,14 @@
 import logging
-import time
 
+import click.testing
 import pytest
 
-from secrets_env.realms.click.logging import (
+from secrets_env.realms.click import (
     ClickHandler,
     ColorFormatter,
-    LevelFilter,
     SecretsEnvFilter,
     SecretsEnvFormatter,
+    with_output_options,
 )
 
 
@@ -68,14 +68,6 @@ def test_secrets_env_formatter(levelno: int, msg: str):
     assert formatter.format(record) == msg
 
 
-class TestLevelFilter:
-    def test(self):
-        f = LevelFilter(logging.WARNING)
-        assert not f.filter(logging.makeLogRecord({"levelno": logging.INFO}))
-        assert f.filter(logging.makeLogRecord({"levelno": logging.WARNING}))
-        assert f.filter(logging.makeLogRecord({"levelno": logging.ERROR}))
-
-
 class TestSecretsEnvFilter:
     def test(self):
         f = SecretsEnvFilter(logging.WARNING)
@@ -112,3 +104,60 @@ class TestClickHandler:
 
         captured = capsys.readouterr()
         assert "Message: '%d'" in captured.err
+
+
+@pytest.mark.usefixtures("_reset_logging")
+class TestWithOutputOptions:
+    @click.command()
+    @with_output_options
+    def sample_command():
+        for logger in (
+            logging.getLogger("secrets_env.foo"),
+            logging.getLogger("mock.bar"),
+        ):
+            logger.debug("test debug msg")
+            logger.info("test info msg")
+            logger.warning("test warning msg")
+            logger.info("<!important>test important info msg")
+
+    @pytest.fixture()
+    def runner(self):
+        return click.testing.CliRunner()
+
+    def test_default(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command)
+        assert res.exit_code == 0
+
+        assert "[secrets_env] test info msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
+        assert "[mock] test warning msg" in res.output
+
+        assert "[secrets_env] test debug msg" not in res.output
+        assert "[mock] test info msg" not in res.output
+
+    def test_quiet(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-q"])
+        assert res.exit_code == 0
+
+        assert "[secrets_env] test warning msg" in res.output
+        assert "[secrets_env] test important info msg" in res.output
+        assert "[mock] test warning msg" in res.output
+
+        assert "[secrets_env] test info msg" not in res.output
+        assert "[mock] test info msg" not in res.output
+
+    def test_verbose(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-v"])
+        assert res.exit_code == 0
+
+        assert "[secrets_env] test debug msg" in res.output
+        assert "[mock] test warning msg" in res.output
+
+        assert "[mock] test info msg" not in res.output
+
+    def test_debu(self, runner: click.testing.CliRunner):
+        res = runner.invoke(self.sample_command, ["-vv"])
+        assert res.exit_code == 0
+
+        assert "[secrets_env] test debug msg" in res.output
+        assert "[mock] test debug msg" in res.output
