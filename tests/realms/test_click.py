@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from secrets_env.realms.click import (
+from secrets_env.realms.click.logging import (
     ClickHandler,
     ColorFormatter,
     LevelFilter,
