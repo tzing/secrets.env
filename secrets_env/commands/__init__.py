@@ -1,5 +1,3 @@
-import secrets_env.click
+from . import completion, core, keyring, run
 
-from . import completion, keyring, run, version
-
-main = secrets_env.click.entrypoint
+main = core.entrypoint
