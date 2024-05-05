@@ -6,7 +6,7 @@ import sys
 import click
 from pydantic_core import Url
 
-from secrets_env.click import add_output_options, entrypoint
+from secrets_env.commands.core import entrypoint, with_output_options
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def group():
 @click.argument("username")
 @click.option("-p", "--password", help="Password for login")
 @click.option("--password-stdin", is_flag=True, help="Read the password from stdin")
-@add_output_options
+@with_output_options
 def command_set(host: Url, username: str, password: str, password_stdin: bool):
     """
     Store credential in system keyring.
@@ -75,7 +75,7 @@ def command_set(host: Url, username: str, password: str, password_stdin: bool):
 @group.command("del")
 @click.argument("host", type=UrlParam())
 @click.argument("username")
-@add_output_options
+@with_output_options
 def command_del(host: Url, username: str):
     """Remove a credential from system keyring."""
     assert_keyring_available()

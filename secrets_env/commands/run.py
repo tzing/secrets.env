@@ -8,7 +8,8 @@ from typing import Sequence
 import click
 
 import secrets_env
-from secrets_env.click import add_output_options, entrypoint
+from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.exceptions import ConfigError
 
 
 @entrypoint.command(
@@ -16,32 +17,34 @@ from secrets_env.click import add_output_options, entrypoint
         "ignore_unknown_options": True,
     }
 )
-@click.argument("args", nargs=-1, type=click.UNPROCESSED, required=True)
+@click.argument(
+    "args",
+    nargs=-1,
+    type=click.UNPROCESSED,
+    required=True,
+)
 @click.option(
-    "-C",
+    "-f",
     "--config",
-    type=click.Path(
-        exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path
-    ),
-    help="Specify an alternative configuration file.",
+    type=click.Path(exists=True, file_okay=True, path_type=Path),
+    help="Specify configuration file.",
 )
 @click.option(
-    "--strict/--no-strict",
+    "--partial",
     is_flag=True,
-    default=True,
-    show_default=True,
-    help="Use strict mode. Stop run when not all of the values loaded.",
+    help="Accept partial values loading. Or stop when failed to load any value.",
 )
-@add_output_options
-def run(args: Sequence[str], config: Path, strict: bool):
-    """Loads secrets into environment variable then run the command."""
+@with_output_options
+def run(args: Sequence[str], config: Path, partial: bool):
+    """Loads values into environment variable then run the command."""
     # prepare environment variable set
-    secrets = secrets_env.read_values(config=config, strict=strict)
-    if secrets is None:
-        sys.exit(128)
+    try:
+        values = secrets_env.read_values(config=config, strict=not partial)
+    except ConfigError:
+        raise click.Abort from None
 
     environ = os.environ.copy()
-    environ.update(secrets)
+    environ.update(values)
 
     # run
     logger = logging.getLogger(__name__)

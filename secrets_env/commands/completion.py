@@ -4,7 +4,7 @@ import sys
 
 import click
 
-from secrets_env.click import entrypoint
+from secrets_env.commands.core import entrypoint
 
 
 @entrypoint.command()

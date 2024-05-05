@@ -25,6 +25,7 @@ def test_url_param():
 
 class TestSet:
     @pytest.mark.usefixtures("_assume_keyring_available")
+    @pytest.mark.usefixtures("_reset_logging")
     def test_success_1(self, monkeypatch: pytest.MonkeyPatch):
         def _set_password(svc, user, passwd):
             assert svc == "secrets.env"
@@ -41,6 +42,7 @@ class TestSet:
         assert rv.exit_code == 0
 
     @pytest.mark.usefixtures("_assume_keyring_available")
+    @pytest.mark.usefixtures("_reset_logging")
     def test_success_2(self, monkeypatch: pytest.MonkeyPatch):
         def _set_password(svc, user, passwd):
             assert svc == "secrets.env"
@@ -58,6 +60,7 @@ class TestSet:
 
         assert rv.exit_code == 0
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_invalid_args(self):
         runner = click.testing.CliRunner()
 
@@ -70,6 +73,7 @@ class TestSet:
         assert rv.exit_code == 2
 
     @pytest.mark.usefixtures("_assume_keyring_available")
+    @pytest.mark.usefixtures("_reset_logging")
     def test_keyring_error(self, monkeypatch: pytest.MonkeyPatch):
         def _set_password(svc, user, passwd):
             raise keyring.errors.PasswordSetError
@@ -87,6 +91,7 @@ class TestSet:
 
 class TestDel:
     @pytest.mark.usefixtures("_assume_keyring_available")
+    @pytest.mark.usefixtures("_reset_logging")
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
         def _del_password(svc, user):
             assert svc == "secrets.env"
@@ -101,6 +106,7 @@ class TestDel:
         assert "Password removed" in rv.stdout
 
     @pytest.mark.usefixtures("_assume_keyring_available")
+    @pytest.mark.usefixtures("_reset_logging")
     def test_error(self, monkeypatch: pytest.MonkeyPatch):
         def _del_password(svc, user):
             assert svc == "secrets.env"
