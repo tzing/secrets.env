@@ -106,7 +106,6 @@ class TestClickHandler:
         assert "Message: '%d'" in captured.err
 
 
-@pytest.mark.usefixtures("_reset_logging")
 class TestWithOutputOptions:
     @click.command()
     @with_output_options
@@ -124,6 +123,7 @@ class TestWithOutputOptions:
     def runner(self):
         return click.testing.CliRunner()
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_default(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command)
         assert res.exit_code == 0
@@ -135,6 +135,7 @@ class TestWithOutputOptions:
         assert "[secrets_env] test debug msg" not in res.output
         assert "[mock] test info msg" not in res.output
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_quiet(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-q"])
         assert res.exit_code == 0
@@ -146,6 +147,7 @@ class TestWithOutputOptions:
         assert "[secrets_env] test info msg" not in res.output
         assert "[mock] test info msg" not in res.output
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_verbose(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-v"])
         assert res.exit_code == 0
@@ -155,7 +157,8 @@ class TestWithOutputOptions:
 
         assert "[mock] test info msg" not in res.output
 
-    def test_debu(self, runner: click.testing.CliRunner):
+    @pytest.mark.usefixtures("_reset_logging")
+    def test_debug(self, runner: click.testing.CliRunner):
         res = runner.invoke(self.sample_command, ["-vv"])
         assert res.exit_code == 0
 
