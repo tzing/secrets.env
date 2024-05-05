@@ -19,6 +19,19 @@ if typing.TYPE_CHECKING:
 
 
 class Verbosity(enum.IntEnum):
+    level_self: int
+    """Logging level for secrets.env messages."""
+
+    level_dependency: int
+    """Logging level for messages from other modules."""
+
+    def __new__(cls, value: int, level_self: int, level_dependency: int) -> Self:
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        obj.level_self = level_self
+        obj.level_dependency = level_dependency
+        return obj
+
     Quiet = -1, logging.WARNING, logging.WARNING
     """Quiet mode. Only show warnings and errors."""
 
@@ -30,13 +43,6 @@ class Verbosity(enum.IntEnum):
 
     Debug = 2, logging.DEBUG, logging.DEBUG
     """Debug mode. Show everything."""
-
-    def __new__(cls, value: int, level_self: int, level_dependency: int) -> Self:
-        obj = int.__new__(cls, value)
-        obj._value_ = value
-        obj.level_self = level_self
-        obj.level_dependency = level_dependency
-        return obj
 
 
 def with_output_options(func: Callable[..., None]) -> Callable[..., None]:

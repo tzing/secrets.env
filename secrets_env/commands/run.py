@@ -41,7 +41,7 @@ def run(args: Sequence[str], config: Path, partial: bool):
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
     except ConfigError:
-        raise click.Abort
+        raise click.Abort from None
 
     environ = os.environ.copy()
     environ.update(values)
