@@ -17,7 +17,6 @@ from secrets_env.realms.poetry import SecretsEnvPlugin
 from secrets_env.realms.poetry.cleo import CleoFormatter, CleoHandler, setup_output
 
 
-@pytest.mark.usefixtures("_reset_logging")
 class TestSecretsEnvPlugin:
     @pytest.fixture()
     def event(self):
@@ -30,6 +29,7 @@ class TestSecretsEnvPlugin:
     def dispatcher(self):
         return Mock(cleo.events.event_dispatcher.EventDispatcher)
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_load_values(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
         monkeypatch.setattr("secrets_env.realms.poetry.setup_output", lambda _: None)
         monkeypatch.setattr(
@@ -42,6 +42,7 @@ class TestSecretsEnvPlugin:
 
         assert os.getenv("VAR1") == "bar"
 
+    @pytest.mark.usefixtures("_reset_logging")
     def test_load_values__skip(
         self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
     ):
@@ -228,6 +229,7 @@ class TestSetupOutput:
             ),
         ],
     )
+    @pytest.mark.usefixtures("_reset_logging")
     def test_colored(self, level: int, expected: str):
         buffer = io.StringIO()
         output = cleo.io.outputs.stream_output.StreamOutput(
@@ -242,6 +244,7 @@ class TestSetupOutput:
         assert buffer.getvalue() == expected
 
     @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.ERROR])
+    @pytest.mark.usefixtures("_reset_logging")
     def test_no_color(self, level: int):
         buffer = io.StringIO()
         output = cleo.io.outputs.stream_output.StreamOutput(
