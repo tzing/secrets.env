@@ -23,7 +23,7 @@ def setup_output(output: Output) -> None:
     the custom format, powered with cleo's formatter."""
     # set output format
     output.formatter.set_style("debug", Style("light_gray", options=["dark"]))
-    output.formatter.set_style("warning", Style("yellow", options=["bold"]))
+    output.formatter.set_style("warning", Style("yellow"))
     output.formatter.set_style("link", Style(options=["underline"]))
 
     # send internal message to cleo
