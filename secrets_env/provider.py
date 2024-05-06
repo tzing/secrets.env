@@ -76,7 +76,7 @@ class Provider(BaseModel, ABC):
         except ValidationError as e:
             logger.warning(f"Config malformed for <data>{spec.name}</data>:")
             for err in e.errors():
-                loc = ".".join(map(str, err["loc"]))
+                loc = ".".join(map(str, err["loc"])) or "(root)"
                 msg = err["msg"]
                 logger.warning(f"  \u279C <mark>{loc}</mark>: {msg}")
             raise NoValue from e
