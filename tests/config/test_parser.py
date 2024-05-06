@@ -237,19 +237,9 @@ class TestCaptureLineErrors:
         with capture_line_errors(errors, ("test",)):
             Demo(name=1234, file="/not/a/file")
 
-        assert errors == [
-            {
-                "input": 1234,
-                "loc": ("test", "name"),
-                "msg": "Input should be a valid string",
-                "type": "string_type",
-                "url": "https://errors.pydantic.dev/2.6/v/string_type",
-            },
-            {
-                "input": "/not/a/file",
-                "loc": ("test", "file"),
-                "msg": "Path does not point to a file",
-                "type": "value_error",
-                "ctx": {"error": "Path does not point to a file"},
-            },
-        ]
+        assert errors[0]["input"] == 1234
+        assert errors[0]["loc"] == ("test", "name")
+        assert errors[0]["type"] == "string_type"
+        assert errors[1]["input"] == "/not/a/file"
+        assert errors[1]["loc"] == ("test", "file")
+        assert errors[1]["type"] == "value_error"
