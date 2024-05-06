@@ -11,15 +11,15 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
+      - name: Install poetry
+        run: pipx install poetry
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: poetry
       - name: Install dependencies
-        run: |
-          pipx install poetry
-          poetry install --all-extras
+        run: poetry install --all-extras
       - name: Coding style check
         run: poetry run ruff check .
 
@@ -27,14 +27,14 @@ jobs:
     name: Type check
     runs-on: ubuntu-latest
     steps:
+      - name: Install poetry
+        run: pipx install poetry
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: poetry
       - name: Install dependencies
-        run: |
-          pipx install poetry
-          poetry install --all-extras
+        run: poetry install --all-extras
       - name: Type check
         run: poetry run pyright
