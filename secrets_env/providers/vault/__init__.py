@@ -89,7 +89,7 @@ class VaultPath(BaseModel):
 class VaultPathSimplified(BaseModel):
     """Represents a simplified path to a value in Vault."""
 
-    value: str | None
+    value: str
 
     @field_validator("value", mode="after")
     @classmethod
