@@ -68,17 +68,18 @@ class Provider(BaseModel, ABC):
             logger.warning(f"Authentication failed for <data>{spec.name}</data>: {e}")
             raise NoValue from e
         except LookupError as e:
-            logger.warning(f"Value not found for <data>{spec.name}</data>: {e}")
+            logger.warning(f"Value for <data>{spec.name}</data> not found: {e}")
             raise NoValue from e
         except UnsupportedError as e:
             logger.warning(f"Operation not supported for <data>{spec.name}</data>: {e}")
             raise NoValue from e
         except ValidationError as e:
-            logger.warning(f"Config malformed for <data>{spec.name}</data>:")
+            logger.warning(f"Request <data>{spec.name}</data> is malformed:")
             for err in e.errors():
-                loc = ".".join(map(str, err["loc"]))
+                loc = ".".join(map(str, err["loc"])) or "(root)"
                 msg = err["msg"]
                 logger.warning(f"  \u279C <mark>{loc}</mark>: {msg}")
+            logger.warning("Skipping <data>%s</data>", spec.name)
             raise NoValue from e
         except Exception as e:
             logger.error(f"Error requesting value for <data>{spec.name}</data>")

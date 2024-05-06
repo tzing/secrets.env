@@ -100,7 +100,7 @@ class VaultUserConfig(BaseModel):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
                 logger.warning(
                     "Missing required config <mark>auth method</mark>. "
-                    "Use default method <data>%s</data>",
+                    "Use default method <data>%s</data>.",
                     DEFAULT_AUTH_METHOD,
                 )
 

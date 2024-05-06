@@ -193,16 +193,16 @@ class TestCleoFormatter:
 class TestSetupOutput:
 
     # plain styles
-    BLUE = "\033[34m"
     GREEN = "\033[32m"
-    WHITE = "\033[97m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
     DEFAULT = "\033[39m"
+    WHITE = "\033[97m"
 
     # bold styles
-    BDEFAULT = "\033[39;22m"
     BRED = "\033[31;1m"
-    BYELLOW = "\033[33;1m"
     DWHITE = "\033[37;2m"
+    BDEFAULT = "\033[39;22m"
 
     @pytest.mark.parametrize(
         ("level", "expected"),
@@ -219,8 +219,8 @@ class TestSetupOutput:
             ),
             (
                 logging.WARNING,
-                f"{BYELLOW}test {BDEFAULT}{BLUE}emphasized{DEFAULT}{BYELLOW} msg "
-                f"with {BDEFAULT}{GREEN}data{DEFAULT}{BYELLOW}.{BDEFAULT}\n",
+                f"{YELLOW}test {DEFAULT}{BLUE}emphasized{DEFAULT}{YELLOW} msg "
+                f"with {DEFAULT}{GREEN}data{DEFAULT}{YELLOW}.{DEFAULT}\n",
             ),
             (
                 logging.ERROR,

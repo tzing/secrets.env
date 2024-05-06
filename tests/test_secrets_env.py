@@ -113,7 +113,7 @@ class TestReadValues:
         with pytest.raises(NoValue):
             read_values(config=config_file, strict=True)
 
-        assert "Value not found for <data>DEMO</data>" in caplog.text
+        assert "Value for <data>DEMO</data> not found" in caplog.text
         assert "<error>0</error> / 1 secrets loaded" in caplog.text
 
     def test_no_value__tolerated(
@@ -137,7 +137,7 @@ class TestReadValues:
         values = read_values(config=config_file, strict=False)
         assert values == {"FOO": "Bar"}
 
-        assert "Value not found for <data>DEMO</data>" in caplog.text
+        assert "Value for <data>DEMO</data> not found" in caplog.text
         assert "<error>1</error> / 2 secrets loaded" in caplog.text
 
     def test_config_error(self, tmp_path: Path):

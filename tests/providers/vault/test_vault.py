@@ -62,12 +62,12 @@ class TestVaultPath:
             VaultPath(path="", field=("b"))
 
         # missing path/field separator
-        with pytest.raises(ValidationError):
-            VaultPath.model_validate(Request(value="foobar"))
+        with pytest.raises(ValidationError, match="Expected 'path#field'"):
+            VaultPath.model_validate({"value": "foobar"})
 
         # too many path/field separator
-        with pytest.raises(ValidationError):
-            VaultPath.model_validate(Request(value="foo#bar#baz"))
+        with pytest.raises(ValidationError, match="Expected 'path#field'"):
+            VaultPath.model_validate({"value": "foo#bar#baz"})
 
         # empty field subpath
         with pytest.raises(ValidationError):

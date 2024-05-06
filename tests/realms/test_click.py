@@ -26,8 +26,7 @@ def test_color_formatter():
     # style for warning level is applied
     # but style for tags should not take effect
     assert formatter.format(record) == (
-        "[test] "
-        "\033[1m\033[33mtest with <mark>mark</mark> and <data>data</data>\033[0m"
+        "[test] \033[33mtest with <mark>mark</mark> and <data>data</data>\033[0m"
     )
 
 
@@ -40,7 +39,7 @@ def test_color_formatter():
         ),
         (
             logging.WARNING,
-            "[test] \033[1m\033[33mtest with \033[36mmark\033[33m and "
+            "[test] \033[33mtest with \033[36mmark\033[33m and "
             "\033[32mdata\033[33m\033[0m",
         ),
         (
