@@ -9,7 +9,7 @@ import click
 
 import secrets_env
 from secrets_env.commands.core import entrypoint, with_output_options
-from secrets_env.exceptions import ConfigError
+from secrets_env.exceptions import ConfigError, NoValue
 
 
 @entrypoint.command(
@@ -40,7 +40,7 @@ def run(args: Sequence[str], config: Path, partial: bool):
     # prepare environment variable set
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
-    except ConfigError:
+    except (ConfigError, NoValue):
         raise click.Abort from None
 
     environ = os.environ.copy()
@@ -50,6 +50,5 @@ def run(args: Sequence[str], config: Path, partial: bool):
     logger = logging.getLogger(__name__)
     logger.debug("exec> %s", " ".join(args))
 
-    result = subprocess.run(args, env=environ)
-
-    sys.exit(result.returncode)
+    proc = subprocess.run(args, env=environ)
+    sys.exit(proc.returncode)
