@@ -1,12 +1,6 @@
 Secrets.env
 ===========
 
-.. attention::
-
-   I'm currently reworking the documentation. Many pages might be incomplete.
-
-   Please refer to the `stable version <https://secrets-env.readthedocs.io/en/stable/>`_ or the `source code <https://github.com/tzing/secrets.env>`_ for more details.
-
 Secrets.env connects the credential store to your app.
 
 Safeguard your sensitive data by securely retrieving and injecting credentials into your environment variables.
