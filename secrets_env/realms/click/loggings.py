@@ -32,7 +32,7 @@ class ColorFormatter(logging.Formatter):
         return ""
 
     def get_style(self, level: int):
-        if level >= logging.WARNING:
+        if level >= logging.ERROR:
             return self.SGR_BRIGHT
         elif level <= logging.DEBUG:
             return self.SGR_DIM
