@@ -3,11 +3,11 @@
 *Table of Contents*
 
 <!-- no toc -->
-- [Unreleased](#unreleased)
+- [0.29.0 (2024-05-07)](#0290-2024-05-07)
 - [Prior to 0.29](#prior-to-029)
 
 
-## Unreleased
+## 0.29.0 (2024-05-07)
 
 ### 🚨 Breaking changes
 
