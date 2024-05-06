@@ -64,14 +64,9 @@ class VaultPath(BaseModel):
     @classmethod
     def _accept_shortcut(cls, data):
         if isinstance(data, dict):
-            if value := data.get("value"):
-                if value.count("#") != 1:
-                    raise ValueError("Invalid format. Expected 'path#field'")
-                path, field = value.rsplit("#", 1)
-                return {
-                    "path": path,
-                    "field": field,
-                }
+            if data.get("value"):
+                path = VaultPathSimplified.model_validate(data)
+                return path.normalized()
         return data
 
     @field_validator("field", mode="before")
@@ -89,6 +84,26 @@ class VaultPath(BaseModel):
         if any(not f for f in field):
             raise ValueError("Field cannot contain empty subpath")
         return field
+
+
+class VaultPathSimplified(BaseModel):
+    """Represents a simplified path to a value in Vault."""
+
+    value: str | None
+
+    @field_validator("value", mode="after")
+    @classmethod
+    def _check_value_format(cls, value: str) -> str:
+        if value.count("#") != 1:
+            raise ValueError("Invalid format. Expected 'path#field'.")
+        return value
+
+    def normalized(self) -> dict:
+        path, field = self.value.rsplit("#", 1)
+        return {
+            "path": path,
+            "field": field,
+        }
 
 
 def _split_field_str(f: str) -> Iterator[str]:
