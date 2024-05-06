@@ -51,7 +51,7 @@ class TestProvider:
         with pytest.raises(NoValue):
             provider(Request(name="foo"))
 
-        assert "Value not found for <data>foo</data>" in caplog.text
+        assert "Value for <data>foo</data> not found" in caplog.text
 
     def test_unsupported_error(self, caplog: pytest.LogCaptureFixture):
         class DummyProvider(Provider):
@@ -81,7 +81,7 @@ class TestProvider:
         with pytest.raises(NoValue):
             provider(Request(name="foo"))
 
-        assert "Config malformed for <data>foo</data>:" in caplog.text
+        assert "Request <data>foo</data> is malformed:" in caplog.text
         assert "➜ <mark>path</mark>: Input should be a valid string" in caplog.text
         assert "➜ <mark>foobar</mark>: Field required" in caplog.text
 
