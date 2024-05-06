@@ -14,22 +14,14 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.cache/pypoetry
-          key: ${{ runner.os }}-python-poetry-${{ hashFiles('poetry.lock') }}
-
-      - name: Install dependencies
-        run: pip3 install poetry
+      - name: Install poetry
+        run: pipx install poetry
 
       - name: Check version
         run: |
