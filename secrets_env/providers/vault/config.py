@@ -9,7 +9,6 @@ from pydantic import (
     Field,
     FilePath,
     HttpUrl,
-    InstanceOf,
     field_validator,
     model_validator,
 )
@@ -20,6 +19,8 @@ from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
+
+    from pydantic_core.core_schema import ValidationInfo, ValidatorFunctionWrapHandler
 
     from secrets_env.providers.vault.auth.base import Auth
 
@@ -72,7 +73,7 @@ class ProvidedByTeleportMarker:
 
 
 class VaultUserConfig(BaseModel):
-    url: HttpUrl | InstanceOf[ProvidedByTeleportMarker]
+    url: HttpUrl
     auth_config: dict[str, str] = Field(alias="auth")
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
@@ -118,6 +119,16 @@ class VaultUserConfig(BaseModel):
                 values["tls"] = TlsConfig()
 
         return values
+
+    @field_validator("url", mode="wrap")
+    @classmethod
+    def _validate_url(
+        cls, value, validator: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> HttpUrl | ProvidedByTeleportMarker:
+        """Silently ignore the URL value if teleport is set."""
+        if isinstance(value, ProvidedByTeleportMarker):
+            return value
+        return validator(value)
 
     @field_validator("auth_config", mode="before")
     @classmethod
