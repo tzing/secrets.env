@@ -71,14 +71,14 @@ class TestVaultUserConfig:
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.auth == NoAuth()
+        assert config.auth_object == NoAuth()
 
     def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
 
         config = VaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, VaultUserConfig)
-        assert config.auth == TokenAuth(token="tok3n")
+        assert config.auth_object == TokenAuth(token="tok3n")
 
     def test_auth__invalid(self):
         with pytest.raises(

@@ -144,7 +144,7 @@ class VaultUserConfig(BaseModel):
         return value
 
     @cached_property
-    def auth(self) -> Auth:
+    def auth_object(self) -> Auth:
         """Create auth instance from auth config.
 
         Raises
