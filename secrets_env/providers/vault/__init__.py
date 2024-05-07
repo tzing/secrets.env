@@ -8,15 +8,7 @@ from http import HTTPStatus
 from typing import Literal
 
 import httpx
-from pydantic import (
-    BaseModel,
-    Field,
-    InstanceOf,
-    PrivateAttr,
-    field_validator,
-    model_validator,
-    validate_call,
-)
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 from pydantic_core import Url
 
 import secrets_env.version
@@ -242,7 +234,7 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
     return httpx.Client(**client_params)
 
 
-def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
+def get_token(client: httpx.Client, auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
 
@@ -266,8 +258,7 @@ def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
     return token
 
 
-@validate_call
-def is_authenticated(client: InstanceOf[httpx.Client], token: str) -> bool:
+def is_authenticated(client: httpx.Client, token: str) -> bool:
     """Check is a token is authenticated.
 
     See also
@@ -289,8 +280,7 @@ def is_authenticated(client: InstanceOf[httpx.Client], token: str) -> bool:
     return False
 
 
-@validate_call
-def read_secret(client: InstanceOf[httpx.Client], path: str) -> dict | None:
+def read_secret(client: httpx.Client, path: str) -> dict | None:
     """Read secret from Vault.
 
     See also
@@ -363,8 +353,7 @@ class MountMetadata(BaseModel):
     version: Literal[1, 2]
 
 
-@validate_call
-def get_mount(client: InstanceOf[httpx.Client], path: str) -> MountMetadata | None:
+def get_mount(client: httpx.Client, path: str) -> MountMetadata | None:
     """Get mount point and KV engine version to a secret.
 
     See also
