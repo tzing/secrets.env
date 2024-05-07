@@ -5,7 +5,7 @@ import logging
 import typing
 from functools import cached_property
 from http import HTTPStatus
-from typing import Literal
+from pathlib import Path
 
 import httpx
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
@@ -14,6 +14,7 @@ from pydantic_core import Url
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
+from secrets_env.providers.vault.api import get_mount
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
@@ -326,70 +327,5 @@ def read_secret(client: httpx.Client, path: str) -> dict | None:
         return
 
     logger.error("Error occurred during query secret %s", path)
-    log_httpx_response(logger, resp)
-    return
-
-
-class _RawMountMetadata(BaseModel):
-    """
-    {
-        "data": {
-            "options": {"version": "1"},
-            "path": "secrets/",
-            "type": "kv",
-        }
-    }
-    """
-
-    data: _DataBlock
-
-    class _DataBlock(BaseModel):
-
-        options: _OptionBlock
-        path: str
-        type: str
-
-        class _OptionBlock(BaseModel):
-            version: str
-
-
-class MountMetadata(BaseModel):
-    """Represents a mount point and KV engine version to a secret."""
-
-    path: str
-    version: Literal[1, 2]
-
-
-def get_mount(client: httpx.Client, path: str) -> MountMetadata | None:
-    """Get mount point and KV engine version to a secret.
-
-    See also
-    --------
-    Vault HTTP API
-        https://developer.hashicorp.com/vault/api-docs/system/internal-ui-mounts
-    consul-template
-        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
-    """
-    try:
-        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
-    except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        logger.error("Error occurred during checking metadata for %s: %s", path, reason)
-        return
-
-    if resp.is_success:
-        parsed = _RawMountMetadata.model_validate_json(resp.read())
-        return MountMetadata(
-            path=parsed.data.path,
-            version=int(parsed.data.options.version),  # type: ignore[reportArgumentType]
-        )
-
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
-        # 404 is expected on an older version of vault, default to version 1
-        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
-        return MountMetadata(path="", version=1)
-
-    logger.error("Error occurred during checking metadata for %s", path)
     log_httpx_response(logger, resp)
     return
