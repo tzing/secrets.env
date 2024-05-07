@@ -75,20 +75,14 @@ This command loads secrets into environment variable and run the command.
 
 *Options:*
 
-``-C, --config FILE``
-   Specify an alternative configuration file.
+``-f, --config FILE``
+   Specify configuration file.
 
-``--strict / --no-strict``
-   Use strict mode. Stop run when not all of the values loaded.  [default: strict]
+``--partial``
+   Accept partial values loading. Or stop when failed to load any value.
 
 ``-q, --quiet``
    Silent mode. Don't show output until error.
 
 ``-v, --verbose``
    Increase output verbosity.
-
-
-version
-=======
-
-This command show current version.
