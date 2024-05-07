@@ -4,7 +4,6 @@ import enum
 import logging
 import typing
 from functools import cached_property
-from http import HTTPStatus
 from pathlib import Path
 
 import httpx
@@ -14,9 +13,9 @@ from pydantic_core import Url
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
-from secrets_env.providers.vault.api import get_mount
+from secrets_env.providers.vault.api import read_secret
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
+from secrets_env.utils import LruDict, get_httpx_error_reason
 
 if typing.TYPE_CHECKING:
     from typing import Iterable, Iterator, Sequence
@@ -286,46 +285,3 @@ def get_toke_helper_path() -> Path | None:
     path = Path.home() / ".vault-token"
     if path.is_file():
         return path
-
-
-def read_secret(client: httpx.Client, path: str) -> dict | None:
-    """Read secret from Vault.
-
-    See also
-    --------
-    https://developer.hashicorp.com/vault/api-docs/secret/kv
-    """
-    mount = get_mount(client, path)
-    if not mount:
-        return
-
-    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount.path, mount.version)
-
-    if mount.version == 2:
-        subpath = path.removeprefix(mount.path)
-        request_path = f"/v1/{mount.path}data/{subpath}"
-    else:
-        request_path = f"/v1/{path}"
-
-    try:
-        resp = client.get(request_path)
-    except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        logger.error("Error occurred during query secret %s: %s", path, reason)
-        return
-
-    if resp.is_success:
-        data = resp.json()
-        if mount.version == 2:
-            return data["data"]["data"]
-        else:
-            return data["data"]
-
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
-        logger.error("Secret <data>%s</data> not found", path)
-        return
-
-    logger.error("Error occurred during query secret %s", path)
-    log_httpx_response(logger, resp)
-    return

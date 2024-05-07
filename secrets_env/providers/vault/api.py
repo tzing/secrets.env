@@ -12,6 +12,49 @@ from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 logger = logging.getLogger(__name__)
 
 
+def read_secret(client: httpx.Client, path: str) -> dict | None:
+    """Read secret from Vault.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/secret/kv
+    """
+    mount = get_mount(client, path)
+    if not mount:
+        return
+
+    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount.path, mount.version)
+
+    if mount.version == 2:
+        subpath = path.removeprefix(mount.path)
+        request_path = f"/v1/{mount.path}data/{subpath}"
+    else:
+        request_path = f"/v1/{path}"
+
+    try:
+        resp = client.get(request_path)
+    except httpx.HTTPError as e:
+        if not (reason := get_httpx_error_reason(e)):
+            raise
+        logger.error("Error occurred during query secret %s: %s", path, reason)
+        return
+
+    if resp.is_success:
+        data = resp.json()
+        if mount.version == 2:
+            return data["data"]["data"]
+        else:
+            return data["data"]
+
+    elif resp.status_code == HTTPStatus.NOT_FOUND:
+        logger.error("Secret <data>%s</data> not found", path)
+        return
+
+    logger.error("Error occurred during query secret %s", path)
+    log_httpx_response(logger, resp)
+    return
+
+
 class RawMountMetadata(BaseModel):
     """
     {
