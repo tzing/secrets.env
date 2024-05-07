@@ -13,7 +13,7 @@ from pydantic_core import Url
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
-from secrets_env.providers.vault.api import read_secret
+from secrets_env.providers.vault.api import is_authenticated, read_secret
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason
 
@@ -256,28 +256,6 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
         raise AuthenticationError("Invalid token")
 
     return token
-
-
-def is_authenticated(client: httpx.Client, token: str) -> bool:
-    """Check is a token is authenticated.
-
-    See also
-    --------
-    https://developer.hashicorp.com/vault/api-docs/auth/token
-    """
-    logger.debug("Validate token for %s", client.base_url)
-
-    resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
-    if resp.is_success:
-        return True
-
-    logger.debug(
-        "Token verification failed. Code= %d (%s). Msg= %s",
-        resp.status_code,
-        resp.reason_phrase,
-        resp.json(),
-    )
-    return False
 
 
 def get_toke_helper_path() -> Path | None:

@@ -1,15 +1,50 @@
+import os
+
 import httpx
 import pytest
 import respx
 from pydantic_core import ValidationError
 
 from secrets_env.providers.vault import VaultKvProvider
-from secrets_env.providers.vault.api import MountMetadata, get_mount, read_secret
+from secrets_env.providers.vault.api import (
+    MountMetadata,
+    get_mount,
+    is_authenticated,
+    read_secret,
+)
 
 
 @pytest.fixture()
 def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
     return intl_provider.client
+
+
+class TestIsAuthenticated:
+    def test_success(self, respx_mock: respx.MockRouter):
+        respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self")
+
+        client = httpx.Client(base_url="https://vault.example.com")
+        assert is_authenticated(client, "test-token") is True
+
+    def test_fail(self, respx_mock: respx.MockRouter):
+        respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self").respond(
+            status_code=403,
+            json={"errors": ["mock permission denied"]},
+        )
+
+        client = httpx.Client(base_url="https://vault.example.com")
+        assert is_authenticated(client, "test-token") is False
+
+    def test_integration(self):
+        if "VAULT_ADDR" not in os.environ:
+            raise pytest.skip("VAULT_ADDR is not set")
+        if "VAULT_TOKEN" not in os.environ:
+            raise pytest.skip("VAULT_TOKEN is not set")
+
+        client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
+
+        assert is_authenticated(client, os.getenv("VAULT_TOKEN")) is True
+        assert is_authenticated(client, "invalid-token") is False
 
 
 class TestReadSecret:

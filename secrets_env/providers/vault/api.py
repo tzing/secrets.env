@@ -12,6 +12,28 @@ from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 logger = logging.getLogger(__name__)
 
 
+def is_authenticated(client: httpx.Client, token: str) -> bool:
+    """Check if a token is authenticated.
+
+    See also
+    --------
+    https://developer.hashicorp.com/vault/api-docs/auth/token
+    """
+    logger.debug("Validate token for %s", client.base_url)
+
+    resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
+    if resp.is_success:
+        return True
+
+    logger.debug(
+        "Token verification failed. Code= %d (%s). Msg= %s",
+        resp.status_code,
+        resp.reason_phrase,
+        resp.json(),
+    )
+    return False
+
+
 def read_secret(client: httpx.Client, path: str) -> dict | None:
     """Read secret from Vault.
 
