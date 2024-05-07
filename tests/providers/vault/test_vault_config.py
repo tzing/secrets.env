@@ -37,7 +37,7 @@ class TestVaultUserConfig:
 
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://example.com")
-        assert config.auth_config == {"method": "null"}
+        assert config.auth == {"method": "null"}
         assert config.proxy == Url("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",

@@ -22,7 +22,7 @@ from pydantic_core import Url
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
-from secrets_env.providers.vault.config import VaultUserConfig, TlsConfig
+from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
 
 if typing.TYPE_CHECKING:

@@ -77,7 +77,7 @@ class LazyProvidedMarker(enum.Enum):
 
 class VaultUserConfig(BaseModel):
     url: HttpUrl
-    auth_config: dict[str, str] = Field(alias="auth")
+    auth: dict[str, str]
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
     teleport: TeleportUserConfig | None = None
@@ -132,7 +132,7 @@ class VaultUserConfig(BaseModel):
             return value
         return validator(value)
 
-    @field_validator("auth_config", mode="before")
+    @field_validator("auth", mode="before")
     @classmethod
     def _validate_auth(cls, value: dict | str) -> dict:
         if isinstance(value, str):
@@ -156,4 +156,4 @@ class VaultUserConfig(BaseModel):
         """
         if isinstance(self.url, LazyProvidedMarker):
             raise RuntimeError("Vault URL is not loaded yet")
-        return create_auth_by_name(self.url, self.auth_config)
+        return create_auth_by_name(self.url, self.auth)
