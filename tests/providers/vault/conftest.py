@@ -1,6 +1,5 @@
 import os
 
-import httpx
 import pytest
 
 from secrets_env.providers.vault import VaultKvProvider
