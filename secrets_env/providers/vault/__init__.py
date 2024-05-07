@@ -258,6 +258,30 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     return token
 
 
+def get_token_from_helper(client: httpx.Client) -> str | None:
+    """
+    Get token from token helper.
+
+    See also
+    --------
+    https://www.vaultproject.io/docs/commands/token-helper
+    """
+    logger.debug("Attempting to use token helper")
+
+    token_helper = get_token_helper_path()
+    if not token_helper:
+        logger.debug("Token helper not found")
+        return None
+
+    token = token_helper.read_text()
+    if is_authenticated(client, token):
+        logger.debug("Token helper is valid")
+        return token
+
+    logger.debug("Token helper is invalid")
+    return None
+
+
 def get_token_helper_path() -> Path | None:
     """Get path to the token helper file."""
     path = Path.home() / ".vault-token"

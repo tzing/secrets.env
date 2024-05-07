@@ -312,6 +312,45 @@ class TestGetToken:
             get_token(client, auth)
 
 
+class TestGetTokenFromHelper:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            lambda c, t: True,
+        )
+
+        assert get_token_from_helper(Mock(httpx.Client)) == "t0ken"
+
+    def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: None,
+        )
+        assert get_token_from_helper(Mock(httpx.Client)) is None
+
+    def test_expired(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            lambda c, t: False,
+        )
+
+        assert get_token_from_helper(Mock(httpx.Client)) is None
+
+
 class TestGetTokenHelperPath:
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("pathlib.Path.is_file", lambda _: True)
