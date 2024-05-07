@@ -17,8 +17,9 @@ from secrets_env.providers.vault import (
     VaultPath,
     _split_field_str,
     create_http_client,
-    get_toke_helper_path,
     get_token,
+    get_token_from_helper,
+    get_token_helper_path,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
@@ -314,8 +315,8 @@ class TestGetToken:
 class TestGetTokenHelperPath:
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("pathlib.Path.is_file", lambda _: True)
-        assert isinstance(get_toke_helper_path(), Path)
+        assert isinstance(get_token_helper_path(), Path)
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
-        assert get_toke_helper_path() is None
+        assert get_token_helper_path() is None

@@ -258,7 +258,7 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     return token
 
 
-def get_toke_helper_path() -> Path | None:
+def get_token_helper_path() -> Path | None:
     """Get path to the token helper file."""
     path = Path.home() / ".vault-token"
     if path.is_file():
