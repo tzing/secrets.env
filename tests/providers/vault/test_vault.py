@@ -20,6 +20,7 @@ from secrets_env.providers.vault import (
     _split_field_str,
     create_http_client,
     get_mount,
+    get_toke_helper_path,
     get_token,
     is_authenticated,
     read_secret,
@@ -356,6 +357,16 @@ class TestIsAuthenticated:
 
         assert is_authenticated(client, os.getenv("VAULT_TOKEN")) is True
         assert is_authenticated(client, "invalid-token") is False
+
+
+class TestGetTokenHelperPath:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", lambda _: True)
+        assert isinstance(get_toke_helper_path(), Path)
+
+    def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
+        assert get_toke_helper_path() is None
 
 
 class TestReadSecret:

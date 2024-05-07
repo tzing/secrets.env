@@ -280,6 +280,13 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     return False
 
 
+def get_toke_helper_path() -> Path | None:
+    """Get path to the token helper file."""
+    path = Path.home() / ".vault-token"
+    if path.is_file():
+        return path
+
+
 def read_secret(client: httpx.Client, path: str) -> dict | None:
     """Read secret from Vault.
 
