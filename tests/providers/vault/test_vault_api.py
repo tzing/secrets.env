@@ -3,7 +3,13 @@ import pytest
 import respx
 from pydantic_core import ValidationError
 
+from secrets_env.providers.vault import VaultKvProvider
 from secrets_env.providers.vault.api import MountMetadata, get_mount, read_secret
+
+
+@pytest.fixture()
+def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
+    return intl_provider.client
 
 
 class TestReadSecret:

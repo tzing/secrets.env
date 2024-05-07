@@ -13,8 +13,3 @@ def intl_provider() -> VaultKvProvider:
     if "VAULT_TOKEN" not in os.environ:
         raise pytest.skip("VAULT_TOKEN is not set")
     return VaultKvProvider(auth="token")
-
-
-@pytest.fixture()
-def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
-    return intl_provider.client

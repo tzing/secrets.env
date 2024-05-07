@@ -14,7 +14,6 @@ from secrets_env.providers.teleport.config import (
     TeleportUserConfig,
 )
 from secrets_env.providers.vault import (
-    MountMetadata,
     VaultKvProvider,
     VaultPath,
     _split_field_str,
