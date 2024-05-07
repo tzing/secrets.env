@@ -7,7 +7,7 @@ from pydantic_core import Url, ValidationError
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.config import (
-    ProvidedByTeleportMarker,
+    LazyProvidedMarker,
     TlsConfig,
     VaultUserConfig,
 )
@@ -37,7 +37,7 @@ class TestVaultUserConfig:
 
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://example.com")
-        assert config.auth_config == {"method": "null"}
+        assert config.auth == {"method": "null"}
         assert config.proxy == Url("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",
@@ -57,7 +57,8 @@ class TestVaultUserConfig:
             {"auth": "null", "teleport": {"app": "test"}}
         )
         assert isinstance(config, VaultUserConfig)
-        assert isinstance(config.url, ProvidedByTeleportMarker)
+        assert config.url == LazyProvidedMarker.ProvidedByTeleport
+        assert config.tls == LazyProvidedMarker.ProvidedByTeleport
 
     def test_url__missing(self):
         if "VAULT_ADDR" in os.environ:
@@ -70,14 +71,14 @@ class TestVaultUserConfig:
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.auth == NoAuth()
+        assert config.auth_object == NoAuth()
 
     def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
 
         config = VaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, VaultUserConfig)
-        assert config.auth == TokenAuth(token="tok3n")
+        assert config.auth_object == TokenAuth(token="tok3n")
 
     def test_auth__invalid(self):
         with pytest.raises(
@@ -103,8 +104,8 @@ class TestVaultUserConfig:
         )
 
         assert config.teleport is not None
-        assert isinstance(config.url, ProvidedByTeleportMarker)
-        assert config.tls == TlsConfig()
+        assert config.url == LazyProvidedMarker.ProvidedByTeleport
+        assert config.tls == LazyProvidedMarker.ProvidedByTeleport
 
         assert "Any provided URL would be discarded" in caplog.text
         assert "TLS configuration would be overlooked" in caplog.text

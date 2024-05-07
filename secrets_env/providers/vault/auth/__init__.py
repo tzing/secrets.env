@@ -18,7 +18,7 @@ def create_auth_by_name(url: Url, config: dict) -> Auth:
     """
     Create an instance of the authentication class by the provided name.
     """
-    logging.debug('Creating "%s" auth', config["method"])
+    logger.debug('Creating "%s" auth', config["method"])
     method: str = config["method"].lower()
 
     # fmt: off

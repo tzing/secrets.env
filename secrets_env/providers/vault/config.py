@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import logging
 import typing
 from functools import cached_property
@@ -68,13 +69,15 @@ class TlsConfig(BaseModel):
         return bool(self.ca_cert or self.client_cert or self.client_key)
 
 
-class ProvidedByTeleportMarker:
-    """Placeholder for values that would be provided by Teleport later."""
+class LazyProvidedMarker(enum.Enum):
+    """Internal marker for values that would be provided later."""
+
+    ProvidedByTeleport = enum.auto()
 
 
 class VaultUserConfig(BaseModel):
     url: HttpUrl
-    auth_config: dict[str, str] = Field(alias="auth")
+    auth: dict[str, str]
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
     teleport: TeleportUserConfig | None = None
@@ -115,22 +118,21 @@ class VaultUserConfig(BaseModel):
                     logger.warning(
                         "TLS configuration would be overlooked when 'teleport' config is set"
                     )
-                values["url"] = ProvidedByTeleportMarker()
-                values["tls"] = TlsConfig()
+                values["url"] = LazyProvidedMarker.ProvidedByTeleport
+                values["tls"] = LazyProvidedMarker.ProvidedByTeleport
 
         return values
 
-    @field_validator("url", mode="wrap")
+    @field_validator("url", "tls", mode="wrap")
     @classmethod
-    def _validate_url(
+    def _bypass_marker(
         cls, value, validator: ValidatorFunctionWrapHandler, info: ValidationInfo
-    ) -> HttpUrl | ProvidedByTeleportMarker:
-        """Silently ignore the URL value if teleport is set."""
-        if isinstance(value, ProvidedByTeleportMarker):
+    ) -> HttpUrl | LazyProvidedMarker:
+        if isinstance(value, LazyProvidedMarker):
             return value
         return validator(value)
 
-    @field_validator("auth_config", mode="before")
+    @field_validator("auth", mode="before")
     @classmethod
     def _validate_auth(cls, value: dict | str) -> dict:
         if isinstance(value, str):
@@ -142,7 +144,7 @@ class VaultUserConfig(BaseModel):
         return value
 
     @cached_property
-    def auth(self) -> Auth:
+    def auth_object(self) -> Auth:
         """Create auth instance from auth config.
 
         Raises
@@ -152,6 +154,6 @@ class VaultUserConfig(BaseModel):
         ValidationError
             If auth config is invalid.
         """
-        if isinstance(self.url, ProvidedByTeleportMarker):
+        if isinstance(self.url, LazyProvidedMarker):
             raise RuntimeError("Vault URL is not loaded yet")
-        return create_auth_by_name(self.url, self.auth_config)
+        return create_auth_by_name(self.url, self.auth)
