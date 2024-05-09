@@ -516,19 +516,8 @@ Token auth
 Token :octicon:`bookmark`
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The only argument used for this method is the token itself, which can be set via:
-
-1. Environment variables :envvar:`SECRETS_ENV_TOKEN` or ``VAULT_TOKEN``.
-2. Retrieved from the `token helper`_
-
-   After authentication, Vault CLI stores the generated token in the ``~/.vault-token`` file.
-   This app reads the token from that file.
-   However, it does not create a token when authenticating using this app.
-
-   This means that you will be automatically authenticated after executing the ``vault login`` command, but not the other way around.
-
-   .. _token helper: https://developer.hashicorp.com/vault/docs/commands/token-helper
-
+The only argument used for this method is the token itself,
+which must be set via environment variables :envvar:`SECRETS_ENV_TOKEN` or ``VAULT_TOKEN``.
 
 .. _vault.feat.teleport:
 

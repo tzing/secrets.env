@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from pydantic import SecretStr
@@ -35,21 +34,8 @@ class TokenAuth(Auth):
         # env var
         if token := get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN"):
             logger.debug("Found token from environment variable")
-            token = cast(SecretStr, token)
-            return cls(token=token)
-
-        # token helper
-        # https://www.vaultproject.io/docs/commands/token-helper
-        helper_path = Path.home() / ".vault-token"
-        if helper_path.is_file():
-            logger.debug("Found token from token helper")
-            with helper_path.open("r", encoding="utf-8") as fd:
-                # don't think the token could be this long
-                token = fd.read(256).strip()
-            token = cast(SecretStr, token)
-            return cls(token=token)
-
-        raise ValueError("Missing token for Vault authentication.")
+        token = cast(SecretStr, token)
+        return cls(token=token)
 
     def login(self, client: Any) -> str:
         return self.token.get_secret_value()
