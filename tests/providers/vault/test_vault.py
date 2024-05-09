@@ -20,7 +20,6 @@ from secrets_env.providers.vault import (
     create_http_client,
     get_token,
     get_token_from_helper,
-    get_token_helper_path,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
@@ -366,10 +365,7 @@ class TestGetTokenFromHelper:
         assert get_token_from_helper(Mock(httpx.Client)) == "t0ken"
 
     def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_helper_path",
-            lambda: None,
-        )
+        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
         assert get_token_from_helper(Mock(httpx.Client)) is None
 
     def test_expired(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -386,13 +382,3 @@ class TestGetTokenFromHelper:
         )
 
         assert get_token_from_helper(Mock(httpx.Client)) is None
-
-
-class TestGetTokenHelperPath:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("pathlib.Path.is_file", lambda _: True)
-        assert isinstance(get_token_helper_path(), Path)
-
-    def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
-        assert get_token_helper_path() is None

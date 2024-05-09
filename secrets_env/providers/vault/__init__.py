@@ -160,8 +160,8 @@ class VaultKvProvider(Provider, VaultUserConfig):
         # get token
         if token := get_token_from_helper(client):
             client.headers["X-Vault-Token"] = token
-        else:
-            client.headers["X-Vault-Token"] = get_token(client, self.auth_object)
+        elif token := get_token(client, self.auth_object):
+            client.headers["X-Vault-Token"] = token
 
         return client
 
@@ -276,7 +276,7 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
     logger.debug("Attempting to use token helper")
 
     token_helper = get_token_helper_path()
-    if not token_helper:
+    if not token_helper.is_file():
         logger.debug("Token helper not found")
         return None
 
@@ -289,8 +289,6 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
     return None
 
 
-def get_token_helper_path() -> Path | None:
+def get_token_helper_path() -> Path:
     """Get path to the token helper file."""
-    path = Path.home() / ".vault-token"
-    if path.is_file():
-        return path
+    return Path.home() / ".vault-token"
