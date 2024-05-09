@@ -140,6 +140,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
         """
         logger.debug("Vault client initialization requested. URL= %s", self.url)
 
+        # load url & tls from teleport
         if self.teleport:
             logger.debug("Teleport configuration is set. Use it for connecting Vault.")
 
@@ -153,8 +154,14 @@ class VaultKvProvider(Provider, VaultUserConfig):
             self.tls.client_cert = param.path_cert
             self.tls.client_key = param.path_key
 
+        # initialize client
         client = create_http_client(self)
-        client.headers["X-Vault-Token"] = get_token(client, self.auth_object)
+
+        # get token
+        if token := get_token_from_helper(client):
+            client.headers["X-Vault-Token"] = token
+        else:
+            client.headers["X-Vault-Token"] = get_token(client, self.auth_object)
 
         return client
 

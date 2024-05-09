@@ -1,4 +1,5 @@
 import os
+import uuid
 from pathlib import Path
 from unittest.mock import Mock, PropertyMock
 
@@ -75,15 +76,44 @@ class TestSplitFieldStr:
 
 
 class TestVaultKvProvider:
-    def test_client(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.fixture()
+    def random_token(self) -> str:
+        return uuid.uuid4().hex
+
+    def test_client(self, monkeypatch: pytest.MonkeyPatch, random_token: str):
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client",
             lambda _: Mock(httpx.Client, headers={}),
         )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_from_helper", lambda _: None
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token", lambda c, a: random_token
+        )
+
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
         assert isinstance(provider.client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
 
-    def test_client__with_teleport(self, monkeypatch: pytest.MonkeyPatch):
+    def test_client__use_helper(
+        self, monkeypatch: pytest.MonkeyPatch, random_token: str
+    ):
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.create_http_client",
+            lambda _: Mock(httpx.Client, headers={}),
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_from_helper", lambda _: random_token
+        )
+
+        provider = VaultKvProvider(url="https://vault.example.com", auth="null")
+        assert isinstance(provider.client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
+
+    def test_client__with_teleport(
+        self, monkeypatch: pytest.MonkeyPatch, random_token: str
+    ):
         def mock_create_http_client(config: VaultUserConfig):
             assert config.url == Url("https://vault.teleport.example.com/")
             assert config.teleport is None
@@ -98,6 +128,12 @@ class TestVaultKvProvider:
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client", mock_create_http_client
         )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_from_helper", lambda _: None
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token", lambda c, a: random_token
+        )
 
         teleport_user_config = Mock(TeleportUserConfig)
         teleport_user_config.connection_param = Mock(
@@ -111,6 +147,7 @@ class TestVaultKvProvider:
         provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
         client = provider.client
         assert isinstance(client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
 
     @pytest.fixture()
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
