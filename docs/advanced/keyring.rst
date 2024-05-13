@@ -13,6 +13,16 @@ Install secrets.env with extra ``keyring`` to enable this feature:
 
 .. tab-set::
 
+   .. tab-item:: pipx
+
+      .. code-block:: bash
+
+         # for the first time installation
+         pipx install 'secrets.env[keyring]'
+
+         # if you have already installed secrets.env
+         pipx inject secrets.env 'secrets.env[keyring]'
+
    .. tab-item:: pip
 
       .. code-block:: bash
@@ -24,10 +34,6 @@ Install secrets.env with extra ``keyring`` to enable this feature:
       .. tip::
 
          The dependencies is already satisfied when you install with poetry.
-
-      .. code-block:: bash
-
-         poetry self add secrets.env
 
 
 Environment variables
