@@ -12,33 +12,15 @@ Requirements
 
 Secrets.env requires **Python 3.9+**.
 
-In the case of utilizing this tool as a `Poetry plugin`_, ensure that **Poetry 1.2** or higher is installed.
-
-.. _Poetry plugin: https://python-poetry.org/docs/plugins/
-
 
 Installation
 ------------
 
-.. tab-set::
+Install it using `pipx`_ / `pip`_, use it as a standalone CLI tool:
 
-   .. tab-item:: pip
-      :sync: pip
+.. code-block:: bash
 
-      Install it using pip, use it as a standalone CLI tool:
-
-      .. code-block:: bash
-
-         pip install secrets.env
-
-   .. tab-item:: poetry
-      :sync: poetry
-
-      Install it as a Poetry plugin:
-
-      .. code-block:: bash
-
-         poetry self add secrets.env
+   pipx install secrets.env
 
 Unlock additional functionalities by installing secrets.env with extras. Choose from several options tailored to enhance your experience:
 
@@ -49,26 +31,16 @@ Unlock additional functionalities by installing secrets.env with extras. Choose 
 
 Select the extras that best suit your needs to optimize your secrets.env experience.
 
-.. tab-set::
+.. code-block:: bash
 
-   .. tab-item:: pip
-      :sync: pip
+   pipx install 'secrets.env[yaml]'
 
-      .. code-block:: bash
+.. hint::
 
-         pip install 'secrets.env[yaml]'
+   Remember to quote the extras to ensure that the shell interprets the brackets correctly.
 
-      .. hint::
-
-         Remember to quote the extras to ensure that the shell interprets the brackets correctly.
-
-   .. tab-item:: poetry
-      :sync: poetry
-
-      .. code-block:: bash
-
-         poetry self add secrets.env --extras yaml
-
+.. _pipx: https://pipx.pypa.io/stable/
+.. _pip: https://pip.pypa.io/en/stable/
 .. _Gravitational Teleport: https://goteleport.com/
 
 
@@ -179,18 +151,6 @@ Secrets.env retrieves values from configured sources and assigns them as environ
 
 Once the operation is finished, the secrets are cleared from the environment to prevent exposure to other processes.
 
-.. tab-set::
+.. code-block:: bash
 
-   .. tab-item:: CLI
-      :sync: pip
-
-      .. code-block:: bash
-
-         secrets.env run -- ./my-script
-
-   .. tab-item:: poetry
-      :sync: poetry
-
-      .. code-block:: bash
-
-         poetry run ./my-script
+   secrets.env run -- ./my-script
