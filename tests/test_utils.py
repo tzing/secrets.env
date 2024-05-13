@@ -159,6 +159,6 @@ class TestSetupCaptureWarnings:
             caplog.at_level(logging.WARNING, "py.warnings"),
         ):
             # NOTE this test file is not in secrets_env package
-            warnings.warn("test warning", UserWarning)
+            warnings.warn("test warning", UserWarning, stacklevel=1)
 
         assert "UserWarning: test warning" in caplog.text

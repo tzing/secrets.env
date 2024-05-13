@@ -93,7 +93,7 @@ def ensure_dependencies():
 
 
 def _warn(s: str):
-    warnings.warn(s, UserWarning)
+    warnings.warn(s, UserWarning, stacklevel=1)
 
 
 class TeleportConnectionParameter(BaseModel):

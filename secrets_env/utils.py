@@ -20,6 +20,7 @@ if typing.TYPE_CHECKING:
     import pydantic_core
 
     T = TypeVar("T")
+    T_Warning = TypeVar("T_Warning", bound=Warning)
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +204,12 @@ def setup_capture_warnings():
 
 
 def _show_warning(
-    message: T, category: type[T], filename: str, lineno: int, file=None, line=None
+    message: T_Warning,
+    category: type[T_Warning],
+    filename: str,
+    lineno: int,
+    file=None,
+    line=None,
 ):
     """Alternative :py:func:`warnings.showwarning` handler for this package."""
     path_package = Path(__file__).resolve().parent
