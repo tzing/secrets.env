@@ -28,7 +28,7 @@ The installation command depends on how you installed Poetry:
 
       .. code-block:: bash
 
-         pipx inject poetry add secrets.env
+         pipx inject poetry secrets.env
 
    .. tab-item:: Others
       :sync: self-add
@@ -41,7 +41,7 @@ The installation command depends on how you installed Poetry:
 
       .. _self add: https://python-poetry.org/docs/cli/#self-add
 
-Note that YAML config format is not enabled by default (while TOML and JSON are enabled by default). If you require YAML support, install it with extras:
+If you need optional dependencies, such as YAML support, you can install them with extras:
 
 .. tab-set::
 
@@ -50,7 +50,7 @@ Note that YAML config format is not enabled by default (while TOML and JSON are 
 
       .. code-block:: bash
 
-         pipx inject poetry add 'secrets.env[yaml]'
+         pipx inject poetry 'secrets.env[yaml]'
 
    .. tab-item:: Others
       :sync: self-add
