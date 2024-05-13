@@ -6,6 +6,8 @@ import typing
 from cleo.formatters.style import Style
 from cleo.io.outputs.output import Verbosity
 
+import secrets_env.utils
+
 if typing.TYPE_CHECKING:
     from typing import ClassVar
 
@@ -35,6 +37,9 @@ def setup_output(output: Output) -> None:
     root_logger.setLevel(logging.DEBUG)
     root_logger.propagate = False
     root_logger.addHandler(handler)
+
+    # capture warnings
+    secrets_env.utils.setup_capture_warnings()
 
 
 class CleoHandler(logging.Handler):

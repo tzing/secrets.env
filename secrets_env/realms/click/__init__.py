@@ -7,6 +7,7 @@ import typing
 
 import click
 
+import secrets_env.utils
 from secrets_env.realms.click.loggings import (
     ClickHandler,
     ColorFormatter,
@@ -102,3 +103,6 @@ def _setup_logging(verbosity: Verbosity):
 
     logging.root.setLevel(verbosity.level_dependency)
     logging.root.addHandler(dependency_handler)
+
+    # capture warnings
+    secrets_env.utils.setup_capture_warnings()
