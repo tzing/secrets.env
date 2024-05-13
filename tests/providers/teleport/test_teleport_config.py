@@ -135,6 +135,9 @@ class TestEnsureDependencies:
         with pytest.raises(UnsupportedError):
             ensure_dependencies()
 
+    @pytest.mark.filterwarnings(
+        "ignore::UserWarning:secrets_env.providers.teleport.config"
+    )
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
         monkeypatch.setattr("importlib.util.find_spec", lambda _: None)
