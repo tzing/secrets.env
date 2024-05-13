@@ -10,6 +10,8 @@ import re
 import sys
 import threading
 import typing
+import warnings
+from pathlib import Path
 from typing import TypeVar, overload
 
 if typing.TYPE_CHECKING:
@@ -193,3 +195,27 @@ class LruDict(collections.OrderedDict[TK, TV]):
             return self[key]
         except KeyError:
             return default
+
+
+def setup_capture_warnings():
+    """Setup custom warning handler."""
+    warnings.showwarning = _show_warning
+
+
+def _show_warning(
+    message: T, category: type[T], filename: str, lineno: int, file=None, line=None
+):
+    """Alternative :py:func:`warnings.showwarning` handler for this package."""
+    path_package = Path(__file__).resolve().parent
+    path_source = Path(filename).resolve()
+
+    if path_source.is_relative_to(path_package):
+        # the warning is from this package
+        logger = logging.getLogger("secrets_env.warnings")
+        logger.warning(message.args[0])
+    else:
+        # fallback - use the default handler
+        # https://docs.python.org/3/library/logging.html#logging.captureWarnings
+        s = warnings.formatwarning(message, category, filename, lineno, line)
+        logger = logging.getLogger("py.warnings")
+        logger.warning(str(s))
