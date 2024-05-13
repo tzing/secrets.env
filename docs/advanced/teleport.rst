@@ -21,6 +21,16 @@ In addition to optional dependencies, using this feature necessitates having the
 
    .. tab-set::
 
+   .. tab-item:: pipx
+
+      .. code-block:: bash
+
+         # for the first time installation
+         pipx install 'secrets.env[teleport]'
+
+         # if you have already installed secrets.env
+         pipx inject secrets.env 'secrets.env[teleport]'
+
       .. tab-item:: pip
 
          .. code-block:: bash
@@ -31,7 +41,7 @@ In addition to optional dependencies, using this feature necessitates having the
 
          .. code-block:: bash
 
-            poetry self add secrets.env --extras teleport
+            pipx inject poetry 'secrets.env[teleport]'
 
 
 Certificate provider
