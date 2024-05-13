@@ -2,9 +2,22 @@
 
 *Table of Contents*
 
-<!-- no toc -->
+- [Unreleased](#unreleased)
+  - [✨ Enhancements](#-enhancements)
 - [0.29.0 (2024-05-07)](#0290-2024-05-07)
+  - [🚨 Breaking changes](#-breaking-changes)
+  - [✨ Enhancements](#-enhancements-1)
+  - [🚧 Internal changes](#-internal-changes)
 - [Prior to 0.29](#prior-to-029)
+
+
+## Unreleased
+
+### ✨ Enhancements
+
+* Vault provider now integrates with Vault's [token helper]
+
+  [token helper]: https://www.vaultproject.io/docs/commands/token-helper
 
 
 ## 0.29.0 (2024-05-07)

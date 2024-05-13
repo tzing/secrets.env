@@ -1,10 +1,10 @@
 import os
+import uuid
 from pathlib import Path
 from unittest.mock import Mock, PropertyMock
 
 import httpx
 import pytest
-import respx
 from pydantic_core import Url, ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
@@ -14,32 +14,16 @@ from secrets_env.providers.teleport.config import (
     TeleportUserConfig,
 )
 from secrets_env.providers.vault import (
-    MountMetadata,
     VaultKvProvider,
     VaultPath,
     _split_field_str,
     create_http_client,
-    get_mount,
     get_token,
-    is_authenticated,
-    read_secret,
+    get_token_from_helper,
+    save_token_to_helper,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-
-
-@pytest.fixture()
-def intl_provider() -> VaultKvProvider:
-    if "VAULT_ADDR" not in os.environ:
-        raise pytest.skip("VAULT_ADDR is not set")
-    if "VAULT_TOKEN" not in os.environ:
-        raise pytest.skip("VAULT_TOKEN is not set")
-    return VaultKvProvider(auth="token")
-
-
-@pytest.fixture()
-def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
-    return intl_provider.client
 
 
 class TestVaultPath:
@@ -92,15 +76,49 @@ class TestSplitFieldStr:
 
 
 class TestVaultKvProvider:
-    def test_client(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.fixture()
+    def random_token(self) -> str:
+        return uuid.uuid4().hex
+
+    def test_client(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, random_token: str
+    ):
+        helper = tmp_path / ".vault-token"
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client",
             lambda _: Mock(httpx.Client, headers={}),
         )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token", lambda c, a: random_token
+        )
+
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
         assert isinstance(provider.client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
+        assert helper.read_text() == random_token
 
-    def test_client__with_teleport(self, monkeypatch: pytest.MonkeyPatch):
+    def test_client__use_helper(
+        self, monkeypatch: pytest.MonkeyPatch, random_token: str
+    ):
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.create_http_client",
+            lambda _: Mock(httpx.Client, headers={}),
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_from_helper", lambda _: random_token
+        )
+
+        provider = VaultKvProvider(url="https://vault.example.com", auth="null")
+        assert isinstance(provider.client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
+
+    def test_client__with_teleport(
+        self, monkeypatch: pytest.MonkeyPatch, random_token: str
+    ):
         def mock_create_http_client(config: VaultUserConfig):
             assert config.url == Url("https://vault.teleport.example.com/")
             assert config.teleport is None
@@ -115,6 +133,12 @@ class TestVaultKvProvider:
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client", mock_create_http_client
         )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_from_helper", lambda _: None
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token", lambda c, a: random_token
+        )
 
         teleport_user_config = Mock(TeleportUserConfig)
         teleport_user_config.connection_param = Mock(
@@ -128,6 +152,7 @@ class TestVaultKvProvider:
         provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
         client = provider.client
         assert isinstance(client, httpx.Client)
+        assert provider.client.headers["X-Vault-Token"] == random_token
 
     @pytest.fixture()
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
@@ -329,275 +354,48 @@ class TestGetToken:
             get_token(client, auth)
 
 
-class TestIsAuthenticated:
-
-    def test_success(self, respx_mock: respx.MockRouter):
-        respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self")
-
-        client = httpx.Client(base_url="https://vault.example.com")
-        assert is_authenticated(client, "test-token") is True
-
-    def test_fail(self, respx_mock: respx.MockRouter):
-        respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self").respond(
-            status_code=403,
-            json={"errors": ["mock permission denied"]},
-        )
-
-        client = httpx.Client(base_url="https://vault.example.com")
-        assert is_authenticated(client, "test-token") is False
-
-    def test_integration(self):
-        if "VAULT_ADDR" not in os.environ:
-            raise pytest.skip("VAULT_ADDR is not set")
-        if "VAULT_TOKEN" not in os.environ:
-            raise pytest.skip("VAULT_TOKEN is not set")
-
-        client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
-
-        assert is_authenticated(client, os.getenv("VAULT_TOKEN")) is True
-        assert is_authenticated(client, "invalid-token") is False
-
-
-class TestReadSecret:
-    @pytest.fixture()
-    def _set_mount_kv2(self, monkeypatch: pytest.MonkeyPatch):
+class TestSaveTokenToHelper:
+    def test(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / ".vault-token"
         monkeypatch.setattr(
-            "secrets_env.providers.vault.get_mount",
-            lambda c, p: MountMetadata(path="secrets/", version=2),
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
         )
+        save_token_to_helper("t0ken")
+        assert helper.read_text() == "t0ken"
 
-    @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_kv2(
-        self,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-    ):
-        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            httpx.Response(
-                200,
-                json={
-                    "request_id": "9ababbb6-3749-cf2c-5a5b-85660e917e8e",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 0,
-                    "data": {
-                        "data": {"test": "mock"},
-                        "metadata": {
-                            "created_time": "2022-09-20T15:57:45.143053836Z",
-                            "custom_metadata": None,
-                            "deletion_time": "",
-                            "destroyed": False,
-                            "version": 1,
-                        },
-                    },
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
-                },
-            )
-        )
 
-        assert read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+class TestGetTokenFromHelper:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
 
-    def test_kv2_integration(self, intl_client: httpx.Client):
-        assert read_secret(intl_client, "kv2/test") == {
-            "foo": "hello, world",
-            "test": {"name.with-dot": "sample-value"},
-        }
-
-    def test_kv1(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-    ):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.get_mount",
-            lambda c, p: MountMetadata(path="secrets/", version=1),
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
         )
-        respx_mock.get("https://example.com/v1/secrets/test").mock(
-            httpx.Response(
-                200,
-                json={
-                    "request_id": "a8f28d97-8a9d-c9dd-4d86-e815083b33ad",
-                    "lease_id": "",
-                    "renewable": False,
-                    "lease_duration": 2764800,
-                    "data": {"test": "mock"},
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
-                },
-            )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            lambda c, t: True,
         )
 
-        assert read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+        assert get_token_from_helper(Mock(httpx.Client)) == "t0ken"
 
-    def test_kv1_integration(self, intl_client: httpx.Client):
-        assert read_secret(intl_client, "kv1/test") == {"foo": "hello"}
+    def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
+        assert get_token_from_helper(Mock(httpx.Client)) is None
 
-    @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_not_found(
-        self,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            httpx.Response(404)
+    def test_expired(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
         )
-        assert read_secret(unittest_client, "secrets/test") is None
-        assert "Secret <data>secrets/test</data> not found" in caplog.text
-
-    def test_get_mount_error(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_client: httpx.Client
-    ):
-        monkeypatch.setattr("secrets_env.providers.vault.get_mount", lambda c, p: None)
-        assert read_secret(unittest_client, "secrets/test") is None
-
-    @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_connection_error(
-        self,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            side_effect=httpx.ProxyError
-        )
-        assert read_secret(unittest_client, "secrets/test") is None
-        assert (
-            "Error occurred during query secret secrets/test: proxy error"
-            in caplog.text
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            lambda c, t: False,
         )
 
-    @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_http_exception(
-        self, respx_mock: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            side_effect=httpx.DecodingError
-        )
-        with pytest.raises(httpx.DecodingError):
-            read_secret(unittest_client, "secrets/test")
-
-    @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_bad_request(
-        self,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            httpx.Response(499)
-        )
-        assert read_secret(unittest_client, "secrets/test") is None
-        assert "Error occurred during query secret secrets/test" in caplog.text
-
-
-class TestGetMount:
-    @pytest.fixture()
-    def route(self, respx_mock: respx.MockRouter):
-        return respx_mock.get(
-            "https://example.com/v1/sys/internal/ui/mounts/secrets/test"
-        )
-
-    def test_success_kv2(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(
-            httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "options": {"version": "2"},
-                        "path": "secrets/",
-                        "type": "kv",
-                    },
-                },
-            )
-        )
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="secrets/", version=2
-        )
-
-    def test_success_kv2_integration(self, intl_client: httpx.Client):
-        assert get_mount(intl_client, "kv2/test") == MountMetadata(
-            path="kv2/", version=2
-        )
-
-    def test_success_kv1(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(
-            httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "options": {"version": "1"},
-                        "path": "secrets/",
-                        "type": "kv",
-                    },
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
-                },
-            )
-        )
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="secrets/", version=1
-        )
-
-    def test_success_kv1_integration(self, intl_client: httpx.Client):
-        assert get_mount(intl_client, "kv1/test") == MountMetadata(
-            path="kv1/", version=1
-        )
-
-    def test_success_legacy(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(httpx.Response(404))
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="", version=1
-        )
-
-    def test_not_ported_version(
-        self, route: respx.Route, unittest_client: httpx.Client
-    ):
-        route.mock(
-            httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "path": "mock/",
-                        "type": "kv",
-                        "options": {"version": "99"},
-                    }
-                },
-            )
-        )
-
-        with pytest.raises(ValidationError):
-            get_mount(unittest_client, "secrets/test")
-
-    def test_bad_request(
-        self,
-        route: respx.Route,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        route.mock(httpx.Response(400))
-        assert get_mount(unittest_client, "secrets/test") is None
-        assert "Error occurred during checking metadata for secrets/test" in caplog.text
-
-    def test_connection_error(
-        self,
-        route: respx.Route,
-        unittest_client: httpx.Client,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        route.mock(side_effect=httpx.ConnectError)
-        assert get_mount(unittest_client, "secrets/test") is None
-        assert (
-            "Error occurred during checking metadata for secrets/test: connection error"
-            in caplog.text
-        )
-
-    def test_http_exception(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(side_effect=httpx.DecodingError)
-        with pytest.raises(httpx.DecodingError):
-            get_mount(unittest_client, "secrets/test")
+        assert get_token_from_helper(Mock(httpx.Client)) is None

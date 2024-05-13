@@ -4,26 +4,18 @@ import enum
 import logging
 import typing
 from functools import cached_property
-from http import HTTPStatus
-from typing import Literal
+from pathlib import Path
 
 import httpx
-from pydantic import (
-    BaseModel,
-    Field,
-    InstanceOf,
-    PrivateAttr,
-    field_validator,
-    model_validator,
-    validate_call,
-)
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 from pydantic_core import Url
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
+from secrets_env.providers.vault.api import is_authenticated, read_secret
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.utils import LruDict, get_httpx_error_reason, log_httpx_response
+from secrets_env.utils import LruDict, get_httpx_error_reason
 
 if typing.TYPE_CHECKING:
     from typing import Iterable, Iterator, Sequence
@@ -148,6 +140,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
         """
         logger.debug("Vault client initialization requested. URL= %s", self.url)
 
+        # load url & tls from teleport
         if self.teleport:
             logger.debug("Teleport configuration is set. Use it for connecting Vault.")
 
@@ -161,8 +154,15 @@ class VaultKvProvider(Provider, VaultUserConfig):
             self.tls.client_cert = param.path_cert
             self.tls.client_key = param.path_key
 
+        # initialize client
         client = create_http_client(self)
-        client.headers["X-Vault-Token"] = get_token(client, self.auth_object)
+
+        # get token
+        if token := get_token_from_helper(client):
+            client.headers["X-Vault-Token"] = token
+        elif token := get_token(client, self.auth_object):
+            save_token_to_helper(token)
+            client.headers["X-Vault-Token"] = token
 
         return client
 
@@ -212,8 +212,6 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
-    logger.debug("Vault client initialization requested. URL= %s", config.url)
-
     client_params = {
         "base_url": str(config.url),
         "headers": {
@@ -242,7 +240,7 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
     return httpx.Client(**client_params)
 
 
-def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
+def get_token(client: httpx.Client, auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
 
@@ -266,134 +264,37 @@ def get_token(client: InstanceOf[httpx.Client], auth: Auth) -> str:
     return token
 
 
-@validate_call
-def is_authenticated(client: InstanceOf[httpx.Client], token: str) -> bool:
-    """Check is a token is authenticated.
+def get_token_from_helper(client: httpx.Client) -> str | None:
+    """
+    Get token from token helper.
 
     See also
     --------
-    https://developer.hashicorp.com/vault/api-docs/auth/token
+    https://www.vaultproject.io/docs/commands/token-helper
     """
-    logger.debug("Validate token for %s", client.base_url)
+    logger.debug("Attempting to use token helper")
 
-    resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
-    if resp.is_success:
-        return True
+    token_helper = get_token_helper_path()
+    if not token_helper.is_file():
+        logger.debug("Token helper not found")
+        return None
 
-    logger.debug(
-        "Token verification failed. Code= %d (%s). Msg= %s",
-        resp.status_code,
-        resp.reason_phrase,
-        resp.json(),
-    )
-    return False
+    token = token_helper.read_text()
+    if is_authenticated(client, token):
+        logger.debug("Token helper is valid")
+        return token
 
-
-@validate_call
-def read_secret(client: InstanceOf[httpx.Client], path: str) -> dict | None:
-    """Read secret from Vault.
-
-    See also
-    --------
-    https://developer.hashicorp.com/vault/api-docs/secret/kv
-    """
-    mount = get_mount(client, path)
-    if not mount:
-        return
-
-    logger.debug("Secret %s is mounted at %s (kv%d)", path, mount.path, mount.version)
-
-    if mount.version == 2:
-        subpath = path.removeprefix(mount.path)
-        request_path = f"/v1/{mount.path}data/{subpath}"
-    else:
-        request_path = f"/v1/{path}"
-
-    try:
-        resp = client.get(request_path)
-    except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        logger.error("Error occurred during query secret %s: %s", path, reason)
-        return
-
-    if resp.is_success:
-        data = resp.json()
-        if mount.version == 2:
-            return data["data"]["data"]
-        else:
-            return data["data"]
-
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
-        logger.error("Secret <data>%s</data> not found", path)
-        return
-
-    logger.error("Error occurred during query secret %s", path)
-    log_httpx_response(logger, resp)
-    return
+    logger.debug("Token helper is invalid")
+    return None
 
 
-class _RawMountMetadata(BaseModel):
-    """
-    {
-        "data": {
-            "options": {"version": "1"},
-            "path": "secrets/",
-            "type": "kv",
-        }
-    }
-    """
-
-    data: _DataBlock
-
-    class _DataBlock(BaseModel):
-
-        options: _OptionBlock
-        path: str
-        type: str
-
-        class _OptionBlock(BaseModel):
-            version: str
+def save_token_to_helper(token: str) -> None:
+    """Save token to token helper."""
+    token_helper = get_token_helper_path()
+    logger.debug("Write token to token helper: %s", token_helper)
+    token_helper.write_text(token)
 
 
-class MountMetadata(BaseModel):
-    """Represents a mount point and KV engine version to a secret."""
-
-    path: str
-    version: Literal[1, 2]
-
-
-@validate_call
-def get_mount(client: InstanceOf[httpx.Client], path: str) -> MountMetadata | None:
-    """Get mount point and KV engine version to a secret.
-
-    See also
-    --------
-    Vault HTTP API
-        https://developer.hashicorp.com/vault/api-docs/system/internal-ui-mounts
-    consul-template
-        https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
-    """
-    try:
-        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
-    except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        logger.error("Error occurred during checking metadata for %s: %s", path, reason)
-        return
-
-    if resp.is_success:
-        parsed = _RawMountMetadata.model_validate_json(resp.read())
-        return MountMetadata(
-            path=parsed.data.path,
-            version=int(parsed.data.options.version),  # type: ignore[reportArgumentType]
-        )
-
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
-        # 404 is expected on an older version of vault, default to version 1
-        # https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L310-L311
-        return MountMetadata(path="", version=1)
-
-    logger.error("Error occurred during checking metadata for %s", path)
-    log_httpx_response(logger, resp)
-    return
+def get_token_helper_path() -> Path:
+    """Get path to the token helper file."""
+    return Path.home() / ".vault-token"
