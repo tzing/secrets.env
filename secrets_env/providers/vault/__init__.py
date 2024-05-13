@@ -212,8 +212,6 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
 
 def create_http_client(config: VaultUserConfig) -> httpx.Client:
-    logger.debug("Vault client initialization requested. URL= %s", config.url)
-
     client_params = {
         "base_url": str(config.url),
         "headers": {
