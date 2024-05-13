@@ -20,6 +20,7 @@ from secrets_env.providers.vault import (
     create_http_client,
     get_token,
     get_token_from_helper,
+    save_token_to_helper,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
@@ -79,13 +80,17 @@ class TestVaultKvProvider:
     def random_token(self) -> str:
         return uuid.uuid4().hex
 
-    def test_client(self, monkeypatch: pytest.MonkeyPatch, random_token: str):
+    def test_client(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, random_token: str
+    ):
+        helper = tmp_path / ".vault-token"
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client",
             lambda _: Mock(httpx.Client, headers={}),
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_from_helper", lambda _: None
         )
         monkeypatch.setattr(
             "secrets_env.providers.vault.get_token", lambda c, a: random_token
@@ -94,6 +99,7 @@ class TestVaultKvProvider:
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
         assert isinstance(provider.client, httpx.Client)
         assert provider.client.headers["X-Vault-Token"] == random_token
+        assert helper.read_text() == random_token
 
     def test_client__use_helper(
         self, monkeypatch: pytest.MonkeyPatch, random_token: str
@@ -346,6 +352,17 @@ class TestGetToken:
         auth.login.side_effect = httpx.HTTPError("test")
         with pytest.raises(httpx.HTTPError):
             get_token(client, auth)
+
+
+class TestSaveTokenToHelper:
+    def test(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / ".vault-token"
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
+        save_token_to_helper("t0ken")
+        assert helper.read_text() == "t0ken"
 
 
 class TestGetTokenFromHelper:

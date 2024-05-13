@@ -161,6 +161,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
         if token := get_token_from_helper(client):
             client.headers["X-Vault-Token"] = token
         elif token := get_token(client, self.auth_object):
+            save_token_to_helper(token)
             client.headers["X-Vault-Token"] = token
 
         return client
@@ -287,6 +288,13 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
 
     logger.debug("Token helper is invalid")
     return None
+
+
+def save_token_to_helper(token: str) -> None:
+    """Save token to token helper."""
+    token_helper = get_token_helper_path()
+    logger.debug("Write token to token helper: %s", token_helper)
+    token_helper.write_text(token)
 
 
 def get_token_helper_path() -> Path:
