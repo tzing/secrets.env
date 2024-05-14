@@ -22,6 +22,7 @@ class TestGetProvider:
         provider = get_provider({"type": "teleport", "app": "test"})
         assert isinstance(provider, TeleportProvider)
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning:secrets_env.providers")
     def test_teleport_adapter(self):
         provider = get_provider(
             {"type": "teleport+vault", "auth": "null", "teleport": {"app": "test"}}
@@ -29,6 +30,7 @@ class TestGetProvider:
         assert isinstance(provider, VaultKvProvider)
         assert isinstance(provider.teleport, TeleportUserConfig)
 
+    @pytest.mark.filterwarnings("ignore::UserWarning:secrets_env.providers")
     def test_vault(self):
         provider = get_provider({"url": "https://example.com/", "auth": "null"})
         assert isinstance(provider, VaultKvProvider)
