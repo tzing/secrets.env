@@ -1,5 +1,7 @@
 import logging
 import sys
+import warnings
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import click
@@ -132,3 +134,31 @@ def test_lru_dict():
     # delete
     del d["b"]
     assert d == {"d": 4, "c": 3}
+
+
+class TestSetupCaptureWarnings:
+    def test_internal(self, caplog: pytest.LogCaptureFixture):
+        t.setup_capture_warnings()
+
+        repo_path = Path(__file__).parent.parent
+        mock_path = repo_path / "secrets_env" / "mock" / "mock.py"
+
+        with (
+            caplog.at_level(logging.CRITICAL),
+            caplog.at_level(logging.WARNING, "secrets_env"),
+        ):
+            warnings.warn_explicit("test warning", UserWarning, str(mock_path), 1)
+
+        assert "test warning" in caplog.text
+
+    def test_external(self, caplog: pytest.LogCaptureFixture):
+        t.setup_capture_warnings()
+
+        with (
+            caplog.at_level(logging.CRITICAL),
+            caplog.at_level(logging.WARNING, "py.warnings"),
+        ):
+            # NOTE this test file is not in secrets_env package
+            warnings.warn("test warning", UserWarning, stacklevel=1)
+
+        assert "UserWarning: test warning" in caplog.text

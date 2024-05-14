@@ -73,6 +73,9 @@ class TestVaultUserConfig:
         assert isinstance(config, VaultUserConfig)
         assert config.auth_object == NoAuth()
 
+    @pytest.mark.filterwarnings(
+        "ignore::UserWarning:secrets_env.providers.vault.config"
+    )
     def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
 
@@ -91,24 +94,26 @@ class TestVaultUserConfig:
                 }
             )
 
-    def test_teleport(self, caplog: pytest.LogCaptureFixture, tmp_path: Path):
+    def test_teleport(self, tmp_path: Path):
         (tmp_path / "ca.cert").touch()
 
-        config = VaultUserConfig.model_validate(
-            {
-                "url": "https://example.com",
-                "auth": "null",
-                "tls": {"ca_cert": str(tmp_path / "ca.cert")},
-                "teleport": {"app": "test"},
-            }
-        )
+        with pytest.warns() as warns:
+            config = VaultUserConfig.model_validate(
+                {
+                    "url": "https://example.com",
+                    "auth": "null",
+                    "tls": {"ca_cert": str(tmp_path / "ca.cert")},
+                    "teleport": {"app": "test"},
+                }
+            )
 
         assert config.teleport is not None
         assert config.url == LazyProvidedMarker.ProvidedByTeleport
         assert config.tls == LazyProvidedMarker.ProvidedByTeleport
 
-        assert "Any provided URL would be discarded" in caplog.text
-        assert "TLS configuration would be overlooked" in caplog.text
+        assert len(warns) == 2
+        assert "Any provided URL would be discarded" in str(warns[0].message)
+        assert "TLS configuration would be overlooked" in str(warns[1].message)
 
     def test_proxy(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_PROXY", "http://env.proxy.example.com")

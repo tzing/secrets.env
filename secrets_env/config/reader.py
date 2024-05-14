@@ -31,8 +31,7 @@ def read(path: os.PathLike) -> dict:
         return {}
 
     if not isinstance(data, dict):
-        logger.warning("Config should be key value pairs. Got %s.", type(data).__name__)
-        return {}
+        raise ConfigError("Expect key-value pairs in the config file")
 
     if filepath.name == "pyproject.toml":
         data = data.get("tool", {}).get("secrets-env", {})

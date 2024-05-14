@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import re
+import warnings
 from functools import cached_property
 from pathlib import Path
 from typing import cast
@@ -85,10 +86,14 @@ def ensure_dependencies():
         or not importlib.util.find_spec("cryptography")
         or not importlib.util.find_spec("pexpect")
     ):
-        logger.error("Optional dependency for teleport support is missing.")
-        logger.error("Please reinstall with the extras <mark>teleport</mark>:")
-        logger.error("  pip install 'secrets.env[teleport]'")
+        _warn("Optional dependency for teleport support is missing.")
+        _warn("Please reinstall with the extras <mark>teleport</mark>:")
+        _warn("  pipx inject secrets.env 'secrets.env[teleport]'")
         raise UnsupportedError("Missing optional dependencies for teleport support")
+
+
+def _warn(s: str):
+    warnings.warn(s, UserWarning, stacklevel=1)
 
 
 class TeleportConnectionParameter(BaseModel):

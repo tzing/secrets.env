@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import logging
 import typing
+import warnings
 from functools import cached_property
 
 from pydantic import (
@@ -102,20 +103,19 @@ class VaultUserConfig(BaseModel):
             # set default auth value
             if not values.get("auth"):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
-                logger.warning(
+                _warn(
                     "Missing required config <mark>auth method</mark>. "
-                    "Use default method <data>%s</data>.",
-                    DEFAULT_AUTH_METHOD,
+                    f"Use default method <data>{DEFAULT_AUTH_METHOD}</data>."
                 )
 
             # overrides related fields when teleport is set
             if values.get("teleport"):
                 if values.get("url"):
-                    logger.warning(
+                    _warn(
                         "Any provided URL would be discarded when 'teleport' config is set"
                     )
                 if values.get("tls"):
-                    logger.warning(
+                    _warn(
                         "TLS configuration would be overlooked when 'teleport' config is set"
                     )
                 values["url"] = LazyProvidedMarker.ProvidedByTeleport
@@ -157,3 +157,7 @@ class VaultUserConfig(BaseModel):
         if isinstance(self.url, LazyProvidedMarker):
             raise RuntimeError("Vault URL is not loaded yet")
         return create_auth_by_name(self.url, self.auth)
+
+
+def _warn(s: str):
+    warnings.warn(s, UserWarning, stacklevel=2)

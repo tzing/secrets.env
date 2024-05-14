@@ -19,6 +19,10 @@
 
   [token helper]: https://www.vaultproject.io/docs/commands/token-helper
 
+* Shifted some alerts to the [warnings] module to minimize the warning notifications displayed to the user.
+
+  [warnings]: https://docs.python.org/3/library/warnings.html
+
 
 ## 0.29.0 (2024-05-07)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import typing
+import warnings
 
 from pydantic_core import ValidationError
 
@@ -25,7 +26,11 @@ def get_provider(config: dict) -> Provider:
     type_ = config.get("type")
     if not type_:
         type_ = DEFAULT_PROVIDER
-        logger.warning("Provider type unspecified, using default: %s", type_)
+        warnings.warn(
+            f"Provider type unspecified, using default: {DEFAULT_PROVIDER}",
+            UserWarning,
+            stacklevel=1,
+        )
 
     itype = type_.lower()
 
@@ -40,7 +45,11 @@ def get_provider(config: dict) -> Provider:
         from secrets_env.providers.teleport import TeleportProvider
         return TeleportProvider.model_validate(config)
     if itype == "teleport+vault":
-        logger.warning("Type 'teleport+vault' is deprecated, use 'vault' instead")
+        warnings.warn(
+            "Type 'teleport+vault' is deprecated, use 'vault' instead",
+            DeprecationWarning,
+            stacklevel=1,
+        )
         from secrets_env.providers.vault import VaultKvProvider
         return VaultKvProvider.model_validate(config)
     if itype == "vault":

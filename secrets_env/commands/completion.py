@@ -1,14 +1,16 @@
 import logging
 import os
 import sys
+import warnings
 
 import click
 
-from secrets_env.commands.core import entrypoint
+from secrets_env.commands.core import entrypoint, with_output_options
 
 
 @entrypoint.command()
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]), required=False)
+@with_output_options
 @click.pass_context
 def completion(ctx: click.Context, shell: str):
     """Print shell completion script for this command.
@@ -22,8 +24,10 @@ def completion(ctx: click.Context, shell: str):
     # get prog name
     prog_name = os.path.basename(sys.argv[0])
     if prog_name.lower().endswith(".py"):
-        logger.warning(
-            "Shell completion is not avaliable when invoked with `python -m` command"
+        warnings.warn(
+            "Shell completion is not avaliable when invoked with `python -m` command",
+            UserWarning,
+            stacklevel=1,
         )
 
     # get shell
