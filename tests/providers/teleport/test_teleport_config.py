@@ -136,7 +136,7 @@ class TestEnsureDependencies:
             ensure_dependencies()
 
     @pytest.mark.filterwarnings(
-        "ignore::RuntimeWarning:secrets_env.providers.teleport.config"
+        "ignore::UserWarning:secrets_env.providers.teleport.config"
     )
     def test_missing_dependency(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda _: "/mock/tsh")
