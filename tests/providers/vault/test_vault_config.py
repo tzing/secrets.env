@@ -73,6 +73,9 @@ class TestVaultUserConfig:
         assert isinstance(config, VaultUserConfig)
         assert config.auth_object == NoAuth()
 
+    @pytest.mark.filterwarnings(
+        "ignore::UserWarning:secrets_env.providers.vault.config"
+    )
     def test_auth__default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SECRETS_ENV_TOKEN", "tok3n")
 

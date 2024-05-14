@@ -103,10 +103,9 @@ class VaultUserConfig(BaseModel):
             # set default auth value
             if not values.get("auth"):
                 values["auth"] = {"method": DEFAULT_AUTH_METHOD}
-                logger.warning(
+                _warn(
                     "Missing required config <mark>auth method</mark>. "
-                    "Use default method <data>%s</data>.",
-                    DEFAULT_AUTH_METHOD,
+                    f"Use default method <data>{DEFAULT_AUTH_METHOD}</data>."
                 )
 
             # overrides related fields when teleport is set
