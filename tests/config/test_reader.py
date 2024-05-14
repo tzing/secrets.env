@@ -32,18 +32,14 @@ class TestRead:
         with pytest.raises(UnsupportedError):
             t.read(filepath)
 
-    def test_invalid_content(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        caplog: pytest.LogCaptureFixture,
-    ):
+    def test_invalid_content(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "read_toml_file", lambda _: "not a dict")
         monkeypatch.setattr(Path, "is_file", lambda _: True)
 
-        with caplog.at_level("WARNING"):
-            assert t.read("/test/config.toml") == {}
-
-        assert "Config should be key value pairs. Got str." in caplog.text
+        with pytest.raises(
+            ConfigError, match="Expect key-value pairs in the config file"
+        ):
+            t.read("/test/config.toml")
 
     def test_invalid_toml(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         filepath = tmp_path / "config.toml"
