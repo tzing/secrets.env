@@ -2,7 +2,7 @@
 
 *Table of Contents*
 
-- [Unreleased](#unreleased)
+- [0.29.1 (2024-05-15)](#0291-2024-05-15)
   - [✨ Enhancements](#-enhancements)
 - [0.29.0 (2024-05-07)](#0290-2024-05-07)
   - [🚨 Breaking changes](#-breaking-changes)
@@ -11,7 +11,7 @@
 - [Prior to 0.29](#prior-to-029)
 
 
-## Unreleased
+## 0.29.1 (2024-05-15)
 
 ### ✨ Enhancements
 
