@@ -21,15 +21,15 @@ In addition to optional dependencies, using this feature necessitates having the
 
    .. tab-set::
 
-   .. tab-item:: pipx
+      .. tab-item:: pipx
 
-      .. code-block:: bash
+         .. code-block:: bash
 
-         # for the first time installation
-         pipx install 'secrets.env[teleport]'
+            # for the first time installation
+            pipx install 'secrets.env[teleport]'
 
-         # if you have already installed secrets.env
-         pipx inject secrets.env 'secrets.env[teleport]'
+            # if you have already installed secrets.env
+            pipx inject secrets.env 'secrets.env[teleport]'
 
       .. tab-item:: pip
 
