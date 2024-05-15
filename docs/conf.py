@@ -5,6 +5,10 @@
 
 import datetime
 import importlib.metadata
+import os
+import subprocess
+
+is_tag_release = os.environ.get("READTHEDOCS_VERSION_TYPE") == "tag"
 
 # -- Project information -----------------------------------------------------
 
@@ -13,7 +17,15 @@ this_year = datetime.date.today().year
 project = "secrets.env"
 copyright = f"{this_year}, tzing"
 author = "tzing"
+
 release = importlib.metadata.version(project)
+if not is_tag_release:
+    commit = (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode()
+        .strip()
+    )
+    release += f"+{commit}"
 
 
 # -- General configuration ---------------------------------------------------
@@ -59,3 +71,11 @@ html_theme_options = {
         },
     ],
 }
+
+if not is_tag_release:
+    html_theme_options["announcement"] = (
+        """
+        This is the development version of the documentation.
+        See <a href="https://secrets-env.readthedocs.io/en/stable/">stable version</a> for the latest release.
+        """
+    )
