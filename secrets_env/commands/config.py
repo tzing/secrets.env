@@ -104,10 +104,6 @@ def _dict_to_table(d: dict) -> Table:
             value = field_value
         elif isinstance(field_value, enum.Enum):
             value = click.style(field_value.name, fg="blue")
-        elif isinstance(field_value, bool):
-            value = click.style("True" if field_value else "False", fg="blue")
-        elif isinstance(field_value, (int, float)):
-            value = click.style(field_value, fg="green")
         else:
             value = str(field_value)
 
