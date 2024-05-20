@@ -16,6 +16,21 @@ You can enable completion by running following command in your terminal:
 
    eval "$(secrets.env completion)"
 
+``config parse``
+================
+
+Parse and display the contents of the configuration file to the console, without executing any commands.
+
+*Usage:*
+
+.. code-block:: bash
+
+   secrets.env config parse [OPTIONS]
+
+*Options:*
+
+``-f, --config PATH``
+   Specify configuration file.
 
 ``keyring del``
 ===============

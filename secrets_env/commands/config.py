@@ -43,7 +43,13 @@ def group():
 @with_output_options
 def parse(config: Path | None):
     """
-    Parse the configuration file and print to the console.
+    Parse and display the contents of the configuration file to the console,
+    without executing any commands.
+
+    It provides insight into how secrets.env interprets the configuration file.
+    It also identifies some critical errors. However, it's important to note that
+    certain errors are only evaluated during runtime, so this command may not
+    detect all potential issues.
     """
     try:
         cfg = secrets_env.config.load_local_config(config)
