@@ -12,9 +12,10 @@ from pydantic import BaseModel
 import secrets_env.config
 from secrets_env.commands.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError
+from secrets_env.provider import Provider
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Iterator
+    from typing import Iterator
 
     TableValue = dict[str, "TableValue"] | list["TableValue"] | str
     Table = dict[str, TableValue]
@@ -69,9 +70,9 @@ def print_model(index: int, name: str, model: BaseModel) -> None:
     click.echo(f"{output_index}{output_name}")
 
     # body
-    import json  # FIXME
-
-    print(json.dumps(_model_to_table(model), indent=INDENT_SIZE))
+    table = _model_to_table(model)
+    for line in _table_to_lines(table):
+        click.echo(" " * INDENT_SIZE * 2 + line)
 
     # tailing
     click.echo()
@@ -79,6 +80,8 @@ def print_model(index: int, name: str, model: BaseModel) -> None:
 
 def _model_to_table(model: BaseModel) -> Table:
     data = {}
+    if isinstance(model, Provider):
+        data["Type"] = model.type
     for field_name in model.model_fields:
         field_value = getattr(model, field_name)
         data[field_name] = field_value
@@ -103,7 +106,7 @@ def _dict_to_table(d: dict) -> Table:
         elif isinstance(field_value, enum.Enum):
             value = click.style(field_value.name, fg="blue")
         elif isinstance(field_value, bool):
-            value = click.style("True" if field_value.name else "False", fg="blue")
+            value = click.style("True" if field_value else "False", fg="blue")
         elif isinstance(field_value, (int, float)):
             value = click.style(field_value, fg="green")
         else:
@@ -112,3 +115,38 @@ def _dict_to_table(d: dict) -> Table:
         table[key] = value
 
     return table
+
+
+def _table_to_lines(table: Table) -> Iterator[str]:
+    if not table:
+        return
+
+    max_field_name_length = max(map(len, table))
+    field_name_width = (
+        math.ceil((max_field_name_length + 2) / INDENT_SIZE) * INDENT_SIZE
+    )
+
+    list_prefix = " " * INDENT_SIZE + click.style("-", fg="blue") + " "
+
+    for field_name, field_value in table.items():
+        field_name = f"{field_name}: ".ljust(field_name_width)
+        field_name = click.style(field_name, fg="cyan")
+
+        if isinstance(field_value, dict):
+            if field_value:
+                yield field_name
+                for line in _table_to_lines(field_value):
+                    yield " " * INDENT_SIZE + line
+            else:
+                yield field_name + "{}"
+
+        elif isinstance(field_value, list):
+            if field_value:
+                yield field_name
+                for item in field_value:
+                    yield f"{list_prefix} {item}"
+            else:
+                yield field_name + "[]"
+
+        else:
+            yield f"{field_name}{field_value}"
