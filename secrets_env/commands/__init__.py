@@ -1,3 +1,3 @@
-from . import completion, core, keyring, run
+from . import completion, config, core, keyring, run
 
 main = core.entrypoint
