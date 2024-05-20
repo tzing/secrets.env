@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click.testing
+import pytest
 
 from secrets_env.commands.config import group
 
@@ -30,7 +31,9 @@ class TestParse:
 
         assert result.exit_code == 0
 
-    def test_config_error(self, tmp_path: Path):
+    def test_config_error(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        monkeypatch.delenv("VAULT_ADDR", raising=False)
+
         config_file = tmp_path / "config.toml"
         config_file.write_text(
             """
