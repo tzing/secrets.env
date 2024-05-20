@@ -23,6 +23,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 INDENT_SIZE = 4
+INDENT = " " * INDENT_SIZE
 
 
 @entrypoint.group("config")
@@ -51,13 +52,11 @@ def parse(config: Path | None):
 
     # sources
     click.echo(click.style("Sources:", fg="cyan"))
-
     for i, source in enumerate(cfg.providers.values()):
         print_model(i, source.name or "(anonymous)", source)
 
     # requests
     click.echo(click.style("Secrets:", fg="cyan"))
-
     for i, request in enumerate(cfg.requests):
         print_model(i, request.name, request)
 
@@ -72,7 +71,7 @@ def print_model(index: int, name: str, model: BaseModel) -> None:
     # body
     table = _model_to_table(model)
     for line in _table_to_lines(table):
-        click.echo(" " * INDENT_SIZE * 2 + line)
+        click.echo(INDENT * 2 + line)
 
     # tailing
     click.echo()
@@ -121,32 +120,23 @@ def _table_to_lines(table: Table) -> Iterator[str]:
     if not table:
         return
 
-    max_field_name_length = max(map(len, table))
-    field_name_width = (
-        math.ceil((max_field_name_length + 2) / INDENT_SIZE) * INDENT_SIZE
-    )
-
-    list_prefix = " " * INDENT_SIZE + click.style("-", fg="blue") + " "
+    max_field_name_length = max(map(len, table)) + 2
+    field_name_width = math.ceil(max_field_name_length / INDENT_SIZE) * INDENT_SIZE
 
     for field_name, field_value in table.items():
         field_name = f"{field_name}: ".ljust(field_name_width)
         field_name = click.style(field_name, fg="cyan")
 
-        if isinstance(field_value, dict):
-            if field_value:
-                yield field_name
-                for line in _table_to_lines(field_value):
-                    yield " " * INDENT_SIZE + line
-            else:
-                yield field_name + "{}"
+        if isinstance(field_value, dict) and field_value:
+            yield field_name
+            for line in _table_to_lines(field_value):
+                yield INDENT + line
 
-        elif isinstance(field_value, list):
-            if field_value:
-                yield field_name
-                for item in field_value:
-                    yield f"{list_prefix} {item}"
-            else:
-                yield field_name + "[]"
+        elif isinstance(field_value, list) and field_value:
+            yield field_name
+            list_prefix = INDENT + click.style("-", fg="blue")
+            for item in field_value:
+                yield f"{list_prefix} {item}"
 
         else:
             yield f"{field_name}{field_value}"
