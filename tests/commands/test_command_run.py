@@ -18,6 +18,12 @@ def test_success(monkeypatch: pytest.MonkeyPatch):
     assert result.exit_code == 0
 
 
+def test_usage():
+    runner = click.testing.CliRunner()
+    result = runner.invoke(run, ["--help"])
+    assert "Usage: run [OPTIONS] -- COMMAND [ARGS]..." in result.output
+
+
 @pytest.mark.usefixtures("_reset_logging")
 def test_program_fail(monkeypatch: pytest.MonkeyPatch):
     def mock_read_values(config, strict):

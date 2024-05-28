@@ -12,10 +12,20 @@ from secrets_env.commands.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 
 
+class RunCommand(click.Command):
+    def format_usage(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Writes the usage line into the formatter.
+
+        This is a low-level method called by :meth:`get_usage`.
+        """
+        formatter.write_usage(ctx.command_path, "[OPTIONS] -- COMMAND [ARGS]...")
+
+
 @entrypoint.command(
+    cls=RunCommand,
     context_settings={
         "ignore_unknown_options": True,
-    }
+    },
 )
 @click.argument(
     "args",
@@ -36,7 +46,16 @@ from secrets_env.exceptions import ConfigError, NoValue
 )
 @with_output_options
 def run(args: Sequence[str], config: Path, partial: bool):
-    """Loads values into environment variable then run the command."""
+    """
+    Load values into environment variable then run the command.
+
+    Make secrets.env reads the configuration file, loads values from the defined
+    sources, sets the environment variables, and then executes the specified
+    command within this updated environment.
+
+    Note that the command should be separated from the options with a double
+    dash (`--`), in order to avoid ambiguity.
+    """
     # prepare environment variable set
     try:
         values = secrets_env.read_values(config=config, strict=not partial)

@@ -15,4 +15,4 @@ from secrets_env.realms.click import with_output_options
 )
 @click.version_option(secrets_env.version.__version__)
 def entrypoint():
-    """Connect the credential store to your development environment."""
+    """Connect the credential store to your app."""

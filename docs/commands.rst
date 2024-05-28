@@ -88,6 +88,10 @@ This command loads secrets into environment variable and run the command.
 
    secrets.env run [OPTIONS] -- CMD [ARGS]...
 
+.. tip::
+
+   The command should be separated from the options with a double dash (``--``), in order to avoid ambiguity.
+
 *Options:*
 
 ``-f, --config FILE``
