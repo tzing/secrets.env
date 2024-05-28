@@ -17,7 +17,7 @@
 
 ### ✨ Enhancements
 
-* Introduced `config parse` command to parses and displays the configuration file's contents without executing any commands.
+* Introduce `config show` command to parses and displays the configuration file's contents without executing any commands.
 
   This command helps users understand how secrets.env interprets the configuration file and identifies critical errors.
 

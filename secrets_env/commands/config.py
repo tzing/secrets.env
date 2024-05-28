@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import itertools
 import logging
 import math
 import typing
@@ -12,7 +13,6 @@ from pydantic import BaseModel
 import secrets_env.config
 from secrets_env.commands.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError
-from secrets_env.provider import Provider
 
 if typing.TYPE_CHECKING:
     from typing import Iterator
@@ -41,7 +41,7 @@ def group():
     help="Specify configuration file.",
 )
 @with_output_options
-def parse(config: Path | None):
+def show(config: Path | None):
     """
     Parse and display the contents of the configuration file to the console,
     without executing any commands.
@@ -85,11 +85,8 @@ def print_model(index: int, name: str, model: BaseModel) -> None:
 
 def _model_to_table(model: BaseModel) -> Table:
     data = {}
-    if isinstance(model, Provider):
-        data["Type"] = model.type
-    for field_name in model.model_fields:
-        field_value = getattr(model, field_name)
-        data[field_name] = field_value
+    for field_name in itertools.chain(model.__class_vars__, model.model_fields):
+        data[field_name] = getattr(model, field_name)
     return _dict_to_table(data)
 
 

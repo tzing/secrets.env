@@ -6,7 +6,7 @@ import pytest
 from secrets_env.commands.config import group
 
 
-class TestParse:
+class TestShow:
     def test_success(self, tmp_path: Path):
         config_file = tmp_path / "config.toml"
         config_file.write_text(
@@ -27,7 +27,7 @@ class TestParse:
         )
 
         runner = click.testing.CliRunner()
-        result = runner.invoke(group, ["parse", "-f", str(config_file)])
+        result = runner.invoke(group, ["show", "-f", str(config_file)])
 
         assert result.exit_code == 0
 
@@ -43,6 +43,6 @@ class TestParse:
         )
 
         runner = click.testing.CliRunner()
-        result = runner.invoke(group, ["parse", "-f", str(config_file)])
+        result = runner.invoke(group, ["show", "-f", str(config_file)])
 
         assert result.exit_code == 1

@@ -16,7 +16,7 @@ You can enable completion by running following command in your terminal:
 
    eval "$(secrets.env completion)"
 
-``config parse``
+``config show``
 ================
 
 Parse and display the contents of the configuration file to the console, without executing any commands.
@@ -25,7 +25,7 @@ Parse and display the contents of the configuration file to the console, without
 
 .. code-block:: bash
 
-   secrets.env config parse [OPTIONS]
+   secrets.env config show [OPTIONS]
 
 *Options:*
 
