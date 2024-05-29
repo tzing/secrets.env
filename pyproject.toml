@@ -25,21 +25,22 @@ keyring = { version = ">=23.3.0,<25", optional = true }
 pexpect = { version = "^4.9.0", optional = true }
 pydantic = "^2.0.3"
 PyYAML = { version = ">=5.1.2,<7", optional = true }
+shellingham = { version = "^1.5.4", optional = true }
 tomli = { version = ">=1.1.0,<3", python = "<3.11" }
 
 [tool.poetry.group.dev.dependencies]
-poetry = "^1.2.2"
 furo = ">=2023.5.20"
+poetry = "^1.2.2"
 pyright = "*"
 pytest = "^8.1.1"
 pytest-cov = "^5.0.0"
 respx = "^0.21.1"
 ruff = "^0.4.3"
 sphinx = "^7.2.6"
-sphinx-design = "^0.5.0"
+sphinx-design = "^0.6.0"
 
 [tool.poetry.extras]
-all = ["cryptography", "keyring", "PyYAML"]
+all = ["cryptography", "keyring", "pexpect", "PyYAML", "shellingham"]
 keyring = ["keyring"]
 teleport = ["cryptography", "pexpect"]
 yaml = ["PyYAML"]
