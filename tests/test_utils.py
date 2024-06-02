@@ -177,8 +177,8 @@ class TestDetectShell:
     )
     def test_success__ci(self):
         shell, path = t.detect_shell()
-        assert shell == "sh"
-        assert path == Path("/bin/sh")
+        assert shell == "bash"
+        assert path == Path("/bin/bash")
 
     @pytest.mark.skipif(
         os.getenv("SHELL") != "/bin/zsh", reason="This is a hard-coded test for zsh"
@@ -191,15 +191,7 @@ class TestDetectShell:
 
     def test_fallback(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(t, "_detect_shell_via_shellingham", lambda: None)
-        shell, path = t.detect_shell()
-        assert isinstance(shell, str)
-        assert isinstance(path, Path)
-
-    @pytest.mark.skipif(
-        os.getenv("CI") is None, reason="Expect GitHub Action environment"
-    )
-    def test_fallback__ci(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(t, "_detect_shell_via_shellingham", lambda: None)
+        monkeypatch.setenv("SHELL", "/bin/sh")
         shell, path = t.detect_shell()
         assert shell == "sh"
         assert path == Path("/bin/sh")
