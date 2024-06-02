@@ -178,7 +178,7 @@ class TestDetectShell:
     def test_success__ci(self):
         shell, path = t.detect_shell()
         assert shell == "bash"
-        assert path == Path("/bin/bash")
+        assert path == Path("/usr/bin/bash")
 
     @pytest.mark.skipif(
         os.getenv("SHELL") != "/bin/zsh", reason="This is a hard-coded test for zsh"
