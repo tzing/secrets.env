@@ -5,6 +5,7 @@ import warnings
 
 import click
 
+import secrets_env.utils
 from secrets_env.commands.core import entrypoint, with_output_options
 
 
@@ -32,8 +33,7 @@ def completion(ctx: click.Context, shell: str):
 
     # get shell
     if not shell:
-        shell = os.path.basename(os.environ["SHELL"])
-        logger.debug("Detect %s", shell)
+        shell = secrets_env.utils.detect_shell()
 
     # print script
     import click.shell_completion

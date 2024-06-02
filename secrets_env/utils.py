@@ -240,6 +240,7 @@ def detect_shell() -> tuple[str, Path]:
     else:
         raise NotImplementedError(f"OS {os.name!r} support not available")
 
+    logger.debug("Use current shell: %s", path)
     return path.stem.lower(), path
 
 
@@ -251,6 +252,7 @@ def _detect_shell_via_shellingham() -> tuple[str, Path] | None:
 
     try:
         shell, path = shellingham.detect_shell()
+        logger.debug("Detect shell: %s", path)
         return shell, Path(path)
     except shellingham.ShellDetectionFailure:
         return None
