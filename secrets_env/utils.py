@@ -225,3 +225,32 @@ def _show_warning(
         s = warnings.formatwarning(message, category, filename, lineno, line)
         logger = logging.getLogger("py.warnings")
         logger.warning(str(s))
+
+
+def detect_shell() -> tuple[str, Path]:
+    # try to detect shell via shellingham
+    if pair := _detect_shell_via_shellingham():
+        return pair
+
+    # fallback to default
+    if os.name == "posix":
+        path = Path(os.environ["SHELL"])
+    elif os.name == "nt":
+        path = Path(os.environ["COMSPEC"])
+    else:
+        raise NotImplementedError(f"OS {os.name!r} support not available")
+
+    return path.stem.lower(), path
+
+
+def _detect_shell_via_shellingham() -> tuple[str, Path] | None:
+    try:
+        import shellingham
+    except ImportError:
+        return None
+
+    try:
+        shell, path = shellingham.detect_shell()
+        return shell, Path(path)
+    except shellingham.ShellDetectionFailure:
+        return None
