@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 import warnings
@@ -20,8 +19,6 @@ def completion(ctx: click.Context, shell: str):
 
        eval "$(secrets.env completion)"
     """
-    logger = logging.getLogger(__name__)
-
     # get prog name
     prog_name = os.path.basename(sys.argv[0])
     if prog_name.lower().endswith(".py"):
@@ -33,7 +30,7 @@ def completion(ctx: click.Context, shell: str):
 
     # get shell
     if not shell:
-        shell = secrets_env.utils.detect_shell()
+        shell, _ = secrets_env.utils.detect_shell()
 
     # print script
     import click.shell_completion
