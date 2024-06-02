@@ -234,14 +234,15 @@ def detect_shell() -> tuple[str, Path]:
 
     # fallback to default
     if os.name == "posix":
-        path = Path(os.environ["SHELL"])
+        raw_shell_path = os.getenv("SHELL")
     elif os.name == "nt":
-        path = Path(os.environ["COMSPEC"])
-    else:
+        raw_shell_path = os.getenv("COMSPEC")
+    if not raw_shell_path:
         raise NotImplementedError(f"OS {os.name!r} support not available")
 
-    logger.debug("Use current shell: %s", path)
-    return path.stem.lower(), path
+    shell_path = Path(raw_shell_path)
+    logger.debug("Use current shell: %s", shell_path)
+    return shell_path.stem.lower(), shell_path
 
 
 def _detect_shell_via_shellingham() -> tuple[str, Path] | None:
