@@ -4,12 +4,13 @@
 
 - [Unreleased](#unreleased)
   - [✨ Enhancements](#-enhancements)
+  - [🚧 Internal changes](#-internal-changes)
 - [0.29.1 (2024-05-15)](#0291-2024-05-15)
   - [✨ Enhancements](#-enhancements-1)
 - [0.29.0 (2024-05-07)](#0290-2024-05-07)
   - [🚨 Breaking changes](#-breaking-changes)
   - [✨ Enhancements](#-enhancements-2)
-  - [🚧 Internal changes](#-internal-changes)
+  - [🚧 Internal changes](#-internal-changes-1)
 - [Prior to 0.29](#prior-to-029)
 
 
@@ -21,6 +22,9 @@
 
   This command helps users understand how secrets.env interprets the configuration file and identifies critical errors.
 
+### 🚧 Internal changes
+
+* Use shellingham to detect the shell type.
 
 ## 0.29.1 (2024-05-15)
 
