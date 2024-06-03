@@ -56,17 +56,19 @@ def run(args: Sequence[str], config: Path, partial: bool):
     Note that the command should be separated from the options with a double
     dash (`--`), in order to avoid ambiguity.
     """
+    logger = logging.getLogger(__name__)
+
     # prepare environment variable set
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
-    except (ConfigError, NoValue):
+    except (ConfigError, NoValue) as e:
+        logger.error(str(e))
         raise click.Abort from None
 
     environ = os.environ.copy()
     environ.update(values)
 
     # run
-    logger = logging.getLogger(__name__)
     logger.debug("exec> %s", " ".join(args))
 
     proc = subprocess.run(args, env=environ)
