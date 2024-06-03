@@ -30,3 +30,7 @@ class NoValue(SecretsEnvError):
 
 class UnsupportedError(SecretsEnvError):
     """The operation is unsupported."""
+
+
+class OperationError(SecretsEnvError):
+    """The operation failed."""

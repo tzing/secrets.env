@@ -14,6 +14,8 @@ import warnings
 from pathlib import Path
 from typing import TypeVar, overload
 
+from secrets_env.exceptions import OperationError
+
 if typing.TYPE_CHECKING:
     import click
     import httpx
@@ -228,20 +230,37 @@ def _show_warning(
 
 
 def detect_shell() -> tuple[str, Path]:
+    """
+    Detect the current shell.
+
+    Returns
+    -------
+    shell : str
+        Shell name.
+    path : Path
+        Path to the shell executable.
+
+    Raises
+    ------
+    OperationError
+        If the shell cannot be detected.
+    """
     # try to detect shell via shellingham
     if pair := _detect_shell_via_shellingham():
         return pair
 
     # fallback to default
+    raw_shell_path = None
     if os.name == "posix":
         raw_shell_path = os.getenv("SHELL")
     elif os.name == "nt":
         raw_shell_path = os.getenv("COMSPEC")
+
     if not raw_shell_path:
-        raise NotImplementedError(f"OS {os.name!r} support not available")
+        raise OperationError("Cannot detect shell")
 
     shell_path = Path(raw_shell_path)
-    logger.debug("Use current shell: %s", shell_path)
+    logger.debug("Use default shell: %s", shell_path)
     return shell_path.stem.lower(), shell_path
 
 
