@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import collections
+import contextlib
+import copy
 import json
 import logging
 import os
@@ -225,3 +227,16 @@ def _show_warning(
         s = warnings.formatwarning(message, category, filename, lineno, line)
         logger = logging.getLogger("py.warnings")
         logger.warning(str(s))
+
+
+@contextlib.contextmanager
+def inject_environs(values: dict[str, str]):
+    """Inject values into environment variables."""
+    old_environ = copy.deepcopy(os.environ)
+    os.environ["SECRETS_ENV_ACTIVE"] = "1"
+    try:
+        os.environ.update(values)
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)

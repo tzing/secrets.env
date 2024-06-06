@@ -10,6 +10,7 @@ import click
 import secrets_env
 from secrets_env.commands.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
+from secrets_env.utils import inject_environs
 
 
 class RunCommand(click.Command):
@@ -65,11 +66,10 @@ def run(args: Sequence[str], config: Path, partial: bool):
         logger.error(str(e))
         raise click.Abort from None
 
-    environ = os.environ.copy()
-    environ.update(values)
-
     # run
     logger.debug("exec> %s", " ".join(args))
 
-    proc = subprocess.run(args, env=environ)
+    with inject_environs(values):
+        proc = subprocess.run(args, env=os.environ)
+
     sys.exit(proc.returncode)

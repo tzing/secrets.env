@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import warnings
 from pathlib import Path
@@ -162,3 +163,14 @@ class TestSetupCaptureWarnings:
             warnings.warn("test warning", UserWarning, stacklevel=1)
 
         assert "UserWarning: test warning" in caplog.text
+
+
+def test_inject_environs(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("test_key_1", "test_value_1")
+
+    with t.inject_environs({"test_key_2": "test_value_2"}):
+        assert os.environ["test_key_1"] == "test_value_1"
+        assert os.environ["test_key_2"] == "test_value_2"
+
+    assert os.environ["test_key_1"] == "test_value_1"
+    assert "test_key_2" not in os.environ
