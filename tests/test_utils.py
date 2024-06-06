@@ -1,9 +1,10 @@
 import logging
+import os
 import sys
 import warnings
 from pathlib import Path
 from unittest.mock import Mock, patch
-import os
+
 import click
 import httpx
 import keyring.errors
