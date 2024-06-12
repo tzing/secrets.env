@@ -64,7 +64,7 @@ def test_config_error(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.usefixtures("_reset_logging")
-def test_config_error(monkeypatch: pytest.MonkeyPatch):
+def test_recursive_activation(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SECRETS_ENV_ACTIVE", "1")
 
     runner = click.testing.CliRunner()

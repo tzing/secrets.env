@@ -59,7 +59,7 @@ class TestSecretsEnvPlugin:
         assert read_values_func.call_count == 0
 
     @pytest.mark.usefixtures("_reset_logging")
-    def test_duplicate_activation(
+    def test_recursive_activation(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
