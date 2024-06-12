@@ -233,10 +233,15 @@ def _show_warning(
 def inject_environs(values: dict[str, str]):
     """Inject values into environment variables."""
     old_environ = copy.deepcopy(os.environ)
-    os.environ["SECRETS_ENV_ACTIVE"] = "1"
     try:
         os.environ.update(values)
+        os.environ["SECRETS_ENV_ACTIVE"] = "1"
         yield
     finally:
         os.environ.clear()
         os.environ.update(old_environ)
+
+
+def is_secrets_env_active() -> bool:
+    """Check if secrets.env is active."""
+    return os.getenv("SECRETS_ENV_ACTIVE") == "1"
