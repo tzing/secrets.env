@@ -15,6 +15,7 @@ from poetry.plugins.application_plugin import ApplicationPlugin
 import secrets_env
 from secrets_env.exceptions import ConfigError
 from secrets_env.realms.poetry.cleo import setup_output
+from secrets_env.utils import is_secrets_env_active
 
 if TYPE_CHECKING:
     from cleo.events.event import Event
@@ -42,6 +43,10 @@ class SecretsEnvPlugin(ApplicationPlugin):
         setup_output(event.io.output)
         logger.debug("Start secrets.env poetry plugin")
 
+        if is_secrets_env_active():
+            logger.warning("Secrets.env is already active. Skip loading values.")
+            return
+
         try:
             values = secrets_env.read_values(config=None, strict=False)
         except ConfigError:
@@ -49,3 +54,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
 
         for name, value in values.items():
             os.environ[name] = value
+
+        if values:
+            # mark secrets.env is active when values are loaded
+            os.environ["SECRETS_ENV_ACTIVE"] = "1"
