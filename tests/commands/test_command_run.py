@@ -21,7 +21,7 @@ def test_success(monkeypatch: pytest.MonkeyPatch):
 def test_usage():
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--help"])
-    assert "Usage: run [OPTIONS] -- COMMAND [ARGS]..." in result.output
+    assert "Usage: run [OPTIONS] [--] COMMAND [ARGS]..." in result.output
 
 
 @pytest.mark.usefixtures("_reset_logging")
@@ -61,3 +61,14 @@ def test_config_error(monkeypatch: pytest.MonkeyPatch):
     result = runner.invoke(run, ["--", "echo"])
 
     assert result.exit_code == 1
+
+
+@pytest.mark.usefixtures("_reset_logging")
+def test_config_error(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SECRETS_ENV_ACTIVE", "1")
+
+    runner = click.testing.CliRunner()
+    result = runner.invoke(run, ["--", "echo"])
+
+    assert result.exit_code == 1
+    assert "secrets.env is already active" in result.output
