@@ -13,6 +13,8 @@ import poetry.console.commands.run
 import pytest
 from cleo.io.outputs.output import Verbosity
 
+import secrets_env.realms.poetry as t
+from secrets_env.exceptions import ConfigError
 from secrets_env.realms.poetry import SecretsEnvPlugin
 from secrets_env.realms.poetry.cleo import CleoFormatter, CleoHandler, setup_output
 
@@ -31,7 +33,8 @@ class TestSecretsEnvPlugin:
 
     @pytest.mark.usefixtures("_reset_logging")
     def test_load_values(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
-        monkeypatch.setattr("secrets_env.realms.poetry.setup_output", lambda _: None)
+        monkeypatch.setattr(t, "setup_output", lambda _: None)
+        monkeypatch.setattr(t, "is_secrets_env_active", lambda: False)
         monkeypatch.setattr(
             "secrets_env.read_values", lambda config, strict: {"VAR1": "bar"}
         )
@@ -43,19 +46,47 @@ class TestSecretsEnvPlugin:
         assert os.getenv("VAR1") == "bar"
 
     @pytest.mark.usefixtures("_reset_logging")
-    def test_load_values__skip(
+    def test_skip_not_related_command(
         self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
     ):
-        func = Mock()
-        monkeypatch.setattr("secrets_env.read_values", func)
-        monkeypatch.setenv("VAR1", "foo")
+        read_values_func = Mock()
+        monkeypatch.setattr("secrets_env.read_values", read_values_func)
         event.command.name = "not-related-command"
 
         plugin = SecretsEnvPlugin()
         plugin.load_values(event, "console.command", dispatcher)
 
-        assert os.getenv("VAR1") == "foo"
-        assert func.call_count == 0
+        assert read_values_func.call_count == 0
+
+    @pytest.mark.usefixtures("_reset_logging")
+    def test_recursive_activation(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        event,
+        dispatcher,
+    ):
+        read_values_func = Mock()
+        monkeypatch.setattr("secrets_env.read_values", read_values_func)
+        monkeypatch.setattr(t, "setup_output", lambda _: None)
+        monkeypatch.setenv("SECRETS_ENV_ACTIVE", "1")
+
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)
+
+        assert read_values_func.call_count == 0
+        assert "Secrets.env is already active" in caplog.text
+
+    def test_config_error(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
+        read_values_func = Mock(side_effect=ConfigError)
+        monkeypatch.setattr("secrets_env.read_values", read_values_func)
+        monkeypatch.setattr(t, "setup_output", lambda _: None)
+        monkeypatch.setattr(t, "is_secrets_env_active", lambda: False)
+
+        plugin = SecretsEnvPlugin()
+        plugin.load_values(event, "console.command", dispatcher)  # should not raise
+
+        assert read_values_func.call_count == 1
 
 
 class TestCleoHandler:

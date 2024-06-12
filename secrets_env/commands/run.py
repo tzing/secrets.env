@@ -10,7 +10,7 @@ import click
 import secrets_env
 from secrets_env.commands.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
-from secrets_env.utils import inject_environs
+from secrets_env.utils import inject_environs, is_secrets_env_active
 
 
 class RunCommand(click.Command):
@@ -19,7 +19,7 @@ class RunCommand(click.Command):
 
         This is a low-level method called by :meth:`get_usage`.
         """
-        formatter.write_usage(ctx.command_path, "[OPTIONS] -- COMMAND [ARGS]...")
+        formatter.write_usage(ctx.command_path, "[OPTIONS] [--] COMMAND [ARGS]...")
 
 
 @entrypoint.command(
@@ -58,6 +58,11 @@ def run(args: Sequence[str], config: Path, partial: bool):
     dash (`--`), in order to avoid ambiguity.
     """
     logger = logging.getLogger(__name__)
+
+    # prevent double activation
+    if is_secrets_env_active():
+        logger.error("secrets.env is already active")
+        sys.exit(1)
 
     # prepare environment variable set
     try:

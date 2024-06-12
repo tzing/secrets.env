@@ -174,3 +174,13 @@ def test_inject_environs(monkeypatch: pytest.MonkeyPatch):
 
     assert os.environ["test_key_1"] == "test_value_1"
     assert "test_key_2" not in os.environ
+
+
+def test_is_secrets_env_active(monkeypatch: pytest.MonkeyPatch):
+    with monkeypatch.context() as ctx:
+        ctx.delenv("SECRETS_ENV_ACTIVE", False)
+        assert not t.is_secrets_env_active()
+
+    with monkeypatch.context() as ctx:
+        ctx.setenv("SECRETS_ENV_ACTIVE", "1")
+        assert t.is_secrets_env_active()
