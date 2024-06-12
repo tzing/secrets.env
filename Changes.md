@@ -22,6 +22,8 @@
 
   This command helps users understand how secrets.env interprets the configuration file and identifies critical errors.
 
+* Set environment variable `SECRETS_ENV_ACTIVE` and use it to prevent recursive execution of secrets.env.
+
 ### 🚧 Internal changes
 
 * Use shellingham to detect the shell type.
