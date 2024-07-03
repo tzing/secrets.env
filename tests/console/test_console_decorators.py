@@ -3,13 +3,7 @@ import logging
 import click.testing
 import pytest
 
-from secrets_env.realms.click import (
-    ClickHandler,
-    ColorFormatter,
-    SecretsEnvFilter,
-    SecretsEnvFormatter,
-    with_output_options,
-)
+from secrets_env.console.decorators import with_output_options
 
 
 class TestWithOutputOptions:

@@ -8,7 +8,7 @@ import typing
 import click
 
 import secrets_env.utils
-from secrets_env.realms.click.loggings import (
+from secrets_env.console.loggings import (
     ClickHandler,
     ColorFormatter,
     SecretsEnvFilter,
