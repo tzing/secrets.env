@@ -3,7 +3,7 @@ from pathlib import Path
 import click.testing
 import pytest
 
-from secrets_env.commands.config import group
+from secrets_env.console.commands.config import group
 
 
 class TestShow:

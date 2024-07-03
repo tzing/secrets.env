@@ -6,7 +6,7 @@ import sys
 import click
 from pydantic_core import Url
 
-from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,8 @@ class UrlParam(click.ParamType):
     name = "url"
 
     def convert(self, value: str, param, ctx):
-        """Convert value to URL object.
+        """
+        Convert value to URL object.
 
         The schema does not matter. It will be discarded later in `create_keyring_login_key`.
         """
@@ -28,7 +29,9 @@ class UrlParam(click.ParamType):
 
 @entrypoint.group("keyring")
 def group():
-    """Manage credential using system keyring service."""
+    """
+    Manage credential using system keyring service.
+    """
 
 
 @group.command("set")
@@ -67,7 +70,7 @@ def command_set(host: Url, username: str, password: str, password_stdin: bool):
         keyring.set_password("secrets.env", key, password)
     except keyring.errors.PasswordSetError:
         click.secho("Failed to save password", fg="red")
-        sys.exit(1)
+        exit(ExitCode.Error)
 
     click.echo("Password saved")
 
@@ -77,7 +80,9 @@ def command_set(host: Url, username: str, password: str, password_stdin: bool):
 @click.argument("username")
 @with_output_options
 def command_del(host: Url, username: str):
-    """Remove a credential from system keyring."""
+    """
+    Remove a credential from system keyring.
+    """
     assert_keyring_available()
 
     import keyring
@@ -101,14 +106,10 @@ def assert_keyring_available():
         import keyring
         import keyring.backends.fail
     except ImportError:
-        click.secho(
-            "Dependency `keyring` not found. "
-            "Please install secrets.env with extras `[keyring]`.",
-            fg="red",
-            err=True,
-        )
-        sys.exit(7)
+        logger.error("Dependency `keyring` not found")
+        logger.error("Please install secrets.env with extra `[keyring]`")
+        exit(ExitCode.DependencyError)
 
     if isinstance(keyring.get_keyring(), keyring.backends.fail.Keyring):
-        click.secho("Keyring service is not available", fg="red", err=True)
-        sys.exit(7)
+        logger.error("Keyring service is not available")
+        exit(ExitCode.DependencyError)

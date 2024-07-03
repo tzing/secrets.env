@@ -11,7 +11,7 @@ import click
 from pydantic import BaseModel
 
 import secrets_env.config
-from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
 from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
@@ -54,7 +54,7 @@ def show(config: Path | None):
     try:
         cfg = secrets_env.config.load_local_config(config)
     except ConfigError:
-        raise click.Abort from None
+        exit(ExitCode.Error)
 
     # sources
     click.echo(click.style("Sources:", fg="cyan"))

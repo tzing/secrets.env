@@ -3,7 +3,7 @@ import os
 import click.testing
 import pytest
 
-import secrets_env.commands.completion as t
+from secrets_env.console.commands.completion import completion
 
 
 @pytest.mark.skipif(
@@ -12,6 +12,6 @@ import secrets_env.commands.completion as t
 )
 def test():
     runner = click.testing.CliRunner()
-    result = runner.invoke(t.completion)
+    result = runner.invoke(completion)
     assert result.exit_code == 0
     assert "#compdef secrets.env" in result.stdout

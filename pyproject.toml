@@ -46,7 +46,7 @@ teleport = ["cryptography", "pexpect"]
 yaml = ["PyYAML"]
 
 [tool.poetry.scripts]
-"secrets.env" = "secrets_env.commands:main"
+"secrets.env" = "secrets_env.console:entrypoint"
 
 [tool.poetry.plugins."poetry.application.plugin"]
 poetry-secrets-env-plugin = "secrets_env.realms.poetry:SecretsEnvPlugin"
@@ -81,7 +81,7 @@ extend-select = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
-"secrets_env/commands/__init__.py" = ["F401"]
+"secrets_env/console/__init__.py" = ["F401"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12

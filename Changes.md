@@ -27,6 +27,7 @@
 ### 🚧 Internal changes
 
 * Use shellingham to detect the shell type.
+* Refactor `console` module.
 
 ## 0.29.1 (2024-05-15)
 

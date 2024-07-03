@@ -1,21 +1,21 @@
 import logging
 import os
 import subprocess
-import sys
 from pathlib import Path
 from typing import Sequence
 
 import click
 
 import secrets_env
-from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
 
 
 class RunCommand(click.Command):
     def format_usage(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
-        """Writes the usage line into the formatter.
+        """
+        Writes the usage line into the formatter.
 
         This is a low-level method called by :meth:`get_usage`.
         """
@@ -62,14 +62,14 @@ def run(args: Sequence[str], config: Path, partial: bool):
     # prevent double activation
     if is_secrets_env_active():
         logger.error("secrets.env is already active")
-        sys.exit(1)
+        exit(ExitCode.NestedEnvironment)
 
     # prepare environment variable set
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
     except (ConfigError, NoValue) as e:
-        logger.error(str(e))
-        raise click.Abort from None
+        logger.error("%s", e)
+        exit(ExitCode.ValueNotFound)
 
     # run
     logger.debug("exec> %s", " ".join(args))
@@ -77,4 +77,4 @@ def run(args: Sequence[str], config: Path, partial: bool):
     with inject_environs(values):
         proc = subprocess.run(args, env=os.environ)
 
-    sys.exit(proc.returncode)
+    exit(proc.returncode)

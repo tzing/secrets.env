@@ -1,3 +1,3 @@
-import secrets_env.commands
+import secrets_env.console
 
-secrets_env.commands.main()
+secrets_env.console.entrypoint()
