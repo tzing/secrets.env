@@ -5,6 +5,7 @@ import pexpect
 import pytest
 
 from secrets_env.console.shells.base import Shell
+from secrets_env.console.shells.posix import PosixShell
 
 
 class TestShell:
@@ -12,3 +13,24 @@ class TestShell:
         shell = Shell(shell_path=Path("/bin/sh"))
         with pytest.raises(NotImplementedError):
             shell.activate(environ={"key": "value"})
+
+
+class TestPosixShell:
+    def test_handover_pexpect(self, monkeypatch: pytest.MonkeyPatch):
+        mock_proc = Mock(pexpect.spawn, exitstatus=7)
+        monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        assert shell.handover() == 7
+
+        mock_proc.interact.assert_called_once()
+
+    def test_handover_fallback(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            PosixShell, "handover_pexpect", Mock(side_effect=ImportError)
+        )
+        monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit))
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        with pytest.raises(SystemExit):
+            shell.handover()
