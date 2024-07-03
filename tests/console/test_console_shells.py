@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path, PureWindowsPath
 from unittest.mock import Mock
 
@@ -53,14 +54,13 @@ class TestPosixShell:
 
 class TestWindowsShell:
     def test_handover(self, monkeypatch: pytest.MonkeyPatch):
-        mock_run = Mock(returncode=7)
+        def mock_run(command, *, shell, text):
+            assert command == "C:\\Windows\\System32\\cmd.exe"
+            assert shell is True
+            assert text is False
+            return Mock(subprocess.CompletedProcess, returncode=7)
+
         monkeypatch.setattr("subprocess.run", mock_run)
 
         shell = WindowsShell(shell_path=PureWindowsPath(r"C:\Windows\System32\cmd.exe"))
         assert shell.handover() == 7
-
-        mock_run.assert_called_once_with(
-            "C:\\Windows\\System32\\cmd.exe",
-            shell=True,
-            text=False,
-        )
