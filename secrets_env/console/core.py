@@ -5,7 +5,7 @@ __all__ = ["entrypoint", "with_output_options"]
 import click
 
 import secrets_env.version
-from secrets_env.realms.click import with_output_options
+from secrets_env.console.decorators import with_output_options
 
 
 @click.group(
