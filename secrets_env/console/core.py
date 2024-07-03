@@ -28,6 +28,9 @@ class ExitCode(enum.IntEnum):
     NestedEnvironment = 3
     """Nested environment detected."""
 
+    DependencyError = 4
+    """Dependency error."""
+
 
 def exit(code: int) -> NoReturn:
     # just in case `site.exit()` is not available
