@@ -13,7 +13,7 @@ def get_shell() -> Shell:
     shell, path = secrets_env.realms.shellingham.detect_shell()
 
     if os.name == "nt":
-        from secrets_env.shells.windows import WindowsShell
+        from secrets_env.console.shells.windows import WindowsShell
         return WindowsShell(path)
 
     from secrets_env.console.shells.posix import PosixShell
