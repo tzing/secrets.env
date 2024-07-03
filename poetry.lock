@@ -1717,6 +1717,22 @@ sphinx = ">=4.0"
 docs = ["furo", "ipython", "myst-parser", "sphinx-copybutton", "sphinx-inline-tabs"]
 
 [[package]]
+name = "sphinx-click"
+version = "6.0.0"
+description = "Sphinx extension that automatically documents click applications"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sphinx_click-6.0.0-py3-none-any.whl", hash = "sha256:1e0a3c83bcb7c55497751b19d07ebe56b5d7b85eb76dd399cf9061b497adc317"},
+    {file = "sphinx_click-6.0.0.tar.gz", hash = "sha256:f5d664321dc0c6622ff019f1e1c84e58ce0cecfddeb510e004cf60c2a3ab465b"},
+]
+
+[package.dependencies]
+click = ">=8.0"
+docutils = "*"
+sphinx = ">=4.0"
+
+[[package]]
 name = "sphinx-design"
 version = "0.6.0"
 description = "A sphinx extension for designing beautiful, view size responsive web components."
@@ -2012,4 +2028,4 @@ yaml = ["PyYAML"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "0447e610708cef668111c336c1ac9834524c1cecfb04aa71232ddea2d8aa2205"
+content-hash = "4145c5f2a22e503bb2562bf4a6325dbc97084730e13b2b83070aeaa87419ae4b"

@@ -38,6 +38,7 @@ PyYAML = "*"
 respx = "^0.21.1"
 ruff = "^0.4.3"
 sphinx = "^7.2.6"
+sphinx-click = "^6.0.0"
 sphinx-design = "^0.6.0"
 
 [tool.poetry.extras]
