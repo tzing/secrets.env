@@ -6,6 +6,7 @@ import pytest
 
 from secrets_env.console.shells.base import Shell
 from secrets_env.console.shells.posix import PosixShell
+from secrets_env.console.shells.windows import WindowsShell
 
 
 class TestShell:
@@ -34,3 +35,18 @@ class TestPosixShell:
         shell = PosixShell(shell_path=Path("/bin/sh"))
         with pytest.raises(SystemExit):
             shell.handover()
+
+
+class TestWindowsShell:
+    def test_handover(self, monkeypatch: pytest.MonkeyPatch):
+        mock_run = Mock(returncode=7)
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        shell = WindowsShell(shell_path=PureWindowsPath(r"C:\Windows\System32\cmd.exe"))
+        assert shell.handover() == 7
+
+        mock_run.assert_called_once_with(
+            "C:\\Windows\\System32\\cmd.exe",
+            shell=True,
+            text=False,
+        )
