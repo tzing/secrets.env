@@ -20,3 +20,6 @@ To access assistance from the command line, simply run ``secrets.env --help`` to
 
 .. click:: secrets_env.console.commands.run:run
    :prog: secrets.env run
+
+.. click:: secrets_env.console.commands.shell:shell
+   :prog: secrets.env shell
