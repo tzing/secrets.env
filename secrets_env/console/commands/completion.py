@@ -4,7 +4,7 @@ import warnings
 
 import click
 
-from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 
 
 @entrypoint.command()
@@ -12,7 +12,8 @@ from secrets_env.commands.core import entrypoint, with_output_options
 @with_output_options
 @click.pass_context
 def completion(ctx: click.Context, shell: str):
-    """Print shell completion script for this command.
+    """
+    Print shell completion script for this command.
 
     You can enable completion by running following command in your terminal:
 
