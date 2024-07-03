@@ -8,14 +8,15 @@ from typing import Sequence
 import click
 
 import secrets_env
-from secrets_env.commands.core import entrypoint, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
 
 
 class RunCommand(click.Command):
     def format_usage(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
-        """Writes the usage line into the formatter.
+        """
+        Writes the usage line into the formatter.
 
         This is a low-level method called by :meth:`get_usage`.
         """

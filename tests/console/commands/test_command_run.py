@@ -1,7 +1,7 @@
 import click.testing
 import pytest
 
-from secrets_env.commands.run import run
+from secrets_env.console.commands.run import run
 from secrets_env.exceptions import ConfigError
 
 
