@@ -24,6 +24,10 @@
 
 * Set environment variable `SECRETS_ENV_ACTIVE` and use it to prevent recursive execution of secrets.env.
 
+* Add command `shell` that spawns a shell with the environment variables loaded by secrets.env.
+
+  Users can interact with the shell and use the environment variables.
+
 ### 🚧 Internal changes
 
 * Use shellingham to detect the shell type.
