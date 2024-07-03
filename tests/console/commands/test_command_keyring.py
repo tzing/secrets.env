@@ -7,13 +7,18 @@ import keyring.errors
 import pytest
 from pydantic_core import Url
 
-from secrets_env.commands.keyring import UrlParam, assert_keyring_available, group
+import secrets_env.console.commands.keyring
+from secrets_env.console.commands.keyring import (
+    UrlParam,
+    assert_keyring_available,
+    group,
+)
 
 
 @pytest.fixture()
 def _assume_keyring_available(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "secrets_env.commands.keyring.assert_keyring_available", lambda: None
+        secrets_env.console.commands.keyring, "assert_keyring_available", lambda: None
     )
 
 
