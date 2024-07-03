@@ -36,7 +36,7 @@ class UserPasswordAuth(Auth):
     password: SecretStr
     """Password."""
 
-    _timeout: ClassVar[float | None] = PrivateAttr(None)
+    _timeout: float | None = PrivateAttr(None)
     """Request timeout."""
 
     @classmethod
@@ -114,7 +114,7 @@ class OktaAuth(UserPasswordAuth):
     vault_name = "okta"
 
     # Okta 2FA got triggerred within the api call, so needs a longer timeout
-    _timeout = PrivateAttr(60.0)
+    _timeout: float | None = PrivateAttr(60.0)
 
 
 class RADIUSAuth(UserPasswordAuth):
