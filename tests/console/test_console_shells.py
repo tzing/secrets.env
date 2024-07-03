@@ -4,9 +4,23 @@ from unittest.mock import Mock
 import pexpect
 import pytest
 
+from secrets_env.console.shells import get_shell
 from secrets_env.console.shells.base import Shell
 from secrets_env.console.shells.posix import PosixShell
 from secrets_env.console.shells.windows import WindowsShell
+
+
+class TestGetShell:
+    def test_default(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_detect_shell():
+            return "sh", Path("/bin/sh")
+
+        monkeypatch.setattr(
+            "secrets_env.realms.shellingham.detect_shell", mock_detect_shell
+        )
+
+        shell = get_shell()
+        assert isinstance(shell, PosixShell)
 
 
 class TestShell:
