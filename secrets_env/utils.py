@@ -5,10 +5,12 @@ from __future__ import annotations
 import collections
 import contextlib
 import copy
+import functools
 import json
 import logging
 import os
 import re
+import string
 import sys
 import threading
 import typing
@@ -245,3 +247,17 @@ def inject_environs(values: dict[str, str]):
 def is_secrets_env_active() -> bool:
     """Check if secrets.env is active."""
     return os.getenv("SECRETS_ENV_ACTIVE") == "1"
+
+
+@functools.lru_cache(maxsize=2)
+def get_template(filename: str) -> string.Template:
+    """Load template from ``templates/`` directory and returns in
+    :py:class:`string.Template` type."""
+    current_dir = Path(__file__).resolve().parent
+    template_dir = current_dir / "templates"
+    template_file = template_dir / filename
+
+    content = template_file.read_text()
+    template = string.Template(content)
+
+    return template

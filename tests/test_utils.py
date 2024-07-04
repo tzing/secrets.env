@@ -1,5 +1,6 @@
 import logging
 import os
+import string
 import sys
 import warnings
 from pathlib import Path
@@ -112,6 +113,12 @@ def test_create_keyring_login_key():
     assert key == '{"host": "example.com", "type": "login", "user": "user@example.com"}'
 
 
+def test_strip_ansi():
+    text = click.style("test", fg="red")
+    assert text != "test"
+    assert t.strip_ansi(text) == "test"
+
+
 def test_lru_dict():
     # basic
     d = t.LruDict(max_size=3)
@@ -184,3 +191,8 @@ def test_is_secrets_env_active(monkeypatch: pytest.MonkeyPatch):
     with monkeypatch.context() as ctx:
         ctx.setenv("SECRETS_ENV_ACTIVE", "1")
         assert t.is_secrets_env_active()
+
+
+def test_get_template():
+    template = t.get_template("oidc-success.html")
+    assert isinstance(template, string.Template)

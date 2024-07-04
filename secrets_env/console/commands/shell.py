@@ -8,6 +8,7 @@ import click
 
 import secrets_env
 import secrets_env.console.shells
+import secrets_env.utils
 from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 
@@ -31,7 +32,7 @@ def shell(config: Path, partial: bool):
     """
     logger = logging.getLogger(__name__)
 
-    if os.getenv("SECRETS_ENV_ACTIVE"):
+    if secrets_env.utils.is_secrets_env_active():
         logger.error("Secrets.env is already activated")
         exit(ExitCode.NestedEnvironment)
 
