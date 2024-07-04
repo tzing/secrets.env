@@ -18,6 +18,8 @@ import urllib.parse
 from http import HTTPStatus
 from typing import Any
 
+from secrets_env.utils import get_template
+
 if typing.TYPE_CHECKING:
     from typing import Callable, Dict, Iterator, List
 
@@ -263,17 +265,3 @@ def get_free_port() -> int:
         s.bind(("", 0))
         _, port = s.getsockname()
     return port
-
-
-@functools.lru_cache(maxsize=None)
-def get_template(filename: str) -> string.Template:
-    """Load template from ``templates/`` directory and returns in
-    :py:class:`string.Template` type."""
-    current_dir = pathlib.Path(__file__).resolve().parent
-    template_dir = current_dir / "templates"
-    template_file = template_dir / filename
-
-    content = template_file.read_text()
-    template = string.Template(content)
-
-    return template
