@@ -6,12 +6,9 @@ from __future__ import annotations
 
 import collections.abc
 import contextlib
-import functools
 import http.server
 import logging
-import pathlib
 import socket
-import string
 import threading
 import typing
 import urllib.parse
