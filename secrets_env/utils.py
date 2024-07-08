@@ -250,14 +250,22 @@ def is_secrets_env_active() -> bool:
 
 
 @functools.lru_cache(maxsize=2)
-def get_template(filename: str) -> string.Template:
-    """Load template from ``templates/`` directory and returns in
-    :py:class:`string.Template` type."""
+def get_asset(filename: str) -> str:
+    """
+    Load asset from ``assets/`` directory and return its content.
+    """
     current_dir = Path(__file__).resolve().parent
-    template_dir = current_dir / "templates"
-    template_file = template_dir / filename
+    asset_dir = current_dir / "assets"
+    asset_file = asset_dir / filename
+    return asset_file.read_text()
 
-    content = template_file.read_text()
+
+@functools.lru_cache(maxsize=2)
+def get_template(filename: str) -> string.Template:
+    """
+    Load template from ``assets/`` directory and returns in
+    :py:class:`string.Template` type.
+    """
+    content = get_asset(filename)
     template = string.Template(content)
-
     return template
