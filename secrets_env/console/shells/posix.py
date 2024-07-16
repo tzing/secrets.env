@@ -15,7 +15,6 @@ from pexpect import spawn
 from secrets_env.console.shells.base import Shell
 
 if typing.TYPE_CHECKING:
-    from pathlib import Path
     from types import FrameType
     from typing import NoReturn, TextIO
 
@@ -109,7 +108,7 @@ class PosixShell(Shell):
     def _write_activate_script(self, fd: TextIO) -> None:
         print('PS1="(secrets.env) $PS1"', file=fd)
 
-    def _source_script(self, proc: spawn, script_path: Path) -> None:
+    def _source_script(self, proc: spawn, script_path: str) -> None:
         proc.sendline(f". {shlex.quote(script_path)}")
 
 
