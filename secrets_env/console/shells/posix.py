@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class PosixShell(Shell):
-    def __init__(self, shell_path: Path) -> None:
-        super().__init__(shell_path)
-        self.source_command = "."
 
     def handover(self) -> int | None:
         try:
