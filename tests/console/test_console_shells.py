@@ -10,7 +10,9 @@ import pytest
 from secrets_env.console.shells import get_shell
 from secrets_env.console.shells.base import Shell
 from secrets_env.console.shells.posix import (
+    Bash,
     PosixShell,
+    Zsh,
     prepare_activate_script,
     register_window_resize,
 )
@@ -60,19 +62,35 @@ class TestPosixShell:
         assert "Detected Python virtual environment" in caplog.text
 
     def test_handover_pexpect(self, monkeypatch: pytest.MonkeyPatch):
-        mock_proc = Mock(pexpect.spawn, exitstatus=7)
-        monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
-
-        shell = PosixShell(shell_path=Path("/bin/sh"))
-        assert shell.handover() == 7
-
-        mock_proc.interact.assert_called_once()
-
-    def test_handover_pexpect__sigint(self, monkeypatch: pytest.MonkeyPatch):
+        # test signal-based exit; the normal exit case will be tested in TestShell
         mock_proc = Mock(pexpect.spawn, exitstatus=None, signalstatus=1)
         monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
 
         shell = PosixShell(shell_path=Path("/bin/sh"))
+        assert shell.handover() == 1
+
+
+class TestShell:
+    @pytest.fixture(autouse=True)
+    def _mock_spawn(self, monkeypatch: pytest.MonkeyPatch):
+        mock_proc = Mock(pexpect.spawn, exitstatus=1)
+        monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
+
+        yield
+
+        mock_proc.sendline.assert_called()
+        mock_proc.interact.assert_called_once()
+
+    def test_sh(self):
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        assert shell.handover() == 1
+
+    def test_bash(self):
+        shell = Bash(shell_path=Path("/bin/bash"))
+        assert shell.handover() == 1
+
+    def test_zsh(self):
+        shell = Zsh(shell_path=Path("/bin/zsh"))
         assert shell.handover() == 1
 
 
