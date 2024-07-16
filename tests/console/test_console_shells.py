@@ -13,6 +13,7 @@ from secrets_env.console.shells.posix import (
     Bash,
     PosixShell,
     Zsh,
+    create_temporary_file,
     prepare_activate_script,
     register_window_resize,
 )
@@ -121,11 +122,13 @@ class TestPrepareActivateScript:
         assert "TEST_CODE='Hello World'\"'\"'!'" in script_content
         assert "export TEST_CODE" in script_content
 
+
+class TestCreateTemporaryFile:
     def test_remove_by_signal(self):
-        script_path = prepare_activate_script(".sh")
+        script_path = create_temporary_file()
         os.kill(os.getpid(), signal.SIGUSR1)
         os.kill(os.getpid(), signal.SIGUSR1)  # should not raise error
-        assert not Path(script_path).exists()
+        assert not script_path.exists()
 
     def test_remove_by_atexit(self, monkeypatch: pytest.MonkeyPatch):
         teardown_fn = None
@@ -137,14 +140,14 @@ class TestPrepareActivateScript:
         monkeypatch.setattr("atexit.register", mock_register)
 
         # ensure teardown function is registered
-        script_path = prepare_activate_script(".sh")
+        script_path = create_temporary_file()
         assert Path(script_path).exists()
         assert teardown_fn is not None
 
         # invoke teardown function
         teardown_fn()
         teardown_fn()
-        assert not Path(script_path).exists()
+        assert not script_path.exists()
 
 
 class TestWindowsShell:

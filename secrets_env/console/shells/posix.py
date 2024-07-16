@@ -131,32 +131,10 @@ def prepare_activate_script(suffix: str) -> str:
     Prepare a temporary script that activates the virtual environment.
     """
     # create a temporary script
-    fid, script_path = tempfile.mkstemp(prefix="secrets-env-", suffix=suffix)
-    logger.debug("Created temporary script %s", script_path)
-
-    # registers a SIGUSR1 handler to delete the script
-    def sigusr1_handler(sig: int, data: FrameType | None):
-        nonlocal script_path
-        logger.debug("Received SIGUSR1, removing %s", script_path)
-        try:
-            os.remove(script_path)
-        except FileNotFoundError:
-            ...
-
-    signal.signal(signal.SIGUSR1, sigusr1_handler)
-
-    # remove the script upon exit if not removed
-    def remove_script():
-        nonlocal script_path
-        try:
-            os.remove(script_path)
-        except FileNotFoundError:
-            ...
-
-    atexit.register(remove_script)
+    script_path = create_temporary_file(suffix)
 
     # write the script
-    with os.fdopen(fid, "w") as fd:
+    with script_path.open("w") as fd:
         # transfer current environment
         for key, value in os.environ.items():
             print(f"{key}={shlex.quote(value)}", file=fd)
@@ -165,4 +143,38 @@ def prepare_activate_script(suffix: str) -> str:
         # request the shell to notify us via USR1 signal upon completion
         print(f"kill -USR1 {os.getpid()}", file=fd)
 
-    return script_path
+    return str(script_path)
+
+
+def create_temporary_file(suffix: str | None = None) -> Path:
+    """
+    Create a temporary file that will be removed upon exit.
+    """
+    fid, path = tempfile.mkstemp(prefix="secrets-env-", suffix=suffix)
+    os.close(fid)
+
+    logger.debug("Created temporary file %s", path)
+
+    # registers a SIGUSR1 handler to delete the script
+    def sigusr1_handler(sig: int, data: FrameType | None):
+        nonlocal path
+        logger.debug("Received SIGUSR1, removing %s", path)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            ...
+
+    signal.signal(signal.SIGUSR1, sigusr1_handler)
+
+    # remove the script upon exit if not removed
+    def remove_script():
+        nonlocal path
+        try:
+            os.remove(path)
+            logger.debug("Removed %s", path)
+        except FileNotFoundError:
+            ...
+
+    atexit.register(remove_script)
+
+    return Path(path)
