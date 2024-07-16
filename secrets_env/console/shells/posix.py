@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import shlex
@@ -108,7 +109,8 @@ class Zsh(Bash):
         super().do_post_spawn(proc)
 
     def _source_script(self, proc: spawn, script_path: str) -> None:
-        proc.sendline(f"emulate bash -c '. {shlex.quote(script_path)}'")
+        source_command = f". {shlex.quote(script_path)}"
+        proc.sendline(f"emulate bash -c {shlex.quote(source_command)}")
 
 
 def register_window_resize(proc: spawn) -> None:
@@ -143,11 +145,21 @@ def prepare_activate_script(suffix: str) -> str:
 
     signal.signal(signal.SIGUSR1, sigusr1_handler)
 
+    # remove the script upon exit if not removed
+    def remove_script():
+        nonlocal script_path
+        try:
+            os.remove(script_path)
+        except FileNotFoundError:
+            ...
+
+    atexit.register(remove_script)
+
     # write the script
     with os.fdopen(fid, "w") as fd:
         # transfer current environment
         for key, value in os.environ.items():
-            print(f"{key}='{value}'", file=fd)
+            print(f"{key}={shlex.quote(value)}", file=fd)
             print(f"export {key}", file=fd)
 
         # request the shell to notify us via USR1 signal upon completion

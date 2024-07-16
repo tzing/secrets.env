@@ -85,6 +85,40 @@ def test_register_window_resize():
     proc.setwinsize.assert_called_once()
 
 
+class TestPrepareActivateScript:
+    def test_script(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("TEST_CODE", "Hello World'!")
+        script_path = prepare_activate_script(".sh")
+        script_content = Path(script_path).read_text()
+        assert "TEST_CODE='Hello World'\"'\"'!'" in script_content
+        assert "export TEST_CODE" in script_content
+
+    def test_remove_by_signal(self):
+        script_path = prepare_activate_script(".sh")
+        os.kill(os.getpid(), signal.SIGUSR1)
+        os.kill(os.getpid(), signal.SIGUSR1)  # should not raise error
+        assert not Path(script_path).exists()
+
+    def test_remove_by_atexit(self, monkeypatch: pytest.MonkeyPatch):
+        teardown_fn = None
+
+        def mock_register(func):
+            nonlocal teardown_fn
+            teardown_fn = func
+
+        monkeypatch.setattr("atexit.register", mock_register)
+
+        # ensure teardown function is registered
+        script_path = prepare_activate_script(".sh")
+        assert Path(script_path).exists()
+        assert teardown_fn is not None
+
+        # invoke teardown function
+        teardown_fn()
+        teardown_fn()
+        assert not Path(script_path).exists()
+
+
 class TestWindowsShell:
     def test_handover(self, monkeypatch: pytest.MonkeyPatch):
         def mock_run(command, *, shell, text):
