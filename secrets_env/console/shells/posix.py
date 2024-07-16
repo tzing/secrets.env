@@ -52,10 +52,10 @@ class PosixShell(Shell):
         proc.interact(escape_character=NO_ESCAPE)
         proc.close()
 
-        if proc.exitstatus is None:
-            return proc.signalstatus
-        # don't know why pexpect mark exit status as bool
-        return typing.cast(int, proc.exitstatus)
+        if proc.exitstatus is not None:
+            # don't know why pyright interprets `exitstatus` as bool
+            return typing.cast(int, proc.exitstatus)
+        return proc.signalstatus
 
     def do_post_spawn(self, proc: spawn) -> None:
         register_window_resize(proc)
