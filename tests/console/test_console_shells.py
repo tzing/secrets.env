@@ -80,7 +80,7 @@ class TestPosixShell:
         assert shell.handover() == 1
 
 
-class TestShell:
+class TestShellHandoverPexpect:
     @pytest.fixture(autouse=True)
     def _mock_spawn(self, monkeypatch: pytest.MonkeyPatch):
         mock_proc = Mock(pexpect.spawn, exitstatus=1)
