@@ -41,7 +41,7 @@ class TestPosixShell:
 
         mock_proc.interact.assert_called_once()
 
-    def test_handover_fallback(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handover_default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             PosixShell, "handover_pexpect", Mock(side_effect=ImportError)
         )
