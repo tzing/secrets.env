@@ -63,19 +63,8 @@ class PosixShell(Shell):
         # register signal handler for window resize
         register_window_resize(proc)
 
-        # prepare activation script
-        script_path = create_temporary_script(self.script_suffix)
-
-        with open(script_path, "w") as fd:
-            # transfer current environment
-            for key, value in os.environ.items():
-                print(f"{key}='{value}'", file=fd)
-                print(f"export {key}", file=fd)
-
-            # ask the shell to send us a signal when it finishes
-            print(f"kill -USR1 {os.getpid()}", file=fd)
-
-        # source the script
+        # setup shell by sourcing the activate script
+        script_path = prepare_activate_script(self.script_suffix)
         self._source_script(proc, script_path)
 
     def _source_script(self, proc: spawn, script_path: str) -> None:
@@ -95,23 +84,33 @@ def register_window_resize(proc: spawn) -> None:
     signal.signal(signal.SIGWINCH, sigwinch_handler)
 
 
-def create_temporary_script(suffix: str) -> str:
+def prepare_activate_script(suffix: str) -> str:
     """
-    Create a temporary file and delete it when receiving SIGUSR1.
+    Prepare a temporary script that activates the virtual environment.
     """
-    fd, filename = tempfile.mkstemp(prefix="secrets-env-", suffix=suffix)
-    os.close(fd)
+    # create a temporary script
+    fid, script_path = tempfile.mkstemp(prefix="secrets-env-", suffix=suffix)
+    logger.debug("Created temporary script %s", script_path)
 
-    logger.debug("Created temporary script %s", filename)
-
+    # registers a SIGUSR1 handler to delete the script
     def sigusr1_handler(sig: int, data: FrameType | None):
-        nonlocal filename
-        logger.debug("Received SIGUSR1, removing %s", filename)
+        nonlocal script_path
+        logger.debug("Received SIGUSR1, removing %s", script_path)
         try:
-            os.remove(filename)
+            os.remove(script_path)
         except FileNotFoundError:
             ...
 
     signal.signal(signal.SIGUSR1, sigusr1_handler)
 
-    return filename
+    # write the script
+    with os.fdopen(fid, "w") as fd:
+        # transfer current environment
+        for key, value in os.environ.items():
+            print(f"{key}='{value}'", file=fd)
+            print(f"export {key}", file=fd)
+
+        # request the shell to notify us via USR1 signal upon completion
+        print(f"kill -USR1 {os.getpid()}", file=fd)
+
+    return script_path
