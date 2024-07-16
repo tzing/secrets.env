@@ -17,7 +17,7 @@ from secrets_env.console.shells.base import Shell
 if typing.TYPE_CHECKING:
     from pathlib import Path
     from types import FrameType
-    from typing import NoReturn
+    from typing import NoReturn, TextIO
 
     from pexpect import spawn
 
@@ -98,10 +98,16 @@ class PosixShell(Shell):
                 print(f"{key}={shlex.quote(value)}", file=fd)
                 print(f"export {key}", file=fd)
 
+            # for custom setup
+            self._write_activate_script(fd)
+
             # request the shell to notify us via USR1 signal upon completion
             print(f"kill -USR1 {os.getpid()}", file=fd)
 
         return script_path
+
+    def _write_activate_script(self, fd: TextIO) -> None:
+        print('PS1="(secrets.env) $PS1"', file=fd)
 
     def _source_script(self, proc: spawn, script_path: Path) -> None:
         proc.sendline(f". {shlex.quote(script_path)}")
