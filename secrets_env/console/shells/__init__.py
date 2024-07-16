@@ -16,5 +16,11 @@ def get_shell() -> Shell:
         from secrets_env.console.shells.windows import WindowsShell
         return WindowsShell(path)
 
-    from secrets_env.console.shells.posix import PosixShell
-    return PosixShell(path)
+    import secrets_env.console.shells.posix as posix
+
+    if shell == "bash":
+        return posix.Bash(path)
+    elif shell == "zsh":
+        return posix.Zsh(path)
+
+    return posix.PosixShell(path)

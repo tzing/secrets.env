@@ -22,7 +22,7 @@ class Shell:
     def activate(self, environ: dict[str, str]) -> NoReturn:
         """Activate the shell with the specified environment variables."""
         logger.info("Spawning shell")
-        logger.debug("Activating shell by class '%s'", type(self).__name__)
+        logger.debug("Activating shell by '%s' class", type(self).__name__)
 
         with secrets_env.utils.inject_environs(environ):
             code = self.handover()
