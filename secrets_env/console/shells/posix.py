@@ -5,11 +5,11 @@ import os
 import shutil
 import signal
 import typing
-from pathlib import Path
 
 from secrets_env.console.shells.base import Shell
 
 if typing.TYPE_CHECKING:
+    from pathlib import Path
     from types import FrameType
     from typing import NoReturn
 
