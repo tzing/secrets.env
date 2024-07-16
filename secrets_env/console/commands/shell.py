@@ -36,19 +36,6 @@ def shell(config: Path, partial: bool):
         logger.error("Secrets.env is already activated")
         exit(ExitCode.NestedEnvironment)
 
-    if os.getenv("POETRY_ACTIVE"):
-        logger.warning(
-            "Detected Poetry environment. "
-            "Some variables may be overwritten in the nested environment."
-        )
-        logger.warning("Please consider using secrets.env as a Poetry plugin.")
-    elif os.getenv("VIRTUAL_ENV"):
-        logger.warning(
-            "Detected Python virtual environment. "
-            "Some variables may be overwritten in the nested environment."
-        )
-        logger.warning("Please consider deactivating the virtual environment first.")
-
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
     except (ConfigError, NoValue) as e:

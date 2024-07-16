@@ -46,33 +46,6 @@ def test_nested(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.usefixtures("_reset_logging")
-@pytest.mark.usefixtures("_mock_read_values")
-@pytest.mark.usefixtures("_mock_get_shell")
-def test_warning_poetry(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("POETRY_ACTIVE", "1")
-
-    runner = click.testing.CliRunner()
-    result = runner.invoke(shell)
-
-    assert result.exit_code == 0
-    assert "Detected Poetry environment" in result.output
-
-
-@pytest.mark.usefixtures("_reset_logging")
-@pytest.mark.usefixtures("_mock_read_values")
-@pytest.mark.usefixtures("_mock_get_shell")
-def test_warning_virtualenv(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.delenv("POETRY_ACTIVE", raising=False)
-    monkeypatch.setenv("VIRTUAL_ENV", "1")
-
-    runner = click.testing.CliRunner()
-    result = runner.invoke(shell)
-
-    assert result.exit_code == 0
-    assert "Detected Python virtual environment" in result.output
-
-
-@pytest.mark.usefixtures("_reset_logging")
 def test_read_values_error(monkeypatch: pytest.MonkeyPatch):
     def mock_read_values(config, strict):
         raise ConfigError("test error")

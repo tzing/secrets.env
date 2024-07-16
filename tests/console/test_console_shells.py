@@ -32,6 +32,27 @@ class TestShell:
 
 
 class TestPosixShell:
+    def test_handover_default(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        monkeypatch.setattr(
+            PosixShell, "handover_pexpect", Mock(side_effect=ImportError)
+        )
+        monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit))
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+
+        with monkeypatch.context() as ctx, pytest.raises(SystemExit):
+            ctx.setenv("POETRY_ACTIVE", "1")
+            shell.handover()
+        assert "Detected Poetry environment" in caplog.text
+
+        with monkeypatch.context() as ctx, pytest.raises(SystemExit):
+            ctx.delenv("POETRY_ACTIVE", raising=False)
+            ctx.setenv("VIRTUAL_ENV", "1")
+            shell.handover()
+        assert "Detected Python virtual environment" in caplog.text
+
     def test_handover_pexpect(self, monkeypatch: pytest.MonkeyPatch):
         mock_proc = Mock(pexpect.spawn, exitstatus=7)
         monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
@@ -40,16 +61,6 @@ class TestPosixShell:
         assert shell.handover() == 7
 
         mock_proc.interact.assert_called_once()
-
-    def test_handover_default(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            PosixShell, "handover_pexpect", Mock(side_effect=ImportError)
-        )
-        monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit))
-
-        shell = PosixShell(shell_path=Path("/bin/sh"))
-        with pytest.raises(SystemExit):
-            shell.handover()
 
 
 class TestWindowsShell:

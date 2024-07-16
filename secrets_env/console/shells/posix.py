@@ -37,6 +37,22 @@ class PosixShell(Shell):
 
     def handover_default(self) -> NoReturn:
         logger.debug("Handover current process to %s", self.shell_path)
+
+        if os.getenv("POETRY_ACTIVE"):
+            logger.warning(
+                "Detected Poetry environment. "
+                "Some variables may be overwritten in the nested environment."
+            )
+            logger.warning("Please consider using secrets.env as a Poetry plugin.")
+        elif os.getenv("VIRTUAL_ENV"):
+            logger.warning(
+                "Detected Python virtual environment. "
+                "Some variables may be overwritten in the nested environment."
+            )
+            logger.warning(
+                "Please consider deactivating the virtual environment first."
+            )
+
         os.execv(self.shell_path, self.shell_args)
 
     def handover_pexpect(self) -> int | None:
