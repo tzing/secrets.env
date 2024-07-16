@@ -14,7 +14,6 @@ from secrets_env.console.shells.posix import (
     PosixShell,
     Zsh,
     create_temporary_file,
-    prepare_activate_script,
     register_window_resize,
 )
 from secrets_env.console.shells.windows import WindowsShell
@@ -49,7 +48,7 @@ class TestPosixShell:
         monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit()))
 
     @pytest.mark.usefixtures("_goto_handover_default")
-    def test_warning_poetry(
+    def test_handover__warn_poetry(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
         monkeypatch.setenv("POETRY_ACTIVE", "1")
@@ -61,7 +60,7 @@ class TestPosixShell:
         assert "Detected Poetry environment" in caplog.text
 
     @pytest.mark.usefixtures("_goto_handover_default")
-    def test_warning_virtualenv(
+    def test_handover__warn_virtualenv(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
         monkeypatch.delenv("POETRY_ACTIVE", raising=False)
@@ -79,6 +78,16 @@ class TestPosixShell:
 
         shell = PosixShell(shell_path=Path("/bin/sh"))
         assert shell.handover() == 1
+
+    def test_prepare_activate_script(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("TEST_CODE", "Hello World'!")
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        script_path = shell.prepare_activate_script()
+        script_content = Path(script_path).read_text()
+
+        assert "TEST_CODE='Hello World'\"'\"'!'" in script_content
+        assert "export TEST_CODE" in script_content
 
 
 class TestShellHandoverPexpect:
@@ -112,15 +121,6 @@ def test_register_window_resize():
 
     os.kill(os.getpid(), signal.SIGWINCH)
     proc.setwinsize.assert_called_once()
-
-
-class TestPrepareActivateScript:
-    def test_script(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("TEST_CODE", "Hello World'!")
-        script_path = prepare_activate_script(".sh")
-        script_content = Path(script_path).read_text()
-        assert "TEST_CODE='Hello World'\"'\"'!'" in script_content
-        assert "export TEST_CODE" in script_content
 
 
 class TestCreateTemporaryFile:

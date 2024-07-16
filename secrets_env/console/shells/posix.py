@@ -86,10 +86,24 @@ class PosixShell(Shell):
         register_window_resize(proc)
 
         # setup shell by sourcing the activate script
-        script_path = prepare_activate_script(self.script_suffix)
-        self._source_script(proc, script_path)
+        activate_script = self.prepare_activate_script()
+        self._source_script(proc, str(activate_script))
 
-    def _source_script(self, proc: spawn, script_path: str) -> None:
+    def prepare_activate_script(self) -> Path:
+        script_path = create_temporary_file(self.script_suffix)
+
+        with script_path.open("w") as fd:
+            # transfer current environment
+            for key, value in os.environ.items():
+                print(f"{key}={shlex.quote(value)}", file=fd)
+                print(f"export {key}", file=fd)
+
+            # request the shell to notify us via USR1 signal upon completion
+            print(f"kill -USR1 {os.getpid()}", file=fd)
+
+        return script_path
+
+    def _source_script(self, proc: spawn, script_path: Path) -> None:
         proc.sendline(f". {shlex.quote(script_path)}")
 
 
@@ -124,26 +138,6 @@ def register_window_resize(proc: spawn) -> None:
         proc.setwinsize(dims.lines, dims.columns)
 
     signal.signal(signal.SIGWINCH, sigwinch_handler)
-
-
-def prepare_activate_script(suffix: str) -> str:
-    """
-    Prepare a temporary script that activates the virtual environment.
-    """
-    # create a temporary script
-    script_path = create_temporary_file(suffix)
-
-    # write the script
-    with script_path.open("w") as fd:
-        # transfer current environment
-        for key, value in os.environ.items():
-            print(f"{key}={shlex.quote(value)}", file=fd)
-            print(f"export {key}", file=fd)
-
-        # request the shell to notify us via USR1 signal upon completion
-        print(f"kill -USR1 {os.getpid()}", file=fd)
-
-    return str(script_path)
 
 
 def create_temporary_file(suffix: str | None = None) -> Path:
