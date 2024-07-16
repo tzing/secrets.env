@@ -40,29 +40,39 @@ class TestShell:
 
 
 class TestPosixShell:
-    def test_handover_default(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ):
+    @pytest.fixture()
+    def _goto_handover_default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             PosixShell, "handover_pexpect", Mock(side_effect=ImportError)
         )
-        monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit))
+        monkeypatch.setattr("os.execv", Mock(side_effect=SystemExit()))
+
+    @pytest.mark.usefixtures("_goto_handover_default")
+    def test_warning_poetry(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        monkeypatch.setenv("POETRY_ACTIVE", "1")
 
         shell = PosixShell(shell_path=Path("/bin/sh"))
-
-        with monkeypatch.context() as ctx, pytest.raises(SystemExit):
-            ctx.setenv("POETRY_ACTIVE", "1")
+        with pytest.raises(SystemExit):
             shell.handover()
+
         assert "Detected Poetry environment" in caplog.text
 
-        with monkeypatch.context() as ctx, pytest.raises(SystemExit):
-            ctx.delenv("POETRY_ACTIVE", raising=False)
-            ctx.setenv("VIRTUAL_ENV", "1")
+    @pytest.mark.usefixtures("_goto_handover_default")
+    def test_warning_virtualenv(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        monkeypatch.delenv("POETRY_ACTIVE", raising=False)
+        monkeypatch.setenv("VIRTUAL_ENV", "1")
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        with pytest.raises(SystemExit):
             shell.handover()
+
         assert "Detected Python virtual environment" in caplog.text
 
-    def test_handover_pexpect(self, monkeypatch: pytest.MonkeyPatch):
-        # test signal-based exit; the normal exit case will be tested in TestShell
+    def test_signal_exit(self, monkeypatch: pytest.MonkeyPatch):
         mock_proc = Mock(pexpect.spawn, exitstatus=None, signalstatus=1)
         monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
 
