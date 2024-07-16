@@ -116,7 +116,7 @@ def register_window_resize(proc: spawn) -> None:
     Register a signal handler to resize the window of the spawned shell.
     """
 
-    def sigwinch_handler(sig: int, data: FrameType | None):  # pragma: no cover
+    def sigwinch_handler(sig: int, data: FrameType | None):
         nonlocal proc
         dims = shutil.get_terminal_size()
         proc.setwinsize(dims.lines, dims.columns)

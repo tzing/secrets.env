@@ -1,3 +1,5 @@
+import os
+import signal
 import subprocess
 from pathlib import Path, PureWindowsPath
 from unittest.mock import Mock
@@ -7,7 +9,11 @@ import pytest
 
 from secrets_env.console.shells import get_shell
 from secrets_env.console.shells.base import Shell
-from secrets_env.console.shells.posix import PosixShell
+from secrets_env.console.shells.posix import (
+    PosixShell,
+    prepare_activate_script,
+    register_window_resize,
+)
 from secrets_env.console.shells.windows import WindowsShell
 
 
@@ -68,6 +74,15 @@ class TestPosixShell:
 
         shell = PosixShell(shell_path=Path("/bin/sh"))
         assert shell.handover() == 1
+
+
+def test_register_window_resize():
+    proc = Mock(pexpect.spawn)
+
+    register_window_resize(proc)
+
+    os.kill(os.getpid(), signal.SIGWINCH)
+    proc.setwinsize.assert_called_once()
 
 
 class TestWindowsShell:
