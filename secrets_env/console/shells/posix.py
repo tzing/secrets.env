@@ -44,6 +44,7 @@ class PosixShell(Shell):
                 "Some variables may be overwritten in the nested environment."
             )
             logger.warning("Please consider using secrets.env as a Poetry plugin.")
+
         elif os.getenv("VIRTUAL_ENV"):
             logger.warning(
                 "Detected Python virtual environment. "

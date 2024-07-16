@@ -62,6 +62,13 @@ class TestPosixShell:
 
         mock_proc.interact.assert_called_once()
 
+    def test_handover_pexpect__sigint(self, monkeypatch: pytest.MonkeyPatch):
+        mock_proc = Mock(pexpect.spawn, exitstatus=None, signalstatus=1)
+        monkeypatch.setattr("pexpect.spawn", Mock(return_value=mock_proc))
+
+        shell = PosixShell(shell_path=Path("/bin/sh"))
+        assert shell.handover() == 1
+
 
 class TestWindowsShell:
     def test_handover(self, monkeypatch: pytest.MonkeyPatch):
