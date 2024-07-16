@@ -7,6 +7,9 @@ import shutil
 import signal
 import tempfile
 import typing
+from pathlib import Path
+
+from pexpect import spawn
 
 from secrets_env.console.shells.base import Shell
 
@@ -69,6 +72,25 @@ class PosixShell(Shell):
 
     def _source_script(self, proc: spawn, script_path: str) -> None:
         proc.sendline(f". {shlex.quote(script_path)}")
+
+
+class Bash(PosixShell):
+    def __init__(self, shell_path: Path) -> None:
+        super().__init__(shell_path)
+        self.script_suffix = ".bash"
+
+
+class Zsh(Bash):
+    def __init__(self, shell_path: Path) -> None:
+        super().__init__(shell_path)
+        self.script_suffix = ".zsh"
+
+    def do_post_spawn(self, proc: spawn) -> None:
+        proc.setecho(False)
+        super().do_post_spawn(proc)
+
+    def _source_script(self, proc: spawn, script_path: str) -> None:
+        proc.sendline(f"emulate bash -c '. {shlex.quote(script_path)}'")
 
 
 def register_window_resize(proc: spawn) -> None:
