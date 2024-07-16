@@ -58,16 +58,17 @@ class PosixShell(Shell):
         return typing.cast(int, proc.exitstatus)
 
     def do_post_spawn(self, proc: spawn) -> None:
-        self.register_window_resize(proc)
+        register_window_resize(proc)
 
-    def register_window_resize(self, proc: spawn) -> None:
-        """
-        Register a signal handler to resize the window of the spawned shell.
-        """
 
-        def sigwinch_handler(sig: int, data: FrameType | None):  # pragma: no cover
-            nonlocal proc
-            dims = shutil.get_terminal_size()
-            proc.setwinsize(dims.lines, dims.columns)
+def register_window_resize(proc: spawn) -> None:
+    """
+    Register a signal handler to resize the window of the spawned shell.
+    """
 
-        signal.signal(signal.SIGWINCH, sigwinch_handler)
+    def sigwinch_handler(sig: int, data: FrameType | None):  # pragma: no cover
+        nonlocal proc
+        dims = shutil.get_terminal_size()
+        proc.setwinsize(dims.lines, dims.columns)
+
+    signal.signal(signal.SIGWINCH, sigwinch_handler)
