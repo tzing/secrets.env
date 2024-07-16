@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 class PosixShell(Shell):
     def __init__(self, shell_path: Path) -> None:
         super().__init__(shell_path)
+        self.shell_args = ["-i"]
         self.script_suffix = ".sh"
 
     def handover(self) -> int | None:
@@ -36,7 +37,7 @@ class PosixShell(Shell):
 
     def handover_default(self) -> NoReturn:
         logger.debug("Handover current process to %s", self.shell_path)
-        os.execv(self.shell_path, ["-i"])
+        os.execv(self.shell_path, self.shell_args)
 
     def handover_pexpect(self) -> int | None:
         import pexpect
@@ -46,7 +47,7 @@ class PosixShell(Shell):
         # spawn the shell
         dims = shutil.get_terminal_size()
         proc = pexpect.spawn(
-            str(self.shell_path), ["-i"], dimensions=(dims.lines, dims.columns)
+            str(self.shell_path), self.shell_args, dimensions=(dims.lines, dims.columns)
         )
 
         # post spawn actions
