@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import itertools
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from pydantic_core import ErrorDetails
 
 
-class ProviderBuilder(BaseModel):
+class _ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
     source: list[Provider] = Field(default_factory=list)
@@ -46,10 +47,6 @@ class ProviderBuilder(BaseModel):
         else:
             raise ValueError("Input must be a list or a dictionary")
 
-    def iter(self) -> Iterator[Provider]:
-        yield from self.source
-        yield from self.sources
-
     def collect(self) -> dict[str, Provider]:
         """
         Returns a dictionary of provider instances by name.
@@ -62,7 +59,7 @@ class ProviderBuilder(BaseModel):
         providers = {}
         errors = []
 
-        for provider in self.iter():
+        for provider in itertools.chain(self.source, self.sources):
             if provider.name in providers:
                 errors.append(
                     {
@@ -141,7 +138,7 @@ class ProviderMapMixin(BaseModel):
         if isinstance(values, dict):
             errors = []
             with capture_line_errors(errors, ()):
-                builder = ProviderBuilder.model_validate(values)
+                builder = _ProviderBuilder.model_validate(values)
                 values["providers"] = builder.collect()
             if errors:
                 raise ValidationError.from_exception_data(

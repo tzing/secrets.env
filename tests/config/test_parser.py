@@ -3,7 +3,7 @@ from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
-    ProviderBuilder,
+    _ProviderBuilder,
     RequestBuilder,
     capture_line_errors,
 )
@@ -14,26 +14,26 @@ from secrets_env.providers.plain import PlainTextProvider
 class TestProviderBuilder:
 
     def test_success__dict(self):
-        model = ProviderBuilder.model_validate(
+        model = _ProviderBuilder.model_validate(
             {
                 "source": {"name": "item1", "type": "plain"},
                 "sources": {"name": "item2", "type": "plain"},
             }
         )
-        assert model == ProviderBuilder(
+        assert model == _ProviderBuilder(
             source=[PlainTextProvider(name="item1")],
             sources=[PlainTextProvider(name="item2")],
         )
 
     def test_success__empty(self):
-        model = ProviderBuilder.model_validate({})
-        assert model == ProviderBuilder()
+        model = _ProviderBuilder.model_validate({})
+        assert model == _ProviderBuilder()
         assert model.source == []
         assert model.sources == []
 
     def test_value_error(self):
         with pytest.raises(ValidationError, match="sources") as exc_info:
-            ProviderBuilder(
+            _ProviderBuilder(
                 source=[
                     {"name": "item1", "type": "plain"},
                     {"name": "item2", "type": "invalid"},
@@ -50,22 +50,14 @@ class TestProviderBuilder:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="sources"):
-            ProviderBuilder(sources=1234)
-
-    def test_iter(self):
-        model = ProviderBuilder(
-            source=[{"name": "item1", "type": "plain"}],
-            sources=[{"name": "item2", "type": "plain"}],
-        )
-        assert list(model.iter()) == [
-            PlainTextProvider(name="item1"),
-            PlainTextProvider(name="item2"),
-        ]
+            _ProviderBuilder(sources=1234)
 
     def test_collect(self):
-        model = ProviderBuilder(
-            sources=[
+        model = _ProviderBuilder(
+            source=[
                 {"name": "item1", "type": "plain"},
+            ],
+            sources=[
                 {"name": "item2", "type": "plain"},
             ],
         )
@@ -75,7 +67,7 @@ class TestProviderBuilder:
         }
 
     def test_collect_error_1(self):
-        model = ProviderBuilder(
+        model = _ProviderBuilder(
             sources=[
                 {"name": "item1", "type": "plain"},
                 {"name": "item1", "type": "plain"},
@@ -87,7 +79,7 @@ class TestProviderBuilder:
             model.collect()
 
     def test_collect_error_2(self):
-        model = ProviderBuilder(
+        model = _ProviderBuilder(
             sources=[
                 {"name": "item1", "type": "plain"},
                 {"type": "plain"},
