@@ -132,11 +132,8 @@ class RequestBuilder(BaseModel):
         yield from self.secrets
 
 
-class LocalConfig(BaseModel):
-    """Data model that represents a local configuration file."""
-
+class ProviderMapMixin(BaseModel):
     providers: dict[str | None, Provider] = Field(default_factory=dict)
-    requests: list[Request] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -146,6 +143,25 @@ class LocalConfig(BaseModel):
             with capture_line_errors(errors, ()):
                 builder = ProviderBuilder.model_validate(values)
                 values["providers"] = builder.collect()
+            if errors:
+                raise ValidationError.from_exception_data(
+                    title="local config", line_errors=errors
+                )
+        return values
+
+
+class LocalConfig(ProviderMapMixin):
+    """Data model that represents a local configuration file."""
+
+    requests: list[Request] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _before_validator(cls, values):
+        values = super()._before_validator(values)
+
+        if isinstance(values, dict):
+            errors = []
             with capture_line_errors(errors, ()):
                 builder = RequestBuilder.model_validate(values)
                 values["requests"] = builder.iter()
