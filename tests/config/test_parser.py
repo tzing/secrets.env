@@ -61,7 +61,7 @@ class TestProviderBuilder:
                 {"name": "item2", "type": "plain"},
             ],
         )
-        assert model.collect() == {
+        assert dict(model) == {
             "item1": PlainTextProvider(name="item1"),
             "item2": PlainTextProvider(name="item2"),
         }
@@ -75,8 +75,8 @@ class TestProviderBuilder:
             ],
         )
 
-        with pytest.raises(ValidationError, match="duplicate source name"):
-            model.collect()
+        with pytest.raises(ValidationError, match="Duplicate source name"):
+            dict(model)
 
     def test_collect_error_2(self):
         model = _ProviderBuilder(
@@ -90,7 +90,7 @@ class TestProviderBuilder:
             ValidationError,
             match="Naming each source is mandatory when using multiple sources",
         ):
-            model.collect()
+            dict(model)
 
 
 class TestRequestBuilder:

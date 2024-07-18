@@ -47,48 +47,48 @@ class _ProviderBuilder(BaseModel):
         else:
             raise ValueError("Input must be a list or a dictionary")
 
-    def collect(self) -> dict[str, Provider]:
+    def __iter__(self) -> Iterator[tuple[str, Provider]]:
         """
-        Returns a dictionary of provider instances by name.
+        Returns an iterator of tuples with the provider name and the provider instance.
 
         Raises
         ------
         ValidationError
             If the source names are not unique.
         """
-        providers = {}
+        names = set()
         errors = []
 
         for provider in itertools.chain(self.source, self.sources):
-            if provider.name in providers:
+            if provider.name in names:
                 errors.append(
                     {
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "input": provider.name or "(anonymous)",
-                        "ctx": {"error": "duplicate source name"},
+                        "ctx": {"error": "Duplicate source name"},
                     }
                 )
-            else:
-                providers[provider.name] = provider
 
-        if len(providers) > 1 and None in providers:
-            errors.append(
-                {
-                    "type": "value_error",
-                    "loc": ("sources", "*", "name"),
-                    "ctx": {
-                        "error": "Naming each source is mandatory when using multiple sources",
-                    },
-                }
-            )
+            elif provider.name is None and len(names) > 0:
+                errors.append(
+                    {
+                        "type": "value_error",
+                        "loc": ("sources", "*", "name"),
+                        "ctx": {
+                            "error": "Naming each source is mandatory when using multiple sources",
+                        },
+                    }
+                )
+
+            else:
+                yield provider.name, provider
+                names.add(provider.name)
 
         if errors:
             raise ValidationError.from_exception_data(
                 title="sources", line_errors=errors
             )
-
-        return providers
 
 
 class RequestBuilder(BaseModel):
