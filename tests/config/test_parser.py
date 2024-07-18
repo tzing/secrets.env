@@ -3,7 +3,7 @@ from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
-    _ProviderBuilder,
+    ProviderBuilder,
     RequestBuilder,
     capture_line_errors,
 )
@@ -12,28 +12,28 @@ from secrets_env.providers.plain import PlainTextProvider
 
 
 class TestProviderBuilder:
-
-    def test_success__dict(self):
-        model = _ProviderBuilder.model_validate(
+    def test_success(self):
+        model = ProviderBuilder.model_validate(
             {
                 "source": {"name": "item1", "type": "plain"},
-                "sources": {"name": "item2", "type": "plain"},
+                "sources": [PlainTextProvider(name="item2")],
             }
         )
-        assert model == _ProviderBuilder(
-            source=[PlainTextProvider(name="item1")],
-            sources=[PlainTextProvider(name="item2")],
+        assert model == ProviderBuilder(
+            providers={
+                "item1": PlainTextProvider(name="item1"),
+                "item2": PlainTextProvider(name="item2"),
+            }
         )
 
-    def test_success__empty(self):
-        model = _ProviderBuilder.model_validate({})
-        assert model == _ProviderBuilder()
-        assert model.source == []
-        assert model.sources == []
+    def test_empty(self):
+        model = ProviderBuilder.model_validate({})
+        assert model == ProviderBuilder()
+        assert model.providers == {}
 
     def test_value_error(self):
         with pytest.raises(ValidationError, match="sources") as exc_info:
-            _ProviderBuilder(
+            ProviderBuilder(
                 source=[
                     {"name": "item1", "type": "plain"},
                     {"name": "item2", "type": "invalid"},
@@ -50,47 +50,29 @@ class TestProviderBuilder:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="sources"):
-            _ProviderBuilder(sources=1234)
+            ProviderBuilder(sources=1234)
 
-    def test_collect(self):
-        model = _ProviderBuilder(
-            source=[
-                {"name": "item1", "type": "plain"},
-            ],
-            sources=[
-                {"name": "item2", "type": "plain"},
-            ],
-        )
-        assert dict(model) == {
-            "item1": PlainTextProvider(name="item1"),
-            "item2": PlainTextProvider(name="item2"),
-        }
-
-    def test_collect_error_1(self):
-        model = _ProviderBuilder(
-            sources=[
-                {"name": "item1", "type": "plain"},
-                {"name": "item1", "type": "plain"},
-                {"type": "plain"},
-            ],
-        )
-
+    def test_dupe_name(self):
         with pytest.raises(ValidationError, match="Duplicate source name"):
-            dict(model)
+            ProviderBuilder(
+                sources=[
+                    {"name": "item1", "type": "plain"},
+                    {"name": "item1", "type": "plain"},
+                    {"type": "plain"},
+                ],
+            )
 
-    def test_collect_error_2(self):
-        model = _ProviderBuilder(
-            sources=[
-                {"name": "item1", "type": "plain"},
-                {"type": "plain"},
-            ],
-        )
-
+    def test_missing_name(self):
         with pytest.raises(
             ValidationError,
             match="Naming each source is mandatory when using multiple sources",
         ):
-            dict(model)
+            ProviderBuilder(
+                sources=[
+                    {"name": "item1", "type": "plain"},
+                    {"type": "plain"},
+                ],
+            )
 
 
 class TestRequestBuilder:

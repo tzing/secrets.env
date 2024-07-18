@@ -92,14 +92,16 @@ class _ProviderBuilder(BaseModel):
 
 
 class ProviderBuilder(BaseModel):
+    """Build source(s) configs into provider instances."""
+
     providers: dict[str | None, Provider] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
         if isinstance(values, dict):
-            builder = _ProviderBuilder.model_validate(values)
-            values["providers"] = dict(builder)
+            providers = values.setdefault("providers", {})
+            providers.update(_ProviderBuilder.model_validate(values))
         return values
 
 
