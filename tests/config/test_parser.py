@@ -53,7 +53,7 @@ class TestProviderBuilder:
             ProviderBuilder(sources=1234)
 
     def test_dupe_name(self):
-        with pytest.raises(ValidationError, match="Duplicate source name"):
+        with pytest.raises(ValidationError, match="duplicate source name"):
             ProviderBuilder(
                 sources=[
                     {"name": "item1", "type": "plain"},
@@ -65,7 +65,7 @@ class TestProviderBuilder:
     def test_missing_name(self):
         with pytest.raises(
             ValidationError,
-            match="Naming each source is mandatory when using multiple sources",
+            match="naming each source is mandatory when using multiple sources",
         ):
             ProviderBuilder(
                 sources=[

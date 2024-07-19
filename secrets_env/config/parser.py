@@ -66,7 +66,7 @@ class _ProviderBuilder(BaseModel):
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "input": provider.name or "(anonymous)",
-                        "ctx": {"error": "Duplicate source name"},
+                        "ctx": {"error": "duplicate source name"},
                     }
                 )
 
@@ -76,7 +76,7 @@ class _ProviderBuilder(BaseModel):
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "ctx": {
-                            "error": "Naming each source is mandatory when using multiple sources",
+                            "error": "naming each source is mandatory when using multiple sources",
                         },
                     }
                 )
