@@ -88,11 +88,11 @@ class TestRequestAdapter:
                 },
             }
         )
-        assert model.requests == {
-            "item1": Request(name="item1", path="/path/item1"),
-            "item2": Request(name="item2"),
-            "item3": Request(name="item3", value="/path/item3"),
-        }
+        assert model.requests == [
+            Request(name="item2"),
+            Request(name="item3", value="/path/item3"),
+            Request(name="item1", path="/path/item1"),
+        ]
 
     def test_error_duplicated_name(self):
         with pytest.raises(ValidationError, match="secrets.item1"):

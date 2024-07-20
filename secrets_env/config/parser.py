@@ -139,7 +139,7 @@ class _RequestAdapter(BaseModel):
             # type error here does not get caught by pydantic
             raise ValueError(f'Expected list or dict, got "{type(value).__name__}"')
 
-    def __iter__(self) -> Iterator[tuple[str, Request]]:
+    def __iter__(self) -> Iterator[Request]:
         seen_names = set()
         errors = []
 
@@ -156,7 +156,7 @@ class _RequestAdapter(BaseModel):
 
             else:
                 seen_names.add(request.name)
-                yield request.name, request
+                yield request
 
         if errors:
             raise ValidationError.from_exception_data(
@@ -167,14 +167,14 @@ class _RequestAdapter(BaseModel):
 class RequestAdapter(BaseModel):
     """Build secret(s) configs into request instances."""
 
-    requests: dict[str, Request] = Field(default_factory=dict)
+    requests: list[Request] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
         if isinstance(values, dict):
-            requests = values.setdefault("requests", {})
-            requests.update(_RequestAdapter.model_validate(values))
+            requests = values.setdefault("requests", [])
+            requests.extend(_RequestAdapter.model_validate(values))
         return values
 
 
