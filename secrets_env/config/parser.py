@@ -47,7 +47,7 @@ class _ProviderAdapter(BaseModel):
         else:
             raise ValueError("Input must be a list or a dictionary")
 
-    def __iter__(self) -> Iterator[tuple[str, Provider]]:
+    def to_dict(self) -> dict[str, Provider]:
         """
         Returns an iterator of tuples with the provider name and the provider instance.
 
@@ -56,11 +56,11 @@ class _ProviderAdapter(BaseModel):
         ValidationError
             If the source names are not unique.
         """
-        seen_names = set()
+        providers = {}
         errors = []
 
         for provider in itertools.chain(self.source, self.sources):
-            if provider.name in seen_names:
+            if provider.name in providers:
                 errors.append(
                     {
                         "type": "value_error",
@@ -69,26 +69,26 @@ class _ProviderAdapter(BaseModel):
                         "ctx": {"error": "duplicated source name"},
                     }
                 )
-
-            elif provider.name is None and len(seen_names) > 0:
-                errors.append(
-                    {
-                        "type": "value_error",
-                        "loc": ("sources", "*", "name"),
-                        "ctx": {
-                            "error": "naming each source is mandatory when using multiple sources",
-                        },
-                    }
-                )
-
             else:
-                seen_names.add(provider.name)
-                yield provider.name, provider
+                providers[provider.name] = provider
+
+        if None in providers and len(providers) > 1:
+            errors.append(
+                {
+                    "type": "value_error",
+                    "loc": ("sources", "*", "name"),
+                    "ctx": {
+                        "error": "naming each source is mandatory when using multiple sources",
+                    },
+                }
+            )
 
         if errors:
             raise ValidationError.from_exception_data(
                 title="sources", line_errors=errors
             )
+
+        return providers
 
 
 class ProviderAdapter(BaseModel):
@@ -96,13 +96,17 @@ class ProviderAdapter(BaseModel):
 
     providers: dict[str | None, Provider] = Field(default_factory=dict)
 
-    @model_validator(mode="before")
     @classmethod
-    def _before_validator(cls, values):
+    def before_validator(cls, values):
         if isinstance(values, dict):
+            adapter = _ProviderAdapter.model_validate(values)
             providers = values.setdefault("providers", {})
-            providers.update(_ProviderAdapter.model_validate(values))
+            providers.update(adapter.to_dict())
         return values
+
+    @model_validator(mode="before")
+    def _before_validator(cls, values):
+        return cls.before_validator(values)
 
 
 class _RequestAdapter(BaseModel):
@@ -139,7 +143,7 @@ class _RequestAdapter(BaseModel):
             # type error here does not get caught by pydantic
             raise ValueError(f'Expected list or dict, got "{type(value).__name__}"')
 
-    def __iter__(self) -> Iterator[Request]:
+    def iter_requests(self) -> Iterator[Request]:
         seen_names = set()
         errors = []
 
@@ -169,13 +173,18 @@ class RequestAdapter(BaseModel):
 
     requests: list[Request] = Field(default_factory=dict)
 
+    @classmethod
+    def before_validator(cls, values):
+        if isinstance(values, dict):
+            adapter = _RequestAdapter.model_validate(values)
+            requests = values.setdefault("requests", [])
+            requests.extend(adapter.iter_requests())
+        return values
+
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        if isinstance(values, dict):
-            requests = values.setdefault("requests", [])
-            requests.extend(_RequestAdapter.model_validate(values))
-        return values
+        return cls.before_validator(values)
 
 
 class LocalConfig(ProviderAdapter, RequestAdapter):
@@ -184,8 +193,8 @@ class LocalConfig(ProviderAdapter, RequestAdapter):
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        values = ProviderAdapter._before_validator(values)
-        values = RequestAdapter._before_validator(values)
+        values = ProviderAdapter.before_validator(values)
+        values = RequestAdapter.before_validator(values)
         return values
 
     @model_validator(mode="after")
