@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pydantic_core import ErrorDetails
 
 
-class _ProviderBuilder(BaseModel):
+class _ProviderAdapter(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
     source: list[Provider] = Field(default_factory=list)
@@ -91,7 +91,7 @@ class _ProviderBuilder(BaseModel):
             )
 
 
-class ProviderBuilder(BaseModel):
+class ProviderAdapter(BaseModel):
     """Build source(s) configs into provider instances."""
 
     providers: dict[str | None, Provider] = Field(default_factory=dict)
@@ -101,11 +101,11 @@ class ProviderBuilder(BaseModel):
     def _before_validator(cls, values):
         if isinstance(values, dict):
             providers = values.setdefault("providers", {})
-            providers.update(_ProviderBuilder.model_validate(values))
+            providers.update(_ProviderAdapter.model_validate(values))
         return values
 
 
-class _RequestBuilder(BaseModel):
+class _RequestAdapter(BaseModel):
     """Internal helper to build request instances from secret(s) configs."""
 
     secret: list[Request] = Field(default_factory=list)
@@ -164,7 +164,7 @@ class _RequestBuilder(BaseModel):
             )
 
 
-class RequestBuilder(BaseModel):
+class RequestAdapter(BaseModel):
     """Build secret(s) configs into request instances."""
 
     requests: dict[str, Request] = Field(default_factory=dict)
@@ -174,19 +174,18 @@ class RequestBuilder(BaseModel):
     def _before_validator(cls, values):
         if isinstance(values, dict):
             requests = values.setdefault("requests", {})
-            requests.update(_RequestBuilder.model_validate(values))
+            requests.update(_RequestAdapter.model_validate(values))
         return values
 
 
-class LocalConfig(ProviderBuilder, RequestBuilder):
+class LocalConfig(ProviderAdapter, RequestAdapter):
     """Data model that represents a local configuration file."""
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        # FIXME
-        values = super(type(cls), ProviderBuilder)._before_validator(values)
-        values = super(type(cls), RequestBuilder)._before_validator(values)
+        values = ProviderAdapter._before_validator(values)
+        values = RequestAdapter._before_validator(values)
         return values
 
     @model_validator(mode="after")

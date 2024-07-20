@@ -3,23 +3,23 @@ from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
-    ProviderBuilder,
-    RequestBuilder,
+    ProviderAdapter,
+    RequestAdapter,
     capture_line_errors,
 )
 from secrets_env.provider import Request
 from secrets_env.providers.plain import PlainTextProvider
 
 
-class TestProviderBuilder:
+class TestProviderAdapter:
     def test_success(self):
-        model = ProviderBuilder.model_validate(
+        model = ProviderAdapter.model_validate(
             {
                 "source": {"name": "item1", "type": "plain"},
                 "sources": [PlainTextProvider(name="item2")],
             }
         )
-        assert model == ProviderBuilder(
+        assert model == ProviderAdapter(
             providers={
                 "item1": PlainTextProvider(name="item1"),
                 "item2": PlainTextProvider(name="item2"),
@@ -27,13 +27,13 @@ class TestProviderBuilder:
         )
 
     def test_empty(self):
-        model = ProviderBuilder.model_validate({})
-        assert model == ProviderBuilder()
+        model = ProviderAdapter.model_validate({})
+        assert model == ProviderAdapter()
         assert model.providers == {}
 
     def test_value_error(self):
         with pytest.raises(ValidationError, match="sources") as exc_info:
-            ProviderBuilder(
+            ProviderAdapter(
                 source=[
                     {"name": "item1", "type": "plain"},
                     {"name": "item2", "type": "invalid"},
@@ -50,11 +50,11 @@ class TestProviderBuilder:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="sources"):
-            ProviderBuilder(sources=1234)
+            ProviderAdapter(sources=1234)
 
     def test_dupe_name(self):
         with pytest.raises(ValidationError, match="duplicated source name"):
-            ProviderBuilder(
+            ProviderAdapter(
                 sources=[
                     {"name": "item1", "type": "plain"},
                     {"name": "item1", "type": "plain"},
@@ -67,7 +67,7 @@ class TestProviderBuilder:
             ValidationError,
             match="naming each source is mandatory when using multiple sources",
         ):
-            ProviderBuilder(
+            ProviderAdapter(
                 sources=[
                     {"name": "item1", "type": "plain"},
                     {"type": "plain"},
@@ -75,9 +75,9 @@ class TestProviderBuilder:
             )
 
 
-class TestRequestBuilder:
+class TestRequestAdapter:
     def test_success(self):
-        model = RequestBuilder.model_validate(
+        model = RequestAdapter.model_validate(
             {
                 "secrets": [
                     {"name": "item1", "path": "/path/item1"},
@@ -96,7 +96,7 @@ class TestRequestBuilder:
 
     def test_error_duplicated_name(self):
         with pytest.raises(ValidationError, match="secrets.item1"):
-            RequestBuilder.model_validate(
+            RequestAdapter.model_validate(
                 {
                     "secret": [
                         Request(name="item1"),
@@ -107,7 +107,7 @@ class TestRequestBuilder:
 
     def test_error_from_list(self):
         with pytest.raises(ValidationError, match="secret.0.name"):
-            RequestBuilder.model_validate(
+            RequestAdapter.model_validate(
                 {
                     "secret": [{"name": "1nvalid"}],
                 }
@@ -115,7 +115,7 @@ class TestRequestBuilder:
 
     def test_error_from_dict(self):
         with pytest.raises(ValidationError, match="secret.1nvalid.name"):
-            RequestBuilder.model_validate(
+            RequestAdapter.model_validate(
                 {
                     "secret": {
                         "1nvalid": {},
@@ -125,7 +125,7 @@ class TestRequestBuilder:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="Expected list or dict"):
-            RequestBuilder.model_validate({"secret": 1234})
+            RequestAdapter.model_validate({"secret": 1234})
 
 
 class TestLocalConfig:
