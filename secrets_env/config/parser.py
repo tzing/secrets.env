@@ -141,7 +141,7 @@ class _RequestAdapter(BaseModel):
 
         else:
             # type error here does not get caught by pydantic
-            raise ValueError(f'Expected list or dict, got "{type(value).__name__}"')
+            raise ValueError(f'Expected list or dict for "{info.field_name}"')
 
     def iter_requests(self) -> Iterator[Request]:
         seen_names = set()
