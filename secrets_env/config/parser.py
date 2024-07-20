@@ -56,21 +56,21 @@ class _ProviderBuilder(BaseModel):
         ValidationError
             If the source names are not unique.
         """
-        names = set()
+        seen_names = set()
         errors = []
 
         for provider in itertools.chain(self.source, self.sources):
-            if provider.name in names:
+            if provider.name in seen_names:
                 errors.append(
                     {
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "input": provider.name or "(anonymous)",
-                        "ctx": {"error": "duplicate source name"},
+                        "ctx": {"error": "duplicated source name"},
                     }
                 )
 
-            elif provider.name is None and len(names) > 0:
+            elif provider.name is None and len(seen_names) > 0:
                 errors.append(
                     {
                         "type": "value_error",
@@ -82,8 +82,8 @@ class _ProviderBuilder(BaseModel):
                 )
 
             else:
+                seen_names.add(provider.name)
                 yield provider.name, provider
-                names.add(provider.name)
 
         if errors:
             raise ValidationError.from_exception_data(

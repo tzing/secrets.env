@@ -53,7 +53,7 @@ class TestProviderBuilder:
             ProviderBuilder(sources=1234)
 
     def test_dupe_name(self):
-        with pytest.raises(ValidationError, match="duplicate source name"):
+        with pytest.raises(ValidationError, match="duplicated source name"):
             ProviderBuilder(
                 sources=[
                     {"name": "item1", "type": "plain"},
