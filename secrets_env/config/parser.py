@@ -193,8 +193,15 @@ class LocalConfig(ProviderAdapter, RequestAdapter):
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        values = ProviderAdapter.before_validator(values)
-        values = RequestAdapter.before_validator(values)
+        errors = []
+        with capture_line_errors(errors, ()):
+            values = ProviderAdapter.before_validator(values)
+        with capture_line_errors(errors, ()):
+            values = RequestAdapter.before_validator(values)
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="local config", line_errors=errors
+            )
         return values
 
     @model_validator(mode="after")

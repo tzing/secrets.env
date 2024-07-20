@@ -142,8 +142,8 @@ class TestLocalConfig:
             name="key1", source="source-1", path="/mock/path"
         )
 
-    def test_nested_error_1(self):
-        with pytest.raises(ValidationError, match="sources.0.value"):
+    def test_nested_error(self):
+        with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
                     "sources": {"type": "debug"},
@@ -151,14 +151,8 @@ class TestLocalConfig:
                 }
             )
 
-    def test_nested_error_2(self):
-        with pytest.raises(ValidationError, match="secret.0.name"):
-            LocalConfig.model_validate(
-                {
-                    "sources": {"type": "debug", "value": "foobar"},
-                    "secret": [{"name": "invalid.x"}],
-                }
-            )
+        exc_info.match("sources.0.value")
+        exc_info.match("secret.0.name")
 
     def test_reference_error_1(self):
         with pytest.raises(ValidationError) as exc_info:
