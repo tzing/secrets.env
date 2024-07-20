@@ -124,7 +124,7 @@ class TestRequestAdapter:
             )
 
     def test_type_error(self):
-        with pytest.raises(ValidationError, match="Expected list or dict"):
+        with pytest.raises(ValidationError, match="expect list or dict"):
             RequestAdapter.model_validate({"secret": 1234})
 
 
@@ -154,7 +154,7 @@ class TestLocalConfig:
         exc_info.match("sources.0.value")
         exc_info.match("secret.0.name")
 
-    def test_reference_error_1(self):
+    def test_source_name_error_1(self):
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
@@ -168,7 +168,7 @@ class TestLocalConfig:
         exc_info.match("secrets.DEMO.source")
         exc_info.match('source "invalid" not found')
 
-    def test_reference_error_2(self):
+    def test_source_name_error_2(self):
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
