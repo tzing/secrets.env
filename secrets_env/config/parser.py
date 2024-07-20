@@ -105,7 +105,7 @@ class ProviderBuilder(BaseModel):
         return values
 
 
-class RequestBuilder(BaseModel):
+class _RequestBuilder(BaseModel):
     """Internal helper to build request instances from secret(s) configs."""
 
     secret: list[Request] = Field(default_factory=list)
@@ -136,32 +136,57 @@ class RequestBuilder(BaseModel):
             return requests
 
         else:
-            raise ValueError("Input must be a list or a dictionary")
+            # type error here does not get caught by pydantic
+            raise ValueError(f'Expected list or dict, got "{type(value).__name__}"')
 
-    def iter(self) -> Iterator[Request]:
-        yield from self.secret
-        yield from self.secrets
+    def __iter__(self) -> Iterator[tuple[str, Request]]:
+        seen_names = set()
+        errors = []
+
+        for request in itertools.chain(self.secret, self.secrets):
+            if request.name in seen_names:
+                errors.append(
+                    {
+                        "type": "value_error",
+                        "loc": ("secrets", request.name),
+                        "input": request.name,
+                        "ctx": {"error": "duplicated secret name"},
+                    }
+                )
+
+            else:
+                seen_names.add(request.name)
+                yield request.name, request
+
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="secrets", line_errors=errors
+            )
 
 
-class LocalConfig(ProviderBuilder):
-    """Data model that represents a local configuration file."""
+class RequestBuilder(BaseModel):
+    """Build secret(s) configs into request instances."""
 
-    requests: list[Request] = Field(default_factory=list)
+    requests: dict[str, Request] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        values = super()._before_validator(values)
-
         if isinstance(values, dict):
-            errors = []
-            with capture_line_errors(errors, ()):
-                builder = RequestBuilder.model_validate(values)
-                values["requests"] = builder.iter()
-            if errors:
-                raise ValidationError.from_exception_data(
-                    title="local config", line_errors=errors
-                )
+            requests = values.setdefault("requests", {})
+            requests.update(_RequestBuilder.model_validate(values))
+        return values
+
+
+class LocalConfig(ProviderBuilder, RequestBuilder):
+    """Data model that represents a local configuration file."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _before_validator(cls, values):
+        # FIXME
+        values = super(type(cls), ProviderBuilder)._before_validator(values)
+        values = super(type(cls), RequestBuilder)._before_validator(values)
         return values
 
     @model_validator(mode="after")

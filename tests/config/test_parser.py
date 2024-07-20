@@ -76,42 +76,36 @@ class TestProviderBuilder:
 
 
 class TestRequestBuilder:
-    def test_success__model(self):
+    def test_success(self):
         model = RequestBuilder.model_validate(
             {
+                "secrets": [
+                    {"name": "item1", "path": "/path/item1"},
+                ],
                 "secret": {
-                    "item1": Request(name="item1"),
-                }
-            }
-        )
-        assert model.secret == [Request(name="item1")]
-        assert model.secrets == []
-
-    def test_success__list(self):
-        model = RequestBuilder.model_validate(
-            {
-                "secret": [{"name": "item1", "path": "/path/item1"}],
-            }
-        )
-        assert list(model.iter()) == [
-            Request(name="item1", path="/path/item1"),
-        ]
-
-    def test_success__dict(self):
-        model = RequestBuilder.model_validate(
-            {
-                "secret": {
-                    "item1": {"path": "/path/item1"},
-                    "item2": "value2",
+                    "item2": Request(name="item2"),
+                    "item3": "/path/item3",
                 },
             }
         )
-        assert list(model.iter()) == [
-            Request(name="item1", path="/path/item1"),
-            Request(name="item2", value="value2"),
-        ]
+        assert model.requests == {
+            "item1": Request(name="item1", path="/path/item1"),
+            "item2": Request(name="item2"),
+            "item3": Request(name="item3", value="/path/item3"),
+        }
 
-    def test_error__list(self):
+    def test_error_duplicated_name(self):
+        with pytest.raises(ValidationError, match="secrets.item1"):
+            RequestBuilder.model_validate(
+                {
+                    "secret": [
+                        Request(name="item1"),
+                        Request(name="item1"),
+                    ]
+                }
+            )
+
+    def test_error_from_list(self):
         with pytest.raises(ValidationError, match="secret.0.name"):
             RequestBuilder.model_validate(
                 {
@@ -119,7 +113,7 @@ class TestRequestBuilder:
                 }
             )
 
-    def test_error__dict(self):
+    def test_error_from_dict(self):
         with pytest.raises(ValidationError, match="secret.1nvalid.name"):
             RequestBuilder.model_validate(
                 {
@@ -129,10 +123,8 @@ class TestRequestBuilder:
                 }
             )
 
-    def test_error_type(self):
-        with pytest.raises(
-            ValidationError, match="Input must be a list or a dictionary"
-        ):
+    def test_type_error(self):
+        with pytest.raises(ValidationError, match="Expected list or dict"):
             RequestBuilder.model_validate({"secret": 1234})
 
 
