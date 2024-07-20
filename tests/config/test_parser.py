@@ -3,37 +3,37 @@ from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
-    ProviderBuilder,
-    RequestBuilder,
+    ProviderAdapter,
+    RequestAdapter,
     capture_line_errors,
 )
 from secrets_env.provider import Request
 from secrets_env.providers.plain import PlainTextProvider
 
 
-class TestProviderBuilder:
-
-    def test_success__dict(self):
-        model = ProviderBuilder.model_validate(
+class TestProviderAdapter:
+    def test_success(self):
+        model = ProviderAdapter.model_validate(
             {
                 "source": {"name": "item1", "type": "plain"},
-                "sources": {"name": "item2", "type": "plain"},
+                "sources": [PlainTextProvider(name="item2")],
             }
         )
-        assert model == ProviderBuilder(
-            source=[PlainTextProvider(name="item1")],
-            sources=[PlainTextProvider(name="item2")],
+        assert model == ProviderAdapter(
+            providers={
+                "item1": PlainTextProvider(name="item1"),
+                "item2": PlainTextProvider(name="item2"),
+            }
         )
 
-    def test_success__empty(self):
-        model = ProviderBuilder.model_validate({})
-        assert model == ProviderBuilder()
-        assert model.source == []
-        assert model.sources == []
+    def test_empty(self):
+        model = ProviderAdapter.model_validate({})
+        assert model == ProviderAdapter()
+        assert model.providers == {}
 
     def test_value_error(self):
         with pytest.raises(ValidationError, match="sources") as exc_info:
-            ProviderBuilder(
+            ProviderAdapter(
                 source=[
                     {"name": "item1", "type": "plain"},
                     {"name": "item2", "type": "invalid"},
@@ -50,104 +50,72 @@ class TestProviderBuilder:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="sources"):
-            ProviderBuilder(sources=1234)
+            ProviderAdapter(sources=1234)
 
-    def test_iter(self):
-        model = ProviderBuilder(
-            source=[{"name": "item1", "type": "plain"}],
-            sources=[{"name": "item2", "type": "plain"}],
-        )
-        assert list(model.iter()) == [
-            PlainTextProvider(name="item1"),
-            PlainTextProvider(name="item2"),
-        ]
+    def test_dupe_name(self):
+        with pytest.raises(ValidationError, match="duplicated source name"):
+            ProviderAdapter(
+                sources=[
+                    {"name": "item1", "type": "plain"},
+                    {"name": "item1", "type": "plain"},
+                    {"type": "plain"},
+                ],
+            )
 
-    def test_collect(self):
-        model = ProviderBuilder(
-            sources=[
-                {"name": "item1", "type": "plain"},
-                {"name": "item2", "type": "plain"},
-            ],
-        )
-        assert model.collect() == {
-            "item1": PlainTextProvider(name="item1"),
-            "item2": PlainTextProvider(name="item2"),
-        }
-
-    def test_collect_error_1(self):
-        model = ProviderBuilder(
-            sources=[
-                {"name": "item1", "type": "plain"},
-                {"name": "item1", "type": "plain"},
-                {"type": "plain"},
-            ],
-        )
-
-        with pytest.raises(ValidationError, match="duplicate source name"):
-            model.collect()
-
-    def test_collect_error_2(self):
-        model = ProviderBuilder(
-            sources=[
-                {"name": "item1", "type": "plain"},
-                {"type": "plain"},
-            ],
-        )
-
+    def test_missing_name(self):
         with pytest.raises(
             ValidationError,
-            match="Naming each source is mandatory when using multiple sources",
+            match="naming each source is mandatory when using multiple sources",
         ):
-            model.collect()
+            ProviderAdapter(
+                sources=[
+                    {"name": "item1", "type": "plain"},
+                    {"type": "plain"},
+                ],
+            )
 
 
-class TestRequestBuilder:
-    def test_success__model(self):
-        model = RequestBuilder.model_validate(
+class TestRequestAdapter:
+    def test_success(self):
+        model = RequestAdapter.model_validate(
             {
+                "secrets": [
+                    {"name": "item1", "path": "/path/item1"},
+                ],
                 "secret": {
-                    "item1": Request(name="item1"),
-                }
-            }
-        )
-        assert model.secret == [Request(name="item1")]
-        assert model.secrets == []
-
-    def test_success__list(self):
-        model = RequestBuilder.model_validate(
-            {
-                "secret": [{"name": "item1", "path": "/path/item1"}],
-            }
-        )
-        assert list(model.iter()) == [
-            Request(name="item1", path="/path/item1"),
-        ]
-
-    def test_success__dict(self):
-        model = RequestBuilder.model_validate(
-            {
-                "secret": {
-                    "item1": {"path": "/path/item1"},
-                    "item2": "value2",
+                    "item2": Request(name="item2"),
+                    "item3": "/path/item3",
                 },
             }
         )
-        assert list(model.iter()) == [
+        assert model.requests == [
+            Request(name="item2"),
+            Request(name="item3", value="/path/item3"),
             Request(name="item1", path="/path/item1"),
-            Request(name="item2", value="value2"),
         ]
 
-    def test_error__list(self):
+    def test_error_duplicated_name(self):
+        with pytest.raises(ValidationError, match="secrets.item1"):
+            RequestAdapter.model_validate(
+                {
+                    "secret": [
+                        Request(name="item1"),
+                        Request(name="item1"),
+                    ]
+                }
+            )
+
+    def test_error_from_list(self):
         with pytest.raises(ValidationError, match="secret.0.name"):
-            RequestBuilder.model_validate(
+            RequestAdapter.model_validate(
                 {
                     "secret": [{"name": "1nvalid"}],
                 }
             )
 
-    def test_error__dict(self):
+    def test_error_from_dict(self):
         with pytest.raises(ValidationError, match="secret.1nvalid.name"):
-            RequestBuilder.model_validate(
+            RequestAdapter.model_validate(
                 {
                     "secret": {
                         "1nvalid": {},
@@ -155,11 +123,9 @@ class TestRequestBuilder:
                 }
             )
 
-    def test_error_type(self):
-        with pytest.raises(
-            ValidationError, match="Input must be a list or a dictionary"
-        ):
-            RequestBuilder.model_validate({"secret": 1234})
+    def test_type_error(self):
+        with pytest.raises(ValidationError, match="expect list or dict"):
+            RequestAdapter.model_validate({"secret": 1234})
 
 
 class TestLocalConfig:

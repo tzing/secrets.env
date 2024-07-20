@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import itertools
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from pydantic_core import ErrorDetails
 
 
-class ProviderBuilder(BaseModel):
+class _ProviderAdapter(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
     source: list[Provider] = Field(default_factory=list)
@@ -46,13 +47,9 @@ class ProviderBuilder(BaseModel):
         else:
             raise ValueError("Input must be a list or a dictionary")
 
-    def iter(self) -> Iterator[Provider]:
-        yield from self.source
-        yield from self.sources
-
-    def collect(self) -> dict[str, Provider]:
+    def to_dict(self) -> dict[str, Provider]:
         """
-        Returns a dictionary of provider instances by name.
+        Returns an iterator of tuples with the provider name and the provider instance.
 
         Raises
         ------
@@ -62,26 +59,26 @@ class ProviderBuilder(BaseModel):
         providers = {}
         errors = []
 
-        for provider in self.iter():
+        for provider in itertools.chain(self.source, self.sources):
             if provider.name in providers:
                 errors.append(
                     {
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
                         "input": provider.name or "(anonymous)",
-                        "ctx": {"error": "duplicate source name"},
+                        "ctx": {"error": "duplicated source name"},
                     }
                 )
             else:
                 providers[provider.name] = provider
 
-        if len(providers) > 1 and None in providers:
+        if None in providers and len(providers) > 1:
             errors.append(
                 {
                     "type": "value_error",
                     "loc": ("sources", "*", "name"),
                     "ctx": {
-                        "error": "Naming each source is mandatory when using multiple sources",
+                        "error": "naming each source is mandatory when using multiple sources",
                     },
                 }
             )
@@ -94,7 +91,25 @@ class ProviderBuilder(BaseModel):
         return providers
 
 
-class RequestBuilder(BaseModel):
+class ProviderAdapter(BaseModel):
+    """Build source(s) configs into provider instances."""
+
+    providers: dict[str | None, Provider] = Field(default_factory=dict)
+
+    @classmethod
+    def before_validator(cls, values):
+        if isinstance(values, dict):
+            adapter = _ProviderAdapter.model_validate(values)
+            providers = values.setdefault("providers", {})
+            providers.update(adapter.to_dict())
+        return values
+
+    @model_validator(mode="before")
+    def _before_validator(cls, values):
+        return cls.before_validator(values)
+
+
+class _RequestAdapter(BaseModel):
     """Internal helper to build request instances from secret(s) configs."""
 
     secret: list[Request] = Field(default_factory=list)
@@ -125,34 +140,68 @@ class RequestBuilder(BaseModel):
             return requests
 
         else:
-            raise ValueError("Input must be a list or a dictionary")
+            # type error here does not get caught by pydantic
+            raise ValueError(f'expect list or dict for "{info.field_name}"')
 
-    def iter(self) -> Iterator[Request]:
-        yield from self.secret
-        yield from self.secrets
+    def iter_requests(self) -> Iterator[Request]:
+        seen_names = set()
+        errors = []
+
+        for request in itertools.chain(self.secret, self.secrets):
+            if request.name in seen_names:
+                errors.append(
+                    {
+                        "type": "value_error",
+                        "loc": ("secrets", request.name),
+                        "input": request.name,
+                        "ctx": {"error": "duplicated secret name"},
+                    }
+                )
+
+            else:
+                seen_names.add(request.name)
+                yield request
+
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="secrets", line_errors=errors
+            )
 
 
-class LocalConfig(BaseModel):
-    """Data model that represents a local configuration file."""
+class RequestAdapter(BaseModel):
+    """Build secret(s) configs into request instances."""
 
-    providers: dict[str | None, Provider] = Field(default_factory=dict)
-    requests: list[Request] = Field(default_factory=list)
+    requests: list[Request] = Field(default_factory=dict)
+
+    @classmethod
+    def before_validator(cls, values):
+        if isinstance(values, dict):
+            adapter = _RequestAdapter.model_validate(values)
+            requests = values.setdefault("requests", [])
+            requests.extend(adapter.iter_requests())
+        return values
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
-        if isinstance(values, dict):
-            errors = []
-            with capture_line_errors(errors, ()):
-                builder = ProviderBuilder.model_validate(values)
-                values["providers"] = builder.collect()
-            with capture_line_errors(errors, ()):
-                builder = RequestBuilder.model_validate(values)
-                values["requests"] = builder.iter()
-            if errors:
-                raise ValidationError.from_exception_data(
-                    title="local config", line_errors=errors
-                )
+        return cls.before_validator(values)
+
+
+class LocalConfig(ProviderAdapter, RequestAdapter):
+    """Data model that represents a local configuration file."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _before_validator(cls, values):
+        errors = []
+        with capture_line_errors(errors, ()):
+            values = ProviderAdapter.before_validator(values)
+        with capture_line_errors(errors, ()):
+            values = RequestAdapter.before_validator(values)
+        if errors:
+            raise ValidationError.from_exception_data(
+                title="local config", line_errors=errors
+            )
         return values
 
     @model_validator(mode="after")
