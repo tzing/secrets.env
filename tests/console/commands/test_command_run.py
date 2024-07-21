@@ -60,7 +60,7 @@ def test_config_error(monkeypatch: pytest.MonkeyPatch):
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "echo"])
 
-    assert result.exit_code == 2
+    assert result.exit_code == 1
 
 
 @pytest.mark.usefixtures("_reset_logging")
@@ -70,5 +70,5 @@ def test_recursive_activation(monkeypatch: pytest.MonkeyPatch):
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "echo"])
 
-    assert result.exit_code == 3
+    assert result.exit_code == 1
     assert "secrets.env is already active" in result.output

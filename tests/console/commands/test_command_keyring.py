@@ -135,13 +135,13 @@ def test_assert_keyring_available():
     # test import error
     with (
         patch.dict("sys.modules", {"keyring": None}),
-        pytest.raises(SystemExit),
+        pytest.raises(click.Abort),
     ):
         assert_keyring_available()
 
     # keyring unavailable
     with (
         patch("keyring.get_keyring", return_value=keyring.backends.fail.Keyring()),
-        pytest.raises(SystemExit),
+        pytest.raises(click.Abort),
     ):
         assert_keyring_available()

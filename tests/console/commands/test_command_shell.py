@@ -42,7 +42,7 @@ def test_nested(monkeypatch: pytest.MonkeyPatch):
     runner = click.testing.CliRunner()
     result = runner.invoke(shell)
 
-    assert result.exit_code == 3
+    assert result.exit_code == 1
 
 
 @pytest.mark.usefixtures("_reset_logging")
@@ -55,7 +55,7 @@ def test_read_values_error(monkeypatch: pytest.MonkeyPatch):
     runner = click.testing.CliRunner()
     result = runner.invoke(shell)
 
-    assert result.exit_code == 2
+    assert result.exit_code == 1
     assert "test error" in result.output
 
 
