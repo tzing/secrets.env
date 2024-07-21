@@ -7,7 +7,7 @@ from typing import Sequence
 import click
 
 import secrets_env
-from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
+from secrets_env.console.core import entrypoint, exit, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
 
@@ -62,14 +62,14 @@ def run(args: Sequence[str], config: Path, partial: bool):
     # prevent double activation
     if is_secrets_env_active():
         logger.error("secrets.env is already active")
-        exit(ExitCode.NestedEnvironment)
+        raise click.Abort from None
 
     # prepare environment variable set
     try:
         values = secrets_env.read_values(config=config, strict=not partial)
     except (ConfigError, NoValue) as e:
         logger.error("%s", e)
-        exit(ExitCode.ValueNotFound)
+        raise click.Abort from None
 
     # run
     logger.debug("exec> %s", " ".join(args))
