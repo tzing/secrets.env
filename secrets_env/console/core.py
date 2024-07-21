@@ -19,16 +19,19 @@ class ExitCode(enum.IntEnum):
     Success = 0
     """The command was successful."""
 
-    Error = 1
+    UsageError = 2
+    """A usage error occurred. This is for align with click's exit code."""
+
+    Error = 0x10
     """An error occurred."""
 
-    ValueNotFound = 2
+    ValueNotFound = 0x11
     """Failed to load value."""
 
-    NestedEnvironment = 3
+    NestedEnvironment = 0x20
     """Nested environment detected."""
 
-    DependencyError = 4
+    DependencyError = 0x21
     """Dependency error."""
 
 
