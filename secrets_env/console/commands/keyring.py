@@ -6,7 +6,7 @@ import sys
 import click
 from pydantic_core import Url
 
-from secrets_env.console.core import ExitCode, entrypoint, exit, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ def command_set(host: Url, username: str, password: str, password_stdin: bool):
         keyring.set_password("secrets.env", key, password)
     except keyring.errors.PasswordSetError:
         click.secho("Failed to save password", fg="red")
-        exit(ExitCode.Error)
+        raise click.Abort from None
 
     click.echo("Password saved")
 
@@ -105,11 +105,11 @@ def assert_keyring_available():
     try:
         import keyring
         import keyring.backends.fail
-    except ImportError:
+    except ImportError as e:
         logger.error("Dependency `keyring` not found")
         logger.error("Please install secrets.env with extra `[keyring]`")
-        exit(ExitCode.DependencyError)
+        raise click.Abort from e
 
     if isinstance(keyring.get_keyring(), keyring.backends.fail.Keyring):
         logger.error("Keyring service is not available")
-        exit(ExitCode.DependencyError)
+        raise click.Abort from None

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-__all__ = ["ExitCode", "entrypoint", "exit", "with_output_options"]
+__all__ = ["entrypoint", "exit", "with_output_options"]
 
-import enum
 import sys
 import typing
 
@@ -13,26 +12,6 @@ from secrets_env.console.decorators import with_output_options
 
 if typing.TYPE_CHECKING:
     from typing import NoReturn
-
-
-class ExitCode(enum.IntEnum):
-    Success = 0
-    """The command was successful."""
-
-    UsageError = 2
-    """A usage error occurred. This is for align with click's exit code."""
-
-    Error = 0x10
-    """An error occurred."""
-
-    ValueNotFound = 0x11
-    """Failed to load value."""
-
-    NestedEnvironment = 0x20
-    """Nested environment detected."""
-
-    DependencyError = 0x21
-    """Dependency error."""
 
 
 def exit(code: int) -> NoReturn:
