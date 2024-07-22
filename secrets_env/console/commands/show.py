@@ -26,14 +26,7 @@ INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
 
 
-@entrypoint.group("config")
-def group():
-    """
-    Manage configuration for secrets.env.
-    """
-
-
-@group.command()
+@entrypoint.command()
 @click.option(
     "-f",
     "--config",
@@ -43,8 +36,7 @@ def group():
 @with_output_options
 def show(config: Path | None):
     """
-    Parse and display the contents of the configuration file to the console,
-    without executing any commands.
+    Print the contents of the configuration file to the console.
 
     It provides insight into how secrets.env interprets the configuration file.
     It also identifies some critical errors. However, it's important to note that

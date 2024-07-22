@@ -3,7 +3,7 @@ from pathlib import Path
 import click.testing
 import pytest
 
-from secrets_env.console.commands.config import group
+from secrets_env.console.commands.show import show
 
 
 class TestShow:
@@ -27,7 +27,7 @@ class TestShow:
         )
 
         runner = click.testing.CliRunner()
-        result = runner.invoke(group, ["show", "-f", str(config_file)])
+        result = runner.invoke(show, ["-f", str(config_file)])
 
         assert result.exit_code == 0
 
@@ -43,6 +43,6 @@ class TestShow:
         )
 
         runner = click.testing.CliRunner()
-        result = runner.invoke(group, ["show", "-f", str(config_file)])
+        result = runner.invoke(show, ["-f", str(config_file)])
 
         assert result.exit_code == 1
