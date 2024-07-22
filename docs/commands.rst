@@ -21,5 +21,4 @@ To access assistance from the command line, simply run ``secrets.env --help`` to
    :prog: secrets.env shell
 
 .. click:: secrets_env.console.commands.show:show
-   :prog: secrets.env config
-   :nested: full
+   :prog: secrets.env show
