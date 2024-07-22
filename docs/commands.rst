@@ -8,10 +8,6 @@ To access assistance from the command line, simply run ``secrets.env --help`` to
 .. click:: secrets_env.console.commands.completion:completion
    :prog: secrets.env completion
 
-.. click:: secrets_env.console.commands.config:group
-   :prog: secrets.env config
-   :nested: full
-
 .. _cmd.keyring:
 
 .. click:: secrets_env.console.commands.keyring:group
@@ -23,3 +19,7 @@ To access assistance from the command line, simply run ``secrets.env --help`` to
 
 .. click:: secrets_env.console.commands.shell:shell
    :prog: secrets.env shell
+
+.. click:: secrets_env.console.commands.show:show
+   :prog: secrets.env config
+   :nested: full
