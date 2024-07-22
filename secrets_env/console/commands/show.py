@@ -26,14 +26,7 @@ INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
 
 
-@entrypoint.group("config")
-def group():
-    """
-    Manage configuration for secrets.env.
-    """
-
-
-@group.command()
+@entrypoint.command()
 @click.option(
     "-f",
     "--config",
