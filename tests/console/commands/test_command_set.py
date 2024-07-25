@@ -1,8 +1,15 @@
 import click
 import click.testing
+import keyring.backends.fail
+import keyring.backends.null
+import keyring.errors
 import pytest
 
-from secrets_env.console.commands.set import HostParam, VisibleOption, group_set
+from secrets_env.console.commands.set import (
+    HostParam,
+    VisibleOption,
+    assert_keyring_available,
+)
 
 
 class TestVisibleOption:
@@ -59,3 +66,23 @@ class TestHostParam:
         result = runner.invoke(demo, ["test"])
 
         assert result.exit_code == 2
+
+
+class TestAssertKeyringAvailable:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "keyring.get_keyring", lambda: keyring.backends.null.Keyring()
+        )
+        assert assert_keyring_available() is None
+
+    def test_import_error(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("sys.modules", {"keyring": None})
+        with pytest.raises(click.Abort):
+            assert_keyring_available()
+
+    def test_keyring_unavailable(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "keyring.get_keyring", lambda: keyring.backends.fail.Keyring()
+        )
+        with pytest.raises(click.Abort):
+            assert_keyring_available()

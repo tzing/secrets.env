@@ -81,4 +81,20 @@ def command_set_username():
     """
     Store password in system keyring.
     """
+    assert_keyring_available()
+
     raise NotImplementedError
+
+
+def assert_keyring_available():
+    try:
+        import keyring
+        import keyring.backends.fail
+    except ImportError as e:
+        logger.error("Dependency `keyring` not found")
+        logger.error("Please install secrets.env with extra `[keyring]`")
+        raise click.Abort from e
+
+    if isinstance(keyring.get_keyring(), keyring.backends.fail.Keyring):
+        logger.error("Keyring service is not available")
+        raise click.Abort from None
