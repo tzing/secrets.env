@@ -27,13 +27,14 @@ class HostParam(click.ParamType):
     name = "host"
 
     def convert(self, value: str, param, ctx) -> str:
+        host = None
         if "://" in value:
-            url = Url(value)
+            host = Url(value).host
         elif "." in value:
-            url = Url(f"https://{value}")
-        else:
+            host = Url(f"https://{value}").host
+        if not host:
             raise click.BadParameter("Invalid host")
-        return url.host
+        return host
 
 
 @entrypoint.group("set")
@@ -46,3 +47,38 @@ def group_set():
     you can avoid the need to re-enter sensitive information each time you run
     secrets.env.
     """
+
+
+@group_set.command("password")
+@click.option(
+    "-t",
+    "--target",
+    type=HostParam(),
+    required=True,
+    help="Specify target host name for which the password will be used.",
+    cls=VisibleOption,
+)
+@click.option(
+    "-u",
+    "--username",
+    type=HostParam(),
+    required=True,
+    help="Specify the username for the target host.",
+    cls=VisibleOption,
+)
+@click.option(
+    "-v",
+    "--value",
+    help=(
+        "Specify the password value to store. "
+        "Set to `-` to read from stdin. "
+        "If not provided, a prompt will be shown."
+    ),
+    cls=VisibleOption,
+)
+@with_output_options
+def command_set_username():
+    """
+    Store password in system keyring.
+    """
+    raise NotImplementedError
