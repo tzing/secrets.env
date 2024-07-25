@@ -3,18 +3,23 @@
 *Table of Contents*
 
 - [Unreleased](#unreleased)
+  - [🚨 Breaking changes](#-breaking-changes)
   - [✨ Enhancements](#-enhancements)
   - [🚧 Internal changes](#-internal-changes)
 - [0.29.1 (2024-05-15)](#0291-2024-05-15)
   - [✨ Enhancements](#-enhancements-1)
 - [0.29.0 (2024-05-07)](#0290-2024-05-07)
-  - [🚨 Breaking changes](#-breaking-changes)
+  - [🚨 Breaking changes](#-breaking-changes-1)
   - [✨ Enhancements](#-enhancements-2)
   - [🚧 Internal changes](#-internal-changes-1)
 - [Prior to 0.29](#prior-to-029)
 
 
 ## Unreleased
+
+### 🚨 Breaking changes
+
+* Command group `keyring` is merged into `set password`
 
 ### ✨ Enhancements
 
