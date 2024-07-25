@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import logging
+import typing
 
 import click
+from click.core import ParameterSource
 from pydantic_core import Url
 
 import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
+
+if typing.TYPE_CHECKING:
+    from typing import Any, Mapping
+
+    from click import Parameter
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +26,25 @@ class VisibleOption(click.Option):
 
     def get_usage_pieces(self, ctx: click.Context) -> list[str]:
         return [self.opts[-1], self.make_metavar()]
+
+
+class UserInputOption(VisibleOption):
+    """
+    When the value is `-`, read from stdin. When the value is not provided, prompt the user.
+    """
+
+    def consume_value(
+        self, ctx: click.Context, opts: Mapping[str, Parameter]
+    ) -> tuple[Any, ParameterSource]:
+        value = opts.get(self.name)
+        source = ParameterSource.COMMANDLINE
+        if value == "-":
+            value = click.get_text_stream("stdin").readline().rstrip("\r\n")
+            source = ParameterSource.ENVIRONMENT
+        if not value:
+            value = secrets_env.utils.prompt(self.prompt, hide_input=self.hide_input)
+            source = ParameterSource.PROMPT
+        return value, source
 
 
 class UrlParam(click.ParamType):

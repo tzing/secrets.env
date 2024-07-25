@@ -11,6 +11,7 @@ from pydantic_core import Url
 
 from secrets_env.console.commands.set import (
     UrlParam,
+    UserInputOption,
     VisibleOption,
     assert_keyring_available,
     group_set,
@@ -40,6 +41,23 @@ class TestVisibleOption:
         assert "Usage:" in usage
         assert "--choice [a|b|c]" in usage
         assert "--string TEXT" in usage
+
+
+class TestUserInputOption:
+    def invoke(self, *args: str):
+        @click.command()
+        @click.option("-v", "--value", cls=UserInputOption)
+        def demo(value: str):
+            assert value == "test"
+
+        runner = click.testing.CliRunner()
+        return runner.invoke(demo, args)
+
+    def test_consume_value__commandline(self):
+        result = self.invoke("-v", "test")
+        assert result.exit_code == 0
+
+    # TODO other sources
 
 
 class TestUrlParam:
