@@ -1,14 +1,18 @@
+from unittest.mock import Mock
+
 import click
 import click.testing
 import keyring.backends.fail
 import keyring.backends.null
 import keyring.errors
 import pytest
+from pydantic_core import Url
 
 from secrets_env.console.commands.set import (
-    HostParam,
+    UrlParam,
     VisibleOption,
     assert_keyring_available,
+    group_set,
 )
 
 
@@ -37,20 +41,20 @@ class TestVisibleOption:
         assert "--string TEXT" in usage
 
 
-class TestHostParam:
+class TestUrlParam:
     @pytest.mark.parametrize(
         "arg",
         [
             "EXAMPLE.COM",
             "https://example.com",
-            "http://example.com",
+            "http://example.com/path/to/resource",
         ],
     )
     def test_convert(self, arg: str):
         @click.command()
-        @click.argument("host", type=HostParam())
-        def demo(host: str):
-            assert host == "example.com"
+        @click.argument("url", type=UrlParam())
+        def demo(url: Url):
+            assert url.host == "example.com"
 
         runner = click.testing.CliRunner()
         result = runner.invoke(demo, [arg])
@@ -59,13 +63,51 @@ class TestHostParam:
 
     def test_convert_error(self):
         @click.command()
-        @click.argument("host", type=HostParam())
-        def demo(host: str): ...
+        @click.argument("url", type=UrlParam())
+        def demo(url: str): ...
 
         runner = click.testing.CliRunner()
         result = runner.invoke(demo, ["test"])
 
         assert result.exit_code == 2
+
+
+class TestSetPassword:
+
+    @pytest.fixture(autouse=True)
+    def _assume_keyring_available(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.console.commands.set.assert_keyring_available", lambda: None
+        )
+
+    def test_remove__success(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_delete(svc, user):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+
+        monkeypatch.setattr("keyring.delete_password", mock_delete)
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["password", "-t", "https://example.com", "-u", "test", "-d"]
+        )
+
+        assert result.exit_code == 0
+        assert "Password removed" in result.output
+
+    def test_remove__not_exist(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "keyring.delete_password",
+            Mock(side_effect=keyring.errors.PasswordDeleteError),
+        )
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["password", "-t", "https://example.com", "-u", "test", "-d"]
+        )
+
+        assert result.exit_code == 0
+        assert "Password removed" in result.output
 
 
 class TestAssertKeyringAvailable:

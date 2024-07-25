@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import logging
+import typing
 
 import click
 from pydantic_core import Url
 
+import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
+
+if typing.TYPE_CHECKING:
+    from pydantic_core import Url
 
 logger = logging.getLogger(__name__)
 
@@ -19,22 +24,19 @@ class VisibleOption(click.Option):
         return [self.opts[-1], self.make_metavar()]
 
 
-class HostParam(click.ParamType):
+class UrlParam(click.ParamType):
     """
     Parameter type for URL host.
     """
 
-    name = "host"
+    name = "url"
 
     def convert(self, value: str, param, ctx) -> str:
-        host = None
         if "://" in value:
-            host = Url(value).host
+            return Url(value)
         elif "." in value:
-            host = Url(f"https://{value}").host
-        if not host:
-            raise click.BadParameter("Invalid host")
-        return host
+            return Url(f"https://{value}")
+        raise click.BadParameter("Invalid URL")
 
 
 @entrypoint.group("set")
@@ -53,7 +55,7 @@ def group_set():
 @click.option(
     "-t",
     "--target",
-    type=HostParam(),
+    type=UrlParam(),
     required=True,
     help="Specify target host name for which the password will be used.",
     cls=VisibleOption,
@@ -61,7 +63,6 @@ def group_set():
 @click.option(
     "-u",
     "--username",
-    type=HostParam(),
     required=True,
     help="Specify the username for the target host.",
     cls=VisibleOption,
@@ -76,14 +77,39 @@ def group_set():
     ),
     cls=VisibleOption,
 )
+@click.option(
+    "-d",
+    "--delete",
+    is_flag=True,
+    help="Delete the stored password for the target host.",
+)
 @with_output_options
-def command_set_username():
+def command_set_username(target: Url, username: str, value: str | None, delete: bool):
     """
     Store password in system keyring.
     """
     assert_keyring_available()
 
+    if delete:
+        return remove_password(target, username)
+
     raise NotImplementedError
+
+
+def remove_password(url: Url, username: str):
+    import keyring
+    import keyring.errors
+
+    key = secrets_env.utils.create_keyring_login_key(url, username)
+
+    logger.debug("Removing %s from keyring", key)
+
+    try:
+        keyring.delete_password("secrets.env", key)
+    except keyring.errors.PasswordDeleteError:
+        logger.debug("Failed to remove %s from keyring", key)
+
+    logger.info("Password removed")
 
 
 def assert_keyring_available():
