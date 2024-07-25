@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import Mock
 
 import click
@@ -71,8 +72,6 @@ class TestUrlParam:
 
         assert result.exit_code == 2
 
-
-class TestSetPassword:
 
 class TestSetPassword:
     @pytest.fixture(autouse=True)
@@ -163,7 +162,7 @@ class TestAssertKeyringAvailable:
         assert assert_keyring_available() is None
 
     def test_import_error(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("sys.modules", {"keyring": None})
+        monkeypatch.setitem(sys.modules, "keyring", None)
         with pytest.raises(click.Abort):
             assert_keyring_available()
 
