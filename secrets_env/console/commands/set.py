@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import logging
-import typing
 
 import click
 from pydantic_core import Url
 
 import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
-
-if typing.TYPE_CHECKING:
-    from pydantic_core import Url
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +27,7 @@ class UrlParam(click.ParamType):
 
     name = "url"
 
-    def convert(self, value: str, param, ctx) -> str:
+    def convert(self, value: str, param, ctx) -> Url:
         if "://" in value:
             return Url(value)
         elif "." in value:
