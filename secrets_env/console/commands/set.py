@@ -80,7 +80,7 @@ def group_set():
     help="Delete the stored password for the target host.",
 )
 @with_output_options
-def command_set_username(
+def command_set_password(
     target: Url, username: str, password: str | None, delete: bool
 ):
     """
