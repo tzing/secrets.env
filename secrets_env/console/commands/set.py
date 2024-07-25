@@ -78,12 +78,3 @@ def command_set_username():
     Store password in system keyring.
     """
     raise NotImplementedError
-
-
-@group_set.command("token")
-@with_output_options
-def command_set_token():
-    """
-    Store token in system keyring.
-    """
-    raise NotImplementedError
