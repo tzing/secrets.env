@@ -68,8 +68,8 @@ def group_set():
     cls=VisibleOption,
 )
 @click.option(
-    "-v",
-    "--value",
+    "-p",
+    "--password",
     help=(
         "Specify the password value to store. "
         "Set to `-` to read from stdin. "
@@ -84,16 +84,42 @@ def group_set():
     help="Delete the stored password for the target host.",
 )
 @with_output_options
-def command_set_username(target: Url, username: str, value: str | None, delete: bool):
+def command_set_username(
+    target: Url, username: str, password: str | None, delete: bool
+):
     """
     Store password in system keyring.
     """
     assert_keyring_available()
 
+    # early return when delete flag is set
     if delete:
         return remove_password(target, username)
 
-    raise NotImplementedError
+    # get value
+    if password == "-":
+        password = click.get_text_stream("stdin").readline().rstrip("\r\n")
+    if not password:
+        password = secrets_env.utils.prompt("Password", hide_input=True)
+    if not password:
+        raise click.UsageError("Value (password) is required.")
+
+    set_password(target, username, password)
+
+
+def set_password(url: Url, username: str, password: str):
+    import keyring
+    import keyring.errors
+
+    key = secrets_env.utils.create_keyring_login_key(url, username)
+
+    try:
+        keyring.set_password("secrets.env", key, password)
+    except keyring.errors.PasswordSetError:
+        logger.error("Failed to save password")
+        raise click.Abort from None
+
+    logger.info("Password saved")
 
 
 def remove_password(url: Url, username: str):

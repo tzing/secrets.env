@@ -74,11 +74,56 @@ class TestUrlParam:
 
 class TestSetPassword:
 
+class TestSetPassword:
     @pytest.fixture(autouse=True)
     def _assume_keyring_available(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.console.commands.set.assert_keyring_available", lambda: None
         )
+
+    def test_set__success(self, monkeypatch: pytest.MonkeyPatch):
+        def mock_set(svc, user, passwd):
+            assert svc == "secrets.env"
+            assert user == '{"host": "example.com", "type": "login", "user": "test"}'
+            assert passwd == "P@ssw0rd"
+
+        monkeypatch.setattr("keyring.set_password", mock_set)
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set,
+            ["password", "-t", "https://example.com", "-u", "test", "-p", "-"],
+            input="P@ssw0rd\n",
+        )
+
+        assert result.exit_code == 0
+        assert "Password saved" in result.output
+
+    def test_set__error(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "keyring.set_password",
+            Mock(side_effect=keyring.errors.PasswordSetError),
+        )
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set,
+            ["password", "-t", "https://example.com", "-u", "test", "-p", "P@ssw0rd"],
+        )
+
+        assert result.exit_code == 1
+        assert "Failed to save password" in result.output
+
+    def test_set__missing_value(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=""))
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set,
+            ["password", "-t", "https://example.com", "-u", "test"],
+        )
+
+        assert result.exit_code == 2
 
     def test_remove__success(self, monkeypatch: pytest.MonkeyPatch):
         def mock_delete(svc, user):
