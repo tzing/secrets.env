@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
+import logging
+
 import click
 from pydantic_core import Url
 
+import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
+
+logger = logging.getLogger(__name__)
 
 
 class VisibleOption(click.Option):
@@ -68,7 +74,44 @@ def command_set_username(target: str, value: str | None):
     """
     Store username in user configuration file.
     """
-    raise NotImplementedError
+    # get value
+    if value == "-":
+        value = click.get_text_stream("stdin").readline().rstrip("\r\n")
+    if not value:
+        value = secrets_env.utils.prompt("Username")
+    if not value:
+        raise click.UsageError("Value (username) is required.")
+
+    set_username(target, value)
+
+
+def set_username(host: str, value: str) -> None:
+    """
+    Store username in user configuration file.
+    """
+    # read config
+    config_path = secrets_env.config.find_user_config_file()
+
+    try:
+        config = secrets_env.config.read_json_file(config_path) or {}
+        logger.debug("Read user config from %s", config_path)
+    except FileNotFoundError:
+        config = {}
+
+    # update config
+    host_config = config.setdefault(host, {})
+    auth_config = host_config.setdefault("auth", {})
+    auth_config["username"] = value
+
+    # write config
+    logger.debug("Write user config to %s", config_path)
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with config_path.open("w") as fd:
+        json.dump(config, fd, indent=2)
+
+    logger.info("Set username for <data>%s</data> to <data>%s</data>", host, value)
 
 
 @group_set.command("password")
