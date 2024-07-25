@@ -7,6 +7,8 @@ import logging
 import typing
 from pathlib import Path
 
+import click
+
 if typing.TYPE_CHECKING:
     from typing import Iterable
 
@@ -30,6 +32,11 @@ def find_local_config_file(cwd: Path | None = None) -> Path | None:
         if f := find_readable_file(dir_, CONFIG_NAME_CANDIDATES):
             return f
     return None
+
+
+def find_user_config_file() -> Path:
+    """Find config file in user home directory."""
+    return Path(click.utils.get_app_dir("secrets-env")) / "config.json"
 
 
 def find_readable_file(dirpath: Path, candidates: Iterable[str]) -> Path | None:

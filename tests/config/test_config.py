@@ -1,8 +1,9 @@
 from pathlib import Path
 
 import pytest
+from pydantic_core import Url
 
-from secrets_env.config import load_local_config
+from secrets_env.config import load_local_config, load_user_config
 from secrets_env.config.parser import Request
 from secrets_env.exceptions import ConfigError
 from secrets_env.providers.debug import DebugProvider
@@ -97,3 +98,64 @@ class TestLoadLocalConfig:
             "➜ <mark>secrets.0.name</mark> (input= <data>invalid.x</data>)"
             in caplog.text
         )
+
+
+class TestLoadUserConfig:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            """
+            {
+                "example.com": {
+                    "demo": "value"
+                }
+            }
+            """
+        )
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: config_path
+        )
+
+        config = load_user_config(Url("HTTP://EXAMPLE.COM"))
+        assert config == {"demo": "value"}
+
+    def test_file_not_exist(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: Path("/no-this-file")
+        )
+        config = load_user_config(Url("http://example.com"))
+        assert config == {}
+
+    def test_file_invalid(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        config_path = tmp_path / "config.json"
+        config_path.write_text("{")
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: config_path
+        )
+
+        config = load_user_config(Url("http://example.com"))
+        assert config == {}
+        assert "User config file is invalid" in caplog.text
+
+    def test_host_not_exist(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            """
+            {
+                "example.com": {
+                    "demo": "value"
+                }
+            }
+            """
+        )
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: config_path
+        )
+
+        config = load_user_config(Url("http://unknown.com"))
+        assert config == {}
