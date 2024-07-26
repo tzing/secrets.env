@@ -33,6 +33,10 @@ class UserInputOption(VisibleOption):
     When the value is `-`, read from stdin. When the value is not provided, prompt the user.
     """
 
+    def __init__(self, *args, **kwargs):
+        kwargs["prompt"] = True
+        super().__init__(*args, **kwargs)
+
     def consume_value(
         self, ctx: click.Context, opts: Mapping[str, Parameter]
     ) -> tuple[Any, ParameterSource]:
@@ -93,12 +97,10 @@ def group_set():
 @click.option(
     "-p",
     "--password",
-    help=(
-        "Specify the password value to store. "
-        "Set to `-` to read from stdin. "
-        "If not provided, a prompt will be shown."
-    ),
-    cls=VisibleOption,
+    hide_input=True,
+    help="Specify the password value to store. "
+    "Set to `-` to read from stdin. If not provided, a prompt will be shown.",
+    cls=UserInputOption,
 )
 @click.option(
     "-d",
@@ -115,26 +117,17 @@ def command_set_password(
     """
     assert_keyring_available()
 
-    # early return when delete flag is set
-    if delete:
-        return remove_password(target, username)
+    key = secrets_env.utils.create_keyring_login_key(target, username)
 
-    # get value
-    if password == "-":
-        password = click.get_text_stream("stdin").readline().rstrip("\r\n")
-    if not password:
-        password = secrets_env.utils.prompt("Password", hide_input=True)
-    if not password:
-        raise click.UsageError("Value (password) is required.")
-
-    set_password(target, username, password)
+    if not delete:
+        return set_password(key, password)
+    else:
+        return remove_password(key)
 
 
-def set_password(url: Url, username: str, password: str):
+def set_password(key: str, password: str):
     import keyring
     import keyring.errors
-
-    key = secrets_env.utils.create_keyring_login_key(url, username)
 
     try:
         keyring.set_password("secrets.env", key, password)
@@ -145,11 +138,9 @@ def set_password(url: Url, username: str, password: str):
     logger.info("Password saved")
 
 
-def remove_password(url: Url, username: str):
+def remove_password(key: str):
     import keyring
     import keyring.errors
-
-    key = secrets_env.utils.create_keyring_login_key(url, username)
 
     logger.debug("Removing %s from keyring", key)
 
