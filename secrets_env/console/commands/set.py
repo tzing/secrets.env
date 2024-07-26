@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import logging
+import typing
 
 import click
+from click.core import ParameterSource
 from pydantic_core import Url
 
 import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
+
+if typing.TYPE_CHECKING:
+    from typing import Any, Mapping
+
+    from click import Parameter
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +26,32 @@ class VisibleOption(click.Option):
 
     def get_usage_pieces(self, ctx: click.Context) -> list[str]:
         return [self.opts[-1], self.make_metavar()]
+
+
+class UserInputOption(VisibleOption):
+    """
+    When the value is `-`, read from stdin. When the value is not provided, prompt the user.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs["prompt"] = True
+        super().__init__(*args, **kwargs)
+
+    def consume_value(
+        self, ctx: click.Context, opts: Mapping[Any, Parameter]
+    ) -> tuple[Any, ParameterSource]:
+        value = opts.get(self.name)
+        source = ParameterSource.COMMANDLINE
+        if value == "-":
+            value = click.get_text_stream("stdin").readline().rstrip("\r\n")
+            source = ParameterSource.ENVIRONMENT
+        if self.required and not value:
+            value = secrets_env.utils.prompt(
+                text=typing.cast(str, self.prompt),
+                hide_input=self.hide_input,
+            )
+            source = ParameterSource.PROMPT
+        return value, source
 
 
 class UrlParam(click.ParamType):
@@ -66,12 +100,10 @@ def group_set():
 @click.option(
     "-p",
     "--password",
-    help=(
-        "Specify the password value to store. "
-        "Set to `-` to read from stdin. "
-        "If not provided, a prompt will be shown."
-    ),
-    cls=VisibleOption,
+    hide_input=True,
+    help="Specify the password value to store. "
+    "Set to `-` to read from stdin. If not provided, a prompt will be shown.",
+    cls=UserInputOption,
 )
 @click.option(
     "-d",
@@ -80,7 +112,7 @@ def group_set():
     help="Delete the stored password for the target host.",
 )
 @with_output_options
-def command_set_username(
+def command_set_password(
     target: Url, username: str, password: str | None, delete: bool
 ):
     """
@@ -88,26 +120,19 @@ def command_set_username(
     """
     assert_keyring_available()
 
-    # early return when delete flag is set
+    key = secrets_env.utils.create_keyring_login_key(target, username)
+
     if delete:
-        return remove_password(target, username)
-
-    # get value
-    if password == "-":
-        password = click.get_text_stream("stdin").readline().rstrip("\r\n")
-    if not password:
-        password = secrets_env.utils.prompt("Password", hide_input=True)
-    if not password:
-        raise click.UsageError("Value (password) is required.")
-
-    set_password(target, username, password)
+        return remove_password(key)
+    elif password is None:
+        raise click.BadArgumentUsage("Password is required")
+    else:
+        return set_password(key, password)
 
 
-def set_password(url: Url, username: str, password: str):
+def set_password(key: str, password: str):
     import keyring
     import keyring.errors
-
-    key = secrets_env.utils.create_keyring_login_key(url, username)
 
     try:
         keyring.set_password("secrets.env", key, password)
@@ -118,11 +143,9 @@ def set_password(url: Url, username: str, password: str):
     logger.info("Password saved")
 
 
-def remove_password(url: Url, username: str):
+def remove_password(key: str):
     import keyring
     import keyring.errors
-
-    key = secrets_env.utils.create_keyring_login_key(url, username)
 
     logger.debug("Removing %s from keyring", key)
 
