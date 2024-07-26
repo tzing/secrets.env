@@ -38,7 +38,7 @@ class UserInputOption(VisibleOption):
         super().__init__(*args, **kwargs)
 
     def consume_value(
-        self, ctx: click.Context, opts: Mapping[str, Parameter]
+        self, ctx: click.Context, opts: Mapping[Any, Parameter]
     ) -> tuple[Any, ParameterSource]:
         value = opts.get(self.name)
         source = ParameterSource.COMMANDLINE
@@ -46,7 +46,10 @@ class UserInputOption(VisibleOption):
             value = click.get_text_stream("stdin").readline().rstrip("\r\n")
             source = ParameterSource.ENVIRONMENT
         if self.required and not value:
-            value = secrets_env.utils.prompt(self.prompt, hide_input=self.hide_input)
+            value = secrets_env.utils.prompt(
+                text=typing.cast(str, self.prompt),
+                hide_input=self.hide_input,
+            )
             source = ParameterSource.PROMPT
         return value, source
 
