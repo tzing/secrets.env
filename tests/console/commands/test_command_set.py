@@ -1,3 +1,4 @@
+import functools
 import sys
 from unittest.mock import Mock
 
@@ -11,6 +12,7 @@ from pydantic_core import Url
 
 from secrets_env.console.commands.set import (
     UrlParam,
+    UserInputOption,
     VisibleOption,
     assert_keyring_available,
     group_set,
@@ -40,6 +42,48 @@ class TestVisibleOption:
         assert "Usage:" in usage
         assert "--choice [a|b|c]" in usage
         assert "--string TEXT" in usage
+
+
+class TestUserInputOption:
+    @pytest.fixture()
+    def basic_invoker(self):
+        @click.command()
+        @click.option("-v", "--value", cls=UserInputOption)
+        def demo(value: str):
+            assert value == "test"
+
+        runner = click.testing.CliRunner()
+        return functools.partial(runner.invoke, demo)
+
+    def test_consume_value__commandline(self, basic_invoker):
+        result = basic_invoker(["-v", "test"])
+        assert result.exit_code == 0
+
+    def test_consume_value__stdin(self, basic_invoker):
+        result = basic_invoker(["-v", "-"], input="test")
+        assert result.exit_code == 0
+
+    def test_consume_value__prompt(self):
+        @click.command()
+        @click.option("-v", "--value", required=True, cls=UserInputOption)
+        def demo(value: str):
+            assert value == "test"
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(demo, input="test")
+
+        assert result.exit_code == 0
+
+    def test_consume_value__prompt_skip(self):
+        @click.command()
+        @click.option("-v", "--value", cls=UserInputOption)
+        def demo(value):
+            assert value is None
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(demo)
+
+        assert result.exit_code == 0
 
 
 class TestUrlParam:
@@ -112,17 +156,6 @@ class TestSetPassword:
 
         assert result.exit_code == 1
         assert "Failed to save password" in result.output
-
-    def test_set__missing_value(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=""))
-
-        runner = click.testing.CliRunner()
-        result = runner.invoke(
-            group_set,
-            ["password", "-t", "https://example.com", "-u", "test"],
-        )
-
-        assert result.exit_code == 2
 
     def test_remove__success(self, monkeypatch: pytest.MonkeyPatch):
         def mock_delete(svc, user):
