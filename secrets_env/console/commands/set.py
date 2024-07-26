@@ -122,10 +122,12 @@ def command_set_password(
 
     key = secrets_env.utils.create_keyring_login_key(target, username)
 
-    if not delete:
-        return set_password(key, password)
-    else:
+    if delete:
         return remove_password(key)
+    elif password is None:
+        raise click.BadArgumentUsage("Password is required")
+    else:
+        return set_password(key, password)
 
 
 def set_password(key: str, password: str):

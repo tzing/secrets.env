@@ -157,6 +157,15 @@ class TestSetPassword:
         assert result.exit_code == 1
         assert "Failed to save password" in result.output
 
+    def test_set__missing_value(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set,
+            ["password", "-t", "https://example.com", "-u", "test"],
+        )
+
+        assert result.exit_code == 2
+
     def test_remove__success(self, monkeypatch: pytest.MonkeyPatch):
         def mock_delete(svc, user):
             assert svc == "secrets.env"
