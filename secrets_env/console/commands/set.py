@@ -45,7 +45,7 @@ class UserInputOption(VisibleOption):
         if value == "-":
             value = click.get_text_stream("stdin").readline().rstrip("\r\n")
             source = ParameterSource.ENVIRONMENT
-        if not value:
+        if self.required and not value:
             value = secrets_env.utils.prompt(self.prompt, hide_input=self.hide_input)
             source = ParameterSource.PROMPT
         return value, source

@@ -1,3 +1,4 @@
+import functools
 import sys
 from unittest.mock import Mock
 
@@ -44,20 +45,45 @@ class TestVisibleOption:
 
 
 class TestUserInputOption:
-    def invoke(self, *args: str):
+    @pytest.fixture()
+    def basic_invoker(self):
         @click.command()
         @click.option("-v", "--value", cls=UserInputOption)
         def demo(value: str):
             assert value == "test"
 
         runner = click.testing.CliRunner()
-        return runner.invoke(demo, args)
+        return functools.partial(runner.invoke, demo)
 
-    def test_consume_value__commandline(self):
-        result = self.invoke("-v", "test")
+    def test_consume_value__commandline(self, basic_invoker):
+        result = basic_invoker(["-v", "test"])
         assert result.exit_code == 0
 
-    # TODO other sources
+    def test_consume_value__stdin(self, basic_invoker):
+        result = basic_invoker(["-v", "-"], input="test")
+        assert result.exit_code == 0
+
+    def test_consume_value__prompt(self):
+        @click.command()
+        @click.option("-v", "--value", required=True, cls=UserInputOption)
+        def demo(value: str):
+            assert value == "test"
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(demo, input="test")
+
+        assert result.exit_code == 0
+
+    def test_consume_value__prompt_skip(self):
+        @click.command()
+        @click.option("-v", "--value", cls=UserInputOption)
+        def demo(value):
+            assert value is None
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(demo)
+
+        assert result.exit_code == 0
 
 
 class TestUrlParam:
