@@ -143,6 +143,51 @@ class TestSetUsername:
             config = json.load(fd)
         assert config == {"example.com": {"auth": {"username": "test"}}}
 
+    @pytest.mark.usefixtures("substitute_config_path")
+    def test_remove_success_1(self):
+        """
+        remove username that does not exist
+        """
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com", "-d"]
+        )
+
+        assert result.exit_code == 0
+
+    def test_remove_success_2(self, substitute_config_path: Path):
+        """
+        remove username that exists
+        """
+        with substitute_config_path.open("w") as fd:
+            json.dump({"example.com": {"auth": {"username": "test"}}}, fd)
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com", "-d"]
+        )
+
+        assert result.exit_code == 0
+
+        # only `username` is removed
+        with substitute_config_path.open() as fd:
+            config = json.load(fd)
+        assert config == {"example.com": {"auth": {}}}
+
+    def test_host_not_found(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "file:///path", "-u", "test"]
+        )
+        assert result.exit_code == 2
+        assert "Host name not found in target URL" in result.output
+
+    def test_username_not_found(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(group_set, ["username", "-t", "https://example.com"])
+        assert result.exit_code == 2
+        assert "Username is required" in result.output
+
 
 class TestSetPassword:
     @pytest.fixture(autouse=True)
