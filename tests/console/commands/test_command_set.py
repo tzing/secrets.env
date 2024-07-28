@@ -1,5 +1,7 @@
 import functools
+import json
 import sys
+from pathlib import Path
 from unittest.mock import Mock
 
 import click
@@ -115,6 +117,31 @@ class TestUrlParam:
         result = runner.invoke(demo, ["test"])
 
         assert result.exit_code == 2
+
+
+class TestSetUsername:
+    @pytest.fixture()
+    def substitute_config_path(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> Path:
+        config_path = tmp_path / "config.json"
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: config_path
+        )
+        return config_path
+
+    def test_set_success(self, substitute_config_path: Path):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com", "-u", "test"]
+        )
+
+        assert result.exit_code == 0
+        assert "Username for example.com is updated" in result.output
+
+        with substitute_config_path.open() as fd:
+            config = json.load(fd)
+        assert config == {"example.com": {"auth": {"username": "test"}}}
 
 
 class TestSetPassword:

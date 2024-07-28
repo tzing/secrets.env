@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import typing
 
@@ -79,6 +80,78 @@ def group_set():
     you can avoid the need to re-enter sensitive information each time you run
     secrets.env.
     """
+
+
+@group_set.command("username")
+@click.option(
+    "-t",
+    "--target",
+    type=UrlParam(),
+    required=True,
+    help="Specify target host name for which the password will be used.",
+    cls=VisibleOption,
+)
+@click.option(
+    "-u",
+    "--username",
+    hide_input=True,
+    help="Specify the username for the target host. "
+    "Set to `-` to read from stdin. If not provided, a prompt will be shown.",
+    cls=UserInputOption,
+)
+@click.option(
+    "-d",
+    "--delete",
+    is_flag=True,
+    help="Delete the stored username for the target host.",
+)
+@with_output_options
+def command_set_username(target: Url, username: str | None, delete: bool):
+    """
+    Store username in user configuration.
+    """
+    if target.host is None:
+        raise click.BadArgumentUsage("Host name not found in target URL")
+
+    # read config
+    config_path = secrets_env.config.find_user_config_file()
+
+    try:
+        config = secrets_env.config.read_json_file(config_path) or {}
+        logger.debug("Read user config from %s", config_path)
+    except FileNotFoundError:
+        config = {}
+
+    # update config
+    if delete:
+        remove_username(config, target.host)
+    elif username is None:
+        raise click.BadArgumentUsage("Username is required")
+    else:
+        set_username(config, target.host, username)
+
+    # write config
+    logger.debug("Write user config to %s", config_path)
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with config_path.open("w") as fd:
+        json.dump(config, fd, indent=2)
+
+    logger.info("Username for <data>%s</data> is updated", target.host)
+
+
+def set_username(config: dict, host: str, username: str):
+    host_config = config.setdefault(host, {})
+    auth_config = host_config.setdefault("auth", {})
+    auth_config["username"] = username
+
+
+def remove_username(config: dict, host: str) -> dict:
+    host_config = config.get(host, {})
+    auth_config = host_config.get("auth", {})
+    if "username" in auth_config:
+        del auth_config["username"]
 
 
 @group_set.command("password")
