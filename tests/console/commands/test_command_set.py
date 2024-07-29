@@ -13,8 +13,8 @@ import pytest
 from pydantic_core import Url
 
 from secrets_env.console.commands.set import (
-    UrlParam,
     StdinInputOption,
+    UrlParam,
     VisibleOption,
     assert_keyring_available,
     group_set,
