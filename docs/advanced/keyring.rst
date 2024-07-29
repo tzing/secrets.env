@@ -46,7 +46,7 @@ Environment variables
 Save credential to keyring
 --------------------------
 
-Use CLI command ``secrets.env set password`` (See :ref:`command doc <cmd.set>`).
+Use CLI command :ref:`cmd.set` to save credential to keyring.
 
 Read credential from keyring
 ----------------------------
