@@ -104,15 +104,13 @@ def command_set_username(target: Url, username: str | None, delete: bool):
     This command saves the username in a user-specific configuration file,
     allowing it to be used for authenticating the user to the target host.
 
-    Example usage:
+    Read username from stdin::
 
-    \b
-    # Read username from stdin
-    $ echo demo_user | secrets.env set username -t https://example.com -u -
+       $ echo demo_user | secrets.env set username -t https://example.com -u -
 
-    \b
-    # When username is not provided, it will be prompted
-    $ secrets.env set username -t https://example.com/
+    When username is not provided, it will be prompted::
+
+       $ secrets.env set username -t https://example.com/
     """
     if target.host is None:
         raise click.BadArgumentUsage("Host name not found in target URL")
@@ -203,15 +201,13 @@ def command_set_password(
     This command saves the password in the user's keyring, allowing it to be
     used for authenticating the user to the target host.
 
-    Example usage:
+    Read password from stdin::
 
-    \b
-    # Read password from stdin
-    $ echo P@ssw0rd | secrets.env set password -t https://example.com -u demo_user -p -
+       $ echo P@ssw0rd | secrets.env set password -t https://example.com -u demo_user -p -
 
-    \b
-    # When password is not provided, it will be prompted
-    $ secrets.env set password -t https://example.com -u demo_user
+    When password is not provided, it will be prompted::
+
+       $ secrets.env set password -t https://example.com -u demo_user
     """
     assert_keyring_available()
 

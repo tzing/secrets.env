@@ -8,10 +8,10 @@ To access assistance from the command line, simply run ``secrets.env --help`` to
 .. click:: secrets_env.console.commands.completion:completion
    :prog: secrets.env completion
 
-.. _cmd.keyring:
-
 .. click:: secrets_env.console.commands.run:run
    :prog: secrets.env run
+
+.. _cmd.set:
 
 .. click:: secrets_env.console.commands.set:group_set
    :prog: secrets.env set
