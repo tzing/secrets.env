@@ -33,6 +33,8 @@
 
   Users can interact with the shell and use the environment variables.
 
+* Add command `set` to store username and password in user space.
+
 ### 🚧 Internal changes
 
 * Use shellingham to detect the shell type.

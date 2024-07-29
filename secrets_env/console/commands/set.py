@@ -29,9 +29,9 @@ class VisibleOption(click.Option):
         return [self.opts[-1], self.make_metavar()]
 
 
-class UserInputOption(VisibleOption):
+class StdinInputOption(VisibleOption):
     """
-    When the value is `-`, read from stdin. When the value is not provided, prompt the user.
+    When the value is `-`, read from stdin.
     """
 
     def __init__(self, *args, **kwargs):
@@ -41,18 +41,11 @@ class UserInputOption(VisibleOption):
     def consume_value(
         self, ctx: click.Context, opts: Mapping[Any, Parameter]
     ) -> tuple[Any, ParameterSource]:
-        value = opts.get(self.name)
-        source = ParameterSource.COMMANDLINE
-        if value == "-":
+        if opts.get(self.name) == "-":
             value = click.get_text_stream("stdin").readline().rstrip("\r\n")
             source = ParameterSource.ENVIRONMENT
-        if self.required and not value:
-            value = secrets_env.utils.prompt(
-                text=typing.cast(str, self.prompt),
-                hide_input=self.hide_input,
-            )
-            source = ParameterSource.PROMPT
-        return value, source
+            return value, source
+        return super().consume_value(ctx, opts)
 
 
 class UrlParam(click.ParamType):
