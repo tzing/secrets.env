@@ -108,13 +108,11 @@ class TestSetUsername:
         )
         return config_path
 
-    def test_set_success(
-        self, monkeypatch: pytest.MonkeyPatch, substitute_config_path: Path
-    ):
-        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value="test"))
-
+    def test_set_success(self, substitute_config_path: Path):
         runner = click.testing.CliRunner()
-        result = runner.invoke(group_set, ["username", "-t", "https://example.com"])
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com"], input="test\n"
+        )
 
         assert result.exit_code == 0
         assert "Username for example.com is updated" in result.output
@@ -210,7 +208,9 @@ class TestSetPassword:
         assert result.exit_code == 1
         assert "Failed to save password" in result.output
 
-    def test_set__missing_value(self):
+    def test_set__missing_value(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=None))
+
         runner = click.testing.CliRunner()
         result = runner.invoke(
             group_set,

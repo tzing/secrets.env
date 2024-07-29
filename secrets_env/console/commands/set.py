@@ -99,7 +99,20 @@ def group_set():
 @with_output_options
 def command_set_username(target: Url, username: str | None, delete: bool):
     """
-    Store username in user configuration.
+    Set or delete the username in user storage.
+
+    This command saves the username in a user-specific configuration file,
+    allowing it to be used for authenticating the user to the target host.
+
+    Example usage:
+
+    \b
+    # Read username from stdin
+    $ echo demo_user | secrets.env set username -t https://example.com -u -
+
+    \b
+    # When username is not provided, it will be prompted
+    $ secrets.env set username -t https://example.com/
     """
     if target.host is None:
         raise click.BadArgumentUsage("Host name not found in target URL")
@@ -167,10 +180,12 @@ def remove_username(config: dict, host: str) -> dict:
 @click.option(
     "-p",
     "--password",
-    hide_input=True,
-    help="Specify the password value to store. "
-    "Set to `-` to read from stdin. If not provided, a prompt will be shown.",
-    cls=UserInputOption,
+    help=(
+        "Specify the password value to store. "
+        "Set to `-` to read from stdin. "
+        "If not provided, a prompt will be shown."
+    ),
+    cls=StdinInputOption,
 )
 @click.option(
     "-d",
@@ -183,7 +198,20 @@ def command_set_password(
     target: Url, username: str, password: str | None, delete: bool
 ):
     """
-    Store password in system keyring.
+    Save or delete the password in user storage.
+
+    This command saves the password in the user's keyring, allowing it to be
+    used for authenticating the user to the target host.
+
+    Example usage:
+
+    \b
+    # Read password from stdin
+    $ echo P@ssw0rd | secrets.env set password -t https://example.com -u demo_user -p -
+
+    \b
+    # When password is not provided, it will be prompted
+    $ secrets.env set password -t https://example.com -u demo_user
     """
     assert_keyring_available()
 
@@ -191,15 +219,18 @@ def command_set_password(
 
     if delete:
         return remove_password(key)
-    elif password is None:
-        raise click.BadArgumentUsage("Password is required")
     else:
         return set_password(key, password)
 
 
-def set_password(key: str, password: str):
+def set_password(key: str, password: str | None):
     import keyring
     import keyring.errors
+
+    if password is None:
+        password = secrets_env.utils.prompt("Password", hide_input=True)
+    if password is None:
+        raise click.BadArgumentUsage("Password is required")
 
     try:
         keyring.set_password("secrets.env", key, password)
