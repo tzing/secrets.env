@@ -8,6 +8,7 @@ import click
 from click.core import ParameterSource
 from pydantic_core import Url
 
+import secrets_env.config
 import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
 
