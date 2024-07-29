@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 from pydantic import PrivateAttr, SecretStr
 
+from secrets_env.config import load_user_config
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import (
@@ -41,7 +42,7 @@ class UserPasswordAuth(Auth):
 
     @classmethod
     def create(cls, url: Url, config: dict) -> Self:
-        username = cls._get_username(config)
+        username = cls._get_username(config, url)
         if not username:
             raise ValueError(f"Missing username for {cls.method} auth")
 
@@ -55,12 +56,17 @@ class UserPasswordAuth(Auth):
         )
 
     @classmethod
-    def _get_username(cls, config: dict) -> str | None:
+    def _get_username(cls, config: dict, url: Url) -> str | None:
         if username := get_env_var("SECRETS_ENV_USERNAME"):
             logger.debug("Found username from environment variable.")
             return username
 
         if username := config.get("username"):
+            return username
+
+        user_config = load_user_config(url)
+        if username := user_config.get("auth", {}).get("username"):
+            logger.debug("Found username in user config.")
             return username
 
         return prompt(f"Username for {cls.method} auth")
