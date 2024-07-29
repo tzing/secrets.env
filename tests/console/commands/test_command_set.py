@@ -108,11 +108,13 @@ class TestSetUsername:
         )
         return config_path
 
-    def test_set_success(self, substitute_config_path: Path):
+    def test_set_success(
+        self, monkeypatch: pytest.MonkeyPatch, substitute_config_path: Path
+    ):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value="test"))
+
         runner = click.testing.CliRunner()
-        result = runner.invoke(
-            group_set, ["username", "-t", "https://example.com", "-u", "test"]
-        )
+        result = runner.invoke(group_set, ["username", "-t", "https://example.com"])
 
         assert result.exit_code == 0
         assert "Username for example.com is updated" in result.output
@@ -160,7 +162,8 @@ class TestSetUsername:
         assert result.exit_code == 2
         assert "Host name not found in target URL" in result.output
 
-    def test_username_not_found(self):
+    def test_username_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=None))
         runner = click.testing.CliRunner()
         result = runner.invoke(group_set, ["username", "-t", "https://example.com"])
         assert result.exit_code == 2

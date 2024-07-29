@@ -34,10 +34,6 @@ class StdinInputOption(VisibleOption):
     When the value is `-`, read from stdin.
     """
 
-    def __init__(self, *args, **kwargs):
-        kwargs["prompt"] = True
-        super().__init__(*args, **kwargs)
-
     def consume_value(
         self, ctx: click.Context, opts: Mapping[Any, Parameter]
     ) -> tuple[Any, ParameterSource]:
@@ -87,10 +83,12 @@ def group_set():
 @click.option(
     "-u",
     "--username",
-    hide_input=True,
-    help="Specify the username for the target host. "
-    "Set to `-` to read from stdin. If not provided, a prompt will be shown.",
-    cls=UserInputOption,
+    help=(
+        "Specify the username for the target host. "
+        "Set to `-` to read from stdin. "
+        "If not provided, a prompt will be shown."
+    ),
+    cls=StdinInputOption,
 )
 @click.option(
     "-d",
@@ -118,8 +116,6 @@ def command_set_username(target: Url, username: str | None, delete: bool):
     # update config
     if delete:
         remove_username(config, target.host)
-    elif username is None:
-        raise click.BadArgumentUsage("Username is required")
     else:
         set_username(config, target.host, username)
 
@@ -134,7 +130,12 @@ def command_set_username(target: Url, username: str | None, delete: bool):
     logger.info("Username for <data>%s</data> is updated", target.host)
 
 
-def set_username(config: dict, host: str, username: str):
+def set_username(config: dict, host: str, username: str | None):
+    if username is None:
+        username = secrets_env.utils.prompt("Username")
+    if username is None:
+        raise click.BadArgumentUsage("Username is required")
+
     host_config = config.setdefault(host, {})
     auth_config = host_config.setdefault("auth", {})
     auth_config["username"] = username
