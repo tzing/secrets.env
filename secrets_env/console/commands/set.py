@@ -152,7 +152,7 @@ def set_username(config: dict, host: str, username: str | None):
     auth_config["username"] = username
 
 
-def remove_username(config: dict, host: str) -> dict:
+def remove_username(config: dict, host: str):
     host_config = config.get(host, {})
     auth_config = host_config.get("auth", {})
     if "username" in auth_config:
