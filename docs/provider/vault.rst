@@ -428,7 +428,8 @@ The username to authenticate with. Could be set via:
 
 1. Environment variable :envvar:`SECRETS_ENV_USERNAME`
 2. From :ref:`vault.auth.username` field
-3. The app prompts for the username if it's not provided.
+3. From user configuration, which is set via command :ref:`cmd.set`
+4. The app prompts for the username if it's not provided.
 
    If you want to disable the prompt, set the environment variable :envvar:`SECRETS_ENV_NO_PROMPT` to ``true``.
 
@@ -438,10 +439,7 @@ Password :octicon:`bookmark`
 The password to authenticate with. Could be retrieved via:
 
 1. Environment variable :envvar:`SECRETS_ENV_PASSWORD`
-2. :doc:`../advanced/keyring`
-
-   You need to save the password in the keyring before running the app.
-
+2. User keyring, which is set via command :ref:`cmd.set`
 3. The app prompts for the password if it's not provided.
 
    If you want to disable the prompt, set the environment variable :envvar:`SECRETS_ENV_NO_PROMPT` to ``true``.

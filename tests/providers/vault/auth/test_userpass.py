@@ -36,7 +36,7 @@ def login_success_response() -> httpx.Response:
 
 class TestUserPasswordAuth:
     def test_create_success(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(UserPasswordAuth, "_get_username", lambda _: "user")
+        monkeypatch.setattr(UserPasswordAuth, "_get_username", lambda _1, _2: "user")
         monkeypatch.setattr(
             UserPasswordAuth, "_get_password", lambda _1, _2: "P@ssw0rd"
         )
@@ -63,7 +63,7 @@ class TestUserPasswordAuth:
         class MockAuth(UserPasswordAuth):
             method = "MOCK"
 
-        monkeypatch.setattr(MockAuth, "_get_username", lambda _: username)
+        monkeypatch.setattr(MockAuth, "_get_username", lambda _1, _2: username)
         monkeypatch.setattr(MockAuth, "_get_password", lambda _1, _2: password)
 
         with pytest.raises(ValueError, match=re.escape(err_message)):
@@ -73,17 +73,28 @@ class TestUserPasswordAuth:
         class MockAuth(UserPasswordAuth):
             method = "MOCK"
 
+        url = Url("https://example.com/")
+
         # config
-        assert MockAuth._get_username({"username": "foo"}) == "foo"
+        assert MockAuth._get_username({"username": "foo"}, url) == "foo"
 
         # env var
         with monkeypatch.context() as m:
             m.setenv("SECRETS_ENV_USERNAME", "foo")
-            assert MockAuth._get_username({}) == "foo"
+            assert MockAuth._get_username({}, url) == "foo"
+
+        # user config
+        with patch.object(
+            t, "load_user_config", return_value={"auth": {"username": "foo"}}
+        ):
+            assert MockAuth._get_username({}, url) == "foo"
 
         # prompt
-        with patch.object(t, "prompt", return_value="foo") as p:
-            assert MockAuth._get_username({}) == "foo"
+        with (
+            patch.object(t, "load_user_config", return_value={}),
+            patch.object(t, "prompt", return_value="foo") as p,
+        ):
+            assert MockAuth._get_username({}, url) == "foo"
             p.assert_any_call("Username for MOCK auth")
 
     def test__load_password(self, monkeypatch: pytest.MonkeyPatch):

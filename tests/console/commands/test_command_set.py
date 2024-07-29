@@ -1,5 +1,7 @@
 import functools
+import json
 import sys
+from pathlib import Path
 from unittest.mock import Mock
 
 import click
@@ -11,8 +13,8 @@ import pytest
 from pydantic_core import Url
 
 from secrets_env.console.commands.set import (
+    StdinInputOption,
     UrlParam,
-    UserInputOption,
     VisibleOption,
     assert_keyring_available,
     group_set,
@@ -44,11 +46,11 @@ class TestVisibleOption:
         assert "--string TEXT" in usage
 
 
-class TestUserInputOption:
+class TestStdinInputOption:
     @pytest.fixture()
     def basic_invoker(self):
         @click.command()
-        @click.option("-v", "--value", cls=UserInputOption)
+        @click.option("-v", "--value", cls=StdinInputOption)
         def demo(value: str):
             assert value == "test"
 
@@ -61,28 +63,6 @@ class TestUserInputOption:
 
     def test_consume_value__stdin(self, basic_invoker):
         result = basic_invoker(["-v", "-"], input="test")
-        assert result.exit_code == 0
-
-    def test_consume_value__prompt(self):
-        @click.command()
-        @click.option("-v", "--value", required=True, cls=UserInputOption)
-        def demo(value: str):
-            assert value == "test"
-
-        runner = click.testing.CliRunner()
-        result = runner.invoke(demo, input="test")
-
-        assert result.exit_code == 0
-
-    def test_consume_value__prompt_skip(self):
-        @click.command()
-        @click.option("-v", "--value", cls=UserInputOption)
-        def demo(value):
-            assert value is None
-
-        runner = click.testing.CliRunner()
-        result = runner.invoke(demo)
-
         assert result.exit_code == 0
 
 
@@ -115,6 +95,77 @@ class TestUrlParam:
         result = runner.invoke(demo, ["test"])
 
         assert result.exit_code == 2
+
+
+class TestSetUsername:
+    @pytest.fixture()
+    def substitute_config_path(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> Path:
+        config_path = tmp_path / "config.json"
+        monkeypatch.setattr(
+            "secrets_env.config.find_user_config_file", lambda: config_path
+        )
+        return config_path
+
+    def test_set_success(self, substitute_config_path: Path):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com"], input="test\n"
+        )
+
+        assert result.exit_code == 0
+        assert "Username for example.com is updated" in result.output
+
+        with substitute_config_path.open() as fd:
+            config = json.load(fd)
+        assert config == {"example.com": {"auth": {"username": "test"}}}
+
+    @pytest.mark.usefixtures("substitute_config_path")
+    def test_remove_success_1(self):
+        """
+        remove username that does not exist
+        """
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com", "-d"]
+        )
+
+        assert result.exit_code == 0
+
+    def test_remove_success_2(self, substitute_config_path: Path):
+        """
+        remove username that exists
+        """
+        with substitute_config_path.open("w") as fd:
+            json.dump({"example.com": {"auth": {"username": "test"}}}, fd)
+
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "https://example.com", "-d"]
+        )
+
+        assert result.exit_code == 0
+
+        # only `username` is removed
+        with substitute_config_path.open() as fd:
+            config = json.load(fd)
+        assert config == {"example.com": {"auth": {}}}
+
+    def test_host_not_found(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            group_set, ["username", "-t", "file:///path", "-u", "test"]
+        )
+        assert result.exit_code == 2
+        assert "Host name not found in target URL" in result.output
+
+    def test_username_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=None))
+        runner = click.testing.CliRunner()
+        result = runner.invoke(group_set, ["username", "-t", "https://example.com"])
+        assert result.exit_code == 2
+        assert "Username is required" in result.output
 
 
 class TestSetPassword:
@@ -157,7 +208,9 @@ class TestSetPassword:
         assert result.exit_code == 1
         assert "Failed to save password" in result.output
 
-    def test_set__missing_value(self):
+    def test_set__missing_value(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.utils.prompt", Mock(return_value=None))
+
         runner = click.testing.CliRunner()
         result = runner.invoke(
             group_set,
