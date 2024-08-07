@@ -193,9 +193,11 @@ class LruDict(collections.OrderedDict[TK, TV]):
     @overload
     def get(self, key: TK) -> TV | None: ...
     @overload
+    def get(self, key: TK, default: TV) -> TV: ...
+    @overload
     def get(self, key: TK, default: T) -> TV | T: ...
 
-    def get(self, key: TK, default: TV | T | None = None) -> TV | T | None:
+    def get(self, key: TK, default: T | None = None) -> TV | T | None:
         try:
             return self[key]
         except KeyError:
