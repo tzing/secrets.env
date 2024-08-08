@@ -101,7 +101,7 @@ class UserPasswordAuth(Auth):
                 resp.status_code,
                 resp.text,
             )
-            raise AuthenticationError("Failed to login with %s method", self.method)
+            raise AuthenticationError(f"Failed to login with {self.method} method")
 
         return resp.json()["auth"]["client_token"]
 
