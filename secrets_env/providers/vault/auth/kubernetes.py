@@ -5,6 +5,7 @@ import typing
 
 from pydantic import SecretStr
 
+from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.jwt import JwtAuth
 from secrets_env.utils import get_env_var
 
@@ -25,8 +26,13 @@ class KubernetesAuth(JwtAuth):
     @classmethod
     def create(cls, url: Url, config: dict) -> Self:
         # get token
-        with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as fd:
-            token = typing.cast(SecretStr, fd.read())
+        try:
+            with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as fd:
+                token = typing.cast(SecretStr, fd.read())
+        except FileNotFoundError as e:
+            raise AuthenticationError(
+                "Kubernetes service account token not found"
+            ) from e
 
         # get role
         if role := get_env_var("SECRETS_ENV_ROLE"):
