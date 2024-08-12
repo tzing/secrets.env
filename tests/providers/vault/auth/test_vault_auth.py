@@ -10,6 +10,10 @@ from secrets_env.providers.vault.auth.base import Auth, NoAuth
 @pytest.mark.parametrize(
     ("method", "path"),
     [
+        (
+            "kubernetes",
+            "secrets_env.providers.vault.auth.kubernetes.KubernetesAuth.create",
+        ),
         ("ldap", "secrets_env.providers.vault.auth.userpass.LDAPAuth.create"),
         ("null", "secrets_env.providers.vault.auth.base.NoAuth.create"),
         ("oidc", "secrets_env.providers.vault.auth.oidc.OpenIDConnectAuth.create"),

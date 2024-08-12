@@ -223,7 +223,7 @@ Environment variables
 
 .. envvar:: SECRETS_ENV_ROLE
 
-   Role name used by :ref:`vault.meth.oidc`. Overrides :ref:`vault.auth.role` field.
+   Role name used by :ref:`vault.meth.oidc` and :ref:`vault.meth.kubernetes`. Overrides :ref:`vault.auth.role` field.
 
 .. envvar:: SECRETS_ENV_TOKEN
 
@@ -260,6 +260,7 @@ The method to use for authentication.
 
 Accepted values are:
 
+- ``kubernetes``, applying the :ref:`vault.meth.kubernetes` method
 - ``ldap``, applying the :ref:`vault.meth.ldap` method
 - ``oidc``, applying the :ref:`vault.meth.oidc` method
 - ``okta``, applying the :ref:`vault.meth.okta` method
@@ -272,7 +273,7 @@ Accepted values are:
 ``auth.role``
 ^^^^^^^^^^^^^
 
-Role name used by :ref:`vault.meth.oidc`.
+Role name used by :ref:`vault.meth.oidc` and :ref:`vault.meth.kubernetes`.
 
 .. _vault.auth.username:
 
@@ -410,6 +411,26 @@ Authentication methods
 Vault enforces authentication during requests, requiring an identity to access secrets.
 
 By specifying the :ref:`vault.auth.method` field, the associated authentication method will be applied.
+
+.. _vault.meth.kubernetes:
+
+Kubernetes auth
++++++++++++++++
+
+:method: ``kubernetes``
+
+Authenticate with Vault using the Kubernetes service account token.
+This method corresponds to the `Kubernetes auth method`_ in Vault.
+
+.. _Kubernetes auth method: https://developer.hashicorp.com/vault/docs/auth/kubernetes
+
+Role
+^^^^
+
+Role name. Could be retrieved via:
+
+1. Environment variable :envvar:`SECRETS_ENV_ROLE`
+2. From :ref:`vault.auth.role` field
 
 .. _vault.meth.login-meths:
 
