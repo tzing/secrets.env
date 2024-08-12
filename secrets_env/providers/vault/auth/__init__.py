@@ -22,6 +22,9 @@ def create_auth_by_name(url: Url, config: dict) -> Auth:
     method: str = config["method"].lower()
 
     # fmt: off
+    if method == "kubernetes":
+        from secrets_env.providers.vault.auth.kubernetes import KubernetesAuth
+        return KubernetesAuth.create(url, config)
     if method == "ldap":
         from secrets_env.providers.vault.auth.userpass import LDAPAuth
         return LDAPAuth.create(url, config)
