@@ -35,6 +35,10 @@
 
 * Add command `set` to store username and password in user space.
 
+* Add support for Kubernetes auth method in Vault provider.
+
+  The Kubernetes auth method allows users to authenticate with Vault using a Kubernetes service account token.
+
 ### 🚧 Internal changes
 
 * Use shellingham to detect the shell type.
