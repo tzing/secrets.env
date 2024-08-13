@@ -2,6 +2,7 @@
 
 *Table of Contents*
 
+- [1.0.1 (2024-08-13)](#101-2024-08-13)
 - [1.0.0 (2024-08-13)](#100-2024-08-13)
   - [🚨 Breaking changes](#-breaking-changes)
   - [✨ Enhancements](#-enhancements)
@@ -14,6 +15,10 @@
   - [🚧 Internal changes](#-internal-changes-1)
 - [Prior to 0.29](#prior-to-029)
 
+
+## 1.0.1 (2024-08-13)
+
+Re-release of 1.0.0 with updated classifiers.
 
 ## 1.0.0 (2024-08-13)
 
