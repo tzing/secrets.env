@@ -2,7 +2,7 @@
 
 *Table of Contents*
 
-- [Unreleased](#unreleased)
+- [1.0.0 (2024-08-13)](#100-2024-08-13)
   - [🚨 Breaking changes](#-breaking-changes)
   - [✨ Enhancements](#-enhancements)
   - [🚧 Internal changes](#-internal-changes)
@@ -15,7 +15,7 @@
 - [Prior to 0.29](#prior-to-029)
 
 
-## Unreleased
+## 1.0.0 (2024-08-13)
 
 ### 🚨 Breaking changes
 

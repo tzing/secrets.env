@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "secrets.env"
-version = "0.29.1"
+version = "1.0.0"
 description = "Connect the credential store to your app"
 authors = ["tzing <tzingshih@gmail.com>"]
 license = "Apache-2.0"
@@ -92,7 +92,7 @@ max-complexity = 12
 include = ["secrets_env"]
 
 [tool.bumpver]
-current_version = "0.29.1"
+current_version = "1.0.0"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 
 [tool.bumpver.file_patterns]
