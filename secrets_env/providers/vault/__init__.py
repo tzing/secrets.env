@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import os
 import typing
 from functools import cached_property
 from pathlib import Path
@@ -290,9 +291,17 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
 
 def save_token_to_helper(token: str) -> None:
     """Save token to token helper."""
+    if os.getuid() == 0 or os.geteuid() == 0 or os.getgid() == 0:
+        logger.debug("Skip saving token to token helper for root user")
+        return
+
     token_helper = get_token_helper_path()
-    logger.debug("Write token to token helper: %s", token_helper)
-    token_helper.write_text(token)
+
+    try:
+        token_helper.write_text(token)
+        logger.debug("Token saved to token helper: %s", token_helper)
+    except Exception:
+        logger.debug("Failed to write token to token helper", exc_info=True)
 
 
 def get_token_helper_path() -> Path:

@@ -364,6 +364,20 @@ class TestSaveTokenToHelper:
         save_token_to_helper("t0ken")
         assert helper.read_text() == "t0ken"
 
+    def test_root(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("os.getuid", lambda: 0)
+
+        mock_open = Mock()
+        monkeypatch.setattr("io.open", mock_open)
+
+        save_token_to_helper("t0ken")
+
+        mock_open.assert_not_called()
+
+    def test_exception(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("io.open", Mock(side_effect=OSError))
+        save_token_to_helper("t0ken")  # no exception
+
 
 class TestGetTokenFromHelper:
     def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

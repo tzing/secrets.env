@@ -2,19 +2,27 @@
 
 *Table of Contents*
 
+- [Unreleased](#unreleased)
+  - [✨ Enhancements](#-enhancements)
 - [1.0.1 (2024-08-13)](#101-2024-08-13)
 - [1.0.0 (2024-08-13)](#100-2024-08-13)
   - [🚨 Breaking changes](#-breaking-changes)
-  - [✨ Enhancements](#-enhancements)
+  - [✨ Enhancements](#-enhancements-1)
   - [🚧 Internal changes](#-internal-changes)
 - [0.29.1 (2024-05-15)](#0291-2024-05-15)
-  - [✨ Enhancements](#-enhancements-1)
+  - [✨ Enhancements](#-enhancements-2)
 - [0.29.0 (2024-05-07)](#0290-2024-05-07)
   - [🚨 Breaking changes](#-breaking-changes-1)
-  - [✨ Enhancements](#-enhancements-2)
+  - [✨ Enhancements](#-enhancements-3)
   - [🚧 Internal changes](#-internal-changes-1)
 - [Prior to 0.29](#prior-to-029)
 
+
+## Unreleased
+
+### ✨ Enhancements
+
+* Prevent saving Vault token to token helper for root user
 
 ## 1.0.1 (2024-08-13)
 
