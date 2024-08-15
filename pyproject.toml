@@ -13,6 +13,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Security",
     "Topic :: Utilities",
+    "Typing :: Typed",
 ]
 
 [tool.poetry.dependencies]
