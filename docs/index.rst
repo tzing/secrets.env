@@ -41,3 +41,9 @@ Table of Contents
    advanced/keyring
    advanced/poetry
    advanced/teleport
+
+.. toctree::
+   :caption: Other
+   :maxdepth: 1
+
+   changelog
