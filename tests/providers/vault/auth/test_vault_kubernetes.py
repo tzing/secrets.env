@@ -8,7 +8,7 @@ from secrets_env.providers.vault.auth.kubernetes import KubernetesAuth
 
 
 class TestKubernetesAuth:
-    @pytest.fixture()
+    @pytest.fixture
     def _patch_open(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("builtins.open", mock_open(read_data="t0ken"))
 

@@ -14,7 +14,7 @@ from secrets_env.providers.vault.api import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
     return intl_provider.client
 
@@ -48,7 +48,7 @@ class TestIsAuthenticated:
 
 
 class TestReadSecret:
-    @pytest.fixture()
+    @pytest.fixture
     def _set_mount_kv2(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.vault.api.get_mount",
@@ -187,7 +187,7 @@ class TestReadSecret:
 
 
 class TestGetMount:
-    @pytest.fixture()
+    @pytest.fixture
     def route(self, respx_mock: respx.MockRouter):
         return respx_mock.get(
             "https://example.com/v1/sys/internal/ui/mounts/secrets/test"

@@ -20,14 +20,14 @@ from secrets_env.realms.poetry.cleo import CleoFormatter, CleoHandler, setup_out
 
 
 class TestSecretsEnvPlugin:
-    @pytest.fixture()
+    @pytest.fixture
     def event(self):
         e = Mock(cleo.events.console_command_event.ConsoleCommandEvent)
         e.command = Mock(poetry.console.commands.run.RunCommand)
         e.command.name = "run"
         return e
 
-    @pytest.fixture()
+    @pytest.fixture
     def dispatcher(self):
         return Mock(cleo.events.event_dispatcher.EventDispatcher)
 

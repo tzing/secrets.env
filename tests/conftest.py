@@ -7,7 +7,7 @@ import pytest
 import respx
 
 
-@pytest.fixture()
+@pytest.fixture
 def _reset_logging():
     yield
     for logger in (logging.root, logging.getLogger("secrets_env")):
@@ -27,12 +27,12 @@ def fixture_dir(repo_path: Path) -> Path:
     return repo_path / "tests" / "fixtures"
 
 
-@pytest.fixture()
+@pytest.fixture
 def unittest_client() -> httpx.Client:
     return httpx.Client(base_url="https://example.com")
 
 
-@pytest.fixture()
+@pytest.fixture
 def unittest_respx() -> Iterable[respx.MockRouter]:
     with respx.mock(base_url="https://example.com") as r:
         yield r

@@ -48,7 +48,7 @@ class TestTeleportUserConfig:
         assert isinstance(cfg, TeleportUserConfig)
         assert cfg.app == "test"
 
-    @pytest.fixture()
+    @pytest.fixture
     def _ensure_dependencies(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.ensure_dependencies", lambda: None

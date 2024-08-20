@@ -8,7 +8,7 @@ from secrets_env.console.shells.base import Shell
 from secrets_env.exceptions import ConfigError
 
 
-@pytest.fixture()
+@pytest.fixture
 def _mock_read_values(monkeypatch: pytest.MonkeyPatch):
     def func(config, strict):
         return {"foo": "bar"}
@@ -16,7 +16,7 @@ def _mock_read_values(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("secrets_env.read_values", func)
 
 
-@pytest.fixture()
+@pytest.fixture
 def _mock_get_shell(monkeypatch: pytest.MonkeyPatch):
     def func():
         mock_shell = Mock(Shell)

@@ -10,7 +10,7 @@ from secrets_env.providers.teleport.config import TeleportConnectionParameter
 
 
 class TestTeleportProvider:
-    @pytest.fixture()
+    @pytest.fixture
     def provider(
         self, monkeypatch: pytest.MonkeyPatch, conn_param: TeleportConnectionParameter
     ):
