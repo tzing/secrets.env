@@ -19,7 +19,7 @@ class TestWithOutputOptions:
             logger.warning("test warning msg")
             logger.info("<!important>test important info msg")
 
-    @pytest.fixture()
+    @pytest.fixture
     def runner(self):
         return click.testing.CliRunner()
 

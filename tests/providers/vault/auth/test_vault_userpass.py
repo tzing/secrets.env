@@ -12,7 +12,7 @@ from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.userpass import UserPasswordAuth
 
 
-@pytest.fixture()
+@pytest.fixture
 def login_success_response() -> httpx.Response:
     return httpx.Response(
         200,

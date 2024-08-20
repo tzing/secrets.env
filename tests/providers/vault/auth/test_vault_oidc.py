@@ -35,7 +35,7 @@ class TestOpenIDConnectAuth:
         assert isinstance(auth, OpenIDConnectAuth)
         assert auth.role == "sample"
 
-    @pytest.fixture()
+    @pytest.fixture
     def _patch_get_authorization_url(self, monkeypatch: pytest.MonkeyPatch):
         def mock_get_authorization_url(client, redirect_uri, role, client_nonce):
             assert isinstance(client, httpx.Client)
@@ -46,7 +46,7 @@ class TestOpenIDConnectAuth:
 
         monkeypatch.setattr(t, "get_authorization_url", mock_get_authorization_url)
 
-    @pytest.fixture()
+    @pytest.fixture
     def patch_start_server(self, monkeypatch: pytest.MonkeyPatch):
         # don't start server
         sever = Mock(

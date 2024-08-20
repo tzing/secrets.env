@@ -40,7 +40,7 @@ class TestShell:
 
 
 class TestPosixShell:
-    @pytest.fixture()
+    @pytest.fixture
     def _goto_handover_default(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             PosixShell, "handover_pexpect", Mock(side_effect=ImportError)

@@ -47,7 +47,7 @@ class TestVisibleOption:
 
 
 class TestStdinInputOption:
-    @pytest.fixture()
+    @pytest.fixture
     def basic_invoker(self):
         @click.command()
         @click.option("-v", "--value", cls=StdinInputOption)
@@ -98,7 +98,7 @@ class TestUrlParam:
 
 
 class TestSetUsername:
-    @pytest.fixture()
+    @pytest.fixture
     def substitute_config_path(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> Path:

@@ -76,7 +76,7 @@ class TestSplitFieldStr:
 
 
 class TestVaultKvProvider:
-    @pytest.fixture()
+    @pytest.fixture
     def random_token(self) -> str:
         return uuid.uuid4().hex
 
@@ -154,7 +154,7 @@ class TestVaultKvProvider:
         assert isinstance(client, httpx.Client)
         assert provider.client.headers["X-Vault-Token"] == random_token
 
-    @pytest.fixture()
+    @pytest.fixture
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             VaultKvProvider, "client", PropertyMock(return_value=Mock(httpx.Client))
@@ -261,7 +261,7 @@ class TestCreateHttpClient:
         client = create_http_client(config)
         assert isinstance(client, httpx.Client)
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_httpx_client(self, monkeypatch: pytest.MonkeyPatch):
         client = Mock(httpx.Client)
         monkeypatch.setattr("httpx.Client", client)
