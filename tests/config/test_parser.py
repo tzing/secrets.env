@@ -3,9 +3,9 @@ from pydantic import BaseModel, FilePath, ValidationError
 
 from secrets_env.config.parser import (
     LocalConfig,
-    RequestAdapter,
     capture_line_errors,
     validate_providers,
+    validate_requests,
 )
 from secrets_env.provider import Request
 from secrets_env.providers.plain import PlainTextProvider
@@ -65,28 +65,28 @@ class TestValidateProviders:
             )
 
 
-class TestRequestAdapter:
+class TestValidateRequests:
     def test_success(self):
-        model = RequestAdapter.model_validate(
+        values = validate_requests(
             {
                 "secrets": [
                     {"name": "item1", "path": "/path/item1"},
                 ],
                 "secret": {
-                    "item2": Request(name="item2"),
+                    "item2": {"name": "overwritten"},
                     "item3": "/path/item3",
                 },
             }
         )
-        assert model.requests == [
+        assert values["requests"] == [
             Request(name="item2"),
             Request(name="item3", value="/path/item3"),
             Request(name="item1", path="/path/item1"),
         ]
 
-    def test_error_duplicated_name(self):
+    def test_dupe_name(self):
         with pytest.raises(ValidationError, match="secrets.item1"):
-            RequestAdapter.model_validate(
+            validate_requests(
                 {
                     "secret": [
                         Request(name="item1"),
@@ -97,7 +97,7 @@ class TestRequestAdapter:
 
     def test_error_from_list(self):
         with pytest.raises(ValidationError, match="secret.0.name"):
-            RequestAdapter.model_validate(
+            validate_requests(
                 {
                     "secret": [{"name": "1nvalid"}],
                 }
@@ -105,7 +105,7 @@ class TestRequestAdapter:
 
     def test_error_from_dict(self):
         with pytest.raises(ValidationError, match="secret.1nvalid.name"):
-            RequestAdapter.model_validate(
+            validate_requests(
                 {
                     "secret": {
                         "1nvalid": {},
@@ -115,7 +115,7 @@ class TestRequestAdapter:
 
     def test_type_error(self):
         with pytest.raises(ValidationError, match="expect list or dict"):
-            RequestAdapter.model_validate({"secret": 1234})
+            validate_requests({"secret": 1234})
 
 
 class TestLocalConfig:
