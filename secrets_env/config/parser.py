@@ -10,13 +10,15 @@ from secrets_env.provider import Provider, Request
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
-    from typing import Iterator, Sequence
+    from typing import Iterator, Sequence, TypeVar
 
     from pydantic import ValidationInfo
     from pydantic_core import ErrorDetails
 
+    _T = TypeVar("_T")
 
-class _ProviderAdapter(BaseModel):
+
+class _ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
     source: list[Provider] = Field(default_factory=list)
@@ -91,25 +93,20 @@ class _ProviderAdapter(BaseModel):
         return providers
 
 
-class ProviderAdapter(BaseModel):
-    """Build source(s) configs into provider instances."""
-
-    providers: dict[str | None, Provider] = Field(default_factory=dict)
-
-    @classmethod
-    def before_validator(cls, values):
-        if isinstance(values, dict):
-            adapter = _ProviderAdapter.model_validate(values)
-            providers = values.setdefault("providers", {})
-            providers.update(adapter.to_dict())
-        return values
-
-    @model_validator(mode="before")
-    def _before_validator(cls, values):
-        return cls.before_validator(values)
+def validate_providers(values: _T) -> _T:
+    """
+    Build source(s) configs into provider instances.
+    This function is intended to be used as a before validator for Pydantic models
+    with the attribute ``providers`` of type ``dict[str, Provider]``.
+    """
+    if isinstance(values, dict):
+        adapter = _ProviderBuilder.model_validate(values)
+        providers = values.setdefault("providers", {})
+        providers.update(adapter.to_dict())
+    return values
 
 
-class _RequestAdapter(BaseModel):
+class _RequestBuilder(BaseModel):
     """Internal helper to build request instances from secret(s) configs."""
 
     secret: list[Request] = Field(default_factory=list)
@@ -127,7 +124,9 @@ class _RequestAdapter(BaseModel):
             for name, spec in value.items():
                 with capture_line_errors(errors, (name,)):
                     if isinstance(spec, dict):
-                        requests.append(Request(name=name, **spec))
+                        spec = spec.copy()
+                        spec["name"] = name
+                        requests.append(Request(**spec))
                     elif isinstance(spec, str):
                         requests.append(Request(name=name, value=spec))
                     else:
@@ -168,36 +167,34 @@ class _RequestAdapter(BaseModel):
             )
 
 
-class RequestAdapter(BaseModel):
-    """Build secret(s) configs into request instances."""
+def validate_requests(values: _T) -> _T:
+    """
+    Build secret(s) configs into request instances.
 
-    requests: list[Request] = Field(default_factory=dict)
-
-    @classmethod
-    def before_validator(cls, values):
-        if isinstance(values, dict):
-            adapter = _RequestAdapter.model_validate(values)
-            requests = values.setdefault("requests", [])
-            requests.extend(adapter.iter_requests())
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def _before_validator(cls, values):
-        return cls.before_validator(values)
+    This function is intended to be used as a before validator for Pydantic models
+    with the attribute ``requests`` of type ``list[Request]``.
+    """
+    if isinstance(values, dict):
+        adapter = _RequestBuilder.model_validate(values)
+        requests = values.setdefault("requests", [])
+        requests.extend(adapter.iter_requests())
+    return values
 
 
-class LocalConfig(ProviderAdapter, RequestAdapter):
+class LocalConfig(BaseModel):
     """Data model that represents a local configuration file."""
+
+    providers: dict[str | None, Provider] = Field(default_factory=dict)
+    requests: list[Request] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
     def _before_validator(cls, values):
         errors = []
         with capture_line_errors(errors, ()):
-            values = ProviderAdapter.before_validator(values)
+            values = validate_providers(values)
         with capture_line_errors(errors, ()):
-            values = RequestAdapter.before_validator(values)
+            values = validate_requests(values)
         if errors:
             raise ValidationError.from_exception_data(
                 title="local config", line_errors=errors
