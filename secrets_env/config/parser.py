@@ -91,8 +91,16 @@ class _ProviderAdapter(BaseModel):
         return providers
 
 
-class ProviderAdapter(BaseModel):
+def validate_providers(values):
     """Build source(s) configs into provider instances."""
+    if isinstance(values, dict):
+        adapter = _ProviderAdapter.model_validate(values)
+        providers = values.setdefault("providers", {})
+        providers.update(adapter.to_dict())
+    return values
+
+
+class ProviderAdapter(BaseModel):
 
     providers: dict[str | None, Provider] = Field(default_factory=dict)
 
