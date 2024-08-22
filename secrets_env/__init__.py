@@ -52,12 +52,18 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
         logger.info("Requests are absent. Skipping values loading.")
         return {}
 
+    # if there is only one source, used as the default source
+    default_source = None
+    if len(cfg.providers) == 1:
+        default_source = next(iter(cfg.providers))
+
     # load values
     output_values = {}
     is_success = True
 
     for request in cfg.requests:
-        provider = cfg.providers[request.source]
+        applied_source = request.source or default_source
+        provider = cfg.providers[applied_source]
         try:
             output_values[request.name] = provider(request)
             logger.debug(f"Loaded <data>{request.name}</data>")

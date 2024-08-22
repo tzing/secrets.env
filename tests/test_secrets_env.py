@@ -24,7 +24,6 @@ class TestReadValues:
 
             [[secrets]]
             name = "DEMO"
-            source = "strongbox"
             path = "kv2/test"
             field = ["test", "name.with-dot"]
             """
