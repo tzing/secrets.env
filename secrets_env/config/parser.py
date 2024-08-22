@@ -203,9 +203,16 @@ class LocalConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_source_exists(self):
+        # if there is only one source, it will be used as the default source
+        default_source = None
+        if len(self.providers) == 1:
+            default_source = next(iter(self.providers))
+
+        # check if all requests have a valid source
         errors = []
         for request in self.requests:
-            if request.source not in self.providers:
+            applied_source = request.source or default_source
+            if applied_source not in self.providers:
                 if request.source is None:
                     errors.append(
                         {
@@ -222,10 +229,13 @@ class LocalConfig(BaseModel):
                             "ctx": {"error": f'source "{request.source}" not found'},
                         }
                     )
+
+        # raise errors
         if errors:
             raise ValidationError.from_exception_data(
                 title="local config", line_errors=errors
             )
+
         return self
 
 
