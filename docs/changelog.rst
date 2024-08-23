@@ -13,8 +13,6 @@ Enhancements
 
 * Use the provider type name as default instance name.
 
-  This simplifies the configuration file when only one instance is defined:
-
   .. code-block:: yaml
 
      sources:
