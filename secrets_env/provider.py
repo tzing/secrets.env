@@ -18,10 +18,29 @@ logger = logging.getLogger(__name__)
 
 
 class Request(BaseModel):
-    name: str
-    source: str | None = None
+    """
+    Specification for requesting a secret value.
 
-    # all possible fields
+    This class is used for parsing the ``secrets`` section from the configuration
+    file. The field :attr:`name` and :attr:`source` are used by secrets.env core
+    module, while the remaining fields are passed to the secret providers.
+
+    Secrets.env uses :py:mod:`pydantic` to parse configurations and provide a
+    valid :class:`Request` object to the secret providers. Therefore, all
+    potential fields must be defined in this class.
+    """
+
+    name: str
+    """
+    The environment variable to store the secret value.
+    """
+
+    source: str | None = None
+    """
+    The provider name to request the value from. If this field is not specified,
+    the default provider might be applied.
+    """
+
     field: str | list[str] | None = None
     format: str | None = None
     path: str | None = None
