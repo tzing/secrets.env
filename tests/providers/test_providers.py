@@ -43,12 +43,14 @@ class TestGetProvider:
 class TestDebugProvider:
     def test(self):
         provider = DebugProvider(value="bar")
+        assert provider.name == "debug"
         assert provider(Request(name="test", value="foo")) == "bar"
 
 
 class TestPlainTextProvider:
     def test(self):
         provider = PlainTextProvider()
+        assert provider.name == "plain"
         assert provider(Request(name="test", value="foo")) == "foo"
         assert provider(Request(name="test", value="")) == ""
 

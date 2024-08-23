@@ -52,9 +52,13 @@ class TestLoadLocalConfig:
         config = load_local_config(None)
 
         assert len(config.providers) == 1
-        assert config.providers[None] == DebugProvider(value="never gonna give you up")
+        assert config.providers == {
+            "debug": DebugProvider(value="never gonna give you up")
+        }
         assert len(config.requests) == 1
-        assert config.requests[0] == Request(name="TEST_VAR", value="foo")
+        assert config.requests == [
+            Request(name="TEST_VAR", value="foo"),
+        ]
 
     def test_success_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         config_path = tmp_path / "config.yaml"
