@@ -123,14 +123,12 @@ class TestLocalConfig:
         cfg = LocalConfig.model_validate(
             {
                 "source": {"name": "source-1", "type": "plain"},
-                "secret": {"key1": {"source": "source-1", "path": "/mock/path"}},
+                "secret": {"key1": {"path": "/mock/path"}},
             }
         )
 
         assert cfg.providers["source-1"] == PlainTextProvider(name="source-1")
-        assert cfg.requests[0] == Request(
-            name="key1", source="source-1", path="/mock/path"
-        )
+        assert cfg.requests[0] == Request(name="key1", path="/mock/path")
 
     def test_nested_error(self):
         with pytest.raises(ValidationError) as exc_info:
@@ -145,24 +143,29 @@ class TestLocalConfig:
         exc_info.match("secret.0.name")
 
     def test_source_name_error_1(self):
+        # source not found
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
-                    "sources": {"type": "plain"},
+                    "sources": [],
                     "secret": [
-                        {"name": "DEMO", "source": "invalid"},
+                        {"name": "DEMO", "source": "not-exist"},
                     ],
                 }
             )
 
         exc_info.match("secrets.DEMO.source")
-        exc_info.match('source "invalid" not found')
+        exc_info.match('source "not-exist" not found')
 
     def test_source_name_error_2(self):
+        # source is None and there are multiple sources
         with pytest.raises(ValidationError) as exc_info:
             LocalConfig.model_validate(
                 {
-                    "sources": {"type": "plain", "name": "blah"},
+                    "sources": [
+                        {"type": "plain", "name": "source-1"},
+                        {"type": "plain", "name": "source-2"},
+                    ],
                     "secret": [
                         {"name": "FOOBAR"},
                     ],
