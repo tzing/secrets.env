@@ -11,7 +11,7 @@ class TestRequest:
         assert cfg == Request(name="foo", value="bar")
 
     def test_fail(self):
-        with pytest.raises(ValidationError, match="Invalid environment variable name"):
+        with pytest.raises(ValidationError, match="String should match pattern"):
             Request.model_validate({"name": "0foo"})
 
 

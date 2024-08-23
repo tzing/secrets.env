@@ -6,11 +6,10 @@ For secret provider implementations, see :py:mod:`secrets_env.providers`.
 from __future__ import annotations
 
 import logging
-import re
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from pydantic import BaseModel, ValidationError, field_validator, validate_call
+from pydantic import BaseModel, Field, ValidationError, validate_call
 
 from secrets_env.exceptions import AuthenticationError, NoValue, UnsupportedError
 
@@ -18,21 +17,33 @@ logger = logging.getLogger(__name__)
 
 
 class Request(BaseModel):
-    name: str
-    source: str | None = None
+    """
+    Specification for requesting a secret value.
 
-    # all possible fields
+    This class is used for parsing the ``secrets`` section from the configuration
+    file. The field :attr:`name` and :attr:`source` are used by secrets.env core
+    module, while the remaining fields are passed to the secret providers.
+
+    Secrets.env uses :py:mod:`pydantic` to parse configurations and provide a
+    valid :class:`Request` object to the secret providers. Therefore, all
+    potential fields must be defined in this class.
+    """
+
+    name: str = Field(pattern=r"^[a-zA-Z_]\w*$")
+    """
+    The environment variable to store the secret value.
+    """
+
+    source: str | None = None
+    """
+    The provider name to request the value from. If this field is not specified,
+    the default provider might be applied.
+    """
+
     field: str | list[str] | None = None
     format: str | None = None
     path: str | None = None
     value: str | None = None
-
-    @field_validator("name", mode="after")
-    @classmethod
-    def _check_name_format(cls, value: str):
-        if not re.fullmatch(r"[a-zA-Z_]\w*", value):
-            raise ValueError("Invalid environment variable name")
-        return value
 
 
 class Provider(BaseModel, ABC):
