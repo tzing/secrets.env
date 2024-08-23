@@ -4,11 +4,40 @@ Changelog
 Unreleased
 ==========
 
-Changed
-+++++++
+Enhancements
+++++++++++++
 
 * Prevent saving Vault token to token helper for root user.
+
+* Use the provider type name as default instance name.
+
+  This simplifies the configuration file when only one instance is defined:
+
+  .. code-block:: yaml
+
+     sources:
+       # This source will be named as `plain`
+       - type: plain
+
+     secrets:
+       - name: DEMO
+         source: plain
+         value: Hello, world!
+
 * Set the provider as default when only one is installed.
+
+  This simplifies the configuration file when only one provider is installed:
+
+  .. code-block:: yaml
+
+     sources:
+       - name: ExampleSource
+         type: plain
+
+     secrets:
+       # This secret will be fetched from `ExampleSource`
+       - name: DEMO
+         value: Hello, world!
 
 Docs
 ++++

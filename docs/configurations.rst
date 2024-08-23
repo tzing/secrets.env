@@ -160,14 +160,16 @@ The supported provider types includes:
 
   This creates a :doc:`provider/vault`, capable of retrieving secrets from `HashiCorp Vault <https://www.vaultproject.io/>`_.
 
+When the ``name`` field is omitted, the provider will be assigned a default name based on the provider type.
+For example, a provider of type ``vault`` will be assigned the name ``vault``.
+
 
 Single source
 ^^^^^^^^^^^^^
 
 When there's only one source in the configuration, several things can be omitted:
 
-* Field ``name`` can be excluded from source section.
-* Field ``source`` can be omitted from the secrets section.
+* Field ``source`` can be omitted from the secrets section, the source will be used by default.
 * The source metadata can be set directly under the source(s) key (rather than under a list).
 
 .. tab-set::
