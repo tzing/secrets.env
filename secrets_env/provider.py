@@ -9,7 +9,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from pydantic import BaseModel, Field, ValidationError, validate_call
+from pydantic import BaseModel, Field, ValidationError, field_validator, validate_call
 
 from secrets_env.exceptions import AuthenticationError, NoValue, UnsupportedError
 
@@ -47,17 +47,46 @@ class Request(BaseModel):
 
 
 class Provider(BaseModel, ABC):
-    """Abstract base class for secret provider. All provider must implement
-    this interface.
+    """
+    Abstract base class for secret provider.
+
+    The provider classes are initialized by the core module with the configuration
+    file's ``sources`` section. The provider class must inherit this class and
+    implement the abstract method :meth:`_get_value_` to get the secret value.
+
+    The provider class is responsible for handling the authentication, lookup,
+    and other operations to get the secret value. It is suggested to perform
+    the connection and authentication lazy.
     """
 
     type: ClassVar[str]
+    """
+    Provider type name.
+    """
 
-    name: str | None = None
+    name: str = Field(default=None, validate_default=True)
+    """
+    Provider instance name.
+
+    This field could be configured by the user in the configuration file.
+    Otherwise, it will be set to the provider type name.
+    """
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _set_default_name_(cls, value: str | None) -> str:
+        if value is None:
+            return cls.type
+        return value
 
     @validate_call
     def __call__(self, spec: Request) -> str:
-        """Get value.
+        """
+        The method invoked by the core module to get the secret value.
+
+        This method is a wrapper around the :meth:`_get_value_` method. It
+        catches the exceptions raised by the provider and logs the error
+        messages, then raises the :class:`NoValue` exception.
 
         Parameters
         ----------
@@ -100,7 +129,12 @@ class Provider(BaseModel, ABC):
 
     @abstractmethod
     def _get_value_(self, spec: Request) -> str:
-        """Get value.
+        """
+        The method to get the secret value.
+
+        This method must be implemented by the provider class. When any error
+        occurs during the operation, the method should raise the appropriate
+        exception. Read the `Raises` section for more details.
 
         Parameters
         ----------
@@ -119,6 +153,6 @@ class Provider(BaseModel, ABC):
             If the secret is not found.
         UnsupportedError
             When this operation is not supported.
-        ValidationError
+        pydantic_core.ValidationError
             If the input format is invalid.
         """
