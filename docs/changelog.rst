@@ -7,7 +7,8 @@ Unreleased
 Changed
 +++++++
 
-* Prevent saving Vault token to token helper for root user
+* Prevent saving Vault token to token helper for root user.
+* Set the default provider when only one is installed.
 
 Docs
 ++++
