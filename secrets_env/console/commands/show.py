@@ -51,7 +51,7 @@ def show(config: Path | None):
     # sources
     click.echo(click.style("Sources:", fg="cyan"))
     for i, source in enumerate(cfg.providers.values()):
-        print_model(i, source.name or "(anonymous)", source)
+        print_model(i, source.name, source)
 
     # requests
     click.echo(click.style("Secrets:", fg="cyan"))
