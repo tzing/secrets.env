@@ -46,8 +46,7 @@ class _ProviderBuilder(BaseModel):
                 )
             return providers
 
-        else:
-            raise ValueError("Input must be a list or a dictionary")
+        raise ValueError("Input must be a list or a dictionary")
 
     def to_dict(self) -> dict[str, Provider]:
         """
@@ -67,23 +66,12 @@ class _ProviderBuilder(BaseModel):
                     {
                         "type": "value_error",
                         "loc": ("sources", "*", "name"),
-                        "input": provider.name or "(anonymous)",
+                        "input": provider.name,
                         "ctx": {"error": "duplicated source name"},
                     }
                 )
             else:
                 providers[provider.name] = provider
-
-        if None in providers and len(providers) > 1:
-            errors.append(
-                {
-                    "type": "value_error",
-                    "loc": ("sources", "*", "name"),
-                    "ctx": {
-                        "error": "naming each source is mandatory when using multiple sources",
-                    },
-                }
-            )
 
         if errors:
             raise ValidationError.from_exception_data(
@@ -118,7 +106,7 @@ class _RequestBuilder(BaseModel):
         if isinstance(value, list):
             return value
 
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             requests = []
             errors = []
             for name, spec in value.items():
@@ -138,9 +126,8 @@ class _RequestBuilder(BaseModel):
                 )
             return requests
 
-        else:
-            # type error here does not get caught by pydantic
-            raise ValueError(f'expect list or dict for "{info.field_name}"')
+        # type error here does not get caught by pydantic
+        raise ValueError(f'expect list or dict for "{info.field_name}"')
 
     def iter_requests(self) -> Iterator[Request]:
         seen_names = set()
