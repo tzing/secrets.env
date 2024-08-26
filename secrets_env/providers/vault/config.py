@@ -34,6 +34,12 @@ DEFAULT_AUTH_METHOD = "token"
 logger = logging.getLogger(__name__)
 
 
+class LazyProvidedMarker(enum.Enum):
+    """Internal marker for values that would be provided later."""
+
+    ProvidedByTeleport = enum.auto()
+
+
 class TlsConfig(BaseModel):
     ca_cert: FilePath | None = None
     client_cert: FilePath | None = None
@@ -68,12 +74,6 @@ class TlsConfig(BaseModel):
 
     def __bool__(self) -> bool:
         return bool(self.ca_cert or self.client_cert or self.client_key)
-
-
-class LazyProvidedMarker(enum.Enum):
-    """Internal marker for values that would be provided later."""
-
-    ProvidedByTeleport = enum.auto()
 
 
 class VaultUserConfig(BaseModel):
