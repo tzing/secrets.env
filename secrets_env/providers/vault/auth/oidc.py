@@ -10,10 +10,9 @@ from http import HTTPStatus
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.server import HTTPRequestHandler, start_server
-from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Self
 
     import httpx
 
@@ -29,21 +28,12 @@ class OpenIDConnectAuth(Auth):
 
     method = "OIDC"
 
-    role: str | None
+    role: str | None = None
     """Role."""
 
     @classmethod
-    def create(cls, url: Any, config: dict) -> OpenIDConnectAuth:
-        if role := get_env_var("SECRETS_ENV_ROLE"):
-            logger.debug("Found OIDC role from environment variable: %s", role)
-            return cls(role=role)
-
-        if role := config.get("role"):
-            logger.debug("Found OIDC role from config file: %s", role)
-            return cls(role=role)
-
-        logger.debug("Missing OIDC role. Use default.")
-        return cls(role=None)
+    def create(cls, url: Any, config: dict) -> Self:
+        return cls.model_validate(config)
 
     def login(self, client: httpx.Client) -> str:
         logger.debug("Applying ODIC auth")

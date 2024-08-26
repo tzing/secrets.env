@@ -35,12 +35,6 @@ class KubernetesAuth(JwtAuth):
             ) from e
 
         # get role
-        if role := get_env_var("SECRETS_ENV_ROLE"):
-            logger.debug("Found Kubernetes role from environment variable: %s", role)
-        elif role := config.get("role"):
-            logger.debug("Found Kubernetes role from config file: %s", role)
-        else:
-            logger.debug("Missing Kubernetes role. Use default.")
-            role = None
+        role = config.get("role")
 
         return cls(token=token, role=role)
