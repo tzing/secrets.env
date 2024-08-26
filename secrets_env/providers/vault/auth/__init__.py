@@ -14,13 +14,10 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def create_auth_by_name(url: Url, config: dict) -> Auth:
+def create_auth(*, url: Url, method: str, **config) -> Auth:
     """
-    Create an instance of the authentication class by the provided name.
+    Factory function to create an instance of the authenticator class by the method name.
     """
-    logger.debug('Creating "%s" auth', config["method"])
-    method: str = config["method"].lower()
-
     # fmt: off
     if method == "kubernetes":
         from secrets_env.providers.vault.auth.kubernetes import KubernetesAuth
