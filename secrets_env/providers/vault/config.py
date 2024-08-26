@@ -5,8 +5,10 @@ import logging
 import typing
 import warnings
 from functools import cached_property
+from typing import Annotated
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     Field,
     FilePath,
@@ -37,6 +39,7 @@ logger = logging.getLogger(__name__)
 class LazyProvidedMarker(enum.Enum):
     """Internal marker for values that would be provided later."""
 
+    LazyLoaded = enum.auto()
     ProvidedByTeleport = enum.auto()
 
 
@@ -76,9 +79,42 @@ class TlsConfig(BaseModel):
         return bool(self.ca_cert or self.client_cert or self.client_key)
 
 
+class AuthConfig(BaseModel):
+    """
+    Configuration for authentication method.
+
+    This class is used to validate the input type for the ``auth`` field in
+    Vault configuration. It will be converted to the corresponding
+    :class:`Authenticator` instance by the Vault configuration parser.
+    """
+
+    method: Annotated[str, AfterValidator(str.lower)]
+    role: str | None = None
+    username: str | LazyProvidedMarker = Field(LazyProvidedMarker.LazyLoaded)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _before_validator(cls, values):
+        # accept string as method
+        if isinstance(values, str):
+            return {"method": values}
+
+        # get role
+        if role := get_env_var("SECRETS_ENV_ROLE"):
+            logger.debug("Found role from environment variable: %s", role)
+            values["role"] = role
+
+        # get username
+        if username := get_env_var("SECRETS_ENV_USERNAME"):
+            logger.debug("Found username from environment variable.")
+            values["username"] = username
+
+        return values
+
+
 class VaultUserConfig(BaseModel):
     url: HttpUrl
-    auth: dict[str, str]
+    auth: AuthConfig
     proxy: HttpUrl | None = None
     tls: TlsConfig = Field(default_factory=TlsConfig)
     teleport: TeleportUserConfig | None = None
@@ -131,17 +167,6 @@ class VaultUserConfig(BaseModel):
         if isinstance(value, LazyProvidedMarker):
             return value
         return validator(value)
-
-    @field_validator("auth", mode="before")
-    @classmethod
-    def _validate_auth(cls, value: dict | str) -> dict:
-        if isinstance(value, str):
-            # syntax sugar: `auth: <method>`
-            return {"method": value}
-        elif isinstance(value, dict):
-            if "method" not in value:
-                raise ValueError("Missing required config <mark>auth method</mark>")
-        return value
 
     @cached_property
     def auth_object(self) -> Auth:

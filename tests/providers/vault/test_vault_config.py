@@ -147,3 +147,32 @@ class TestTlsConfig:
             ValueError, match="client_cert is required when client_key is provided"
         ):
             TlsConfig(client_key=tmp_path / "client.key")
+
+
+class TestAuthConfig:
+    def test_success(self):
+        config = AuthConfig.model_validate(
+            {
+                "method": "TEST",
+                "role": "SampleRole",
+                "username": "User",
+            }
+        )
+
+        assert config.method == "test"
+        assert config.role == "SampleRole"
+        assert config.username == "User"
+
+    def test_method(self):
+        config = AuthConfig.model_validate("TEST")
+        assert config.method == "test"
+
+    def test_role(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_ROLE", "SampleRole")
+        config = AuthConfig.model_validate({"method": "test"})
+        assert config.role == "SampleRole"
+
+    def test_username(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "User")
+        config = AuthConfig.model_validate({"method": "test"})
+        assert config.username == "User"
