@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from secrets_env.realms.server import ThreadSafeDict
+from secrets_env.realms.server import ThreadSafeDict, get_free_port
 
 
 class TestThreadSafeDict:
@@ -15,3 +15,9 @@ class TestThreadSafeDict:
         assert d.pop("bar") == "baz"
         assert "bar" not in d
         assert list(d) == ["foo"]
+
+
+def test_get_free_port():
+    port = get_free_port()
+    assert isinstance(port, int)
+    assert 1023 < port < 65536

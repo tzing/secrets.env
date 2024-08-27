@@ -93,3 +93,11 @@ class ThreadSafeDict(collections.abc.MutableMapping[str, Any]):
     def __contains__(self, __key: object) -> bool:
         with self._lock.read_lock:
             return __key in self._data
+
+
+def get_free_port() -> int:
+    """Get a free port from the system."""
+    with socket.socket() as s:
+        s.bind(("", 0))
+        _, port = s.getsockname()
+    return port
