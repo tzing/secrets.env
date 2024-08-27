@@ -2,7 +2,7 @@
 Minimal multi-threaded HTTP server and request handler, with thread-safe context storage.
 
 Use :meth:`start_server` to start a HTTP server in a background thread, then
-share information among threads using :attr:`ThreadingHTTPServer.context`.
+share information among threads using :attr:`ThreadedHttpServer.context`.
 """
 
 from __future__ import annotations
@@ -27,6 +27,128 @@ if typing.TYPE_CHECKING:
     RouteHandler = Callable[[URLParams], None]
 
 logger = logging.getLogger(__name__)
+
+
+def start_server(
+    handler: type[HttpRequestHandler],
+    host: str = "127.0.0.1",
+    port: int | None = None,
+    *,
+    auto_ready: bool = True,
+) -> ThreadedHttpServer:
+    """
+    Starts a :py:class:`ThreadedHttpServer` that listen to the specified
+    port.
+
+    Parameters
+    ----------
+    handler : type[HttpRequestHandler]
+        Request handler class.
+    host : str
+        The address on which the server is listening.
+    port : int
+        The port to listen to. It uses random port when not set.
+    auto_ready : bool
+        Set the server as *ready to start* automatically. When :obj:`False`, the
+        server thread will not start serving requests until :attr:`ThreadedHttpServer.ready`
+        event is set.
+
+    Return
+    ------
+    server : ThreadedHttpServer
+    """
+    if port is None:
+        port = get_free_port()
+
+    server = ThreadedHttpServer.create(host=host, port=port, handler=handler)
+
+    if auto_ready:
+        server.ready.set()
+
+    return server
+
+
+class ThreadedHttpServer(http.server.ThreadingHTTPServer):
+    """
+    A HTTP server that runs in background thread, creates threads for every
+    response and provide a shared context storage.
+    """
+
+    context: ThreadSafeDict
+    """A dictionary to share information among threads."""
+
+    ready: threading.Event
+    """An event object to notify the background thread that setup is finished."""
+
+    server_thread: threading.Thread
+    """The thread that runs this server."""
+
+    @classmethod
+    def create(
+        cls,
+        host: str,
+        port: int,
+        handler: type[HttpRequestHandler],
+    ):
+        """
+        Create a HTTP server that served in background thread.
+
+        The background thread starts automatically but will not serve requests
+        until :attr:`ready` event is set.
+
+        .. tip::
+
+           Consider using the :func:`start_server` method for a more straightforward
+           approach to achieve the same purpose.
+
+        Parameters
+        ----------
+        host : str
+            The address on which the server is listening.
+        port : int
+            The port to listen to.
+        handler : HttpRequestHandler
+            Request handler class.
+        """
+        server = cls(server_address=(host, port), RequestHandlerClass=handler)
+
+        server.context = ThreadSafeDict()
+        server.ready = threading.Event()
+        server.server_thread = threading.Thread(target=server._worker_, daemon=True)
+
+        server.server_thread.start()
+        return server
+
+    def _worker_(self):
+        """
+        Background runner for the server thread.
+        """
+        logger.debug(
+            "HTTP server thread created. thread id= %s; address= %s",
+            threading.get_native_id(),
+            self.server_address,
+        )
+
+        # wait until setup finish
+        self.ready.wait()
+
+        # listening
+        logger.debug("Start listening %s", self.server_address)
+        with self:
+            self.serve_forever()
+
+        # finalize
+        logger.debug(
+            "HTTP Server shutdown. thread id= %s; address= %s",
+            threading.get_native_id(),
+            self.server_address,
+        )
+
+    @property
+    def server_url(self) -> str:
+        """Returns server URL."""
+        host, port = self.server_address
+        return f"http://{host}:{port}"
 
 
 class RwLock:
