@@ -97,7 +97,7 @@ class AuthConfig(BaseModel):
     def _before_validator(cls, values):
         # accept string as method
         if isinstance(values, str):
-            return {"method": values}
+            values = {"method": values}
 
         # get role
         if role := get_env_var("SECRETS_ENV_ROLE"):
