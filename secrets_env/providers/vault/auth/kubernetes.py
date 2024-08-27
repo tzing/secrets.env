@@ -7,7 +7,6 @@ from pydantic import SecretStr
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.jwt import JwtAuth
-from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pydantic_core import Url
@@ -35,12 +34,6 @@ class KubernetesAuth(JwtAuth):
             ) from e
 
         # get role
-        if role := get_env_var("SECRETS_ENV_ROLE"):
-            logger.debug("Found Kubernetes role from environment variable: %s", role)
-        elif role := config.get("role"):
-            logger.debug("Found Kubernetes role from config file: %s", role)
-        else:
-            logger.debug("Missing Kubernetes role. Use default.")
-            role = None
+        role = config.get("role")
 
         return cls(token=token, role=role)

@@ -24,12 +24,6 @@ class TestOpenIDConnectAuth:
         assert isinstance(auth, OpenIDConnectAuth)
         assert auth.role is None
 
-    def test_create_envvar(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setenv("SECRETS_ENV_ROLE", "demo")
-        auth = OpenIDConnectAuth.create(Url("https://example.com/"), {})
-        assert isinstance(auth, OpenIDConnectAuth)
-        assert auth.role == "demo"
-
     def test_create_config(self):
         auth = OpenIDConnectAuth.create(Url("https://example.com/"), {"role": "sample"})
         assert isinstance(auth, OpenIDConnectAuth)

@@ -7,10 +7,65 @@ from pydantic_core import Url, ValidationError
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
 from secrets_env.providers.vault.config import (
+    AuthConfig,
     LazyProvidedMarker,
     TlsConfig,
     VaultUserConfig,
 )
+
+
+class TestTlsConfig:
+    def test_use_env_var(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        (tmp_path / "ca.cert").touch()
+        (tmp_path / "client.pem").touch()
+        (tmp_path / "client.key").touch()
+
+        monkeypatch.setenv("SECRETS_ENV_CA_CERT", str(tmp_path / "ca.cert"))
+        monkeypatch.setenv("SECRETS_ENV_CLIENT_CERT", str(tmp_path / "client.pem"))
+        monkeypatch.setenv("SECRETS_ENV_CLIENT_KEY", str(tmp_path / "client.key"))
+
+        assert TlsConfig.model_validate({}) == TlsConfig(
+            ca_cert=tmp_path / "ca.cert",
+            client_cert=tmp_path / "client.pem",
+            client_key=tmp_path / "client.key",
+        )
+
+    def test_require_client_cert(self, tmp_path: Path):
+        (tmp_path / "client.key").touch()
+
+        with pytest.raises(
+            ValueError, match="client_cert is required when client_key is provided"
+        ):
+            TlsConfig(client_key=tmp_path / "client.key")
+
+
+class TestAuthConfig:
+    def test_success(self):
+        config = AuthConfig.model_validate(
+            {
+                "method": "TEST",
+                "role": "SampleRole",
+                "username": "User",
+            }
+        )
+
+        assert config.method == "test"
+        assert config.role == "SampleRole"
+        assert config.username == "User"
+
+    def test_method(self):
+        config = AuthConfig.model_validate("TEST")
+        assert config.method == "test"
+
+    def test_role(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_ROLE", "SampleRole")
+        config = AuthConfig.model_validate({"method": "test"})
+        assert config.role == "SampleRole"
+
+    def test_username(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_USERNAME", "User")
+        config = AuthConfig.model_validate({"method": "test"})
+        assert config.username == "User"
 
 
 class TestVaultUserConfig:
@@ -37,7 +92,7 @@ class TestVaultUserConfig:
 
         assert isinstance(config, VaultUserConfig)
         assert config.url == Url("https://example.com")
-        assert config.auth == {"method": "null"}
+        assert config.auth == AuthConfig(method="null")
         assert config.proxy == Url("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",
@@ -70,7 +125,7 @@ class TestVaultUserConfig:
         config = VaultUserConfig.model_validate(
             {"url": "https://example.com", "auth": "null"}
         )
-        assert isinstance(config, VaultUserConfig)
+        assert config.auth == AuthConfig(method="null")
         assert config.auth_object == NoAuth()
 
     @pytest.mark.filterwarnings(
@@ -84,15 +139,15 @@ class TestVaultUserConfig:
         assert config.auth_object == TokenAuth(token="tok3n")
 
     def test_auth__invalid(self):
-        with pytest.raises(
-            ValueError, match="Missing required config <mark>auth method</mark>"
-        ):
+        with pytest.raises(ValidationError) as exc_info:
             VaultUserConfig.model_validate(
                 {
                     "url": "https://example.com",
                     "auth": {"foo": "bar"},
                 }
             )
+        exc_info.match("auth.method")
+        exc_info.match("Field required")
 
     def test_teleport(self, tmp_path: Path):
         (tmp_path / "ca.cert").touch()
@@ -122,28 +177,3 @@ class TestVaultUserConfig:
         )
         assert isinstance(config, VaultUserConfig)
         assert config.proxy == Url("http://env.proxy.example.com")
-
-
-class TestTlsConfig:
-    def test_use_env_var(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        (tmp_path / "ca.cert").touch()
-        (tmp_path / "client.pem").touch()
-        (tmp_path / "client.key").touch()
-
-        monkeypatch.setenv("SECRETS_ENV_CA_CERT", str(tmp_path / "ca.cert"))
-        monkeypatch.setenv("SECRETS_ENV_CLIENT_CERT", str(tmp_path / "client.pem"))
-        monkeypatch.setenv("SECRETS_ENV_CLIENT_KEY", str(tmp_path / "client.key"))
-
-        assert TlsConfig.model_validate({}) == TlsConfig(
-            ca_cert=tmp_path / "ca.cert",
-            client_cert=tmp_path / "client.pem",
-            client_key=tmp_path / "client.key",
-        )
-
-    def test_require_client_cert(self, tmp_path: Path):
-        (tmp_path / "client.key").touch()
-
-        with pytest.raises(
-            ValueError, match="client_cert is required when client_key is provided"
-        ):
-            TlsConfig(client_key=tmp_path / "client.key")
