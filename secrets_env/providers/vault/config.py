@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 class LazyProvidedMarker(enum.Enum):
     """Internal marker for values that would be provided later."""
 
-    LazyLoaded = enum.auto()
     ProvidedByTeleport = enum.auto()
 
 
@@ -90,7 +89,7 @@ class AuthConfig(BaseModel):
 
     method: Annotated[str, AfterValidator(str.lower)]
     role: str | None = None
-    username: str | LazyProvidedMarker = LazyProvidedMarker.LazyLoaded
+    username: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -181,15 +180,11 @@ class VaultUserConfig(BaseModel):
         """
         if isinstance(self.url, LazyProvidedMarker):
             raise RuntimeError("Vault URL is not loaded yet")
-        if isinstance(self.auth.username, LazyProvidedMarker):
-            username = None
-        else:
-            username = self.auth.username
         return create_auth(
             url=self.url,
             method=self.auth.method,
             role=self.auth.role,
-            username=username,
+            username=self.auth.username,
         )
 
 
