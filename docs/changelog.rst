@@ -1,6 +1,17 @@
 Changelog
 ---------
 
+Unreleased
+==========
+
+Enhancements
+++++++++++++
+
+* Add type check on Vault's ``auth`` field.
+
+  The field was lazy evaluated and we could not tell the trivial mistakes in the configuration file.
+
+
 1.0.2
 =====
 
