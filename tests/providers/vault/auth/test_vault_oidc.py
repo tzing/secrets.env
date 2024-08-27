@@ -8,14 +8,14 @@ import respx
 from pydantic_core import Url
 
 import secrets_env.providers.vault.auth.oidc as t
-import secrets_env.server
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.oidc import (
-    OIDCRequestHandler,
+    OidcRequestHandler,
     OpenIDConnectAuth,
     get_authorization_url,
     request_token,
 )
+from secrets_env.realms.server import ThreadedHttpServer, start_server
 
 
 class TestOpenIDConnectAuth:
@@ -44,7 +44,7 @@ class TestOpenIDConnectAuth:
     def patch_start_server(self, monkeypatch: pytest.MonkeyPatch):
         # don't start server
         sever = Mock(
-            spec=secrets_env.server.ThreadingHTTPServer,
+            spec=ThreadedHttpServer,
             server_uri="http://127.0.0.1:0000",
             ready=Mock(spec=threading.Event),
             context={},
@@ -86,51 +86,65 @@ class TestOpenIDConnectAuth:
             auth.login(Mock(spec=httpx.Client))
 
 
-class TestOIDCRequestHandler:
-    def setup_method(self):
-        self.server = secrets_env.server.start_server(OIDCRequestHandler)
-        self.server.context.update(
-            entrypoint="/ffff-ffff",
-            client=Mock(spec=httpx.Client),
-            auth_url="https://example.com/auth",
-            client_nonce="0000-0000",
+class TestOidcRequestHandler:
+    @pytest.fixture
+    def server(self):
+        server = start_server(OidcRequestHandler)
+        server.context.update(
+            {
+                "entrypoint": "/ffff-ffff",
+                "client": Mock(httpx.Client),
+                "auth_url": "https://example.com/auth",
+                "client_nonce": "0000-0000",
+            }
         )
 
-        self.client = httpx.Client(base_url=self.server.server_uri)
+        yield server
 
-    def teardown_method(self):
-        self.server.shutdown()
+        server.shutdown()
 
-    def test_do_forward_auth_url(self):
-        resp = self.client.get("/ffff-ffff")
+    @pytest.fixture
+    def client(self, server: ThreadedHttpServer):
+        return httpx.Client(base_url=server.server_url)
+
+    def test_do_forward_auth_url(self, client: httpx.Client):
+        resp = client.get("/ffff-ffff")
         assert resp.is_redirect
         assert resp.next_request.url == "https://example.com/auth"
 
-    def test_do_oidc_callback_success(self, monkeypatch: pytest.MonkeyPatch):
+    def test_do_oidc_callback_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        server: ThreadedHttpServer,
+        client: httpx.Client,
+    ):
         def mock_request_token(client, auth_url, auth_code, client_nonce):
             return "t0ken"
 
-        monkeypatch.setattr(t, "request_token", mock_request_token)
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.oidc.request_token", mock_request_token
+        )
 
-        resp = self.client.get("/oidc/callback?code=blah")
+        resp = client.get("/oidc/callback?code=blah")
         assert resp.status_code == 200
-        assert self.server.context["token"] == "t0ken"
+        assert server.context["token"] == "t0ken"
 
-        self.server.server_thread.join(1.0)
-        assert not self.server.server_thread.is_alive()
+        server.server_thread.join(1.0)
+        assert not server.server_thread.is_alive()
 
-    def test_do_oidc_callback_fail(self, monkeypatch: pytest.MonkeyPatch):
-        self.server.context.update()
-
+    def test_do_oidc_callback_fail(
+        self, monkeypatch: pytest.MonkeyPatch, client: httpx.Client
+    ):
         # missing auth code
-        resp = self.client.get("/oidc/callback")
+        resp = client.get("/oidc/callback")
         assert resp.status_code == 400
 
         # request token fail
-        def mock_request_token(client, auth_url, auth_code, client_nonce): ...
-
-        monkeypatch.setattr(t, "request_token", mock_request_token)
-        resp = self.client.get("/oidc/callback?code=blah")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.oidc.request_token",
+            Mock(return_value=None),
+        )
+        resp = client.get("/oidc/callback?code=blah")
         assert resp.status_code == 500
 
 
