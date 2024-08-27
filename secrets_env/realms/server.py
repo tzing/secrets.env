@@ -23,8 +23,8 @@ from secrets_env.utils import get_template
 if typing.TYPE_CHECKING:
     from typing import Callable, Iterator
 
-    URLParams = dict[str, list[str]]
-    RouteHandler = Callable[[URLParams], None]
+    UrlQueryParams = dict[str, list[str]]
+    EndpointHandler = Callable[[UrlQueryParams], None]
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,107 @@ class ThreadedHttpServer(http.server.ThreadingHTTPServer):
         """Returns server URL."""
         host, port = self.server_address
         return f"http://{host}:{port}"
+
+
+class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    """
+    A HTTP request handler that routes requests to specific methods, and
+    provides a simple templating engine for HTML responses.
+    """
+
+    def do_GET(self) -> None:
+        """
+        Override the :meth:`~http.server.SimpleHTTPRequestHandler.do_GET` method
+        to route the request to the appropriate handler.
+
+        This method calls :meth:`route` with the path to retrieve the handler
+        function pointer. When a callable is returned, it forwards the request
+        to that function; otherwise, it responds with a 404 (NOT_FOUND) error.
+        """
+        # check routes
+        url = urllib.parse.urlparse(self.path)
+        func = self.route(url.path)
+        if func is None:
+            self.response_error(HTTPStatus.NOT_FOUND)
+            return
+
+        # parse parameters and callback
+        params = urllib.parse.parse_qs(url.query)
+        return func(params)
+
+    def route(self, path: str) -> EndpointHandler | None:
+        """
+        Routing requests to specific method.
+
+        Parameters
+        ----------
+        path : str
+            The path of the request.
+
+        Returns
+        -------
+        EndpointHandler | None
+            The function to response the request, or :obj:`None` if not found.
+
+            The function signature for the endpoint handler is:
+
+            .. code-block:: python
+
+               def endpoint_handler(params: dict[str, list[str]]) -> None:
+                   ...
+
+            Where ``params`` is a dictionary of query parameters.
+        """
+
+    def log_message(self, format: str, *args: Any) -> None:
+        """
+        Override the default :meth:`~http.server.BaseHTTPRequestHandler.log_message`
+        to use the :py:mod:`logging` module.
+        """
+        logger.debug(
+            "[%s] HTTP server: %s - %s",
+            self.log_date_time_string(),
+            self.address_string(),
+            format % args,
+        )
+
+    def response_html(self, code: int, filename: str, mapping: dict | None = None):
+        """
+        Response HTML from template.
+
+        Parameters
+        ----------
+        code : int
+            The HTTP status code.
+        filename : str
+            The template filename. The template must be in the `assets` directory.
+        mapping : dict
+            The mapping to substitute in the template.
+        """
+        # render body
+        template = get_template(filename)
+        body = template.safe_substitute(mapping or {})
+        payload = body.encode(errors="replace")
+
+        # response
+        self.send_response(code)
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Content-Type", "text/html; charset=UTF-8")
+        self.end_headers()
+
+        self.wfile.write(payload)
+
+    def response_error(self, code: int):
+        """
+        Response error.
+        """
+        status = HTTPStatus(code)
+        return self.response_html(
+            status.value,
+            "error.html",
+            {"title": status.phrase, "message": status.description},
+        )
 
 
 class RwLock:

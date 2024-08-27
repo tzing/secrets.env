@@ -6,12 +6,17 @@ import time
 import httpx
 import pytest
 
-from secrets_env.realms.server import ThreadSafeDict, get_free_port, start_server
+from secrets_env.realms.server import (
+    HttpRequestHandler,
+    ThreadedHttpServer,
+    ThreadSafeDict,
+    get_free_port,
+    start_server,
+)
 
 
-class TestThreadedHttpServer:
-    def test(self, caplog: pytest.LogCaptureFixture):
-        # test lifecycle
+class TestHttpServer:
+    def test_lifecycle(self, caplog: pytest.LogCaptureFixture):
         with caplog.at_level(logging.DEBUG):
             server = start_server(
                 http.server.SimpleHTTPRequestHandler, auto_ready=False
@@ -32,8 +37,36 @@ class TestThreadedHttpServer:
         assert len(caplog.records) == 3
         assert "HTTP Server shutdown" in caplog.text
 
-        # test server_url
+    @pytest.fixture
+    def server(self):
+        class Handler(HttpRequestHandler):
+            def route(self, path: str):
+                if path == "/ok":
+                    return self.ok
+
+            def ok(self, params):
+                self.send_response(200)
+                self.end_headers()
+
+        server = start_server(Handler)
+        yield server
+
+        server.shutdown()
+
+    def test_server_url(self, server: ThreadedHttpServer):
         assert re.match(r"http://127\.0\.0\.1:\d+", server.server_url)
+
+    @pytest.mark.parametrize(
+        ("path", "code"),
+        [
+            ("/ok", 200),
+            ("/not-found", 404),
+        ],
+    )
+    def test_request(self, server: ThreadedHttpServer, path: str, code: int):
+        client = httpx.Client(base_url=server.server_url)
+        resp = client.get(path)
+        assert resp.status_code == code
 
 
 class TestThreadSafeDict:
