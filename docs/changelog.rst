@@ -11,6 +11,11 @@ Enhancements
 
   The field was lazy evaluated and we could not tell the trivial mistakes in the configuration file.
 
+Changes
++++++++
+
+* Refactor internal HTTP server implementation (:py:mod:`secrets_env.realms.server`). No behavior change.
+
 
 1.0.2
 =====
