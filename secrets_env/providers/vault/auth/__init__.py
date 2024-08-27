@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["Auth", "create_auth_by_name"]
+__all__ = ["Auth", "create_auth"]
 
 import logging
 import typing

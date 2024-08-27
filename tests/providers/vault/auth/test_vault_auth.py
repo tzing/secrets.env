@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 from pydantic_core import Url
 
-from secrets_env.providers.vault.auth import create_auth, create_auth_by_name
+from secrets_env.providers.vault.auth import create_auth
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
 
 

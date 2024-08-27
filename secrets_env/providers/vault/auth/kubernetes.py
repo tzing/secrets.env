@@ -7,7 +7,6 @@ from pydantic import SecretStr
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.jwt import JwtAuth
-from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
     from pydantic_core import Url
