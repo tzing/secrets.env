@@ -9,14 +9,18 @@ from http import HTTPStatus
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
-from secrets_env.server import HTTPRequestHandler, start_server
+from secrets_env.realms.server import HttpRequestHandler, start_server
 
 if typing.TYPE_CHECKING:
     from typing import Any, Self
 
     import httpx
 
-    from secrets_env.server import RouteHandler, URLParams
+    from secrets_env.realms.server import (
+        EndpointHandler,
+        ThreadedHttpServer,
+        UrlQueryParams,
+    )
 
 PATH_OIDC_CALLBACK = "/oidc/callback"
 
@@ -39,13 +43,13 @@ class OpenIDConnectAuth(Auth):
         logger.debug("Applying ODIC auth")
 
         # prepare server
-        server = start_server(OIDCRequestHandler, ready=False)
+        server = start_server(OidcRequestHandler, auto_ready=False)
 
         # get auth url
         client_nonce = uuid.uuid1().hex
         auth_url = get_authorization_url(
             client,
-            f"{server.server_uri}{PATH_OIDC_CALLBACK}",
+            f"{server.server_url}{PATH_OIDC_CALLBACK}",
             self.role,
             client_nonce,
         )
@@ -55,7 +59,7 @@ class OpenIDConnectAuth(Auth):
 
         # create entrypoint, setup context and start server
         entrypoint = f"/{uuid.uuid1()}"
-        entrypoint_url = f"{server.server_uri}{entrypoint}"
+        entrypoint_url = f"{server.server_url}{entrypoint}"
 
         server.context.update(
             auth_url=auth_url,
@@ -86,26 +90,20 @@ class OpenIDConnectAuth(Auth):
         return token
 
 
-class OIDCRequestHandler(HTTPRequestHandler):
-    def route(self, path: str) -> RouteHandler | None:
+class OidcRequestHandler(HttpRequestHandler):
+    server: ThreadedHttpServer  # type: ignore[reportIncompatibleVariableOverride]
+
+    def route(self, path: str) -> EndpointHandler | None:
         if path == PATH_OIDC_CALLBACK:
             return self.do_oidc_callback
         if path == self.server.context["entrypoint"]:
             return self.do_forward_auth_url
 
-    def do_forward_auth_url(self, params: URLParams):
-        """Forwards user to auth URL, which is very loooong."""
-        self.send_response(HTTPStatus.FOUND)
-        self.send_header("Location", self.server.context["auth_url"])
-        self.send_header("Cache-control", "no-store")
-        self.end_headers()
-
-    def do_oidc_callback(self, params: URLParams):
+    def do_oidc_callback(self, params: UrlQueryParams):
         # get authorization code
         codes = params.get("code")
         if not codes:
-            self.response_error(HTTPStatus.BAD_REQUEST)
-            return
+            return self.response_error(HTTPStatus.BAD_REQUEST)
 
         code = codes[0]
 
@@ -117,12 +115,14 @@ class OIDCRequestHandler(HTTPRequestHandler):
             self.server.context["client_nonce"],
         )
         if not token:
-            self.response_error(HTTPStatus.INTERNAL_SERVER_ERROR)
-            return
+            return self.response_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
         self.server.context["token"] = token
         self.response_html(HTTPStatus.OK, "oidc-success.html")
         self.server.shutdown()
+
+    def do_forward_auth_url(self, params: UrlQueryParams):
+        return self.response_forward(self.server.context["auth_url"])
 
 
 def get_authorization_url(
