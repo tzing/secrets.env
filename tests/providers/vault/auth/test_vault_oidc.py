@@ -7,7 +7,6 @@ import pytest
 import respx
 from pydantic_core import Url
 
-import secrets_env.providers.vault.auth.oidc as t
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.oidc import (
     OidcRequestHandler,
@@ -38,23 +37,29 @@ class TestOpenIDConnectAuth:
             assert isinstance(client_nonce, str)
             return "https://example.com/auth"
 
-        monkeypatch.setattr(t, "get_authorization_url", mock_get_authorization_url)
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.oidc.get_authorization_url",
+            mock_get_authorization_url,
+        )
 
     @pytest.fixture
     def patch_start_server(self, monkeypatch: pytest.MonkeyPatch):
         # don't start server
         sever = Mock(
             spec=ThreadedHttpServer,
-            server_uri="http://127.0.0.1:0000",
+            server_url="http://127.0.0.1:0000",
             ready=Mock(spec=threading.Event),
             context={},
             server_thread=Mock(spec=threading.Thread),
         )
 
-        def patch_start_server(handler, ready):
+        def patch_start_server(handler, auto_ready):
             return sever
 
-        monkeypatch.setattr(t, "start_server", patch_start_server)
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.oidc.start_server", patch_start_server
+        )
+
         return sever
 
     @pytest.mark.usefixtures("_patch_get_authorization_url")
@@ -67,23 +72,27 @@ class TestOpenIDConnectAuth:
         monkeypatch.setattr("webbrowser.open", patch_webbrowser_open)
 
         # run
-        auth = OpenIDConnectAuth(role=None)
+        auth = OpenIDConnectAuth()
         assert auth.login(Mock(spec=httpx.Client)) == "t0ken"
 
     def test_login_fail_1(self, monkeypatch: pytest.MonkeyPatch):
-        # case: get auth url failed
-        monkeypatch.setattr(t, "get_authorization_url", lambda *_: None)
-        auth = OpenIDConnectAuth(role=None)
+        # case: failed to get auth url
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.oidc.get_authorization_url",
+            Mock(return_value=None),
+        )
+
+        auth = OpenIDConnectAuth()
         with pytest.raises(AuthenticationError):
-            auth.login(Mock(spec=httpx.Client))
+            auth.login(Mock(httpx.Client))
 
     @pytest.mark.usefixtures("_patch_get_authorization_url", "patch_start_server")
     def test_login_fail_2(self, monkeypatch: pytest.MonkeyPatch):
-        # case: not received the token
+        # case: not receiving token
         monkeypatch.setattr("webbrowser.open", lambda _: None)
-        auth = OpenIDConnectAuth(role=None)
+        auth = OpenIDConnectAuth()
         with pytest.raises(AuthenticationError):
-            auth.login(Mock(spec=httpx.Client))
+            auth.login(Mock(httpx.Client))
 
 
 class TestOidcRequestHandler:
