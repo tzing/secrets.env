@@ -28,7 +28,7 @@ class JwtAuth(Auth):
     token: SecretStr
     """Json Web Token"""
 
-    role: str | None = None
+    role: str | None
     """Role."""
 
     @classmethod
