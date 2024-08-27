@@ -18,7 +18,7 @@ from pydantic import (
 )
 
 from secrets_env.providers.teleport import TeleportUserConfig  # noqa: TCH001
-from secrets_env.providers.vault.auth import create_auth_by_name
+from secrets_env.providers.vault.auth import create_auth
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
@@ -90,7 +90,7 @@ class AuthConfig(BaseModel):
 
     method: Annotated[str, AfterValidator(str.lower)]
     role: str | None = None
-    username: str | LazyProvidedMarker = Field(LazyProvidedMarker.LazyLoaded)
+    username: str | LazyProvidedMarker = LazyProvidedMarker.LazyLoaded
 
     @model_validator(mode="before")
     @classmethod
@@ -181,7 +181,16 @@ class VaultUserConfig(BaseModel):
         """
         if isinstance(self.url, LazyProvidedMarker):
             raise RuntimeError("Vault URL is not loaded yet")
-        return create_auth_by_name(self.url, self.auth)
+        if isinstance(self.auth.username, LazyProvidedMarker):
+            username = None
+        else:
+            username = self.auth.username
+        return create_auth(
+            url=self.url,
+            method=self.auth.method,
+            role=self.auth.role,
+            username=username,
+        )
 
 
 def _warn(s: str):
