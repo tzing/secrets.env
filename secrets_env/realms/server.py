@@ -240,6 +240,17 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         self.wfile.write(payload)
 
+    def response_forward(self, url: str, code: int = HTTPStatus.FOUND):
+        """
+        Response forward to another URL.
+        """
+        self.send_response(code)
+        self.send_header("Content-Length", "0")
+        self.send_header("Location", url)
+        if code == HTTPStatus.FOUND:
+            self.send_header("Cache-control", "no-store")
+        self.end_headers()
+
     def response_error(self, code: int):
         """
         Response error.

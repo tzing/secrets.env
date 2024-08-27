@@ -43,6 +43,8 @@ class TestHttpServer:
             def route(self, path: str):
                 if path == "/ok":
                     return self.ok
+                if path == "/forward":
+                    return lambda _: self.response_forward("https://example.com")
 
             def ok(self, params):
                 self.send_response(200)
@@ -61,6 +63,7 @@ class TestHttpServer:
         [
             ("/ok", 200),
             ("/not-found", 404),
+            ("/forward", 302),
         ],
     )
     def test_request(self, server: ThreadedHttpServer, path: str, code: int):
