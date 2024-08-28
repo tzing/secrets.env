@@ -11,6 +11,8 @@ Enhancements
 
   The field was lazy evaluated and we could not tell the trivial mistakes in the configuration file.
 
+* Improve the error message for :doc:`provider/vault` to display the permission denied error.
+
 Changes
 +++++++
 
