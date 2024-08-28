@@ -207,7 +207,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
             self._cache[path.path] = result
 
         if result == Marker.NotFound:
-            raise LookupError(f'Secret "{path}" not found')
+            raise LookupError(f"Failed to load secret `{path}`")
 
         return result
 
