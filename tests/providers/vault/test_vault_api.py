@@ -126,6 +126,19 @@ class TestReadSecret:
         assert read_secret(intl_client, "kv1/test") == {"foo": "hello"}
 
     @pytest.mark.usefixtures("_set_mount_kv2")
+    def test_forbidden(
+        self,
+        respx_mock: respx.MockRouter,
+        unittest_client: httpx.Client,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        respx_mock.get("https://example.com/v1/secrets/data/test").mock(
+            httpx.Response(403)
+        )
+        assert read_secret(unittest_client, "secrets/test") is None
+        assert "Permission denied for secret <data>secrets/test</data>" in caplog.text
+
+    @pytest.mark.usefixtures("_set_mount_kv2")
     def test_not_found(
         self,
         respx_mock: respx.MockRouter,
@@ -183,7 +196,10 @@ class TestReadSecret:
             httpx.Response(499)
         )
         assert read_secret(unittest_client, "secrets/test") is None
-        assert "Error occurred during query secret secrets/test" in caplog.text
+        assert (
+            "Error occurred during query secret <data>secrets/test</data>"
+            in caplog.text
+        )
 
 
 class TestGetMount:

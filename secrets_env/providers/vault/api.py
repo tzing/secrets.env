@@ -68,12 +68,16 @@ def read_secret(client: httpx.Client, path: str) -> dict | None:
         else:
             return data["data"]
 
-    elif resp.status_code == HTTPStatus.NOT_FOUND:
+    log_httpx_response(logger, resp)
+
+    if resp.status_code == HTTPStatus.FORBIDDEN:
+        logger.error("Permission denied for secret <data>%s</data>", path)
+        return
+    if resp.status_code == HTTPStatus.NOT_FOUND:
         logger.error("Secret <data>%s</data> not found", path)
         return
 
-    logger.error("Error occurred during query secret %s", path)
-    log_httpx_response(logger, resp)
+    logger.error("Error occurred during query secret <data>%s</data>", path)
     return
 
 
