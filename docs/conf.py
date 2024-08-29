@@ -42,12 +42,19 @@ extensions = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "click": ("https://click.palletsprojects.com/", None),
+    "keyring": ("https://keyring.readthedocs.io/en/latest/", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
 }
 
 templates_path = ["_templates"]
 exclude_patterns = []
 
 add_module_names = False
+
+# -- Options for autodoc -----------------------------------------------------
+autodoc_default_options = {
+    "exclude-members": "model_computed_fields, model_config, model_fields",
+}
 
 # -- Options for HTML output -------------------------------------------------
 
