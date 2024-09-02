@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import re
+import subprocess
 import warnings
 from functools import cached_property
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import cast
 from pydantic import BaseModel, FilePath, SecretBytes, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
-from secrets_env.utils import strip_ansi
+from secrets_env.realms.subprocess import check_output, write_output
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -208,17 +209,10 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
 
 def call_version() -> bool:
     """Call version command and print it to log."""
-    import subprocess
-
-    cmd = [TELEPORT_APP_NAME, "version"]
-    logger.debug("$ %s", " ".join(cmd))
-
     try:
-        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+        check_output([TELEPORT_APP_NAME, "version"])
     except subprocess.CalledProcessError:
         return False
-
-    log_output("stdout", stdout)
     return True
 
 
@@ -247,13 +241,10 @@ class TshAppConfigResponse(BaseModel):
 
 
 def call_app_config(app: str) -> TeleportConnectionParameter | None:
-    import subprocess
-
-    cmd = [TELEPORT_APP_NAME, "app", "config", "--format=json", app]
-    logger.debug("$ %s", " ".join(cmd))
-
     try:
-        stdout = subprocess.check_output(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+        stdout = check_output(
+            [TELEPORT_APP_NAME, "app", "config", "--format=json", app],
+        )
     except subprocess.CalledProcessError:
         return
 
@@ -320,18 +311,12 @@ def call_app_login(config: TeleportUserConfig) -> None:
         proc.close()
 
         logger.debug("< return code: %s", proc.exitstatus)
-        log_output("stdout", capture_stdout.getvalue())
-        log_output("stderr", capture_stderr.getvalue())
+        write_output("stdout", capture_stdout.getvalue())
+        write_output("stderr", capture_stderr.getvalue())
 
         if proc.exitstatus != 0:
-            log_output("stdout", capture_stdout.getvalue(), logging.ERROR)
-            log_output("stderr", capture_stderr.getvalue(), logging.ERROR)
+            write_output("stdout", capture_stdout.getvalue(), logging.ERROR)
+            write_output("stderr", capture_stderr.getvalue(), logging.ERROR)
             raise AuthenticationError("Teleport error")
 
     logger.info(f"Successfully logged into teleport app: {config.app}")
-
-
-def log_output(channel: str, message: str, level: int = logging.DEBUG):
-    message = strip_ansi(message.rstrip())
-    for line in message.splitlines():
-        logger.log(level, f"<[{channel}] {line}")
