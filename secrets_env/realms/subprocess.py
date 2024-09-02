@@ -77,6 +77,7 @@ def write_output(
     """Write the output to the log."""
     if level is None:
         return
+    message = message or ""
     message = strip_ansi(message.rstrip())
     for line in message.splitlines():
         logger.log(level, f"<[{channel}] {line}")
