@@ -9,7 +9,6 @@ import functools
 import json
 import logging
 import os
-import re
 import string
 import sys
 import threading
@@ -27,8 +26,6 @@ if typing.TYPE_CHECKING:
     T_Warning = TypeVar("T_Warning", bound=Warning)
 
 logger = logging.getLogger(__name__)
-
-_ansi_re = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
 def get_env_var(*names: str) -> str | None:
@@ -153,11 +150,6 @@ def read_keyring(key: str) -> str | None:
 def create_keyring_login_key(url: pydantic_core.Url, user: str) -> str:
     """Build key for storing login credentials in keyring."""
     return json.dumps({"host": url.host, "type": "login", "user": user.casefold()})
-
-
-def strip_ansi(value: str) -> str:
-    """Strip ANSI escape codes from the string."""
-    return _ansi_re.sub("", value)
 
 
 TK = TypeVar("TK")

@@ -13,6 +13,8 @@ Enhancements
 
 * Improve the error message for :doc:`provider/vault` to display the permission denied error.
 
+* Add internal helper module :py:mod:`secrets_env.realms.subprocess` to handle subprocess interactions.
+
 Changes
 +++++++
 

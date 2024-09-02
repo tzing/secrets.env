@@ -113,12 +113,6 @@ def test_create_keyring_login_key():
     assert key == '{"host": "example.com", "type": "login", "user": "user@example.com"}'
 
 
-def test_strip_ansi():
-    text = click.style("test", fg="red")
-    assert text != "test"
-    assert t.strip_ansi(text) == "test"
-
-
 def test_lru_dict():
     # basic
     d = t.LruDict(max_size=3)

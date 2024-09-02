@@ -295,7 +295,7 @@ class TestCallVersion:
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "subprocess.check_output",
+            "subprocess.run",
             Mock(side_effect=subprocess.CalledProcessError(1, "mock")),
         )
         assert call_version() is False
@@ -378,13 +378,15 @@ class TestCallAppConfig:
                 }
             )
 
-        monkeypatch.setattr("subprocess.check_output", mock_check_output)
+        monkeypatch.setattr(
+            "secrets_env.providers.teleport.config.check_output", mock_check_output
+        )
 
         assert call_app_config("test") == conn_param
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "subprocess.check_output",
+            "subprocess.run",
             Mock(side_effect=subprocess.CalledProcessError(1, "mock")),
         )
         assert call_app_config("test") is None
