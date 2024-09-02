@@ -386,7 +386,7 @@ class TestCallAppConfig:
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "subprocess.check_output",
+            "subprocess.run",
             Mock(side_effect=subprocess.CalledProcessError(1, "mock")),
         )
         assert call_app_config("test") is None
