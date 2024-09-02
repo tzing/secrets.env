@@ -20,8 +20,7 @@ def check_output(
     level_error: int | None = logging.ERROR,
 ) -> str:
     """
-    A wrapper around :py:func:`subprocess.check_output` that logs the command
-    and output, and returns the output as a string.
+    Run a command and return the output.
 
     Parameters
     ----------
@@ -74,7 +73,19 @@ def write_output(
     message: str,
     level: int | None = logging.DEBUG,
 ):
-    """Write the output to the log."""
+    """
+    Write the output to the log.
+
+    Parameters
+    ----------
+    channel : str
+        The channel name for the output. Used as the prefix in the log message.
+    message : str
+        The output message.
+    level : int, optional
+        The logging level to use for the output, by default :py:data:`logging.DEBUG`.
+        Set to :py:obj:`None` to disable logging the output.
+    """
     if level is None:
         return
     message = message or ""
