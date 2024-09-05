@@ -57,12 +57,12 @@ def check_output(
             encoding="utf-8",
         )
     except subprocess.CalledProcessError as e:
-        logging.debug("< return code: %d", e.returncode)
+        logger.debug("< return code: %d", e.returncode)
         write_output("stdout", e.stdout, level_error)
         write_output("stderr", e.stderr, level_error)
         raise
 
-    logging.debug("< return code: %d", proc.returncode)
+    logger.debug("< return code: %d", proc.returncode)
     write_output("stdout", proc.stdout, level_output)
     write_output("stderr", proc.stderr, level_output)
     return proc.stdout
