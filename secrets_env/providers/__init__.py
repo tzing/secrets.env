@@ -38,6 +38,9 @@ def get_provider(config: dict) -> Provider:
     if itype == "debug":
         from secrets_env.providers.debug import DebugProvider
         return DebugProvider.model_validate(config)
+    if itype == "kubernetes:kubectl":
+        from secrets_env.providers.kubernetes.kubectl import KubectlProvider
+        return KubectlProvider.model_validate(config)
     if itype == "plain":
         from secrets_env.providers.plain import PlainTextProvider
         return PlainTextProvider.model_validate(config)
