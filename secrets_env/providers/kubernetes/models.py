@@ -10,12 +10,12 @@ class KubeRequest(BaseModel):
     Request to read a secret from Kubernetes.
     """
 
-    ref: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9-]+$")
+    ref: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9.-]+$")
     """
     Secret reference in the format ``namespace/secret-name``.
     """
 
-    key: str = Field(pattern=r"^[a-zA-Z0-9-_.]+$")
+    key: str = Field(pattern=r"^[\w.-]+$")
     """
     Secret key to read.
     """
