@@ -33,6 +33,7 @@ Table of Contents
    provider/plain
    provider/teleport
    provider/vault
+   provider/experimental
 
 .. toctree::
    :caption: Advanced Features
