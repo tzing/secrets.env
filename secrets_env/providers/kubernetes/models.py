@@ -47,14 +47,16 @@ class KubeRequestSimplified(BaseModel):
     Represents a simplified request to read a secret from Kubernetes.
     """
 
-    value: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9-]+#")
+    value: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9.-]+#")
 
     @computed_field
+    @property
     def ref(self) -> str:
         ref, _ = self.value.rsplit("#", 1)
         return ref
 
     @computed_field
+    @property
     def key(self) -> str:
         _, key = self.value.rsplit("#", 1)
         return key
