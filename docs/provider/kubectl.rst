@@ -1,3 +1,7 @@
+.. caution::
+
+   This provider is still in the experimental stage and may change in the future.
+
 Kubectl Provider
 ================
 
@@ -7,6 +11,9 @@ This provider communicates with Kubernetes to retrieve secrets via the ``kubectl
 Therefore, the local user must have the appropriate permissions to access secrets from the Kubernetes cluster.
 
 .. _kubectl: https://kubernetes.io/docs/reference/kubectl/
+
+Source type
+   ``kubernetes:kubectl``
 
 .. important::
 
@@ -87,6 +94,12 @@ Configuration layout
 Source section
 --------------
 
+.. tip::
+
+   All source configuration are optional.
+
+   The provider will invoke the ``kubectl`` command and leverage the default configuration if not provided.
+
 ``kubectl``
 ^^^^^^^^^^^
 
@@ -114,6 +127,8 @@ Secrets section
 ---------------
 
 The configurations within the ``secrets`` section determine the resources to be read.
+
+.. note::
 
    A field name followed by a bookmark icon (:octicon:`bookmark`) indicates that it is a required parameter.
 
