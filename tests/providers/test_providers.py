@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import pytest
 
 from secrets_env.exceptions import NoValue
@@ -13,6 +15,14 @@ class TestGetProvider:
     def test_debug(self):
         provider = get_provider({"type": "debug", "value": "test"})
         assert isinstance(provider, DebugProvider)
+
+    def test_kubectl(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", Mock(return_value=True))
+
+        provider = get_provider(
+            {"type": "kubernetes:kubectl", "kubectl": "/usr/bin/kubectl"}
+        )
+        assert provider.type == "kubectl"
 
     def test_plain(self):
         provider = get_provider({"type": "plain"})

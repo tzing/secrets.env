@@ -1,6 +1,15 @@
 Changelog
 ---------
 
+Unreleased
+==========
+
+Enhancements
+++++++++++++
+
+* Add experimental support for :doc:`provider/kubectl`.
+
+
 1.0.3
 =====
 
