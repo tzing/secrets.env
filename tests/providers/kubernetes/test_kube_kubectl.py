@@ -62,14 +62,7 @@ class TestKubectlProvider:
 
     @pytest.mark.usefixtures("_patch_kubectl_path")
     def test__get_secret_(self, monkeypatch: pytest.MonkeyPatch):
-        def _mock_read_secret(
-            *,
-            kubectl: Path,
-            config: Path | None,
-            context: str | None,
-            namespace: str,
-            name: str,
-        ):
+        def _mock_read_secret(*, kubectl, config, context, namespace, name):
             assert namespace == "default"
             assert name == "test"
             return {"key": b"bar"}
