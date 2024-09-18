@@ -351,3 +351,15 @@ class TestReadConfigMap:
             ],
             level_error=logging.DEBUG,
         )
+
+    def test_not_found(self, mock_check_output):
+        mock_check_output.side_effect = subprocess.CalledProcessError(1, "kubectl")
+
+        result = read_configmap(
+            kubectl=Path("/usr/bin/kubectl"),
+            config=None,
+            context=None,
+            namespace="default",
+            name="configmap",
+        )
+        assert result == Marker.NotFound
