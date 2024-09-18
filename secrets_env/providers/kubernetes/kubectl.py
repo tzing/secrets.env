@@ -80,7 +80,7 @@ class KubectlProvider(Provider):
         if not self.kubectl:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
-        call_version()  # leave a sign in the log
+        call_version(self.kubectl)  # leave a sign in the log
 
         result = self._cache.get((kind, namespace, name), Marker.NoCache)
 
