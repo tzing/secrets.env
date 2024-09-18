@@ -12,7 +12,7 @@ from pydantic import Field, FilePath, PrivateAttr, model_validator
 
 from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Provider
-from secrets_env.providers.kubernetes.models import KubeRequest, KubeSecret
+from secrets_env.providers.kubernetes.models import ConfigMapV1, KubeRequest, SecretV1
 from secrets_env.realms.subprocess import check_output
 from secrets_env.utils import LruDict, get_env_var
 
@@ -143,7 +143,7 @@ def read_secret(
     except subprocess.CalledProcessError:
         return Marker.NotFound
 
-    secret = KubeSecret.model_validate_json(output)
+    secret = SecretV1.model_validate_json(output)
 
     # decode base64 values
     output = {}
