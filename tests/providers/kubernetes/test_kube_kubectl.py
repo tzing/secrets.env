@@ -28,6 +28,12 @@ class TestKubectlProvider:
         monkeypatch.setattr("shutil.which", Mock(return_value="/usr/bin/kubectl"))
         monkeypatch.setattr("pathlib.Path.is_file", Mock(return_value=True))
 
+    @pytest.fixture
+    def _patch_call_version(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.kubernetes.kubectl.call_version", Mock()
+        )
+
     @pytest.mark.usefixtures("_patch_kubectl_path")
     def test___init__(self):
         provider = KubectlProvider.model_validate({})
@@ -60,7 +66,7 @@ class TestKubectlProvider:
         assert provider.kubectl is None
         assert provider.context is None
 
-    @pytest.mark.usefixtures("_patch_kubectl_path")
+    @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
     def test__get_secret_(self, monkeypatch: pytest.MonkeyPatch):
         def _mock_read_secret(*, kubectl, config, context, namespace, name):
             assert namespace == "default"
@@ -78,7 +84,7 @@ class TestKubectlProvider:
 
         assert mock_read_secret.call_count == 1
 
-    @pytest.mark.usefixtures("_patch_kubectl_path")
+    @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
     def test__get_secret_notfound(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.kubernetes.kubectl.read_secret",
@@ -151,12 +157,6 @@ class TestCallVersion:
 
 
 class TestReadSecret:
-    @pytest.fixture(autouse=True)
-    def _patch_read_secret(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.kubernetes.kubectl.call_version", Mock()
-        )
-
     @pytest.fixture
     def mock_check_output(self, monkeypatch: pytest.MonkeyPatch):
         mock = Mock(

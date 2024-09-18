@@ -75,6 +75,8 @@ class KubectlProvider(Provider):
         if not self.kubectl:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
+        call_version()  # leave a sign in the log
+
         result = self._cache.get((namespace, name), Marker.NoCache)
 
         if result is Marker.NoCache:
@@ -122,9 +124,6 @@ def read_secret(
     name: str,
 ) -> _T_Data | Literal[Marker.NotFound]:
     """Request a secret from Kubernetes using kubectl."""
-    # leave a sign in the log
-    call_version()
-
     # build command
     cmd = [str(kubectl), "get", "secret"]
     if config:
