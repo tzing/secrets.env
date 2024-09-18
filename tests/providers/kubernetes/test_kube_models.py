@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from secrets_env.providers.kubernetes.models import KubeRequest
+from secrets_env.providers.kubernetes.models import Kind, KubeRequest
 
 
 class TestKubeRequest:
@@ -11,11 +11,13 @@ class TestKubeRequest:
             {
                 "ref": "namespace/secret-name",
                 "key": "key",
+                "kind": "configmap",
             }
         )
         assert isinstance(request, KubeRequest)
         assert request.ref == "namespace/secret-name"
         assert request.key == "key"
+        assert request.kind == Kind.ConfigMap
         assert request.namespace == "namespace"
         assert request.name == "secret-name"
 
@@ -28,6 +30,7 @@ class TestKubeRequest:
         assert isinstance(request, KubeRequest)
         assert request.ref == "namespace/secret-name"
         assert request.key == "foo.bar_baz"
+        assert request.kind == Kind.Secret
 
     def test_invalid_names(self):
         with pytest.raises(ValidationError):

@@ -1,31 +1,36 @@
 from __future__ import annotations
 
+import enum
 from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
 
+class Kind(enum.Enum):
+    ConfigMap = enum.auto()
+    Secret = enum.auto()
+
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            value = value.lower()
+            if value in ("configmap", "configmaps"):
+                return cls.ConfigMap
+
+
 class KubeRequest(BaseModel):
-    """
-    Request to read a secret from Kubernetes.
-    """
+    """Request to read a value from Kubernetes."""
 
     ref: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9.-]+$")
-    """
-    Secret reference in the format ``namespace/secret-name``.
-    """
-
     key: str = Field(pattern=r"^[\w.-]+$")
-    """
-    Secret key to read.
-    """
+    kind: Kind = Field(Kind.Secret)
 
     @model_validator(mode="before")
     @classmethod
     def _accept_shortcut(cls, data):
         if isinstance(data, dict):
             if data.get("value"):
-                path = KubeRequestSimplified.model_validate(data)
+                path = _SimplifiedRequest.model_validate(data)
                 return path.model_dump()
         return data
 
@@ -42,9 +47,9 @@ class KubeRequest(BaseModel):
         return name
 
 
-class KubeRequestSimplified(BaseModel):
+class _SimplifiedRequest(BaseModel):
     """
-    Represents a simplified request to read a secret from Kubernetes.
+    Represents a simplified request to read a value from Kubernetes.
     """
 
     value: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9.-]+#")
@@ -62,7 +67,13 @@ class KubeRequestSimplified(BaseModel):
         return key
 
 
-class KubeSecret(BaseModel):
+class SecretV1(BaseModel):
     apiVersion: Literal["v1"]
     kind: Literal["Secret"]
+    data: dict[str, str]
+
+
+class ConfigMapV1(BaseModel):
+    apiVersion: Literal["v1"]
+    kind: Literal["ConfigMap"]
     data: dict[str, str]

@@ -12,7 +12,12 @@ from pydantic import Field, FilePath, PrivateAttr, model_validator
 
 from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Provider
-from secrets_env.providers.kubernetes.models import KubeRequest, KubeSecret
+from secrets_env.providers.kubernetes.models import (
+    ConfigMapV1,
+    Kind,
+    KubeRequest,
+    SecretV1,
+)
 from secrets_env.realms.subprocess import check_output
 from secrets_env.utils import LruDict, get_env_var
 
@@ -59,7 +64,7 @@ class KubectlProvider(Provider):
     The Kubernetes context to use. If not set, the current context will be used.
     """
 
-    _cache: dict[tuple[str, str], _T_Data | Marker] = PrivateAttr(
+    _cache: dict[tuple[Kind, str, str], _T_Data | Marker] = PrivateAttr(
         default_factory=LruDict
     )
 
@@ -71,21 +76,24 @@ class KubectlProvider(Provider):
                 values["config"] = path
         return values
 
-    def _get_secret_(self, namespace: str, name: str) -> _T_Data:
+    def _get_kv_pairs_(self, kind: Kind, namespace: str, name: str) -> _T_Data:
         if not self.kubectl:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
-        result = self._cache.get((namespace, name), Marker.NoCache)
+        call_version(self.kubectl)  # leave a sign in the log
+
+        result = self._cache.get((kind, namespace, name), Marker.NoCache)
 
         if result is Marker.NoCache:
-            result = read_secret(
+            result = read_kv_pairs(
                 kubectl=self.kubectl,
                 config=self.config,
                 context=self.context,
+                kind=kind,
                 namespace=namespace,
                 name=name,
             )
-            self._cache[namespace, name] = result
+            self._cache[kind, namespace, name] = result
 
         if result is Marker.NotFound:
             raise LookupError(f'Secret "{name}" not found in namespace "{namespace}"')
@@ -95,7 +103,7 @@ class KubectlProvider(Provider):
     def _get_value_(self, spec: Request) -> str:
         request = KubeRequest.model_validate(spec.model_dump(exclude_none=True))
 
-        secret = self._get_secret_(request.namespace, request.name)
+        secret = self._get_kv_pairs_(request.kind, request.namespace, request.name)
         if request.key not in secret:
             raise LookupError(
                 f'Key "{request.key}" not found in secret "{request.name}"'
@@ -113,6 +121,36 @@ def call_version(kubectl: Path) -> None:
         raise RuntimeError("Internal error on invoking kubectl") from None
 
 
+def read_kv_pairs(
+    *,
+    kubectl: Path,
+    config: Path | None,
+    context: str | None,
+    kind: Kind,
+    namespace: str,
+    name: str,
+) -> _T_Data | Literal[Marker.NotFound]:
+    if kind == Kind.Secret:
+        return read_secret(
+            kubectl=kubectl,
+            config=config,
+            context=context,
+            namespace=namespace,
+            name=name,
+        )
+
+    if kind == Kind.ConfigMap:
+        return read_configmap(
+            kubectl=kubectl,
+            config=config,
+            context=context,
+            namespace=namespace,
+            name=name,
+        )
+
+    raise RuntimeError(f"Unsupported kind: {kind}")
+
+
 def read_secret(
     *,
     kubectl: Path,
@@ -122,17 +160,14 @@ def read_secret(
     name: str,
 ) -> _T_Data | Literal[Marker.NotFound]:
     """Request a secret from Kubernetes using kubectl."""
-    # leave a sign in the log
-    call_version()
-
     # build command
-    cmd = [str(kubectl), "get", "secret"]
+    cmd = [str(kubectl), "get"]
     if config:
         cmd += ["--kubeconfig", str(config)]
     if context:
         cmd += ["--context", context]
 
-    cmd += ["--namespace", namespace, name, "--output", "json"]
+    cmd += ["--namespace", namespace, "secret", name, "--output", "json"]
 
     # get secret
     try:
@@ -144,11 +179,48 @@ def read_secret(
     except subprocess.CalledProcessError:
         return Marker.NotFound
 
-    secret = KubeSecret.model_validate_json(output)
+    secret = SecretV1.model_validate_json(output)
 
     # decode base64 values
     output = {}
     for key, value in secret.data.items():
         output[key] = base64.b64decode(value)
+
+    return output
+
+
+def read_configmap(
+    *,
+    kubectl: Path,
+    config: Path | None,
+    context: str | None,
+    namespace: str,
+    name: str,
+) -> _T_Data | Literal[Marker.NotFound]:
+    """Request a value from Kubernetes using kubectl."""
+    # build command
+    cmd = [str(kubectl), "get"]
+    if config:
+        cmd += ["--kubeconfig", str(config)]
+    if context:
+        cmd += ["--context", context]
+
+    cmd += ["--namespace", namespace, "configmap", name, "--output", "json"]
+
+    # get secret
+    try:
+        output = check_output(
+            cmd,
+            level_error=logging.DEBUG,
+        )
+    except subprocess.CalledProcessError:
+        return Marker.NotFound
+
+    configmap = ConfigMapV1.model_validate_json(output)
+
+    # encode values; for alignment with secrets
+    output = {}
+    for key, value in configmap.data.items():
+        output[key] = value.encode()
 
     return output

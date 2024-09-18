@@ -5,10 +5,7 @@
 Kubectl Provider
 ================
 
-Fetches Kubernetes secrets using the `kubectl`_ command.
-
-This provider communicates with Kubernetes to retrieve secrets via the ``kubectl`` command.
-Therefore, the local user must have the appropriate permissions to access secrets from the Kubernetes cluster.
+Fetches values from Kubernetes using the `kubectl`_ command.
 
 .. _kubectl: https://kubernetes.io/docs/reference/kubectl/
 
@@ -17,7 +14,8 @@ Source type
 
 .. important::
 
-   To use this provider, you must have the ``kubectl`` command installed and configured.
+   To use this provider, ensure that the ``kubectl`` command is installed and configured.
+   Additionally, the user must have the required permissions to access the requested resources.
 
 
 Configuration layout
@@ -126,7 +124,7 @@ If not provided, the current context will be used.
 Secrets section
 ---------------
 
-The configurations within the ``secrets`` section determine the resources to be read.
+The configurations within the ``secrets`` section determine the object and the field to be read.
 
 .. note::
 
@@ -135,18 +133,34 @@ The configurations within the ``secrets`` section determine the resources to be 
 ``ref`` :octicon:`bookmark`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Secret reference in the format of ``namespace/secret-name``.
+`Namespace`_ and `object name`_ in the format of ``namespace/object-name``.
+
+.. _namespace: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+.. _object name: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
 
 ``key`` :octicon:`bookmark`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Secret key to read.
+Key to read from the object.
+
+``kind``
+^^^^^^^^
+
+Specifies the kind of object to read. This field must be one of the following values, case-insensitive:
+
+- ``Secret`` (default): Read confidential values from a `Secret`_ object.
+- ``ConfigMap``: Read value from a `ConfigMap`_ object.
+
+.. _secret: https://kubernetes.io/docs/concepts/configuration/secret/
+.. _configmap: https://kubernetes.io/docs/concepts/configuration/configmap/
 
 
 Simplified layout
 -----------------
 
-This provider accepts strings in the format ``namespace/secret-name#key`` as the simplified representation:
+This provider accepts strings in the format ``namespace/secret-name#key`` as the simplified representation.
+
+On using the simplified layout, the provider only reads the secrets.
 
 .. tab-set::
 

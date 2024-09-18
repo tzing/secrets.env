@@ -43,6 +43,7 @@ class Request(BaseModel):
     field: str | list[str] | None = None
     format: str | None = None
     key: str | None = None
+    kind: str | None = None
     path: str | None = None
     ref: str | None = None
     value: str | None = None
