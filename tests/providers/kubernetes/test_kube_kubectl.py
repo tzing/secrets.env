@@ -13,8 +13,10 @@ from secrets_env.providers.kubernetes.kubectl import (
     Marker,
     call_version,
     read_configmap,
+    read_kv_pairs,
     read_secret,
 )
+from secrets_env.providers.kubernetes.models import Kind
 
 
 @pytest.fixture
@@ -69,6 +71,7 @@ class TestKubectlProvider:
 
     @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
     def test__get_kv_pairs_(self, monkeypatch: pytest.MonkeyPatch):
+        # setup mock functions
         def _mock_read_secret(*, kubectl, config, context, namespace, name):
             assert namespace == "default"
             assert name == "test"
@@ -79,10 +82,31 @@ class TestKubectlProvider:
             "secrets_env.providers.kubernetes.kubectl.read_secret", mock_read_secret
         )
 
-        provider = KubectlProvider()
-        assert provider._get_kv_pairs_("default", "test") == {"key": b"bar"}
-        assert provider._get_kv_pairs_("default", "test") == {"key": b"bar"}
+        def _mock_read_configmap(*, kubectl, config, context, namespace, name):
+            assert namespace == "default"
+            assert name == "test"
+            return {"key": b"qux"}
 
+        monkeypatch.setattr(
+            "secrets_env.providers.kubernetes.kubectl.read_configmap",
+            _mock_read_configmap,
+        )
+
+        # run
+        provider = KubectlProvider()
+
+        assert provider._get_kv_pairs_(Kind.Secret, "default", "test") == {
+            "key": b"bar"
+        }
+        assert provider._get_kv_pairs_(Kind.Secret, "default", "test") == {
+            "key": b"bar"
+        }
+
+        assert provider._get_kv_pairs_(Kind.ConfigMap, "default", "test") == {
+            "key": b"qux"
+        }
+
+        # assert calls; the second call should be cached
         assert mock_read_secret.call_count == 1
 
     @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
@@ -94,7 +118,7 @@ class TestKubectlProvider:
 
         provider = KubectlProvider()
         with pytest.raises(LookupError):
-            provider._get_kv_pairs_("default", "test")
+            provider._get_kv_pairs_(Kind.Secret, "default", "test")
 
     def test__get_kv_pairs_unsupported(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", Mock(return_value=None))
@@ -103,11 +127,12 @@ class TestKubectlProvider:
         assert isinstance(provider, KubectlProvider)
 
         with pytest.raises(UnsupportedError):
-            provider._get_kv_pairs_("default", "test")
+            provider._get_kv_pairs_(Mock(Kind), "default", "test")
 
     @pytest.mark.usefixtures("_patch_kubectl_path")
     def test__get_value_(self, monkeypatch: pytest.MonkeyPatch):
-        def _mock_get_secret(namespace: str, name: str):
+        def _mock_get_secret(kind: Kind, namespace: str, name: str):
+            assert kind == Kind.Secret
             assert namespace == "default"
             assert name == "test"
             return {"foo": b"bar"}
@@ -155,6 +180,19 @@ class TestCallVersion:
         with caplog.at_level(logging.DEBUG):
             call_version(shutil.which("kubectl"))
         assert "Client Version:" in caplog.text
+
+
+class TestReadKvPairs:
+    def test_unknown(self):
+        with pytest.raises(RuntimeError):
+            read_kv_pairs(
+                kubectl=Path("/usr/bin/kubectl"),
+                config=None,
+                context=None,
+                kind=Mock(Kind),
+                namespace="default",
+                name="test",
+            )
 
 
 class TestReadSecret:
