@@ -22,19 +22,8 @@ class KubeRequest(BaseModel):
     """Request to read a value from Kubernetes."""
 
     ref: str = Field(pattern=r"^[a-z0-9-]+/[a-z0-9.-]+$")
-    """
-    Resource name in the format ``namespace/secret-name``.
-    """
-
     key: str = Field(pattern=r"^[\w.-]+$")
-    """
-    Secret key or config key to read.
-    """
-
     kind: Kind = Field(Kind.Secret)
-    """
-    Kind of the Kubernetes resource to reqest data from. Default to Secret.
-    """
 
     @model_validator(mode="before")
     @classmethod
