@@ -71,7 +71,7 @@ class KubectlProvider(Provider):
                 values["config"] = path
         return values
 
-    def _get_secret_(self, namespace: str, name: str) -> _T_Data:
+    def _get_kv_pairs_(self, namespace: str, name: str) -> _T_Data:
         if not self.kubectl:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
@@ -97,7 +97,7 @@ class KubectlProvider(Provider):
     def _get_value_(self, spec: Request) -> str:
         request = KubeRequest.model_validate(spec.model_dump(exclude_none=True))
 
-        secret = self._get_secret_(request.namespace, request.name)
+        secret = self._get_kv_pairs_(request.namespace, request.name)
         if request.key not in secret:
             raise LookupError(
                 f'Key "{request.key}" not found in secret "{request.name}"'

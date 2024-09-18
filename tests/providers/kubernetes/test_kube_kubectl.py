@@ -68,7 +68,7 @@ class TestKubectlProvider:
         assert provider.context is None
 
     @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
-    def test__get_secret_(self, monkeypatch: pytest.MonkeyPatch):
+    def test__get_kv_pairs_(self, monkeypatch: pytest.MonkeyPatch):
         def _mock_read_secret(*, kubectl, config, context, namespace, name):
             assert namespace == "default"
             assert name == "test"
@@ -80,13 +80,13 @@ class TestKubectlProvider:
         )
 
         provider = KubectlProvider()
-        assert provider._get_secret_("default", "test") == {"key": b"bar"}
-        assert provider._get_secret_("default", "test") == {"key": b"bar"}
+        assert provider._get_kv_pairs_("default", "test") == {"key": b"bar"}
+        assert provider._get_kv_pairs_("default", "test") == {"key": b"bar"}
 
         assert mock_read_secret.call_count == 1
 
     @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
-    def test__get_secret_notfound(self, monkeypatch: pytest.MonkeyPatch):
+    def test__get_kv_pairs_notfound(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.kubernetes.kubectl.read_secret",
             Mock(return_value=Marker.NotFound),
@@ -94,16 +94,16 @@ class TestKubectlProvider:
 
         provider = KubectlProvider()
         with pytest.raises(LookupError):
-            provider._get_secret_("default", "test")
+            provider._get_kv_pairs_("default", "test")
 
-    def test__get_secret_unsupported(self, monkeypatch: pytest.MonkeyPatch):
+    def test__get_kv_pairs_unsupported(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", Mock(return_value=None))
 
         provider = KubectlProvider()
         assert isinstance(provider, KubectlProvider)
 
         with pytest.raises(UnsupportedError):
-            provider._get_secret_("default", "test")
+            provider._get_kv_pairs_("default", "test")
 
     @pytest.mark.usefixtures("_patch_kubectl_path")
     def test__get_value_(self, monkeypatch: pytest.MonkeyPatch):
@@ -113,7 +113,7 @@ class TestKubectlProvider:
             return {"foo": b"bar"}
 
         provider = KubectlProvider()
-        monkeypatch.setattr(provider, "_get_secret_", _mock_get_secret)
+        monkeypatch.setattr(provider, "_get_kv_pairs_", _mock_get_secret)
 
         request = Request(name="test", ref="default/test", key="foo")
         assert provider._get_value_(request) == "bar"
