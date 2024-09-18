@@ -125,13 +125,13 @@ def read_secret(
 ) -> _T_Data | Literal[Marker.NotFound]:
     """Request a secret from Kubernetes using kubectl."""
     # build command
-    cmd = [str(kubectl), "get", "secret"]
+    cmd = [str(kubectl), "get"]
     if config:
         cmd += ["--kubeconfig", str(config)]
     if context:
         cmd += ["--context", context]
 
-    cmd += ["--namespace", namespace, name, "--output", "json"]
+    cmd += ["--namespace", namespace, "secret", name, "--output", "json"]
 
     # get secret
     try:
@@ -149,5 +149,42 @@ def read_secret(
     output = {}
     for key, value in secret.data.items():
         output[key] = base64.b64decode(value)
+
+    return output
+
+
+def read_configmap(
+    *,
+    kubectl: Path,
+    config: Path | None,
+    context: str | None,
+    namespace: str,
+    name: str,
+) -> _T_Data | Literal[Marker.NotFound]:
+    """Request a value from Kubernetes using kubectl."""
+    # build command
+    cmd = [str(kubectl), "get"]
+    if config:
+        cmd += ["--kubeconfig", str(config)]
+    if context:
+        cmd += ["--context", context]
+
+    cmd += ["--namespace", namespace, "configmap", name, "--output", "json"]
+
+    # get secret
+    try:
+        output = check_output(
+            cmd,
+            level_error=logging.DEBUG,
+        )
+    except subprocess.CalledProcessError:
+        return Marker.NotFound
+
+    configmap = ConfigMapV1.model_validate_json(output)
+
+    # encode values; for alignment with secrets
+    output = {}
+    for key, value in configmap.data.items():
+        output[key] = value.encode()
 
     return output

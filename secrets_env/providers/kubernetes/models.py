@@ -82,3 +82,9 @@ class SecretV1(BaseModel):
     apiVersion: Literal["v1"]
     kind: Literal["Secret"]
     data: dict[str, str]
+
+
+class ConfigMapV1(BaseModel):
+    apiVersion: Literal["v1"]
+    kind: Literal["ConfigMap"]
+    data: dict[str, str]

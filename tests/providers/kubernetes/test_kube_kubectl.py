@@ -12,6 +12,7 @@ from secrets_env.providers.kubernetes.kubectl import (
     KubectlProvider,
     Marker,
     call_version,
+    read_configmap,
     read_secret,
 )
 
@@ -181,7 +182,7 @@ class TestReadSecret:
             config=Path("/root/.kube/config"),
             context="minikube",
             namespace="default",
-            name="secret",
+            name="demo-secret",
         )
 
         assert result == {"key": b"bar"}
@@ -189,7 +190,6 @@ class TestReadSecret:
             [
                 "/usr/bin/kubectl",
                 "get",
-                "secret",
                 "--kubeconfig",
                 "/root/.kube/config",
                 "--context",
@@ -197,6 +197,7 @@ class TestReadSecret:
                 "--namespace",
                 "default",
                 "secret",
+                "demo-secret",
                 "--output",
                 "json",
             ],
@@ -210,7 +211,7 @@ class TestReadSecret:
             config=None,
             context=None,
             namespace="default",
-            name="secret",
+            name="demo-secret",
         )
 
         assert result == {"key": b"bar"}
@@ -218,10 +219,10 @@ class TestReadSecret:
             [
                 "/usr/bin/kubectl",
                 "get",
-                "secret",
                 "--namespace",
                 "default",
                 "secret",
+                "demo-secret",
                 "--output",
                 "json",
             ],
@@ -240,3 +241,75 @@ class TestReadSecret:
             name="secret",
         )
         assert result == Marker.NotFound
+
+
+class TestReadConfigMap:
+    @pytest.fixture
+    def mock_check_output(self, monkeypatch: pytest.MonkeyPatch):
+        mock = Mock(
+            return_value="""
+            {
+                "apiVersion": "v1",
+                "kind": "ConfigMap",
+                "data": {
+                    "key": "bar"
+                }
+            }
+            """
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.kubernetes.kubectl.check_output", mock
+        )
+        return mock
+
+    def test_1(self, mock_check_output: Mock):
+        result = read_configmap(
+            kubectl=Path("/usr/bin/kubectl"),
+            config=Path("/root/.kube/config"),
+            context="minikube",
+            namespace="default",
+            name="demo-config",
+        )
+
+        assert result == {"key": b"bar"}
+        mock_check_output.assert_called_once_with(
+            [
+                "/usr/bin/kubectl",
+                "get",
+                "--kubeconfig",
+                "/root/.kube/config",
+                "--context",
+                "minikube",
+                "--namespace",
+                "default",
+                "configmap",
+                "demo-config",
+                "--output",
+                "json",
+            ],
+            level_error=logging.DEBUG,
+        )
+
+    def test_2(self, mock_check_output: Mock):
+        result = read_configmap(
+            kubectl=Path("/usr/bin/kubectl"),
+            config=None,
+            context=None,
+            namespace="default",
+            name="demo-config",
+        )
+
+        assert result == {"key": b"bar"}
+        mock_check_output.assert_called_once_with(
+            [
+                "/usr/bin/kubectl",
+                "get",
+                "--namespace",
+                "default",
+                "configmap",
+                "demo-config",
+                "--output",
+                "json",
+            ],
+            level_error=logging.DEBUG,
+        )
