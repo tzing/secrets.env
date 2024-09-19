@@ -1,4 +1,22 @@
-from secrets_env.providers.onepassword.models import ItemObject
+import pytest
+from pydantic import ValidationError
+
+from secrets_env.providers.onepassword.models import ItemObject, from_op_ref
+
+
+class TestFromOpRef:
+    def test_success(self):
+        obj = from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample/username")
+        assert obj.ref == "Sample"
+        assert obj.field == "username"
+
+    def test_invalid_scheme(self):
+        with pytest.raises(ValueError, match="Invalid scheme"):
+            from_op_ref("http://example.com/Sample/username")
+
+    def test_invalid_path(self):
+        with pytest.raises(ValueError, match="Invalid path"):
+            from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample")
 
 
 class TestItemObject:
@@ -90,7 +108,6 @@ class TestItemObject:
         {
             "id": "7h6ve2bxkrs6fu3w25ksebyvpe",
             "title": "Sample",
-            "tags": [],
             "version": 1,
             "vault": {
                 "id": "msocsrixjtzumtrn3wmkgro7vu",
