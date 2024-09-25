@@ -4,7 +4,7 @@ import datetime
 import re
 from typing import Literal
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field, SecretStr
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 
 class OpRequest(BaseModel):
@@ -15,13 +15,20 @@ class OpRequest(BaseModel):
     ref: str
     field: str
 
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_op_ref(cls, values):
+        if isinstance(values, dict) and (shortcut := values.get("value")):
+            return from_op_ref(shortcut)
+        return values
+
     @property
     def is_uuid(self) -> bool:
         m = re.match(r"^[a-z2-7]{26}$", self.ref)
         return bool(m)
 
 
-def from_op_ref(ref: str) -> OpRequest:
+def from_op_ref(ref: str) -> dict:
     u = AnyUrl(ref)
     if not u.scheme == "op":
         raise ValueError(f"Invalid scheme '{u.scheme}'")
@@ -32,7 +39,10 @@ def from_op_ref(ref: str) -> OpRequest:
         raise ValueError(f"Invalid path '{u.path}'")
 
     _, ref, field = parts
-    return OpRequest(ref=ref, field=field)
+    return {
+        "ref": ref,
+        "field": field,
+    }
 
 
 class ItemObject(BaseModel):

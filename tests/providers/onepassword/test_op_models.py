@@ -1,14 +1,30 @@
 import pytest
 from pydantic import ValidationError
 
-from secrets_env.providers.onepassword.models import ItemObject, from_op_ref
+from secrets_env.providers.onepassword.models import ItemObject, OpRequest, from_op_ref
+
+
+class TestOpRequest:
+    def test(self):
+        request = OpRequest.model_validate(
+            {"ref": "7h6ve2bxkrs6fu3w25ksebyvpe", "field": "test"}
+        )
+        assert request.ref == "7h6ve2bxkrs6fu3w25ksebyvpe"
+        assert request.field == "test"
+
+    def test_op_ref(self):
+        request = OpRequest.model_validate(
+            {"value": "op://msocsrixjtzumtrn3wmkgro7vu/Sample/username"}
+        )
+        assert request.ref == "Sample"
+        assert request.field == "username"
 
 
 class TestFromOpRef:
     def test_success(self):
-        obj = from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample/username")
-        assert obj.ref == "Sample"
-        assert obj.field == "username"
+        data = from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample/username")
+        assert data["ref"] == "Sample"
+        assert data["field"] == "username"
 
     def test_invalid_scheme(self):
         with pytest.raises(ValueError, match="Invalid scheme"):
