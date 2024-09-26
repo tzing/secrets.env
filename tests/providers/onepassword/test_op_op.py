@@ -52,3 +52,36 @@ class TestCallVersion:
         with caplog.at_level(logging.DEBUG):
             call_version(op_path)
         assert re.match(r"<\[stdout\] \d+\.\d+\.\d+", caplog.records[-1].message)
+
+
+class TestGetItem:
+    def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        mock_check_output = Mock(
+            return_value="""
+            {
+                "id": "2fcbqwe9ndg175zg2dzwftvkpa",
+                "title": "Secrets Automation Item",
+                "category": "LOGIN",
+                "createdAt": "2021-04-10T17:20:05.98944527Z",
+                "updatedAt": "2021-04-13T17:20:05.989445411Z"
+            }
+            """
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.onepassword.op.check_output", mock_check_output
+        )
+
+        item = get_item(op_path=Path("/usr/bin/op"), ref="sample-item")
+        assert isinstance(item, ItemObject)
+
+    def test_fail(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "secrets_env.providers.onepassword.op.check_output",
+            Mock(
+                side_effect=subprocess.CalledProcessError(
+                    1, "op", stderr="[ERROR] 2024/02/30 12:34:56 Test error\n"
+                )
+            ),
+        )
+        with pytest.raises(LookupError, match="^Test error$"):
+            get_item(op_path=Path("/usr/bin/op"), ref="sample-item")
