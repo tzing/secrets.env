@@ -7,7 +7,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from secrets_env.providers.onepassword.cli import OnePasswordCliProvider, call_version
+from secrets_env.providers.onepassword.op import (
+    OnePasswordCliProvider,
+    call_version,
+    get_item,
+)
+from secrets_env.providers.onepassword.models import ItemObject
 
 
 @pytest.fixture
@@ -25,9 +30,9 @@ class TestCallVersion:
         call_version.cache_clear()
 
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        mock_check_output = Mock(return_value=b"2.30.0")
+        mock_check_output = Mock()
         monkeypatch.setattr(
-            "secrets_env.providers.onepassword.cli.check_output", mock_check_output
+            "secrets_env.providers.onepassword.op.check_output", mock_check_output
         )
 
         call_version(Path("/usr/bin/op"))
@@ -36,7 +41,7 @@ class TestCallVersion:
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.onepassword.cli.check_output",
+            "secrets_env.providers.onepassword.op.check_output",
             Mock(side_effect=subprocess.CalledProcessError(1, "op")),
         )
 
