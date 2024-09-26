@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import re
 from typing import Literal
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, SecretStr, model_validator
@@ -21,11 +20,6 @@ class OpRequest(BaseModel):
         if isinstance(values, dict) and (shortcut := values.get("value")):
             return from_op_ref(shortcut)
         return values
-
-    @property
-    def is_uuid(self) -> bool:
-        m = re.match(r"^[a-z2-7]{26}$", self.ref)
-        return bool(m)
 
 
 def from_op_ref(ref: str) -> dict:
