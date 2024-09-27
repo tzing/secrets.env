@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import shutil
@@ -7,12 +8,13 @@ from unittest.mock import Mock
 
 import pytest
 
+from secrets_env.exceptions import UnsupportedError
+from secrets_env.providers.onepassword.models import ItemObject
 from secrets_env.providers.onepassword.op import (
     OnePasswordCliProvider,
     call_version,
     get_item,
 )
-from secrets_env.providers.onepassword.models import ItemObject
 
 
 @pytest.fixture
@@ -21,6 +23,64 @@ def op_path() -> Path:
     if path is None:
         pytest.skip("op is not installed")
     return Path(path)
+
+
+class TestOnePasswordCliProvider:
+    @pytest.fixture
+    def _patch_op_path(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", Mock(return_value="/usr/bin/op"))
+        monkeypatch.setattr("pathlib.Path.is_file", Mock(return_value=True))
+
+    @pytest.fixture
+    def _stop_call_version(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("secrets_env.providers.onepassword.op.call_version", Mock())
+
+    @pytest.mark.usefixtures("_patch_op_path", "_stop_call_version")
+    def test__get_item_(self, monkeypatch: pytest.MonkeyPatch):
+        def _mock_get_item(op_path: Path, ref: str):
+            assert op_path == Path("/usr/bin/op")
+            assert ref == "sample-item"
+
+            now = datetime.datetime.now().astimezone()
+            return ItemObject(
+                id="2fcbqwe9ndg175zg2dzwftvkpa",
+                title="Secrets Automation Item",
+                category="LOGIN",
+                createdAt=now,
+                updatedAt=now,
+            )
+
+        mock_get_item = Mock(side_effect=_mock_get_item)
+        monkeypatch.setattr(
+            "secrets_env.providers.onepassword.op.get_item", mock_get_item
+        )
+
+        provider = OnePasswordCliProvider()
+        assert isinstance(provider._get_item_("sample-item"), ItemObject)
+        assert isinstance(provider._get_item_("sample-item"), ItemObject)
+        assert mock_get_item.call_count == 1
+
+    @pytest.mark.usefixtures("_patch_op_path", "_stop_call_version")
+    def test__get_item_error(self, monkeypatch: pytest.MonkeyPatch):
+        mock_get_item = Mock(side_effect=LookupError("Test error"))
+        monkeypatch.setattr(
+            "secrets_env.providers.onepassword.op.get_item", mock_get_item
+        )
+
+        provider = OnePasswordCliProvider()
+
+        with pytest.raises(LookupError):
+            provider._get_item_("sample-item")
+        with pytest.raises(LookupError):
+            provider._get_item_("sample-item")
+
+        assert mock_get_item.call_count == 1
+
+    def test__get_item_unsupported(self):
+        kwargs = {"name": "sample", "op-path": None}
+        provider = OnePasswordCliProvider(**kwargs)
+        with pytest.raises(UnsupportedError):
+            provider._get_item_("sample-item")
 
 
 class TestCallVersion:
