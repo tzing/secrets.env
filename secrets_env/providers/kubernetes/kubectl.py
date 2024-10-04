@@ -96,7 +96,7 @@ class KubectlProvider(Provider):
             self._cache[kind, namespace, name] = result
 
         if result is Marker.NotFound:
-            raise LookupError(f'Secret "{name}" not found in namespace "{namespace}"')
+            raise LookupError(f'Failed to read {kind.name} "{name}" from kubectl')
 
         return result
 
