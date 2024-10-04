@@ -41,14 +41,12 @@ jobs:
       - name: Pytest
         run: poetry run pytest
 
-  integration:
-    name: Integretion test
+  vault:
+    name: Integretion test (Vault)
     runs-on: ubuntu-latest
-
     env:
       VAULT_ADDR: http://localhost:8200
       VAULT_TOKEN: "sample-token"
-
     services:
       vault:
         image: public.ecr.aws/hashicorp/vault:latest
@@ -57,17 +55,14 @@ jobs:
           VAULT_DEV_ROOT_TOKEN_ID: ${{ env.VAULT_TOKEN }}
         ports:
           - 8200:8200
-
     steps:
       - name: Get Vault CLI
         run: |
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
           sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
           sudo apt-get update && sudo apt-get install vault
-
       - name: Install poetry
         run: pipx install poetry
-
       - name: Setup secrets
         run: |
           vault secrets enable -path kv1 -version=1 kv
@@ -87,16 +82,12 @@ jobs:
               }
             }
           EoS
-
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: poetry
-
       - name: Install dependencies
         run: poetry install --all-extras
-
       - name: Run pytest
-        run: poetry run pytest
+        run: poetry run pytest tests/providers/vault
