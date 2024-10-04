@@ -1,7 +1,15 @@
-import pytest
-from pydantic import ValidationError
+import datetime
+from typing import cast
 
-from secrets_env.providers.onepassword.models import ItemObject, OpRequest, from_op_ref
+import pytest
+from pydantic import SecretStr
+
+from secrets_env.providers.onepassword.models import (
+    FieldObject,
+    ItemObject,
+    OpRequest,
+    from_op_ref,
+)
 
 
 class TestOpRequest:
@@ -117,6 +125,7 @@ class TestItemObject:
 
         username = obj.fields[0]
         assert username.id == "username"
+        assert username.value
         assert username.value.get_secret_value() == "wendy"
 
     def test_2(self):
@@ -177,10 +186,69 @@ class TestItemObject:
 
         username, password, note = obj.fields
         assert username.id == "username"
+        assert username.value
         assert username.value.get_secret_value() == "demo"
 
         assert password.id == "password"
+        assert password.value
         assert password.value.get_secret_value() == "P@ssw0rd"
 
         assert note.id == "notesPlain"
         assert note.value is None
+
+    @pytest.mark.parametrize(
+        ("key", "id_", "value"),
+        [
+            ("username", "username", "demo"),
+            ("bmmzqdwszku6cpq5lwq4pr6v6q", "bmmzqdwszku6cpq5lwq4pr6v6q", "t3st"),
+            ("6vl4dok5qanwlmdq7hghbtm3na", "6vl4dok5qanwlmdq7hghbtm3na", "n0te"),
+            ("NOTES", "6vl4dok5qanwlmdq7hghbtm3na", "n0te"),
+        ],
+    )
+    def test_get_field(self, key: str, id_: str, value: str):
+        now = datetime.datetime.now().astimezone()
+        item = ItemObject(
+            id="7h6ve2bxkrs6fu3w25ksebyvpe",
+            category="LOGIN",
+            title="Sample",
+            createdAt=now,
+            updatedAt=now,
+            fields=[
+                FieldObject(
+                    id="username",
+                    type="STRING",
+                    purpose="USERNAME",
+                    label="username",
+                    value=cast(SecretStr, "demo"),
+                ),
+                FieldObject(
+                    id="bmmzqdwszku6cpq5lwq4pr6v6q",
+                    type="STRING",
+                    value=cast(SecretStr, "t3st"),
+                ),
+                FieldObject(
+                    id="6vl4dok5qanwlmdq7hghbtm3na",
+                    type="STRING",
+                    label="NOTES",
+                    value=cast(SecretStr, "n0te"),
+                ),
+            ],
+        )
+
+        field = item.get_field(key)
+        assert field.id == id_
+        assert field.value
+        assert field.value.get_secret_value() == value
+
+    def test_get_field__key_error(self):
+        now = datetime.datetime.now().astimezone()
+        item = ItemObject(
+            id="7h6ve2bxkrs6fu3w25ksebyvpe",
+            category="LOGIN",
+            title="Sample",
+            createdAt=now,
+            updatedAt=now,
+        )
+
+        with pytest.raises(KeyError):
+            item.get_field("not-exist")
