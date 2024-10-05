@@ -180,7 +180,6 @@ class TestKubectlProvider:
 class TestCallVersion:
     @pytest.fixture(autouse=True)
     def _reset_cache(self):
-        yield
         call_version.cache_clear()
 
     def test_success(self, monkeypatch: pytest.MonkeyPatch):
