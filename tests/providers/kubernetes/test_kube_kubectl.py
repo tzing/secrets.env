@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -23,6 +24,13 @@ from secrets_env.providers.kubernetes.models import Kind
 def _require_kubectl():
     if shutil.which("kubectl") is None:
         pytest.skip("kubectl is not installed")
+
+
+@pytest.fixture
+def intl_provider() -> KubectlProvider:
+    if "K8S_CLUSTER" not in os.environ:
+        pytest.skip("Test Kubernetes cluster is not set")
+    return KubectlProvider()
 
 
 class TestKubectlProvider:
@@ -147,11 +155,31 @@ class TestKubectlProvider:
         with pytest.raises(LookupError):
             provider._get_value_(request)
 
+    @pytest.mark.parametrize(
+        ("requesting", "expected"),
+        [
+            (Request(name="test", ref="default/demo-secret", key="username"), "admin"),
+            (Request(name="test", value="default/demo-secret#password"), "P@ssw0rd"),
+            (
+                Request(
+                    name="test",
+                    kind="configmap",
+                    ref="default/demo-config",
+                    key="host",
+                ),
+                "localhost",
+            ),
+        ],
+    )
+    def test_integration(
+        self, intl_provider: KubectlProvider, requesting: Request, expected: str
+    ):
+        assert intl_provider(requesting) == expected
+
 
 class TestCallVersion:
     @pytest.fixture(autouse=True)
     def _reset_cache(self):
-        yield
         call_version.cache_clear()
 
     def test_success(self, monkeypatch: pytest.MonkeyPatch):

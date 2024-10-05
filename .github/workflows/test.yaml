@@ -85,3 +85,44 @@ jobs:
         run: poetry install
       - name: Run pytest
         run: poetry run pytest tests/providers/vault
+
+  minikube:
+    name: Integretion test (Minikube)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@latest
+      - name: Setup secrets
+        run: |
+          kubectl create -f - << EoS
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: demo-secret
+          data:
+            username: $(echo -n "admin" | base64)
+            password: $(echo -n "P@ssw0rd" | base64)
+          EoS
+
+          kubectl create -f - << EoS
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: demo-config
+          data:
+            host: "localhost"
+            port: "8080"
+          EoS
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Run pytest
+        env:
+          K8S_CLUSTER: minikube
+        run: poetry run pytest tests/providers/kubernetes
