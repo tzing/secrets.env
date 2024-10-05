@@ -8,7 +8,7 @@ from secrets_env.providers.onepassword.models import (
     FieldObject,
     ItemObject,
     OpRequest,
-    from_op_ref,
+    parse_secret_reference,
 )
 
 
@@ -20,27 +20,42 @@ class TestOpRequest:
         assert request.ref == "7h6ve2bxkrs6fu3w25ksebyvpe"
         assert request.field == "test"
 
-    def test_op_ref(self):
+    def test_op_ref_1(self):
         request = OpRequest.model_validate(
             {"value": "op://msocsrixjtzumtrn3wmkgro7vu/Sample/username"}
         )
         assert request.ref == "Sample"
         assert request.field == "username"
 
+    def test_op_ref_2(self):
+        request = OpRequest.model_validate(
+            {"ref": "op://msocsrixjtzumtrn3wmkgro7vu/Sample/Dummy/username"}
+        )
+        assert request.ref == "Sample"
+        assert request.field == "username"
 
-class TestFromOpRef:
-    def test_success(self):
-        data = from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample/username")
+
+class TestParseSecretReference:
+    def test_success_1(self):
+        data = parse_secret_reference("op://Private/Sample/username")
         assert data["ref"] == "Sample"
         assert data["field"] == "username"
 
+    def test_success_2(self):
+        data = parse_secret_reference("OP://Private/Sample/section/Notes")
+        assert data["ref"] == "Sample"
+        assert data["field"] == "Notes"
+
     def test_invalid_scheme(self):
-        with pytest.raises(ValueError, match="Invalid scheme"):
-            from_op_ref("http://example.com/Sample/username")
+        with pytest.raises(ValueError, match="URL scheme should be 'op'"):
+            parse_secret_reference("http://example.com/Sample/username")
 
     def test_invalid_path(self):
-        with pytest.raises(ValueError, match="Invalid path"):
-            from_op_ref("op://msocsrixjtzumtrn3wmkgro7vu/Sample")
+        with pytest.raises(
+            ValueError,
+            match="URL path should be in the format of '/item/section/field'",
+        ):
+            parse_secret_reference("op://msocsrixjtzumtrn3wmkgro7vu/Sample")
 
 
 class TestItemObject:

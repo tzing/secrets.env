@@ -1,9 +1,24 @@
 from __future__ import annotations
 
 import datetime  # noqa: TCH003
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    UrlConstraints,
+    ValidationError,
+    model_validator,
+    validate_call,
+)
+
+SecretReference = Annotated[
+    AnyUrl,
+    UrlConstraints(allowed_schemes=["op"]),
+]
 
 
 class OpRequest(BaseModel):
@@ -16,25 +31,42 @@ class OpRequest(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _accept_op_ref(cls, values):
-        if isinstance(values, dict) and (shortcut := values.get("value")):
-            return from_op_ref(shortcut)
+    def _accept_secret_ref(cls, values):
+        if isinstance(values, dict):
+            # shortcut: accept secret reference as a single value
+            if shortcut := values.get("value"):
+                return parse_secret_reference(shortcut)
+
+            # attempt: accept secret reference in `ref` field
+            if ref := values.get("ref"):
+                try:
+                    return parse_secret_reference(ref)
+                except ValidationError:
+                    pass
+
         return values
 
 
-def from_op_ref(ref: str) -> dict:
-    u = AnyUrl(ref)
-    if not u.scheme == "op":
-        raise ValueError(f"Invalid scheme '{u.scheme}'")
+@validate_call
+def parse_secret_reference(u: SecretReference) -> dict[str, str]:
+    """
+    Parse a secret reference string.
 
+    Ref:
+    https://developer.1password.com/docs/cli/secret-reference-syntax/
+    """
     path = u.path or "/"
-    parts = path.split("/", maxsplit=2)
-    if len(parts) < 3:
-        raise ValueError(f"Invalid path '{u.path}'")
+    parts = path.split("/")
 
-    _, ref, field = parts
+    if len(parts) == 3:
+        _, item, field = parts
+    elif len(parts) == 4:
+        _, item, section, field = parts
+    else:
+        raise ValueError("URL path should be in the format of '/item/section/field'")
+
     return {
-        "ref": ref,
+        "ref": item,
         "field": field,
     }
 
