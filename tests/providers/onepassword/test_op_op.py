@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from secrets_env.exceptions import UnsupportedError
+from secrets_env.provider import Request
 from secrets_env.providers.onepassword.models import ItemObject
 from secrets_env.providers.onepassword.op import (
     OnePasswordCliProvider,
@@ -26,17 +27,21 @@ def op_path() -> Path:
 
 
 class TestOnePasswordCliProvider:
+
     @pytest.fixture
-    def _patch_op_path(self, monkeypatch: pytest.MonkeyPatch):
+    def provider(self, monkeypatch: pytest.MonkeyPatch) -> OnePasswordCliProvider:
         monkeypatch.setattr("shutil.which", Mock(return_value="/usr/bin/op"))
         monkeypatch.setattr("pathlib.Path.is_file", Mock(return_value=True))
+        return OnePasswordCliProvider()
 
     @pytest.fixture
     def _stop_call_version(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("secrets_env.providers.onepassword.op.call_version", Mock())
 
-    @pytest.mark.usefixtures("_patch_op_path", "_stop_call_version")
-    def test__get_item_(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.usefixtures("_stop_call_version")
+    def test__get_item_(
+        self, monkeypatch: pytest.MonkeyPatch, provider: OnePasswordCliProvider
+    ):
         def _mock_get_item(op_path: Path, ref: str):
             assert op_path == Path("/usr/bin/op")
             assert ref == "sample-item"
@@ -55,19 +60,18 @@ class TestOnePasswordCliProvider:
             "secrets_env.providers.onepassword.op.get_item", mock_get_item
         )
 
-        provider = OnePasswordCliProvider()
         assert isinstance(provider._get_item_("sample-item"), ItemObject)
         assert isinstance(provider._get_item_("sample-item"), ItemObject)
         assert mock_get_item.call_count == 1
 
-    @pytest.mark.usefixtures("_patch_op_path", "_stop_call_version")
-    def test__get_item_error(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.usefixtures("_stop_call_version")
+    def test__get_item_error(
+        self, monkeypatch: pytest.MonkeyPatch, provider: OnePasswordCliProvider
+    ):
         mock_get_item = Mock(side_effect=LookupError("Test error"))
         monkeypatch.setattr(
             "secrets_env.providers.onepassword.op.get_item", mock_get_item
         )
-
-        provider = OnePasswordCliProvider()
 
         with pytest.raises(LookupError):
             provider._get_item_("sample-item")
@@ -81,6 +85,51 @@ class TestOnePasswordCliProvider:
         provider = OnePasswordCliProvider(**kwargs)
         with pytest.raises(UnsupportedError):
             provider._get_item_("sample-item")
+
+    def test__get_value_(
+        self, monkeypatch: pytest.MonkeyPatch, provider: OnePasswordCliProvider
+    ):
+        def _mock__get_item_(ref: str):
+            assert ref == "7h6ve2bxkrs6fu3w25ksebyvpe"
+            return ItemObject.model_validate(
+                {
+                    "id": "7h6ve2bxkrs6fu3w25ksebyvpe",
+                    "category": "LOGIN",
+                    "title": "Sample",
+                    "createdAt": "2024-10-05T04:03:02.000000001Z",
+                    "updatedAt": "2024-10-05T04:03:02.000000001Z",
+                    "fields": [
+                        {
+                            "id": "username",
+                            "type": "STRING",
+                            "purpose": "USERNAME",
+                            "label": "username",
+                            "value": "demo",
+                        },
+                        {
+                            "id": "6vl4dok5qanwlmdq7hghbtm3na",
+                            "type": "STRING",
+                            "label": "NOTES",
+                        },
+                    ],
+                }
+            )
+
+        monkeypatch.setattr(provider, "_get_item_", _mock__get_item_)
+
+        # success
+        assert (
+            provider(
+                Request(name="test", ref="7h6ve2bxkrs6fu3w25ksebyvpe", field="username")
+            )
+            == "demo"
+        )
+
+        # fail
+        with pytest.raises(LookupError, match='Field "notes" has no value'):
+            provider._get_value_(
+                Request(name="test", ref="7h6ve2bxkrs6fu3w25ksebyvpe", field="notes")
+            )
 
 
 class TestCallVersion:

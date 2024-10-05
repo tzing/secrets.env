@@ -11,7 +11,7 @@ from pydantic import Field, FilePath, PrivateAttr
 
 from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Provider, Request
-from secrets_env.providers.onepassword.models import ItemObject
+from secrets_env.providers.onepassword.models import ItemObject, OpRequest
 from secrets_env.realms.subprocess import check_output
 from secrets_env.utils import LruDict
 
@@ -61,7 +61,14 @@ class OnePasswordCliProvider(Provider):
         return result
 
     def _get_value_(self, spec: Request) -> str:
-        raise NotImplementedError
+        request = OpRequest.model_validate(spec.model_dump(exclude_none=True))
+        item = self._get_item_(request.ref)
+        field = item.get_field(request.field)
+
+        if field.value is None:
+            raise LookupError(f'Field "{request.field}" has no value')
+
+        return field.value.get_secret_value()
 
 
 @functools.lru_cache(1)
