@@ -250,5 +250,5 @@ class TestItemObject:
             updatedAt=now,
         )
 
-        with pytest.raises(KeyError):
+        with pytest.raises(LookupError):
             item.get_field("not-exist")

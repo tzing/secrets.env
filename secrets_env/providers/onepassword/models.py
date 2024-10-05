@@ -79,7 +79,7 @@ class ItemObject(BaseModel):
         if field := match_attr("label"):
             return field
 
-        raise KeyError(f'Item {self.title} ({self.id}) has no field "{name}"')
+        raise LookupError(f'Item {self.title} ({self.id}) has no field "{name}"')
 
 
 class FieldObject(BaseModel):
