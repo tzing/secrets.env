@@ -94,7 +94,7 @@ jobs:
         uses: medyagh/setup-minikube@latest
       - name: Setup secrets
         run: |
-          kube create -f - << EoS
+          kubectl create -f - << EoS
           apiVersion: v1
           kind: Secret
           metadata:
@@ -104,7 +104,7 @@ jobs:
             password: $(echo -n "P@ssw0rd" | base64)
           EoS
 
-          kube create -f - << EoS
+          kubectl create -f - << EoS
           apiVersion: v1
           kind: ConfigMap
           metadata:
