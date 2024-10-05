@@ -12,6 +12,11 @@ from secrets_env.providers.vault import VaultKvProvider
 
 
 class TestGetProvider:
+    def test_op(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", Mock(return_value=True))
+        provider = get_provider({"type": "1password:op", "op-path": "/usr/bin/op"})
+        assert provider.type == "1password-cli"
+
     def test_debug(self):
         provider = get_provider({"type": "debug", "value": "test"})
         assert isinstance(provider, DebugProvider)
