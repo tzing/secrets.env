@@ -101,7 +101,7 @@ jobs:
             name: demo-secret
           data:
             username: $(echo -n "admin" | base64)
-            password: $(echo -n "P@ssword" | base64)
+            password: $(echo -n "P@ssw0rd" | base64)
           EoS
 
           kube create -f - << EoS
@@ -123,4 +123,6 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Run pytest
+        env:
+          K8S_CLUSTER: minikube
         run: poetry run pytest tests/providers/kubernetes
