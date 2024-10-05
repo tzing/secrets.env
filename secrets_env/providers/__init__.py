@@ -35,6 +35,9 @@ def get_provider(config: dict) -> Provider:
     itype = type_.lower()
 
     # fmt: off
+    if itype == "1password:op":
+        from secrets_env.providers.onepassword.op import OnePasswordCliProvider
+        return OnePasswordCliProvider.model_validate(config)
     if itype == "debug":
         from secrets_env.providers.debug import DebugProvider
         return DebugProvider.model_validate(config)

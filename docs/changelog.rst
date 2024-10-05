@@ -8,6 +8,7 @@ Enhancements
 ++++++++++++
 
 * Add experimental support for :doc:`provider/kubectl`.
+* Add experimental support for :doc:`provider/op`.
 
 
 1.0.3
