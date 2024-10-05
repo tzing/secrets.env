@@ -10,3 +10,4 @@ They are not considered stable and may experience breaking changes in the future
    :maxdepth: 1
 
    kubectl
+   op
