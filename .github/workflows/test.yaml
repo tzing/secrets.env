@@ -36,6 +36,25 @@ jobs:
       - name: Pytest
         run: poetry run pytest
 
+  unit-nogil:
+    name: Unit test (without GIL)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get free-threaded Python
+        run: |
+          sudo add-apt-repository ppa:deadsnakes
+          sudo apt-get update
+          sudo apt-get install python3.13-nogil
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          poetry env use $(which python3.13t)
+          poetry install --all-extras
+      - name: PyTest
+        run: poetry run pytest
+
   vault:
     name: Integretion test (Vault)
     runs-on: ubuntu-latest
