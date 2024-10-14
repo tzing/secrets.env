@@ -195,7 +195,7 @@ def try_get_app_config(app: str) -> TeleportConnectionParameter | None:
     expiration check. Therefore we need to check it by ourself.
     """
     logger.debug("Try to get config directly")
-    param = call_app_config(app)
+    param = call_app_config(app, False)
     if not param:
         # not login yet / teleport detect expired
         return
@@ -240,10 +240,25 @@ class TshAppConfigResponse(BaseModel):
         return path
 
 
-def call_app_config(app: str) -> TeleportConnectionParameter | None:
+def call_app_config(
+    app: str, report_error: bool = True
+) -> TeleportConnectionParameter | None:
+    # lowlight error message when `report_error` is False
+    level_error = logging.ERROR
+    if not report_error:
+        level_error = logging.DEBUG
+
+    # get app config
     try:
         stdout = check_output(
-            [TELEPORT_APP_NAME, "app", "config", "--format=json", app],
+            [
+                TELEPORT_APP_NAME,
+                "app",
+                "config",
+                "--format=json",
+                app,
+            ],
+            level_error=level_error,
         )
     except subprocess.CalledProcessError:
         return
