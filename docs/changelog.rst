@@ -7,6 +7,7 @@ Unreleased
 Enhancements
 ++++++++++++
 
+* Suppress error messages during the internal trial run of the :doc:`provider/teleport` to prevent user confusion.
 * Add experimental support for :doc:`provider/kubectl`.
 * Add experimental support for :doc:`provider/op`.
 

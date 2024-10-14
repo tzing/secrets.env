@@ -266,13 +266,14 @@ class TestTryGetAppConfig:
         conn_param.is_cert_valid.return_value = True
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_app_config",
-            lambda _: conn_param,
+            lambda n, f: conn_param,
         )
         assert try_get_app_config("test") == conn_param
 
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "secrets_env.providers.teleport.config.call_app_config", lambda _: None
+            "secrets_env.providers.teleport.config.call_app_config",
+            lambda n, f: None,
         )
         assert try_get_app_config("test") is None
 
@@ -281,7 +282,7 @@ class TestTryGetAppConfig:
         conn_param.is_cert_valid.return_value = False
         monkeypatch.setattr(
             "secrets_env.providers.teleport.config.call_app_config",
-            lambda _: conn_param,
+            lambda n, f: conn_param,
         )
         assert try_get_app_config("test") is None
 
