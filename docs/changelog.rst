@@ -1,13 +1,19 @@
 Changelog
 ---------
 
-Unreleased
-==========
+1.0.4
+=====
+
+:Date: 2024-10-14
 
 Enhancements
 ++++++++++++
 
 * Suppress error messages during the internal trial run of the :doc:`provider/teleport` to prevent user confusion.
+
+Experimental Features
++++++++++++++++++++++
+
 * Add experimental support for :doc:`provider/kubectl`.
 * Add experimental support for :doc:`provider/op`.
 
