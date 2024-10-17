@@ -81,7 +81,7 @@ class TestOnePasswordCliProvider:
         assert mock_get_item.call_count == 1
 
     def test__get_item_unsupported(self):
-        kwargs = {"name": "sample", "op-path": None}
+        kwargs = {"name": "sample", "path": None}
         provider = OnePasswordCliProvider(**kwargs)
         with pytest.raises(UnsupportedError):
             provider._get_item_("sample-item")
