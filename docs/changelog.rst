@@ -4,6 +4,11 @@ Changelog
 Unreleased
 ==========
 
+Enhancements
+++++++++++++
+
+* Support Python 3.13.
+
 Fixes
 +++++
 
