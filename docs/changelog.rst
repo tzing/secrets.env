@@ -14,6 +14,11 @@ Fixes
 
 * Resolved the issue where trailing backslashes could disrupt the output format in Poetry.
 
+Experimental Features
++++++++++++++++++++++
+
+* Tweak the argument for :doc:`provider/kubectl` and :doc:`provider/op`.
+
 1.0.4
 =====
 

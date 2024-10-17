@@ -32,8 +32,7 @@ class OnePasswordCliProvider(Provider):
 
     type = "1password-cli"
 
-    op_path: FilePath | None = Field(
-        alias="op-path",
+    path: FilePath | None = Field(
         default_factory=lambda: shutil.which("op"),
         validate_default=True,
     )
@@ -41,16 +40,16 @@ class OnePasswordCliProvider(Provider):
     _cache: dict[str, ItemObject | LookupError] = PrivateAttr(default_factory=LruDict)
 
     def _get_item_(self, ref: str) -> ItemObject:
-        if not self.op_path:
+        if not self.path:
             raise UnsupportedError("op command is not installed or accessible")
 
-        call_version(self.op_path)  # log version on first call
+        call_version(self.path)  # log version on first call
 
         result = self._cache.get(ref)
 
         if result is None:
             try:
-                result = get_item(self.op_path, ref)
+                result = get_item(self.path, ref)
             except LookupError as e:
                 result = e
             self._cache[ref] = result

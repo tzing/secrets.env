@@ -98,8 +98,8 @@ Source section
 
    All source configuration are optional.
 
-``op-path``
-^^^^^^^^^^^
+``path``
+^^^^^^^^
 
 Defines the path to the ``op`` command. By default, the system path is used.
 
