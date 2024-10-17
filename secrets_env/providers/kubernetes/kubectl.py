@@ -46,7 +46,7 @@ class KubectlProvider(Provider):
 
     type = "kubectl"
 
-    kubectl: FilePath | None = Field(
+    path: FilePath | None = Field(
         default_factory=lambda: shutil.which("kubectl"),
         validate_default=True,
     )
@@ -77,16 +77,16 @@ class KubectlProvider(Provider):
         return values
 
     def _get_kv_pairs_(self, kind: Kind, namespace: str, name: str) -> _T_Data:
-        if not self.kubectl:
+        if not self.path:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
-        call_version(self.kubectl)  # leave a sign in the log
+        call_version(self.path)  # leave a sign in the log
 
         result = self._cache.get((kind, namespace, name), Marker.NoCache)
 
         if result is Marker.NoCache:
             result = read_kv_pairs(
-                kubectl=self.kubectl,
+                kubectl=self.path,
                 config=self.config,
                 context=self.context,
                 kind=kind,
