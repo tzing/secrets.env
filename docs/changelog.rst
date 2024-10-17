@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+Unreleased
+==========
+
+Fixes
++++++
+
+* Resolved the issue where trailing backslashes could disrupt the output format in Poetry.
+
 1.0.4
 =====
 
