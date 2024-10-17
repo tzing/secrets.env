@@ -274,6 +274,20 @@ class TestSetupOutput:
 
         assert buffer.getvalue() == expected
 
+    @pytest.mark.usefixtures("_reset_logging")
+    def test_escape(self):
+        # observed an issue that the trailing backslash make the color tag escaped
+        buffer = io.StringIO()
+        output = cleo.io.outputs.stream_output.StreamOutput(
+            buffer, Verbosity.DEBUG, True
+        )
+
+        setup_output(output)
+        logger = logging.getLogger("secrets_env.test")
+        logger.error("test backslash \\")
+
+        assert buffer.getvalue() == (f"{self.BRED}test backslash \\{self.BDEFAULT}\n")
+
     @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.ERROR])
     @pytest.mark.usefixtures("_reset_logging")
     def test_no_color(self, level: int):
