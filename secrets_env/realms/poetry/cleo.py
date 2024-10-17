@@ -91,6 +91,12 @@ class CleoFormatter(logging.Formatter):
         msg = msg.replace("<mark>", "<info>").replace("</mark>", "</info>")
         msg = msg.replace("<data>", "<comment>").replace("</data>", "</comment>")
 
+        # prevent trailing backslash escapes the color tag
+        if msg.endswith("\\"):
+            # `\0` will be changed to `\` by cleo
+            # https://github.com/python-poetry/cleo/blob/2.1.0/src/cleo/formatters/formatter.py#L120
+            msg = msg[:-1] + "\0"
+
         # add color
         if record.levelno == logging.ERROR:
             msg = f"<error>{msg}</error>"
