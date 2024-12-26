@@ -20,7 +20,7 @@ from typing import TypeVar, overload
 if typing.TYPE_CHECKING:
     import click
     import httpx
-    import pydantic_core
+    from pydantic import AnyUrl
 
     T = TypeVar("T")
     T_Warning = TypeVar("T_Warning", bound=Warning)
@@ -147,7 +147,7 @@ def read_keyring(key: str) -> str | None:
     return value
 
 
-def create_keyring_login_key(url: pydantic_core.Url, user: str) -> str:
+def create_keyring_login_key(url: AnyUrl, user: str) -> str:
     """Build key for storing login credentials in keyring."""
     return json.dumps({"host": url.host, "type": "login", "user": user.casefold()})
 

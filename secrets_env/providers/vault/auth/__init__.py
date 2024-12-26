@@ -8,13 +8,13 @@ import typing
 from secrets_env.providers.vault.auth.base import Auth
 
 if typing.TYPE_CHECKING:
-    from pydantic_core import Url
+    from pydantic import AnyUrl
 
 
 logger = logging.getLogger(__name__)
 
 
-def create_auth(*, url: Url, method: str, **config) -> Auth:
+def create_auth(*, url: AnyUrl, method: str, **config) -> Auth:
     """
     Factory function to create an instance of the authenticator class by the method name.
     """
