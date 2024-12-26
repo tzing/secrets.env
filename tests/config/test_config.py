@@ -95,7 +95,7 @@ class TestLoadLocalConfig:
             load_local_config(config_path)
 
         assert (
-            '➜ <mark>sources.0.value</mark> (input= <data>{"type": "debug"}</data>)'
+            '➜ <mark>sources.0.value</mark> (input= <data>{"type": "debug", "name": "debug"}</data>)'
             in caplog.text
         )
         assert (
