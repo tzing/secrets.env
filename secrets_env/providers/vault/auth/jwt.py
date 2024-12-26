@@ -9,9 +9,9 @@ from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
 
 if TYPE_CHECKING:
+    from typing import Any, Self
+
     import httpx
-    from pydantic_core import Url
-    from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class JwtAuth(Auth):
     """Role."""
 
     @classmethod
-    def create(cls, url: Url, config: dict) -> Self:
+    def create(cls, url: Any, config: dict) -> Self:
         raise NotImplementedError
 
     def login(self, client: httpx.Client) -> str:
