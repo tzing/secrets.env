@@ -33,7 +33,7 @@ class OnePasswordCliProvider(Provider):
     type = "1password-cli"
 
     path: FilePath | None = Field(
-        default_factory=lambda: shutil.which("op"),
+        default_factory=lambda: typing.cast(FilePath, shutil.which("op")),
         validate_default=True,
     )
 

@@ -1,5 +1,4 @@
 import re
-from typing import Type
 from unittest.mock import patch
 
 import httpx
@@ -161,7 +160,7 @@ class TestUserPasswordAuth:
 )
 def test_auth_methods(
     monkeypatch: pytest.MonkeyPatch,
-    method_class: Type[UserPasswordAuth],
+    method_class: type[UserPasswordAuth],
     unittest_respx: respx.MockRouter,
     login_path: str,
     login_success_response: httpx.Response,

@@ -9,7 +9,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from pydantic import BaseModel, Field, ValidationError, field_validator, validate_call
+from pydantic import BaseModel, Field, ValidationError, model_validator, validate_call
 
 from secrets_env.exceptions import AuthenticationError, NoValue, UnsupportedError
 
@@ -67,7 +67,7 @@ class Provider(BaseModel, ABC):
     Provider type name.
     """
 
-    name: str = Field(default=None, validate_default=True)
+    name: str
     """
     Provider instance name.
 
@@ -75,12 +75,12 @@ class Provider(BaseModel, ABC):
     Otherwise, it will be set to the provider type name.
     """
 
-    @field_validator("name", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def _set_default_name_(cls, value: str | None) -> str:
-        if value is None:
-            return cls.type
-        return value
+    def _set_default_name(cls, values):
+        if "name" not in values:
+            values["name"] = cls.type
+        return values
 
     @validate_call
     def __call__(self, spec: Request) -> str:

@@ -19,7 +19,7 @@ from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
 from secrets_env.utils import LruDict, get_httpx_error_reason
 
 if typing.TYPE_CHECKING:
-    from typing import Iterable, Iterator, Sequence
+    from collections.abc import Iterable, Iterator, Sequence
 
     from secrets_env.provider import Request
     from secrets_env.providers.vault.auth import Auth

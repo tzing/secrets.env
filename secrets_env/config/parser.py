@@ -10,7 +10,8 @@ from secrets_env.provider import Provider, Request
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
-    from typing import Iterator, Sequence, TypeVar
+    from collections.abc import Iterator, Sequence
+    from typing import TypeVar
 
     from pydantic import ValidationInfo
     from pydantic_core import ErrorDetails
@@ -172,7 +173,7 @@ class LocalConfig(BaseModel):
     """Data model that represents a local configuration file."""
 
     providers: dict[str | None, Provider] = Field(default_factory=dict)
-    requests: list[Request] = Field(default_factory=dict)
+    requests: list[Request] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod

@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 if typing.TYPE_CHECKING:
-    from typing import Iterable
+    from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 

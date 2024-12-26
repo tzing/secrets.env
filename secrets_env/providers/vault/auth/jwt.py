@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, ClassVar
 
-from pydantic import SecretStr  # noqa: TCH002
+from pydantic import SecretStr  # noqa: TC002
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.base import Auth
