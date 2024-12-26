@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
     import httpx
-    from pydantic_core import Url
+    from pydantic import AnyUrl
 
 
 class Auth(pydantic.BaseModel, ABC):
@@ -24,7 +24,7 @@ class Auth(pydantic.BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def create(cls, url: Url, config: dict[str, Any]) -> Self:
+    def create(cls, url: AnyUrl, config: dict[str, Any]) -> Self:
         """
         Initialize an instance of this class using the provided config data
         or internally load the secrets from the system.

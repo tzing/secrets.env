@@ -9,8 +9,7 @@ from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.jwt import JwtAuth
 
 if typing.TYPE_CHECKING:
-    from pydantic_core import Url
-    from typing_extensions import Self
+    from typing import Any, Self
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class KubernetesAuth(JwtAuth):
     request_path = "/v1/auth/kubernetes/login"
 
     @classmethod
-    def create(cls, url: Url, config: dict) -> Self:
+    def create(cls, url: Any, config: dict) -> Self:
         # get token
         try:
             with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as fd:
