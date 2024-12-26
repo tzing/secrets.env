@@ -23,6 +23,7 @@ def test_get_httpx_error_reason():
 
 
 class TestLogHttpxResponse:
+
     @pytest.fixture(autouse=True)
     def _use_debug(self, caplog: pytest.LogCaptureFixture):
         caplog.set_level(logging.DEBUG)
@@ -47,7 +48,7 @@ class TestLogHttpxResponse:
 
         assert "URL= https://example.com/;" in caplog.text
         assert "Status= 403 (Forbidden);" in caplog.text
-        assert 'Raw response= {"foo": "bar"}' in caplog.text
+        assert 'Raw response= {"foo":"bar"}' in caplog.text
 
     def test_error(self, caplog: pytest.LogCaptureFixture):
         resp = httpx.Response(
