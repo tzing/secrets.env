@@ -10,7 +10,8 @@ from secrets_env.provider import Provider, Request
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
-    from typing import Iterator, Sequence, TypeVar
+    from collections.abc import Iterator, Sequence
+    from typing import TypeVar
 
     from pydantic import ValidationInfo
     from pydantic_core import ErrorDetails

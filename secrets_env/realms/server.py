@@ -21,7 +21,8 @@ from typing import Any
 from secrets_env.utils import get_template
 
 if typing.TYPE_CHECKING:
-    from typing import Callable, Iterator
+    from collections.abc import Iterator
+    from typing import Callable
 
     UrlQueryParams = dict[str, list[str]]
     EndpointHandler = Callable[[UrlQueryParams], None]

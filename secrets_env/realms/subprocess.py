@@ -7,7 +7,8 @@ import subprocess
 import typing
 
 if typing.TYPE_CHECKING:
-    from typing import Literal, Sequence
+    from collections.abc import Sequence
+    from typing import Literal
 
 logger = logging.getLogger(__name__)
 regex_ansi = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")

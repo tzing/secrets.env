@@ -13,7 +13,8 @@ import secrets_env.utils
 from secrets_env.console.core import entrypoint, with_output_options
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Mapping
+    from collections.abc import Mapping
+    from typing import Any
 
     from click import Parameter
 

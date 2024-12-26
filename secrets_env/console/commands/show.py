@@ -15,7 +15,7 @@ from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError
 
 if typing.TYPE_CHECKING:
-    from typing import Iterator
+    from collections.abc import Iterator
 
     TableValue = dict[str, "TableValue"] | list["TableValue"] | str
     Table = dict[str, TableValue]
