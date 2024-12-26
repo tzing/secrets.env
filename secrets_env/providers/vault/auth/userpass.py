@@ -42,7 +42,7 @@ class UserPasswordAuth(Auth):
 
     @classmethod
     def create(cls, url: Url, config: dict) -> Self:
-        username = cls._get_username(config, url)
+        username = get_username(url, config)
         if not username:
             raise ValueError(f"Missing username for {cls.method} auth")
 
@@ -54,22 +54,6 @@ class UserPasswordAuth(Auth):
             username=username,
             password=cast(SecretStr, password),
         )
-
-    @classmethod
-    def _get_username(cls, config: dict, url: Url) -> str | None:
-        if username := get_env_var("SECRETS_ENV_USERNAME"):
-            logger.debug("Found username from environment variable.")
-            return username
-
-        if username := config.get("username"):
-            return username
-
-        user_config = load_user_config(url)
-        if username := user_config.get("auth", {}).get("username"):
-            logger.debug("Found username in user config.")
-            return username
-
-        return prompt(f"Username for {cls.method} auth")
 
     def login(self, client: httpx.Client) -> str:
         username = urllib.parse.quote(self.username)
@@ -92,6 +76,22 @@ class UserPasswordAuth(Auth):
             raise AuthenticationError(f"Failed to login with {self.method} method")
 
         return resp.json()["auth"]["client_token"]
+
+
+def get_username(url: AnyUrl, config: dict) -> str | None:
+    if username := get_env_var("SECRETS_ENV_USERNAME"):
+        logger.debug("Found username from environment variable.")
+        return username
+
+    if username := config.get("username"):
+        return username
+
+    user_config = load_user_config(url)
+    if username := user_config.get("auth", {}).get("username"):
+        logger.debug("Found username in user config.")
+        return username
+
+    return prompt(f"Username for {url.host}")
 
 
 def get_password(url: AnyUrl, username: str) -> str | None:
