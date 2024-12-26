@@ -15,11 +15,11 @@ class TestCreateAuth:
                 "kubernetes",
                 "secrets_env.providers.vault.auth.kubernetes.KubernetesAuth.create",
             ),
-            ("ldap", "secrets_env.providers.vault.auth.userpass.LDAPAuth.create"),
+            ("ldap", "secrets_env.providers.vault.auth.userpass.LdapAuth.create"),
             ("null", "secrets_env.providers.vault.auth.base.NoAuth.create"),
             ("oidc", "secrets_env.providers.vault.auth.oidc.OpenIDConnectAuth.create"),
             ("okta", "secrets_env.providers.vault.auth.userpass.OktaAuth.create"),
-            ("radius", "secrets_env.providers.vault.auth.userpass.RADIUSAuth.create"),
+            ("radius", "secrets_env.providers.vault.auth.userpass.RadiusAuth.create"),
             ("token", "secrets_env.providers.vault.auth.token.TokenAuth.create"),
             (
                 "userpass",
