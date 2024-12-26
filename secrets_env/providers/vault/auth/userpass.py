@@ -106,7 +106,7 @@ class UserPasswordAuth(Auth):
         return resp.json()["auth"]["client_token"]
 
 
-class LDAPAuth(UserPasswordAuth):
+class LdapAuth(UserPasswordAuth):
     """Login with LDAP credentials."""
 
     method = "LDAP"
@@ -123,7 +123,7 @@ class OktaAuth(UserPasswordAuth):
     _timeout: float | None = PrivateAttr(60.0)
 
 
-class RADIUSAuth(UserPasswordAuth):
+class RadiusAuth(UserPasswordAuth):
     """RADIUS authentication with PAP authentication scheme."""
 
     method = "RADIUS"
