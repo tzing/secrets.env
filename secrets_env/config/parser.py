@@ -173,7 +173,7 @@ class LocalConfig(BaseModel):
     """Data model that represents a local configuration file."""
 
     providers: dict[str | None, Provider] = Field(default_factory=dict)
-    requests: list[Request] = Field(default_factory=dict)
+    requests: list[Request] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
