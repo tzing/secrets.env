@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     import httpx
-    from pydantic_core import Url
+    from pydantic import AnyUrl
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class UserPasswordAuth(Auth):
         if not username:
             raise ValueError(f"Missing username for {cls.method} auth")
 
-        password = cls._get_password(url, username)
+        password = get_password(url, username)
         if not password:
             raise ValueError(f"Missing password for {cls.method} auth")
 
@@ -71,18 +71,6 @@ class UserPasswordAuth(Auth):
 
         return prompt(f"Username for {cls.method} auth")
 
-    @classmethod
-    def _get_password(cls, url: Url, username: str) -> str | None:
-        if password := get_env_var("SECRETS_ENV_PASSWORD"):
-            logger.debug("Found password from environment variable.")
-            return password
-
-        if password := read_keyring(create_keyring_login_key(url, username)):
-            logger.debug("Found password in keyring")
-            return password
-
-        return prompt(f"Password for {username}", hide_input=True)
-
     def login(self, client: httpx.Client) -> str:
         username = urllib.parse.quote(self.username)
         resp = client.post(
@@ -104,6 +92,18 @@ class UserPasswordAuth(Auth):
             raise AuthenticationError(f"Failed to login with {self.method} method")
 
         return resp.json()["auth"]["client_token"]
+
+
+def get_password(url: AnyUrl, username: str) -> str | None:
+    if password := get_env_var("SECRETS_ENV_PASSWORD"):
+        logger.debug("Found password from environment variable.")
+        return password
+
+    if password := read_keyring(create_keyring_login_key(url, username)):
+        logger.debug("Found password in keyring")
+        return password
+
+    return prompt(f"Password for {username}", hide_input=True)
 
 
 class LDAPAuth(UserPasswordAuth):

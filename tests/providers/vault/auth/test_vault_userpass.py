@@ -4,11 +4,11 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-from pydantic_core import Url
+from pydantic import HttpUrl
 
 import secrets_env.providers.vault.auth.userpass as t
 from secrets_env.exceptions import AuthenticationError
-from secrets_env.providers.vault.auth.userpass import UserPasswordAuth
+from secrets_env.providers.vault.auth.userpass import UserPasswordAuth, get_password
 
 
 @pytest.fixture
@@ -96,25 +96,6 @@ class TestUserPasswordAuth:
             assert MockAuth._get_username({}, url) == "foo"
             p.assert_any_call("Username for MOCK auth")
 
-    def test__load_password(self, monkeypatch: pytest.MonkeyPatch):
-        # env var
-        with monkeypatch.context() as m:
-            m.setenv("SECRETS_ENV_PASSWORD", "bar")
-            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
-            assert out == "bar"
-
-        # prompt
-        with patch.object(t, "prompt", return_value="bar") as p:
-            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
-            assert out == "bar"
-            p.assert_any_call("Password for foo", hide_input=True)
-
-        # keyring
-        with patch.object(t, "read_keyring", return_value="bar") as r:
-            out = UserPasswordAuth._get_password(Url("https://example.com/"), "foo")
-            assert out == "bar"
-            r.assert_any_call('{"host": "example.com", "type": "login", "user": "foo"}')
-
     def test_login_success(
         self,
         unittest_respx: respx.MockRouter,
@@ -147,6 +128,33 @@ class TestUserPasswordAuth:
 
         with pytest.raises(AuthenticationError):
             assert auth_obj.login(unittest_client) is None
+
+
+class TestGetPassword:
+
+    def test_env_var(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SECRETS_ENV_PASSWORD", "bar")
+        assert get_password(HttpUrl("https://example.com/"), "foo") == "bar"
+
+    def test_keyring(self, monkeypatch: pytest.MonkeyPatch):
+        mock_read_keyring = Mock(return_value="bar")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.userpass.read_keyring", mock_read_keyring
+        )
+
+        assert get_password(HttpUrl("https://example.com/"), "foo") == "bar"
+        mock_read_keyring.assert_any_call(
+            '{"host": "example.com", "type": "login", "user": "foo"}'
+        )
+
+    def test_prompt(self, monkeypatch: pytest.MonkeyPatch):
+        mock_prompt = Mock(return_value="bar")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.userpass.prompt", mock_prompt
+        )
+
+        assert get_password(HttpUrl("https://example.com/"), "foo") == "bar"
+        mock_prompt.assert_called_once_with("Password for foo", hide_input=True)
 
 
 @pytest.mark.parametrize(
