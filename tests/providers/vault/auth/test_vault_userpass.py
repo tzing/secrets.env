@@ -6,9 +6,12 @@ import pytest
 import respx
 from pydantic import HttpUrl
 
-import secrets_env.providers.vault.auth.userpass as t
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.userpass import (
+    LdapAuth,
+    OktaAuth,
+    RadiusAuth,
+    UserPassAuth,
     UserPasswordAuth,
     get_password,
     get_username,
@@ -136,9 +139,13 @@ class TestGetUsername:
         assert get_username(HttpUrl("https://example.com/"), {}) == "foo"
 
     def test_prompt(self, monkeypatch: pytest.MonkeyPatch):
-        with patch.object(t, "prompt", return_value="foo") as p:
-            assert get_username(HttpUrl("https://example.com/"), {}) == "foo"
-            p.assert_any_call("Username for example.com")
+        mock_prompt = Mock(return_value="foo")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.auth.userpass.prompt", mock_prompt
+        )
+
+        assert get_username(HttpUrl("https://example.com/"), {}) == "foo"
+        mock_prompt.assert_any_call("Username for example.com")
 
     def test__load_username(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -185,10 +192,10 @@ class TestGetPassword:
 @pytest.mark.parametrize(
     ("method_class", "login_path"),
     [
-        (t.LDAPAuth, "/v1/auth/ldap/login/user"),
-        (t.OktaAuth, "/v1/auth/okta/login/user"),
-        (t.RADIUSAuth, "/v1/auth/radius/login/user"),
-        (t.UserPassAuth, "/v1/auth/userpass/login/user"),
+        (LdapAuth, "/v1/auth/ldap/login/user"),
+        (OktaAuth, "/v1/auth/okta/login/user"),
+        (RadiusAuth, "/v1/auth/radius/login/user"),
+        (UserPassAuth, "/v1/auth/userpass/login/user"),
     ],
 )
 def test_auth_methods(
