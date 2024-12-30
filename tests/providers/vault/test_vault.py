@@ -23,7 +23,7 @@ from secrets_env.providers.vault import (
     save_token_to_helper,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
+from secrets_env.providers.vault.config import VaultUserConfig
 
 
 class TestVaultPath:
