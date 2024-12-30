@@ -1,8 +1,10 @@
 Changelog
 ---------
 
-Unreleased
-==========
+1.0.5
+=====
+
+:Date: 2024-12-31
 
 Enhancements
 ++++++++++++
