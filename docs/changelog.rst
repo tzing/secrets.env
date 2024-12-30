@@ -13,6 +13,7 @@ Fixes
 +++++
 
 * Resolved the issue where trailing backslashes could disrupt the output format in Poetry.
+* Updated compatibility to support pydantic 2.10 and httpx 0.28.
 
 Experimental Features
 +++++++++++++++++++++

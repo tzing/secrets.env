@@ -5,7 +5,7 @@ from unittest.mock import Mock, PropertyMock
 
 import httpx
 import pytest
-from pydantic_core import Url, ValidationError
+from pydantic import HttpUrl, ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
 from secrets_env.provider import Request
@@ -120,7 +120,7 @@ class TestVaultKvProvider:
         self, monkeypatch: pytest.MonkeyPatch, random_token: str
     ):
         def mock_create_http_client(config: VaultUserConfig):
-            assert config.url == Url("https://vault.teleport.example.com/")
+            assert config.url == HttpUrl("https://vault.teleport.example.com/")
             assert config.teleport is None
             assert config.tls.ca_cert is None
             assert config.tls.client_cert == Path("/mock/client.pem")

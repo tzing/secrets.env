@@ -14,7 +14,7 @@ from secrets_env.exceptions import ConfigError
 from secrets_env.utils import get_env_var
 
 if typing.TYPE_CHECKING:
-    from pydantic_core import Url
+    from pydantic import AnyUrl
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def load_local_config(path: Path | None) -> LocalConfig:
         raise ConfigError("Failed to parse config") from e
 
 
-def load_user_config(url: Url) -> dict:
+def load_user_config(url: AnyUrl) -> dict:
     """
     Load provider configurations from user's home directory.
     """
