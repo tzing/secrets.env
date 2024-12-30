@@ -264,7 +264,7 @@ class TestCreateHttpClient:
 
     @pytest.fixture
     def mock_httpx_client(self, monkeypatch: pytest.MonkeyPatch):
-        client = Mock(httpx.Client)
+        client = Mock(httpx.Client, side_effect=httpx.Client)
         monkeypatch.setattr("httpx.Client", client)
         return client
 
