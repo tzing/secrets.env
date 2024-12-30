@@ -6,7 +6,7 @@ import typing
 
 import click
 from click.core import ParameterSource
-from pydantic_core import Url
+from pydantic import AnyUrl
 
 import secrets_env.config
 import secrets_env.utils
@@ -53,11 +53,11 @@ class UrlParam(click.ParamType):
 
     name = "url"
 
-    def convert(self, value: str, param, ctx) -> Url:
+    def convert(self, value: str, param, ctx) -> AnyUrl:
         if "://" in value:
-            return Url(value)
+            return AnyUrl(value)
         elif "." in value:
-            return Url(f"https://{value}")
+            return AnyUrl(f"https://{value}")
         raise click.BadParameter("Invalid URL")
 
 
@@ -99,7 +99,7 @@ def group_set():
     help="Delete the stored username for the target host.",
 )
 @with_output_options
-def command_set_username(target: Url, username: str | None, delete: bool):
+def command_set_username(target: AnyUrl, username: str | None, delete: bool):
     """
     Set or delete the username in user storage.
 
@@ -195,7 +195,7 @@ def remove_username(config: dict, host: str):
 )
 @with_output_options
 def command_set_password(
-    target: Url, username: str, password: str | None, delete: bool
+    target: AnyUrl, username: str, password: str | None, delete: bool
 ):
     """
     Save or delete the password in user storage.
