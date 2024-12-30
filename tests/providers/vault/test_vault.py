@@ -2,7 +2,7 @@ import os
 import ssl
 import uuid
 from pathlib import Path
-from unittest.mock import Mock, PropertyMock
+from unittest.mock import Mock, PropertyMock, patch
 
 import httpx
 import pytest
@@ -240,6 +240,7 @@ class TestVaultKvProvider:
 
 
 class TestCreateHttpClient:
+
     @pytest.mark.skipif("VAULT_ADDR" in os.environ, reason="VAULT_ADDR is set")
     def test_basic(self):
         config = VaultUserConfig(
@@ -268,22 +269,31 @@ class TestCreateHttpClient:
         monkeypatch.setattr("httpx.Client", client)
         return client
 
-    def test_ca(self, monkeypatch: pytest.MonkeyPatch, mock_httpx_client: Mock):
+    @pytest.fixture
+    def mock_ssl_ctx(self, monkeypatch: pytest.MonkeyPatch):
         mock_ssl_ctx = Mock(ssl.SSLContext)
         monkeypatch.setattr("ssl.SSLContext", Mock(return_value=mock_ssl_ctx))
+        return mock_ssl_ctx
 
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
-            tls=Mock(
-                TlsConfig,
-                ca_cert=Path("/mock/ca.pem"),
-                client_cert=None,
-                client_key=None,
-            ),
+    def test_ca(self, tmp_path: Path, mock_ssl_ctx: ssl.SSLContext):
+        ca_path = tmp_path / "ca.crt"
+        ca_path.write_text(EXAMPLE_CA)
+
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+                "tls": {
+                    "ca_cert": ca_path,
+                    "client_cert": None,
+                    "client_key": None,
+                },
+            }
         )
 
-        create_http_client(config)
+        with patch("httpx.Client", side_effect=httpx.Client) as mock_httpx_client:
+            client = create_http_client(config)
+        assert isinstance(client, httpx.Client)
 
         _, kwargs = mock_httpx_client.call_args
         assert kwargs["verify"] is mock_ssl_ctx
@@ -417,3 +427,28 @@ class TestGetTokenFromHelper:
         )
 
         assert get_token_from_helper(Mock(httpx.Client)) is None
+
+
+EXAMPLE_CA = """
+-----BEGIN CERTIFICATE-----
+MIIDbTCCAlWgAwIBAgIUYMsza2nxnl0rLuxDAatRMv7MHwQwDQYJKoZIhvcNAQEL
+BQAwRjELMAkGA1UEBhMCVFcxDzANBgNVBAgMBlRhaXBlaTEQMA4GA1UECgwHRXhh
+bXBsZTEUMBIGA1UEAwwLZXhhbXBsZS5jb20wHhcNMjQxMjMwMTU1MjQ5WhcNMjUx
+MjMwMTU1MjQ5WjBGMQswCQYDVQQGEwJUVzEPMA0GA1UECAwGVGFpcGVpMRAwDgYD
+VQQKDAdFeGFtcGxlMRQwEgYDVQQDDAtleGFtcGxlLmNvbTCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBAKounDIlEy06X0UNIELgqeNDI/g2UXjz9BCPMn/k
+odJiI9bK1vzbrAxTR8CLiSk6+9jFLgF7mBU4nHR0N+hz+5tjkRtyKSzDYVby9K63
+F4nEKPghZCPtflBcLkLgI3v/i8JIRfQWAOURe6ulIlTqRUT+fjm4m2QSgruMj8me
+N0pDbRxg3c0TlrTNOQ6mn/tf8YStAWJi7pzcWWFgnq5SS83g6YQ7f9FtdlVFYnqX
+jcAigoC7VxIXelgVb7ECy7ujPU6FVcPPy5TfuKoari6BqiaXG7GRZLacU2SfWW2B
+84V9w6SpY0srrVEd/GteP7cPqpyUaTUAWngHdkz5Yn2jpT0CAwEAAaNTMFEwHQYD
+VR0OBBYEFDFFnAgA0894Qt5dfLYNc+kIEbW9MB8GA1UdIwQYMBaAFDFFnAgA0894
+Qt5dfLYNc+kIEbW9MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+AIT0tuEE7twMSiobXMnNtkryt4pPsF5VAsOXIgiUqAou4kYQbHh1HFFkQYsl0DyE
+xRz3zSqoA+f2DssA6JCf0Bl/vU1JaMYqu+177D7JHMLvdYE1QD938o5ecNzZhuv4
+YZXJBy9jVoFQLV/KwQ4JFoT2EojPBAkKDyBX7maMbev8qSvek2GQXynFZdINdnbE
+iCeUR4TqNGDoH86S4Q4PXhuhIXjJAJJek49F2+/eG56AtyWOAQ+NjoY6ESoWGUTG
+akK03aA3oINey+TmjbE1TumvcxhOFxdCDAcAXF6VUqU4x/95SbNTg7vfQKp6guob
+TSLAQILNPnAJ3S74ZKXCsgQ=
+-----END CERTIFICATE-----
+"""
