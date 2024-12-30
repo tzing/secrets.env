@@ -23,7 +23,7 @@ from secrets_env.providers.vault import (
     save_token_to_helper,
 )
 from secrets_env.providers.vault.auth.base import Auth, NoAuth
-from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
+from secrets_env.providers.vault.config import VaultUserConfig
 
 
 class TestVaultPath:
@@ -239,6 +239,7 @@ class TestVaultKvProvider:
 
 
 class TestCreateHttpClient:
+
     @pytest.mark.skipif("VAULT_ADDR" in os.environ, reason="VAULT_ADDR is set")
     def test_basic(self):
         config = VaultUserConfig(
@@ -261,62 +262,69 @@ class TestCreateHttpClient:
         client = create_http_client(config)
         assert isinstance(client, httpx.Client)
 
-    @pytest.fixture
-    def mock_httpx_client(self, monkeypatch: pytest.MonkeyPatch):
-        client = Mock(httpx.Client)
-        monkeypatch.setattr("httpx.Client", client)
-        return client
+    def test_ca(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        ca_path = tmp_path / "ca.crt"
+        ca_path.write_text(EXAMPLE_CA)
 
-    def test_ca(self, mock_httpx_client: Mock):
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
-            tls=Mock(
-                TlsConfig,
-                ca_cert=Path("/mock/ca.pem"),
-                client_cert=None,
-                client_key=None,
-            ),
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+                "tls": {
+                    "ca_cert": ca_path,
+                },
+            }
         )
 
-        create_http_client(config)
+        with caplog.at_level("DEBUG"):
+            client = create_http_client(config)
 
-        _, kwargs = mock_httpx_client.call_args
-        assert kwargs["verify"] == Path("/mock/ca.pem")
+        assert isinstance(client, httpx.Client)
+        assert "CA cert is set: " in caplog.text
 
-    def test_client_cert(self, mock_httpx_client: Mock):
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
-            tls=Mock(
-                TlsConfig,
-                ca_cert=None,
-                client_cert=Path("/mock/client.pem"),
-                client_key=None,
-            ),
+    def test_client_cert(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        cert_path = tmp_path / "client.crt"
+        cert_path.write_text(EXAMPLE_CERT + "\n" + EXAMPLE_KEY)
+
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+                "tls": {
+                    "client_cert": cert_path,
+                },
+            }
         )
 
-        create_http_client(config)
+        with caplog.at_level("DEBUG"):
+            client = create_http_client(config)
 
-        _, kwargs = mock_httpx_client.call_args
-        assert kwargs["cert"] == Path("/mock/client.pem")
+        assert isinstance(client, httpx.Client)
+        assert "Client cert is set: " in caplog.text
 
-    def test_client_cert_pair(self, mock_httpx_client: Mock):
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
-            tls=Mock(
-                TlsConfig,
-                ca_cert=None,
-                client_cert=Path("/mock/client.pem"),
-                client_key=Path("/mock/client.key"),
-            ),
+    def test_client_cert_pair(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        cert_path = tmp_path / "client.crt"
+        cert_path.write_text(EXAMPLE_CERT)
+
+        key_path = tmp_path / "client.key"
+        key_path.write_text(EXAMPLE_KEY)
+
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+                "tls": {
+                    "client_cert": cert_path,
+                    "client_key": key_path,
+                },
+            }
         )
 
-        create_http_client(config)
+        with caplog.at_level("DEBUG"):
+            client = create_http_client(config)
 
-        _, kwargs = mock_httpx_client.call_args
-        assert kwargs["cert"] == (Path("/mock/client.pem"), Path("/mock/client.key"))
+        assert isinstance(client, httpx.Client)
+        assert "Client cert pair is set: " in caplog.text
 
 
 class TestGetToken:
@@ -413,3 +421,82 @@ class TestGetTokenFromHelper:
         )
 
         assert get_token_from_helper(Mock(httpx.Client)) is None
+
+
+EXAMPLE_CA = """
+-----BEGIN CERTIFICATE-----
+MIIDbTCCAlWgAwIBAgIUYMsza2nxnl0rLuxDAatRMv7MHwQwDQYJKoZIhvcNAQEL
+BQAwRjELMAkGA1UEBhMCVFcxDzANBgNVBAgMBlRhaXBlaTEQMA4GA1UECgwHRXhh
+bXBsZTEUMBIGA1UEAwwLZXhhbXBsZS5jb20wHhcNMjQxMjMwMTU1MjQ5WhcNMjUx
+MjMwMTU1MjQ5WjBGMQswCQYDVQQGEwJUVzEPMA0GA1UECAwGVGFpcGVpMRAwDgYD
+VQQKDAdFeGFtcGxlMRQwEgYDVQQDDAtleGFtcGxlLmNvbTCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBAKounDIlEy06X0UNIELgqeNDI/g2UXjz9BCPMn/k
+odJiI9bK1vzbrAxTR8CLiSk6+9jFLgF7mBU4nHR0N+hz+5tjkRtyKSzDYVby9K63
+F4nEKPghZCPtflBcLkLgI3v/i8JIRfQWAOURe6ulIlTqRUT+fjm4m2QSgruMj8me
+N0pDbRxg3c0TlrTNOQ6mn/tf8YStAWJi7pzcWWFgnq5SS83g6YQ7f9FtdlVFYnqX
+jcAigoC7VxIXelgVb7ECy7ujPU6FVcPPy5TfuKoari6BqiaXG7GRZLacU2SfWW2B
+84V9w6SpY0srrVEd/GteP7cPqpyUaTUAWngHdkz5Yn2jpT0CAwEAAaNTMFEwHQYD
+VR0OBBYEFDFFnAgA0894Qt5dfLYNc+kIEbW9MB8GA1UdIwQYMBaAFDFFnAgA0894
+Qt5dfLYNc+kIEbW9MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+AIT0tuEE7twMSiobXMnNtkryt4pPsF5VAsOXIgiUqAou4kYQbHh1HFFkQYsl0DyE
+xRz3zSqoA+f2DssA6JCf0Bl/vU1JaMYqu+177D7JHMLvdYE1QD938o5ecNzZhuv4
+YZXJBy9jVoFQLV/KwQ4JFoT2EojPBAkKDyBX7maMbev8qSvek2GQXynFZdINdnbE
+iCeUR4TqNGDoH86S4Q4PXhuhIXjJAJJek49F2+/eG56AtyWOAQ+NjoY6ESoWGUTG
+akK03aA3oINey+TmjbE1TumvcxhOFxdCDAcAXF6VUqU4x/95SbNTg7vfQKp6guob
+TSLAQILNPnAJ3S74ZKXCsgQ=
+-----END CERTIFICATE-----
+"""
+
+EXAMPLE_CERT = """
+-----BEGIN CERTIFICATE-----
+MIIDXDCCAkSgAwIBAgIUE2Y2mm1okum8MoT2L/uy0kBi/fQwDQYJKoZIhvcNAQEL
+BQAwRjELMAkGA1UEBhMCVFcxDzANBgNVBAgMBlRhaXBlaTEQMA4GA1UECgwHRXhh
+bXBsZTEUMBIGA1UEAwwLZXhhbXBsZS5jb20wHhcNMjQxMjMwMTYwMTQ2WhcNMjUx
+MjMwMTYwMTQ2WjBGMQswCQYDVQQGEwJUVzEPMA0GA1UECAwGVGFpcGVpMRAwDgYD
+VQQKDAdFeGFtcGxlMRQwEgYDVQQDDAtleGFtcGxlLmNvbTCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBALbXs/vjx7gFahk4hk+EmSsTAw2xH2JWHVTSRuzF
+nwgxCHmy6NrkTfBlqRlumK/Z/l9IA8uLRDZprvN3qpvjiMUbyAqd5IhQ9yJ39MuA
+BIjHqNlCVug8t1Xi23Fvi6FY1G+4c+6/sL2D6sfiVAVHxfb6ugbRnjQ1IfKE0Zot
+POkJTTWOUy+c6dk9+vkASNHUriiID/bDFGRqGn84DIdVfVz8VPlsPWrbvv5WSrpk
++5Kxyj3GxwIK/aau1QQ8xAdy2wDGi6GYf4cLM85shf3uCnirMenDU5W/lT5M/WaT
+7rV4ShQo88t3UmSB/dglxO1hjdJvZxBVlN4R7/fH3SRJDo8CAwEAAaNCMEAwHQYD
+VR0OBBYEFNGu3DwUBs4/4l+vIl8SmbDEM+2nMB8GA1UdIwQYMBaAFDFFnAgA0894
+Qt5dfLYNc+kIEbW9MA0GCSqGSIb3DQEBCwUAA4IBAQCpBgGg5n9mCcJNOZ/8PcH/
+E2f19TFAs/qlde3NL6Rq5ICsMrHvUE/Jy3nDTj0n8IFv8dSosUWaoouKMQjmmQLQ
+/gas8eGhMBva+tT3zTOino4brlph1BnpUg3s0cvvjOOeXICKSHbIlTQh9WfTGuI6
+fljM9uyWx+nlH3e6RiSL74yTjFxeLEi95BkOoqBJOykw0ROaSXKlIrRhPs5jTSMY
+3OvNjBOn8PyEWzhIIoSHHMUouTAsID5cbreJxZ0A7rowETZnXdMpctgnZiYBLP2V
+SQBnXF4HdgvFz7i6o0Y7eiR+epslnzmUC+Tw9+O16pCy1ZkMBZCoIV9OKASGkdYx
+-----END CERTIFICATE-----
+"""
+
+EXAMPLE_KEY = """
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC217P748e4BWoZ
+OIZPhJkrEwMNsR9iVh1U0kbsxZ8IMQh5suja5E3wZakZbpiv2f5fSAPLi0Q2aa7z
+d6qb44jFG8gKneSIUPcid/TLgASIx6jZQlboPLdV4ttxb4uhWNRvuHPuv7C9g+rH
+4lQFR8X2+roG0Z40NSHyhNGaLTzpCU01jlMvnOnZPfr5AEjR1K4oiA/2wxRkahp/
+OAyHVX1c/FT5bD1q277+Vkq6ZPuSsco9xscCCv2mrtUEPMQHctsAxouhmH+HCzPO
+bIX97gp4qzHpw1OVv5U+TP1mk+61eEoUKPPLd1Jkgf3YJcTtYY3Sb2cQVZTeEe/3
+x90kSQ6PAgMBAAECggEAAlxtQoDuNT0t/ke22vPm4xqsWySg4kl4uLafhp2+c9Ag
+gGQHiy5I/HmLl4OltBnYCVSbyijNgGonD86QZO4pMM2EM/EdrqNkkgXDhoczDuap
+IMrb5lNEnFpdayzaEZFAlXVnzPPWZiXfjReNtWv4H0pkHDzDtkb8QYO74ynXYgOg
+iRrC+3G+rJj14eW5+9FQ3zJJ6cQq90q0gp7Fp39IzV2ZcL7fYQArHe3/hArQ9ODg
+X466wUfgX3zD2idPbz8I0ujQYOzSGNdgIcXuEQbNKdOppoOtSymXaWIiDHXUj5hQ
+D7EcS7cfSxv9+C1s6/62w4MrZ0VsO09eWEhZ3fw4yQKBgQDbd+PemD3DvWADEqRy
+Jmya14BT6if0fl1dQQCrAzPAkrwRUd1wvjsDl8YCQwwqciLPCSpEHfydwM7y23hu
+9bwDz2i3FvcdNZI2AhczEI5KngyYlm35Re/E1abiQvrdW1SfSetPAQesumNkjEsp
+ZhskwidfhjUbszXFAWayHkUv2QKBgQDVRxioQbZEVuXoHKiKsd6/9PiK8YHyXhuW
+isgHI1mXwWhNs2UmsKFNLTAjR6t3oPhpKver19DE4/elC4bDcr4QB5RlHXweiufd
+vQ4ZjJjH2SjdmoYYxJyrQlol++w/yrU9lfCtf5M41Bj+2g+u6Z0zTRqyUcNRoyy8
+zmguXe6YpwKBgQCJVGcJVbhocGrQ4Wx3ZWXWKn1JhR9FVYE0pkU1vYY3vVnjeJeZ
+QeAJqoIjzjKhqNPxO2nwP9dgG1MkEoM0452nwLRkxQESjQAVvY8oy/ZN6MI3BQKB
+1epn/80yjfkOZGT6W7XbtOhJhERHmaY6nILlqHwcwQ0gbS57PRo24MwoWQKBgD4Y
+chRi9XdWOZ/n4CZpfSo0X7zMbgIr5iphg7WYVDh75ithRN0L5hq7Ql2zOzgcVNcB
+3JRaxHzexrZ18amsGaw/GLSL7hxSYwnLRnSn27+r+Vrz54EElXzDV83hWDqGgVhJ
+9IX/M9UC47gnsxNBDzTliRVL+usk8ByUl/6P+KzXAoGBAM+g1Y5FYw7EYMgeKwnG
+535rMAL+cTUPOP1Rxff+ggsZZOy4JG8KKNnjWgJmHYvSnGpDZ+ZOd1sn2QLdXDRG
+YKWFJktyiou8qUWjOtrhmJXtkOrhNs3hyfCZLzJr2qWi6/0p4QucPCtDXCbVwouk
+fTuBgGWvfroEfnT/OCf98zHH
+-----END PRIVATE KEY-----
+"""
