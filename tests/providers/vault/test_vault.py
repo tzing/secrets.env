@@ -1,4 +1,5 @@
 import os
+import ssl
 import uuid
 from pathlib import Path
 from unittest.mock import Mock, PropertyMock
@@ -267,7 +268,10 @@ class TestCreateHttpClient:
         monkeypatch.setattr("httpx.Client", client)
         return client
 
-    def test_ca(self, mock_httpx_client: Mock):
+    def test_ca(self, monkeypatch: pytest.MonkeyPatch, mock_httpx_client: Mock):
+        mock_ssl_ctx = Mock(ssl.SSLContext)
+        monkeypatch.setattr("ssl.SSLContext", Mock(return_value=mock_ssl_ctx))
+
         config = VaultUserConfig(
             url="https://vault.example.com",
             auth="null",
@@ -282,7 +286,7 @@ class TestCreateHttpClient:
         create_http_client(config)
 
         _, kwargs = mock_httpx_client.call_args
-        assert kwargs["verify"] == Path("/mock/ca.pem")
+        assert kwargs["verify"] is mock_ssl_ctx
 
     def test_client_cert(self, mock_httpx_client: Mock):
         config = VaultUserConfig(

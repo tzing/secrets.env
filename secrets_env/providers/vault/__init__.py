@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import logging
 import os
+import ssl
 import typing
 from functools import cached_property
 from pathlib import Path
@@ -235,7 +236,8 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
         client_params["proxy"] = str(config.proxy)
     if config.tls.ca_cert:
         logger.debug("CA cert is set: %s", config.tls.ca_cert)
-        client_params["verify"] = config.tls.ca_cert
+        ssl_ctx = ssl.create_default_context(cafile=config.tls.ca_cert)
+        client_params["verify"] = ssl_ctx
     if config.tls.client_cert and config.tls.client_key:
         cert_pair = (config.tls.client_cert, config.tls.client_key)
         logger.debug("Client cert pair is set: %s ", cert_pair)
