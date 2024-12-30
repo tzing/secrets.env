@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
+from typing import cast
 
 import pytest
-from pydantic_core import Url, ValidationError
+from pydantic import HttpUrl, SecretStr, ValidationError
 
 from secrets_env.providers.vault.auth.base import NoAuth
 from secrets_env.providers.vault.auth.token import TokenAuth
@@ -91,9 +92,9 @@ class TestVaultUserConfig:
         )
 
         assert isinstance(config, VaultUserConfig)
-        assert config.url == Url("https://example.com")
+        assert config.url == HttpUrl("https://example.com")
         assert config.auth == AuthConfig(method="null")
-        assert config.proxy == Url("http://proxy.example.com")
+        assert config.proxy == HttpUrl("http://proxy.example.com")
         assert config.tls == TlsConfig(
             ca_cert=tmp_path / "ca.cert",
             client_cert=tmp_path / "client.pem",
@@ -104,7 +105,7 @@ class TestVaultUserConfig:
         monkeypatch.setenv("SECRETS_ENV_ADDR", "https://env.example.com")
         config = VaultUserConfig.model_validate({"auth": "null"})
         assert isinstance(config, VaultUserConfig)
-        assert config.url == Url("https://env.example.com")
+        assert config.url == HttpUrl("https://env.example.com")
 
     def test_url__teleport(self):
         #  allow None when teleport is set
@@ -136,7 +137,7 @@ class TestVaultUserConfig:
 
         config = VaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, VaultUserConfig)
-        assert config.auth_object == TokenAuth(token="tok3n")
+        assert config.auth_object == TokenAuth(token=cast(SecretStr, "tok3n"))
 
     def test_auth__invalid(self):
         with pytest.raises(ValidationError) as exc_info:
@@ -176,4 +177,4 @@ class TestVaultUserConfig:
             {"url": "https://example.com", "auth": "null"}
         )
         assert isinstance(config, VaultUserConfig)
-        assert config.proxy == Url("http://env.proxy.example.com")
+        assert config.proxy == HttpUrl("http://env.proxy.example.com")

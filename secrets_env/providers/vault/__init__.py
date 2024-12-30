@@ -8,8 +8,14 @@ from functools import cached_property
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
-from pydantic_core import Url
+from pydantic import (
+    BaseModel,
+    Field,
+    HttpUrl,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+)
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
@@ -149,7 +155,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
             logger.debug(f"Teleport connection parameter: {param!r}")
 
             self.teleport = None
-            self.url = Url(param.uri)
+            self.url = HttpUrl(param.uri)
             self.tls = TlsConfig()
             self.tls.ca_cert = param.path_ca
             self.tls.client_cert = param.path_cert
