@@ -234,17 +234,30 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
     if config.proxy:
         logger.debug("Proxy is set: %s", config.proxy)
         client_params["proxy"] = str(config.proxy)
-    if config.tls.ca_cert:
-        logger.debug("CA cert is set: %s", config.tls.ca_cert)
-        ssl_ctx = ssl.create_default_context(cafile=config.tls.ca_cert)
+
+    if config.tls:
+        if config.tls.ca_cert:
+            logger.debug("CA cert is set: %s", config.tls.ca_cert)
+            ssl_ctx = ssl.create_default_context(cafile=config.tls.ca_cert)
+        else:
+            ssl_ctx = ssl.create_default_context()
+
+        if config.tls.client_cert and config.tls.client_key:
+            logger.debug(
+                "Client cert pair is set: %s, %s",
+                config.tls.client_cert,
+                config.tls.client_key,
+            )
+            ssl_ctx.load_cert_chain(
+                certfile=config.tls.client_cert,
+                keyfile=config.tls.client_key,
+            )
+
+        elif config.tls.client_cert:
+            logger.debug("Client cert is set: %s", config.tls.client_cert)
+            ssl_ctx.load_cert_chain(certfile=config.tls.client_cert)
+
         client_params["verify"] = ssl_ctx
-    if config.tls.client_cert and config.tls.client_key:
-        cert_pair = (config.tls.client_cert, config.tls.client_key)
-        logger.debug("Client cert pair is set: %s ", cert_pair)
-        client_params["cert"] = cert_pair
-    elif config.tls.client_cert:
-        logger.debug("Client cert is set: %s", config.tls.client_cert)
-        client_params["cert"] = config.tls.client_cert
 
     return httpx.Client(**client_params)
 
