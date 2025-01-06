@@ -5,11 +5,11 @@ Poetry Support
 Secrets.env is designed to function as a `Poetry plugin`_, seamlessly loading secrets into the environment for you.
 
 .. _Poetry: https://python-poetry.org/
-.. _Poetry plugin: https://python-poetry.org/docs/master/plugins/
+.. _Poetry plugin: https://python-poetry.org/docs/plugins/
 
 
-Enabling
---------
+Enabling as a global plugin
+---------------------------
 
 .. note::
 
