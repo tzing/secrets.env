@@ -62,6 +62,19 @@ If you need optional dependencies, such as YAML support, you can install them wi
 Read :doc:`../introduction` for more details on optional dependencies.
 
 
+Enabling as a project plugin
+----------------------------
+
+Starting from Poetry 2.0, you can enable plugins on a per-project basis.
+
+To enable secrets.env as a project plugin, add the following to your ``pyproject.toml``:
+
+.. code-block:: toml
+
+   [tool.poetry.requires-plugins]
+   secrets-env = ">1.0"
+
+
 Usage
 -----
 
