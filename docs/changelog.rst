@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+Unreleased
+==========
+
+Enhancements
+++++++++++++
+
+* Support Poetry 2.0.
+
 1.0.5
 =====
 
