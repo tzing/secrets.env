@@ -50,10 +50,10 @@ respx = "^0.22.0"
 ruff = "^0.10.0"
 
 # Workaround: Sphinx requires Python 3.10, but we still want to support 3.9
-furo = { version = ">=2023.5.20", python = "^3.10" }
-sphinx = { version = "^8.0.2", python = "^3.10" }
-sphinx-click = { version = "^6.0.0", python = "^3.10" }
-sphinx-design = { version = "^0.6.0", python = "^3.10" }
+furo = { version = ">=2023.5.20", python = "^3.12" }
+sphinx = { version = "^8.0.2", python = "^3.12" }
+sphinx-click = { version = "^6.0.0", python = "^3.12" }
+sphinx-design = { version = "^0.6.0", python = "^3.12" }
 
 [tool.poetry.extras]
 all = ["cryptography", "keyring", "pexpect", "PyYAML", "shellingham"]
