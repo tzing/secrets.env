@@ -308,7 +308,7 @@ def call_app_login(config: TeleportUserConfig) -> None:
             )
 
             if index == 1:
-                match = cast(re.Match, proc.match)
+                match = cast("re.Match", proc.match)
                 link = match.group(0)
                 logger.info(
                     "<!important>"

@@ -8,7 +8,6 @@ import logging
 import os
 from typing import TYPE_CHECKING, cast
 
-from cleo.events.console_command_event import ConsoleCommandEvent
 from cleo.events.console_events import COMMAND
 from poetry.plugins.application_plugin import ApplicationPlugin
 
@@ -18,6 +17,7 @@ from secrets_env.realms.poetry.cleo import setup_output
 from secrets_env.utils import is_secrets_env_active
 
 if TYPE_CHECKING:
+    from cleo.events.console_command_event import ConsoleCommandEvent
     from cleo.events.event import Event
     from cleo.events.event_dispatcher import EventDispatcher
     from poetry.console.application import Application
@@ -36,7 +36,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
         event_name: str,
         dispatcher: EventDispatcher,
     ) -> None:
-        event = cast(ConsoleCommandEvent, event)
+        event = cast("ConsoleCommandEvent", event)
         if event.command.name not in ("run", "shell"):
             return
 

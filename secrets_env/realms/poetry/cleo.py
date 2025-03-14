@@ -75,7 +75,7 @@ class CleoHandler(logging.Handler):
             self.handleError(record)
             return
 
-        verbosity = typing.cast(Verbosity, verbosity)  # to satisfy pyright
+        verbosity = typing.cast("Verbosity", verbosity)  # to satisfy pyright
         self.output.write_line(msg, verbosity=verbosity)
 
 

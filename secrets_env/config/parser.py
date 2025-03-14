@@ -43,7 +43,7 @@ class _ProviderBuilder(BaseModel):
 
             if errors:
                 raise ValidationError.from_exception_data(
-                    title=cast(str, info.field_name), line_errors=errors
+                    title=cast("str", info.field_name), line_errors=errors
                 )
             return providers
 
@@ -123,7 +123,7 @@ class _RequestBuilder(BaseModel):
 
             if errors:
                 raise ValidationError.from_exception_data(
-                    title=cast(str, info.field_name), line_errors=errors
+                    title=cast("str", info.field_name), line_errors=errors
                 )
             return requests
 

@@ -71,13 +71,13 @@ class PosixShell(Shell):
         self.do_post_spawn(proc)
 
         # give control to user
-        NO_ESCAPE = typing.cast(str, None)
+        NO_ESCAPE = typing.cast("str", None)
         proc.interact(escape_character=NO_ESCAPE)
         proc.close()
 
         if proc.exitstatus is not None:
             # don't know why pyright interprets `exitstatus` as bool
-            return typing.cast(int, proc.exitstatus)
+            return typing.cast("int", proc.exitstatus)
         return proc.signalstatus
 
     def do_post_spawn(self, proc: spawn) -> None:

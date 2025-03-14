@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, cast
 
-from pydantic import SecretStr
+from pydantic import SecretStr  # noqa: TC002
 
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import get_env_var
@@ -32,7 +32,7 @@ class TokenAuth(Auth):
         # env var
         if token := get_env_var("SECRETS_ENV_TOKEN", "VAULT_TOKEN"):
             logger.debug("Found token from environment variable")
-        token = cast(SecretStr, token)
+        token = cast("SecretStr", token)
         return cls(token=token)
 
     def login(self, client: Any) -> str:

@@ -1,8 +1,8 @@
 import datetime
+import typing
 from typing import cast
 
 import pytest
-from pydantic import SecretStr
 
 from secrets_env.providers.onepassword.models import (
     FieldObject,
@@ -10,6 +10,9 @@ from secrets_env.providers.onepassword.models import (
     OpRequest,
     parse_secret_reference,
 )
+
+if typing.TYPE_CHECKING:
+    from pydantic import SecretStr
 
 
 class TestOpRequest:
@@ -234,18 +237,18 @@ class TestItemObject:
                     type="STRING",
                     purpose="USERNAME",
                     label="username",
-                    value=cast(SecretStr, "demo"),
+                    value=cast("SecretStr", "demo"),
                 ),
                 FieldObject(
                     id="bmmzqdwszku6cpq5lwq4pr6v6q",
                     type="STRING",
-                    value=cast(SecretStr, "t3st"),
+                    value=cast("SecretStr", "t3st"),
                 ),
                 FieldObject(
                     id="6vl4dok5qanwlmdq7hghbtm3na",
                     type="STRING",
                     label="NOTES",
-                    value=cast(SecretStr, "n0te"),
+                    value=cast("SecretStr", "n0te"),
                 ),
             ],
         )

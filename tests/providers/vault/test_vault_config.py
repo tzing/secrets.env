@@ -137,7 +137,7 @@ class TestVaultUserConfig:
 
         config = VaultUserConfig.model_validate({"url": "https://example.com"})
         assert isinstance(config, VaultUserConfig)
-        assert config.auth_object == TokenAuth(token=cast(SecretStr, "tok3n"))
+        assert config.auth_object == TokenAuth(token=cast("SecretStr", "tok3n"))
 
     def test_auth__invalid(self):
         with pytest.raises(ValidationError) as exc_info:
