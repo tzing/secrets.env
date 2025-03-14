@@ -47,7 +47,7 @@ class KubectlProvider(Provider):
     type = "kubectl"
 
     path: FilePath | None = Field(
-        default_factory=lambda: typing.cast(FilePath, shutil.which("kubectl")),
+        default_factory=lambda: typing.cast("FilePath", shutil.which("kubectl")),
         validate_default=True,
     )
     """

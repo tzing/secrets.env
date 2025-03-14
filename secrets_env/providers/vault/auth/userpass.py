@@ -52,7 +52,7 @@ class UserPasswordAuth(Auth):
 
         return cls(
             username=username,
-            password=cast(SecretStr, password),
+            password=cast("SecretStr", password),
         )
 
     def login(self, client: httpx.Client) -> str:
