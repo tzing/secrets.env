@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, cast
 
+from pydantic import SecretStr  # noqa: TC002
+
 from secrets_env.providers.vault.auth.base import Auth
 from secrets_env.utils import get_env_var
 
 if TYPE_CHECKING:
     from typing import Any
-
-    from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
