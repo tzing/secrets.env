@@ -47,7 +47,7 @@ pytest = "^8.1.1"
 pytest-cov = "^6.0.0"
 PyYAML = "*"
 respx = "^0.22.0"
-ruff = "^0.10.0"
+ruff = "^0.11.2"
 
 # Workaround: Sphinx requires Python 3.10, but we still want to support 3.9
 furo = { version = ">=2023.5.20", python = "^3.12" }
