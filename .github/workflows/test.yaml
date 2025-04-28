@@ -40,16 +40,14 @@ jobs:
     name: Unit test (without GIL)
     runs-on: ubuntu-latest
     steps:
-      - name: Get free-threaded Python
-        run: |
-          sudo add-apt-repository ppa:deadsnakes
-          sudo apt-get update
-          sudo apt-get install \
-            python3.13-dev \
-            python3.13-nogil
       - name: Install poetry
         run: pipx install poetry
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13t
+          cache: poetry
       - name: Install dependencies
         run: |
           poetry env use $(which python3.13t)
