@@ -189,7 +189,7 @@ class LruDict(collections.OrderedDict[TK, TV]):
     @overload
     def get(self, key: TK, default: T) -> TV | T: ...
 
-    def get(self, key: TK, default: T | None = None) -> TV | T | None:
+    def get(self, key: TK, default: T | None = None) -> TV | T | None:  # type: ignore[reportIncompatibleMethodOverride]
         try:
             return self[key]
         except KeyError:
