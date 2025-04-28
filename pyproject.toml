@@ -3,7 +3,7 @@ name = "secrets.env"
 version = "1.0.5"
 description = "Connect the credential store to your app"
 license = "Apache-2.0"
-requires-python = ">=3.9,<4.0"
+requires-python = ">3.9.2,<4.0"
 authors = [{ name = "tzing", email = "tzingshih@gmail.com" }]
 keywords = ["vault", "environment variables"]
 dynamic = ["classifiers", "dependencies"]
