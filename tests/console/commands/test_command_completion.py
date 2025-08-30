@@ -14,4 +14,4 @@ def test():
     runner = click.testing.CliRunner()
     result = runner.invoke(completion)
     assert result.exit_code == 0
-    assert "#compdef secrets.env" in result.stdout
+    assert "_secretsenv_completion()" in result.stdout
