@@ -7,13 +7,13 @@ import shutil
 import subprocess
 import typing
 
-from pydantic import Field, FilePath, PrivateAttr
+from pydantic import Field, FilePath
 
 from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Provider, Request
 from secrets_env.providers.onepassword.models import ItemObject, OpRequest
 from secrets_env.realms.subprocess import check_output
-from secrets_env.utils import LruDict
+from secrets_env.utils import cache_query_result
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -37,28 +37,16 @@ class OnePasswordCliProvider(Provider):
         validate_default=True,
     )
 
-    _cache: dict[str, ItemObject | LookupError] = PrivateAttr(default_factory=LruDict)
-
+    @cache_query_result()
     def _get_item_(self, ref: str) -> ItemObject:
         if not self.path:
             raise UnsupportedError("op command is not installed or accessible")
 
         call_version(self.path)  # log version on first call
 
-        result = self._cache.get(ref)
+        return get_item(self.path, ref)
 
-        if result is None:
-            try:
-                result = get_item(self.path, ref)
-            except LookupError as e:
-                result = e
-            self._cache[ref] = result
-
-        if isinstance(result, Exception):
-            raise result
-
-        return result
-
+    @cache_query_result()
     def _get_value_(self, spec: Request) -> str:
         request = OpRequest.model_validate(spec.model_dump(exclude_none=True))
         item = self._get_item_(request.ref)
