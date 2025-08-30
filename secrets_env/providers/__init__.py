@@ -7,14 +7,14 @@ import warnings
 from pydantic_core import ValidationError
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import Provider
+    from secrets_env.provider import AsyncProvider, Provider
 
 DEFAULT_PROVIDER = "vault"
 
 logger = logging.getLogger(__name__)
 
 
-def get_provider(config: dict) -> Provider:
+def get_provider(config: dict) -> Provider | AsyncProvider:
     """
     Returns a provider instance based on the configuration.
 
@@ -38,9 +38,12 @@ def get_provider(config: dict) -> Provider:
     if itype == "1password:op":
         from secrets_env.providers.onepassword.op import OnePasswordCliProvider
         return OnePasswordCliProvider.model_validate(config)
-    if itype == "debug":
+    if itype in ("debug", "debug:sync"):
         from secrets_env.providers.debug import DebugProvider
         return DebugProvider.model_validate(config)
+    if itype == "debug:async":
+        from secrets_env.providers.debug import AsyncDebugProvider
+        return AsyncDebugProvider.model_validate(config)
     if itype == "kubernetes:kubectl":
         from secrets_env.providers.kubernetes.kubectl import KubectlProvider
         return KubectlProvider.model_validate(config)

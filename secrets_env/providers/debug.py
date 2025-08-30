@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 
-from secrets_env.provider import Provider
+from secrets_env.provider import AsyncProvider, Provider
 
 if typing.TYPE_CHECKING:
     from secrets_env.provider import Request
@@ -16,4 +16,15 @@ class DebugProvider(Provider):
     value: str
 
     def _get_value_(self, spec: Request) -> str:
+        return self.value
+
+
+class AsyncDebugProvider(AsyncProvider):
+    """Internal provider for debugging purposes (async version)."""
+
+    type = "debug"
+
+    value: str
+
+    async def _get_value_(self, spec: Request) -> str:
         return self.value

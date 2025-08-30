@@ -5,7 +5,7 @@ import pytest
 from secrets_env.exceptions import NoValue
 from secrets_env.provider import Request
 from secrets_env.providers import get_provider
-from secrets_env.providers.debug import DebugProvider
+from secrets_env.providers.debug import AsyncDebugProvider, DebugProvider
 from secrets_env.providers.plain import PlainTextProvider
 from secrets_env.providers.teleport import TeleportProvider, TeleportUserConfig
 from secrets_env.providers.vault import VaultKvProvider
@@ -17,8 +17,12 @@ class TestGetProvider:
         provider = get_provider({"type": "1password:op", "op-path": "/usr/bin/op"})
         assert provider.type == "1password-cli"
 
-    def test_debug(self):
-        provider = get_provider({"type": "debug", "value": "test"})
+    def test_debug_async(self):
+        provider = get_provider({"type": "debug:async", "value": "test"})
+        assert isinstance(provider, AsyncDebugProvider)
+
+    def test_debug_sync(self):
+        provider = get_provider({"type": "debug:sync", "value": "test"})
         assert isinstance(provider, DebugProvider)
 
     def test_kubectl(self, monkeypatch: pytest.MonkeyPatch):
@@ -56,10 +60,17 @@ class TestGetProvider:
 
 
 class TestDebugProvider:
-    def test(self):
-        provider = DebugProvider(value="bar")
+
+    def test_sync(self):
+        provider = DebugProvider.model_validate({"value": "bar"})
         assert provider.name == "debug"
         assert provider(Request(name="test", value="foo")) == "bar"
+
+    @pytest.mark.asyncio
+    async def test_async(self):
+        provider = AsyncDebugProvider.model_validate({"value": "bar"})
+        assert provider.name == "debug"
+        assert await provider(Request(name="test", value="foo")) == "bar"
 
 
 class TestPlainTextProvider:

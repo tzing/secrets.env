@@ -58,18 +58,7 @@ class Request(BaseModel):
     value: str | None = None
 
 
-class Provider(BaseModel, ABC):
-    """
-    Abstract base class for secret provider.
-
-    The provider classes are initialized by the core module with the configuration
-    file's ``sources`` section. The provider class must inherit this class and
-    implement the abstract method :meth:`_get_value_` to get the secret value.
-
-    The provider class is responsible for handling the authentication, lookup,
-    and other operations to get the secret value. It is suggested to perform
-    the connection and authentication lazy.
-    """
+class _ProviderAttrMixin:
 
     type: ClassVar[str]
     """
@@ -86,10 +75,24 @@ class Provider(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def _set_default_name(cls, values):
-        if "name" not in values:
-            values["name"] = cls.type
+    def _set_default_(cls, values):
+        if isinstance(values, dict):
+            values.setdefault("name", cls.type)
         return values
+
+
+class Provider(ABC, _ProviderAttrMixin, BaseModel):
+    """
+    Abstract base class for secret provider.
+
+    The provider classes are initialized by the core module with the configuration
+    file's ``sources`` section. The provider class must inherit this class and
+    implement the abstract method :meth:`_get_value_` to get the secret value.
+
+    The provider class is responsible for handling the authentication, lookup,
+    and other operations to get the secret value. It is suggested to perform
+    the connection and authentication lazy.
+    """
 
     @validate_call
     def __call__(self, spec: Request) -> str:
@@ -146,7 +149,7 @@ class Provider(BaseModel, ABC):
 
         This method must be implemented by the provider class. When any error
         occurs during the operation, the method should raise the appropriate
-        exception. Read the `Raises` section for more details.
+        exception. Read the *Raises* section for more details.
 
         Parameters
         ----------
@@ -167,4 +170,71 @@ class Provider(BaseModel, ABC):
             When this operation is not supported.
         pydantic_core.ValidationError
             If the input format is invalid.
+        """
+
+
+class AsyncProvider(ABC, _ProviderAttrMixin, BaseModel):
+    """
+    Abstract base class for asynchronous secret provider.
+
+    This class provides a common interface for all asynchronous secret providers.
+    The implementations must inherit this class and implement the abstract method
+    :meth:`_get_value_` to get the secret value.
+    """
+
+    @validate_call
+    async def __call__(self, spec: Request) -> str:
+        try:
+            return await self._get_value_(spec)
+        except AuthenticationError as e:
+            logger.warning(f"Authentication failed for <data>{spec.name}</data>: {e}")
+            raise NoValue from e
+        except LookupError as e:
+            logger.warning(f"Value for <data>{spec.name}</data> not found: {e}")
+            raise NoValue from e
+        except UnsupportedError as e:
+            logger.warning(f"Operation not supported for <data>{spec.name}</data>: {e}")
+            raise NoValue from e
+        except ValidationError as e:
+            logger.warning(f"Request <data>{spec.name}</data> is malformed:")
+            for err in e.errors():
+                loc = ".".join(map(str, err["loc"])) or "(root)"
+                msg = err["msg"]
+                logger.warning(f"  \u279c <mark>{loc}</mark>: {msg}")
+            logger.warning("Skipping <data>%s</data>", spec.name)
+            raise NoValue from e
+        except Exception as e:
+            logger.error(f"Error requesting value for <data>{spec.name}</data>")
+            logger.debug(f"Request= {spec!r}")
+            logger.debug(f"Error= {type(e).__name__}, Msg= {e}", exc_info=True)
+            raise NoValue from e
+
+    @abstractmethod
+    async def _get_value_(self, spec: Request) -> str:
+        """
+        The method to get the secret value.
+
+        Parameters
+        ----------
+        spec : Request
+            Request specification for getting secret value.
+
+        Return
+        ------
+        Returns the value on success.
+
+        Raises
+        ------
+        AuthenticationError
+            Failed during authentication.
+        LookupError
+            If the secret is not found.
+        UnsupportedError
+            When this operation is not supported.
+        pydantic_core.ValidationError
+            If the input format is invalid.
+
+        Note
+        ----
+        This method may be called concurrently from multiple coroutines or threads.
         """
