@@ -98,8 +98,8 @@ Source section
 
    The provider will invoke the ``kubectl`` command and leverage the default configuration if not provided.
 
-``path``
-^^^^^^^^
+``bin``
+^^^^^^^
 
 Specifies the path to the kubectl binary.
 If not provided, the provider will search for it in the ``$PATH``.

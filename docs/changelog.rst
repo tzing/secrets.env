@@ -4,10 +4,15 @@ Changelog
 Unreleased
 ==========
 
-Enhancements
-++++++++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Support Poetry 2.0.
+
+:octicon:`repo` Documents
++++++++++++++++++++++++++
+
+*  Update changelog format.
 
 :octicon:`beaker` Experimental Features
 +++++++++++++++++++++++++++++++++++++++
@@ -19,19 +24,19 @@ Enhancements
 
 :Date: 2024-12-31
 
-Enhancements
-++++++++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Support Python 3.13.
 
-Fixes
-+++++
+:octicon:`bug` Fixes
+++++++++++++++++++++
 
 * Resolved the issue where trailing backslashes could disrupt the output format in Poetry.
 * Updated compatibility to support pydantic 2.10 and httpx 0.28.
 
-Experimental Features
-+++++++++++++++++++++
+:octicon:`beaker` Experimental Features
++++++++++++++++++++++++++++++++++++++++
 
 * Tweak the argument for :doc:`provider/kubectl` and :doc:`provider/op`.
 
@@ -40,13 +45,13 @@ Experimental Features
 
 :Date: 2024-10-14
 
-Enhancements
-++++++++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Suppress error messages during the internal trial run of the :doc:`provider/teleport` to prevent user confusion.
 
-Experimental Features
-+++++++++++++++++++++
+:octicon:`beaker` Experimental Features
++++++++++++++++++++++++++++++++++++++++
 
 * Add experimental support for :doc:`provider/kubectl`.
 * Add experimental support for :doc:`provider/op`.
@@ -57,8 +62,8 @@ Experimental Features
 
 :Date: 2024-09-13
 
-Enhancements
-++++++++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Add type check on Vault's ``auth`` field.
 
@@ -68,9 +73,6 @@ Enhancements
 
 * Add internal helper module :py:mod:`secrets_env.realms.subprocess` to handle subprocess interactions.
 
-Changes
-+++++++
-
 * Refactor internal HTTP server implementation (:py:mod:`secrets_env.realms.server`). No behavior change.
 
 
@@ -79,8 +81,8 @@ Changes
 
 :Date: 2024-08-23
 
-Enhancements
-++++++++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Prevent saving Vault token to token helper for root user.
 
@@ -112,8 +114,8 @@ Enhancements
        - name: DEMO
          value: Hello, world!
 
-Docs
-++++
+:octicon:`repo` Documents
++++++++++++++++++++++++++
 
 * Move the changelog to Sphinx documentation
 
@@ -131,8 +133,8 @@ Re-release of 1.0.0 with updated classifiers.
 
 :Date: 2024-08-13
 
-Added
-+++++
+:octicon:`rocket` New
++++++++++++++++++++++
 
 * Introduce :ref:`cmd.show` command to parses and displays the configuration file's contents without executing any commands.
 
@@ -148,10 +150,14 @@ Added
 * Add :ref:`vault.meth.kubernetes` method to :doc:`provider/vault`,
   allowing user to authenticate with Vault using a Kubernetes service account token.
 
-Changed
-+++++++
+:octicon:`flame` Changes
+++++++++++++++++++++++++
 
 * Command group ``keyring`` is merged into :ref:`set password <cmd.set>` command
+
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
+
 * Use `shellingham <https://github.com/sarugaku/shellingham>`_ to detect the shell type.
 * Refactor ``secrets_env.console`` module.
 
@@ -161,13 +167,13 @@ Changed
 
 :Date: 2024-05-15
 
-Added
-+++++
+:octicon:`rocket` New
++++++++++++++++++++++
 
 * :doc:`provider/vault` now integrated with Vault's `token helper <https://www.vaultproject.io/docs/commands/token-helper>`_.
 
-Changed
-+++++++
+:octicon:`plug` Enhancements
+++++++++++++++++++++++++++++
 
 * Shifted some alerts to the :py:mod:`warnings` module to minimize the warning notifications displayed to the user.
 
@@ -177,8 +183,8 @@ Changed
 
 :Date: 2024-05-07
 
-Added
-+++++
+:octicon:`rocket` New
++++++++++++++++++++++
 
 * The secrets section in the config file now supports list as well as dictionary.
 
@@ -193,8 +199,8 @@ Added
          source: plaintext
          value: example
 
-Changed
-+++++++
+:octicon:`flame` Changes
+++++++++++++++++++++++++
 
 * The keyword for Vault's :ref:`vault.meth.userpass` got changed to ``userpass``.
 
@@ -216,8 +222,8 @@ Changed
 
 * Refactor layout of the adapter classes to make the code more extensible.
 
-Docs
-++++
+:octicon:`repo` Documents
++++++++++++++++++++++++++
 
 * Revise the documentation to ensure consistency across different providers.
 
