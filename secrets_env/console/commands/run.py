@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import logging
 import os
 import subprocess
-from collections.abc import Sequence
+import sys
+import typing
 from pathlib import Path
 
 import click
 
 import secrets_env
-from secrets_env.console.core import entrypoint, exit, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class RunCommand(click.Command):
@@ -77,4 +83,4 @@ def run(args: Sequence[str], config: Path, partial: bool):
     with inject_environs(values):
         proc = subprocess.run(args, env=os.environ)
 
-    exit(proc.returncode)
+    sys.exit(proc.returncode)
