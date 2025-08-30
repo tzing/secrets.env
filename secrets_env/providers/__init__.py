@@ -38,7 +38,10 @@ def get_provider(config: dict) -> Provider | AsyncProvider:
     if itype == "1password:op":
         from secrets_env.providers.onepassword.op import OnePasswordCliProvider
         return OnePasswordCliProvider.model_validate(config)
-    if itype == "debug":
+    if itype in ("debug", "debug:async"):
+        from secrets_env.providers.debug import AsyncDebugProvider
+        return AsyncDebugProvider.model_validate(config)
+    if itype == "debug:sync":
         from secrets_env.providers.debug import DebugProvider
         return DebugProvider.model_validate(config)
     if itype == "kubernetes:kubectl":
