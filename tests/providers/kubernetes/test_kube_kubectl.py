@@ -11,7 +11,6 @@ from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Request
 from secrets_env.providers.kubernetes.kubectl import (
     KubectlProvider,
-    Marker,
     call_version,
     read_configmap,
     read_kv_pairs,
@@ -121,7 +120,7 @@ class TestKubectlProvider:
     def test__get_kv_pairs_notfound(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.kubernetes.kubectl.read_secret",
-            Mock(return_value=Marker.NotFound),
+            Mock(side_effect=LookupError),
         )
 
         provider = KubectlProvider()
@@ -299,14 +298,14 @@ class TestReadSecret:
     def test_not_found(self, mock_check_output):
         mock_check_output.side_effect = subprocess.CalledProcessError(1, "kubectl")
 
-        result = read_secret(
-            kubectl=Path("/usr/bin/kubectl"),
-            config=None,
-            context=None,
-            namespace="default",
-            name="secret",
-        )
-        assert result == Marker.NotFound
+        with pytest.raises(LookupError):
+            read_secret(
+                kubectl=Path("/usr/bin/kubectl"),
+                config=None,
+                context=None,
+                namespace="default",
+                name="secret",
+            )
 
 
 class TestReadConfigMap:
@@ -383,11 +382,11 @@ class TestReadConfigMap:
     def test_not_found(self, mock_check_output):
         mock_check_output.side_effect = subprocess.CalledProcessError(1, "kubectl")
 
-        result = read_configmap(
-            kubectl=Path("/usr/bin/kubectl"),
-            config=None,
-            context=None,
-            namespace="default",
-            name="configmap",
-        )
-        assert result == Marker.NotFound
+        with pytest.raises(LookupError):
+            read_configmap(
+                kubectl=Path("/usr/bin/kubectl"),
+                config=None,
+                context=None,
+                namespace="default",
+                name="configmap",
+            )
