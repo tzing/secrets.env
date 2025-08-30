@@ -6,6 +6,7 @@ import logging
 import shutil
 import subprocess
 import typing
+from pathlib import Path
 
 from pydantic import Field, FilePath, model_validator
 
@@ -21,13 +22,16 @@ from secrets_env.realms.subprocess import check_output
 from secrets_env.utils import cache_query_result, get_env_var
 
 if typing.TYPE_CHECKING:
-    from pathlib import Path
-
     from secrets_env.provider import Request
 
     _T_Data = dict[str, bytes]
 
 logger = logging.getLogger(__name__)
+
+
+def get_kubectl_path() -> Path | None:
+    if path := shutil.which("kubectl"):
+        return Path(path)
 
 
 class KubectlProvider(Provider):
@@ -37,9 +41,8 @@ class KubectlProvider(Provider):
 
     type = "kubectl"
 
-    path: FilePath | None = Field(
-        default_factory=lambda: typing.cast("FilePath", shutil.which("kubectl")),
-        validate_default=True,
+    bin: FilePath | None = Field(
+        default_factory=get_kubectl_path, validate_default=True
     )
     """
     Path to the kubectl binary. If not set, the provider will try to find it in the PATH.
@@ -65,13 +68,13 @@ class KubectlProvider(Provider):
 
     @cache_query_result()
     def _get_kv_pairs_(self, kind: Kind, namespace: str, name: str) -> _T_Data:
-        if not self.path:
+        if not self.bin:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
-        call_version(self.path)  # leave a sign in the log
+        call_version(self.bin)  # leave a sign in the log
 
         return read_kv_pairs(
-            kubectl=self.path,
+            kubectl=self.bin,
             config=self.config,
             context=self.context,
             kind=kind,

@@ -9,6 +9,11 @@ Enhancements
 
 * Support Poetry 2.0.
 
+:octicon:`beaker` Experimental Features
++++++++++++++++++++++++++++++++++++++++
+
+* Change the argument for :doc:`provider/kubectl` and :doc:`provider/op` again.
+
 1.0.5
 =====
 

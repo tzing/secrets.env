@@ -45,18 +45,20 @@ class TestKubectlProvider:
         )
 
     @pytest.mark.usefixtures("_patch_kubectl_path")
-    def test___init__(self):
+    def test___init__1(self):
         provider = KubectlProvider.model_validate({})
-        assert provider.path == Path("/usr/bin/kubectl")
+        assert provider.bin == Path("/usr/bin/kubectl")
         assert provider.config is None
 
+    @pytest.mark.usefixtures("_patch_kubectl_path")
+    def test___init__2(self):
         provider = KubectlProvider.model_validate(
             {
-                "path": "/root/local/bin/kubectl",
+                "bin": "/root/local/bin/kubectl",
                 "config": "/root/.kube/config",
             }
         )
-        assert provider.path == Path("/root/local/bin/kubectl")
+        assert provider.bin == Path("/root/local/bin/kubectl")
         assert provider.config == Path("/root/.kube/config")
 
     @pytest.mark.usefixtures("_patch_kubectl_path")
@@ -73,7 +75,7 @@ class TestKubectlProvider:
         monkeypatch.setattr("shutil.which", Mock(return_value=None))
 
         provider = KubectlProvider.model_validate({})
-        assert provider.path is None
+        assert provider.bin is None
         assert provider.context is None
 
     @pytest.mark.usefixtures("_patch_kubectl_path", "_patch_call_version")
