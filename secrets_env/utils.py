@@ -17,12 +17,17 @@ import warnings
 from pathlib import Path
 from typing import TypeVar, overload
 
+from secrets_env.exceptions import AuthenticationError
+
 if typing.TYPE_CHECKING:
+    from typing import Callable, Concatenate, ParamSpec
+
     import click
     import httpx
     from pydantic import AnyUrl
 
     T = TypeVar("T")
+    P = ParamSpec("P")
     T_Warning = TypeVar("T_Warning", bound=Warning)
 
 logger = logging.getLogger(__name__)
@@ -194,6 +199,50 @@ class LruDict(collections.OrderedDict[TK, TV]):
             return self[key]
         except KeyError:
             return default
+
+
+def cache_query_result(
+    max_size: int = 128,
+    reraise: tuple[type[Exception], ...] = (AuthenticationError, LookupError),
+):
+    """
+    Cache the result of a method call.
+
+    This decorator stores the result on the instance level, and re-raises
+    any specified exceptions that occur during the method call.
+    """
+
+    def _decorator(
+        method: Callable[Concatenate[T, P], TV],
+    ) -> Callable[Concatenate[T, P], TV]:
+
+        CACHE_STORAGE_NAME = f"_cache_{method.__name__}"
+
+        @functools.wraps(method)
+        def _wrapper(self_: T, *args: P.args, **kwargs: P.kwargs) -> TV:
+            cache_storage = getattr(self_, CACHE_STORAGE_NAME, None)
+            if cache_storage is None:
+                cache_storage = LruDict(max_size)
+                setattr(self_, CACHE_STORAGE_NAME, cache_storage)
+
+            assert not kwargs, "cache with kwargs is not supported yet"
+            cache_key = args
+
+            if cache_key not in cache_storage:
+                try:
+                    cache_storage[cache_key] = method(self_, *args, **kwargs)
+                except reraise as e:
+                    cache_storage[cache_key] = e
+
+            value = cache_storage[cache_key]
+            if isinstance(value, Exception):
+                raise value
+
+            return value
+
+        return _wrapper
+
+    return _decorator
 
 
 def setup_capture_warnings():
