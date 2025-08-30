@@ -8,6 +8,7 @@ Unreleased
 ++++++++++++++++++++++++++++
 
 * Support Poetry 2.0.
+* Integrate :py:mod:`asyncio` support to enable concurrent secret reading and reduce I/O blocking when fetching from multiple providers.
 
 :octicon:`repo` Documents
 +++++++++++++++++++++++++
