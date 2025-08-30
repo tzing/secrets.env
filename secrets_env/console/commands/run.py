@@ -5,6 +5,7 @@ import logging
 import os
 import subprocess
 import sys
+import typing
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -14,6 +15,9 @@ import secrets_env
 from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class RunCommand(click.Command):
