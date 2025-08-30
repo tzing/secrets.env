@@ -5,7 +5,7 @@ import logging
 import re
 import shutil
 import subprocess
-import typing
+from pathlib import Path
 
 from pydantic import Field, FilePath
 
@@ -15,14 +15,16 @@ from secrets_env.providers.onepassword.models import ItemObject, OpRequest
 from secrets_env.realms.subprocess import check_output
 from secrets_env.utils import cache_query_result
 
-if typing.TYPE_CHECKING:
-    from pathlib import Path
-
 logger = logging.getLogger(__name__)
 
 op_log_prefix_pattern = re.compile(
     r"^\[(?P<level>\w+)\] (?P<datetime>\d+/\d+/\d+ \d+:\d+:\d+) "
 )
+
+
+def get_op_path() -> Path | None:
+    if path := shutil.which("op"):
+        return Path(path)
 
 
 class OnePasswordCliProvider(Provider):
@@ -32,19 +34,16 @@ class OnePasswordCliProvider(Provider):
 
     type = "1password-cli"
 
-    path: FilePath | None = Field(
-        default_factory=lambda: typing.cast("FilePath", shutil.which("op")),
-        validate_default=True,
-    )
+    bin: FilePath | None = Field(default_factory=get_op_path, validate_default=True)
 
     @cache_query_result()
     def _get_item_(self, ref: str) -> ItemObject:
-        if not self.path:
+        if not self.bin:
             raise UnsupportedError("op command is not installed or accessible")
 
-        call_version(self.path)  # log version on first call
+        call_version(self.bin)  # log version on first call
 
-        return get_item(self.path, ref)
+        return get_item(self.bin, ref)
 
     @cache_query_result()
     def _get_value_(self, spec: Request) -> str:
