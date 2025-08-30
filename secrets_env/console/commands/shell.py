@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 import click
@@ -8,7 +9,7 @@ import click
 import secrets_env
 import secrets_env.console.shells
 import secrets_env.utils
-from secrets_env.console.core import entrypoint, exit, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 
 
@@ -43,7 +44,7 @@ def shell(config: Path, partial: bool):
 
     if not values:
         logger.warning("No values found. Secrets.env will terminate smoothly.")
-        exit(0)
+        sys.exit(0)
 
     shell = secrets_env.console.shells.get_shell()
     shell.activate(values)
