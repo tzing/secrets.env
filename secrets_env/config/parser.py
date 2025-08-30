@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import itertools
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Union, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     _T = TypeVar("_T")
 
-ProviderTypes = Provider | AsyncProvider
+ProviderTypes = Union[Provider, AsyncProvider]
 
 
 class _ProviderBuilder(BaseModel):

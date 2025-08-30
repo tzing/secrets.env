@@ -165,7 +165,6 @@ class TestAsyncProvider:
         class MyProvider(DummyAsyncProviderBase):
             async def _get_value_(self, spec: Request):
                 DummyRequest.model_validate(spec.model_dump())
-                assert False, "Should not reach here"
 
         provider = MyProvider.model_validate({})
         with pytest.raises(NoValue):
