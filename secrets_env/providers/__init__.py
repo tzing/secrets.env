@@ -7,14 +7,14 @@ import warnings
 from pydantic_core import ValidationError
 
 if typing.TYPE_CHECKING:
-    from secrets_env.provider import Provider
+    from secrets_env.provider import AsyncProvider, Provider
 
 DEFAULT_PROVIDER = "vault"
 
 logger = logging.getLogger(__name__)
 
 
-def get_provider(config: dict) -> Provider:
+def get_provider(config: dict) -> Provider | AsyncProvider:
     """
     Returns a provider instance based on the configuration.
 

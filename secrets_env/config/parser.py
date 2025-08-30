@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from secrets_env.provider import Provider, Request
+from secrets_env.provider import AsyncProvider, Provider, Request
 from secrets_env.providers import get_provider
 
 if TYPE_CHECKING:
@@ -18,12 +18,14 @@ if TYPE_CHECKING:
 
     _T = TypeVar("_T")
 
+type ProviderTypes = Provider | AsyncProvider
+
 
 class _ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
 
-    source: list[Provider] = Field(default_factory=list)
-    sources: list[Provider] = Field(default_factory=list)
+    source: list[ProviderTypes] = Field(default_factory=list)
+    sources: list[ProviderTypes] = Field(default_factory=list)
 
     @field_validator("source", "sources", mode="before")
     @classmethod
@@ -49,7 +51,7 @@ class _ProviderBuilder(BaseModel):
 
         raise ValueError("Input must be a list or a dictionary")
 
-    def to_dict(self) -> dict[str, Provider]:
+    def to_dict(self) -> dict[str, ProviderTypes]:
         """
         Returns an iterator of tuples with the provider name and the provider instance.
 
@@ -172,7 +174,7 @@ def validate_requests(values: _T) -> _T:
 class LocalConfig(BaseModel):
     """Data model that represents a local configuration file."""
 
-    providers: dict[str | None, Provider] = Field(default_factory=dict)
+    providers: dict[str | None, ProviderTypes] = Field(default_factory=dict)
     requests: list[Request] = Field(default_factory=list)
 
     @model_validator(mode="before")
