@@ -6,7 +6,7 @@ from pydantic_core import Url
 from secrets_env.config import load_local_config, load_user_config
 from secrets_env.config.parser import Request
 from secrets_env.exceptions import ConfigError
-from secrets_env.providers.debug import DebugProvider
+from secrets_env.providers.debug import AsyncDebugProvider
 from secrets_env.providers.plain import PlainTextProvider
 
 
@@ -53,7 +53,7 @@ class TestLoadLocalConfig:
 
         assert len(config.providers) == 1
         assert config.providers == {
-            "debug": DebugProvider(value="never gonna give you up")
+            "debug": AsyncDebugProvider(value="never gonna give you up")
         }
         assert len(config.requests) == 1
         assert config.requests == [

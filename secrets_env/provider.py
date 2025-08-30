@@ -58,23 +58,10 @@ class Request(BaseModel):
     value: str | None = None
 
 
-class Provider(ABC, BaseModel):
-    """
-    Abstract base class for secret provider.
-
-    The provider classes are initialized by the core module with the configuration
-    file's ``sources`` section. The provider class must inherit this class and
-    implement the abstract method :meth:`_get_value_` to get the secret value.
-
-    The provider class is responsible for handling the authentication, lookup,
-    and other operations to get the secret value. It is suggested to perform
-    the connection and authentication lazy.
-    """
+class _ProviderAttrMixin:
 
     type: ClassVar[str]
-    """
-    Provider type name.
-    """
+    """Provider type name."""
 
     name: str
     """
@@ -86,10 +73,24 @@ class Provider(ABC, BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _set_default_name(cls, values):
-        if "name" not in values:
-            values["name"] = cls.type
+    def _set_default_(cls, values):
+        if isinstance(values, dict):
+            values.setdefault("name", cls.type)
         return values
+
+
+class Provider(ABC, _ProviderAttrMixin, BaseModel):
+    """
+    Abstract base class for secret provider.
+
+    The provider classes are initialized by the core module with the configuration
+    file's ``sources`` section. The provider class must inherit this class and
+    implement the abstract method :meth:`_get_value_` to get the secret value.
+
+    The provider class is responsible for handling the authentication, lookup,
+    and other operations to get the secret value. It is suggested to perform
+    the connection and authentication lazy.
+    """
 
     @validate_call
     def __call__(self, spec: Request) -> str:
@@ -170,7 +171,7 @@ class Provider(ABC, BaseModel):
         """
 
 
-class AsyncProvider(ABC, BaseModel):
+class AsyncProvider(ABC, _ProviderAttrMixin, BaseModel):
     """
     Abstract base class for asynchronous secret provider.
 
@@ -182,24 +183,6 @@ class AsyncProvider(ABC, BaseModel):
     and other operations to get the secret value. It is suggested to perform
     the connection and authentication lazy.
     """
-
-    type: ClassVar[str]
-    """Provider type name."""
-
-    name: str
-    """
-    Provider instance name.
-
-    This field could be configured by the user in the configuration file.
-    Otherwise, it will be set to the provider type name.
-    """
-
-    @model_validator(mode="before")
-    @classmethod
-    def _set_default_name(cls, values):
-        if "name" not in values:
-            values["name"] = cls.type
-        return values
 
     @validate_call
     async def __call__(self, spec: Request) -> str:

@@ -52,7 +52,7 @@ async def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
     tasks: list[Task[list[KeyValuePair]]] = []
     for provider_name, request_group in requests.items():
         task = asyncio.create_task(
-            _read_values_from_provider(cfg.providers[provider_name], request_group)
+            _get_values_from_provider(cfg.providers[provider_name], request_group)
         )
         tasks.append(task)
 
@@ -91,7 +91,7 @@ async def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
     return output_values
 
 
-async def _read_values_from_provider(
+async def _get_values_from_provider(
     provider: Provider | AsyncProvider, requests: list[Request]
 ) -> list[KeyValuePair]:
     collected = []

@@ -36,15 +36,15 @@ class TestReadValues:
             """
             sources:
               - name: demo-1
-                type: plain
+                type: debug:async
+                value: FooBar
               - name: demo-2
-                type: debug
-                value: Foobar
+                type: debug:sync
+                value: BazQax
 
             secrets:
               - name: DEMO_1
                 source: demo-1
-                value: Hello, World!
               - name: DEMO_2
                 source: demo-2
             """
@@ -53,7 +53,7 @@ class TestReadValues:
         with caplog.at_level("DEBUG"):
             values = await read_values(config=config_file, strict=True)
 
-        assert values == {"DEMO_1": "Hello, World!", "DEMO_2": "Foobar"}
+        assert values == {"DEMO_1": "FooBar", "DEMO_2": "BazQax"}
         assert "Loading <data>DEMO_1</data>" in caplog.text
         assert "Loading <data>DEMO_2</data>" in caplog.text
         assert "<mark>2</mark> secrets loaded" in caplog.text
