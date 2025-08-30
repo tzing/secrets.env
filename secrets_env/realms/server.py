@@ -148,7 +148,7 @@ class ThreadedHttpServer(http.server.ThreadingHTTPServer):
     @property
     def server_url(self) -> str:
         """Returns server URL."""
-        host, port = self.server_address
+        host, port, *_ = self.server_address
         return f"http://{host}:{port}"
 
 
