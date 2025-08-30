@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     _T = TypeVar("_T")
 
-type ProviderTypes = Provider | AsyncProvider
+ProviderTypes = Provider | AsyncProvider
 
 
 class _ProviderBuilder(BaseModel):

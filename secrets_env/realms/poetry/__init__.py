@@ -4,6 +4,7 @@ poetry commands.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import TYPE_CHECKING, cast
@@ -48,7 +49,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
             return
 
         try:
-            values = secrets_env.read_values(config=None, strict=False)
+            values = asyncio.run(secrets_env.read_values(config=None, strict=False))
         except ConfigError:
             return
 

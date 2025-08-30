@@ -10,7 +10,7 @@ from secrets_env.exceptions import ConfigError
 
 @pytest.fixture
 def _mock_read_values(monkeypatch: pytest.MonkeyPatch):
-    def func(config, strict):
+    async def func(config, strict):
         return {"foo": "bar"}
 
     monkeypatch.setattr("secrets_env.read_values", func)
@@ -47,7 +47,7 @@ def test_nested(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_read_values_error(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    async def mock_read_values(config, strict):
         raise ConfigError("test error")
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)
@@ -61,7 +61,7 @@ def test_read_values_error(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_no_value(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    async def mock_read_values(config, strict):
         return {}
 
     monkeypatch.setattr("secrets_env.read_values", mock_read_values)

@@ -2,12 +2,10 @@ import io
 import logging
 import os
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
-import cleo.commands.command
 import cleo.events.console_command_event
 import cleo.events.event_dispatcher
-import cleo.io.outputs.section_output
 import cleo.io.outputs.stream_output
 import poetry.console.commands.run
 import pytest
@@ -33,11 +31,12 @@ class TestSecretsEnvPlugin:
 
     @pytest.mark.usefixtures("_reset_logging")
     def test_load_values(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
+        async def mock_read_values(config, strict):
+            return {"VAR1": "bar"}
+
         monkeypatch.setattr(t, "setup_output", lambda _: None)
         monkeypatch.setattr(t, "is_secrets_env_active", lambda: False)
-        monkeypatch.setattr(
-            "secrets_env.read_values", lambda config, strict: {"VAR1": "bar"}
-        )
+        monkeypatch.setattr("secrets_env.read_values", mock_read_values)
         monkeypatch.setenv("VAR1", "foo")
 
         plugin = SecretsEnvPlugin()
@@ -49,14 +48,14 @@ class TestSecretsEnvPlugin:
     def test_skip_not_related_command(
         self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
     ):
-        read_values_func = Mock()
+        read_values_func = AsyncMock()
         monkeypatch.setattr("secrets_env.read_values", read_values_func)
         event.command.name = "not-related-command"
 
         plugin = SecretsEnvPlugin()
         plugin.load_values(event, "console.command", dispatcher)
 
-        assert read_values_func.call_count == 0
+        assert not read_values_func.called
 
     @pytest.mark.usefixtures("_reset_logging")
     def test_recursive_activation(

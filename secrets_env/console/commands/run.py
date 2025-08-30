@@ -1,13 +1,15 @@
+import asyncio
 import logging
 import os
 import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import click
 
 import secrets_env
-from secrets_env.console.core import entrypoint, exit, with_output_options
+from secrets_env.console.core import entrypoint, with_output_options
 from secrets_env.exceptions import ConfigError, NoValue
 from secrets_env.utils import inject_environs, is_secrets_env_active
 
@@ -66,7 +68,7 @@ def run(args: Sequence[str], config: Path, partial: bool):
 
     # prepare environment variable set
     try:
-        values = secrets_env.read_values(config=config, strict=not partial)
+        values = asyncio.run(secrets_env.read_values(config=config, strict=not partial))
     except (ConfigError, NoValue) as e:
         logger.error("%s", e)
         raise click.Abort from None
@@ -77,4 +79,4 @@ def run(args: Sequence[str], config: Path, partial: bool):
     with inject_environs(values):
         proc = subprocess.run(args, env=os.environ)
 
-    exit(proc.returncode)
+    sys.exit(proc.returncode)
