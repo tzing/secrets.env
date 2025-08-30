@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import base64
-import enum
 import functools
 import logging
 import shutil
 import subprocess
 import typing
 
-from pydantic import Field, FilePath, PrivateAttr, model_validator
+from pydantic import Field, FilePath, model_validator
 
 from secrets_env.exceptions import UnsupportedError
 from secrets_env.provider import Provider
@@ -19,24 +18,16 @@ from secrets_env.providers.kubernetes.models import (
     SecretV1,
 )
 from secrets_env.realms.subprocess import check_output
-from secrets_env.utils import LruDict, get_env_var
+from secrets_env.utils import cache_query_result, get_env_var
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
-    from typing import Literal
 
     from secrets_env.provider import Request
 
     _T_Data = dict[str, bytes]
 
 logger = logging.getLogger(__name__)
-
-
-class Marker(enum.Enum):
-    """Internal marker for cache handling."""
-
-    NoCache = enum.auto()
-    NotFound = enum.auto()
 
 
 class KubectlProvider(Provider):
@@ -64,10 +55,6 @@ class KubectlProvider(Provider):
     The Kubernetes context to use. If not set, the current context will be used.
     """
 
-    _cache: dict[tuple[Kind, str, str], _T_Data | Marker] = PrivateAttr(
-        default_factory=LruDict
-    )
-
     @model_validator(mode="before")
     @classmethod
     def _use_env_var(cls, values):
@@ -76,30 +63,23 @@ class KubectlProvider(Provider):
                 values["config"] = path
         return values
 
+    @cache_query_result()
     def _get_kv_pairs_(self, kind: Kind, namespace: str, name: str) -> _T_Data:
         if not self.path:
             raise UnsupportedError("kubectl command is not installed or accessible")
 
         call_version(self.path)  # leave a sign in the log
 
-        result = self._cache.get((kind, namespace, name), Marker.NoCache)
+        return read_kv_pairs(
+            kubectl=self.path,
+            config=self.config,
+            context=self.context,
+            kind=kind,
+            namespace=namespace,
+            name=name,
+        )
 
-        if result is Marker.NoCache:
-            result = read_kv_pairs(
-                kubectl=self.path,
-                config=self.config,
-                context=self.context,
-                kind=kind,
-                namespace=namespace,
-                name=name,
-            )
-            self._cache[kind, namespace, name] = result
-
-        if result is Marker.NotFound:
-            raise LookupError(f'Failed to read {kind.name} "{name}" from kubectl')
-
-        return result
-
+    @cache_query_result()
     def _get_value_(self, spec: Request) -> str:
         request = KubeRequest.model_validate(spec.model_dump(exclude_none=True))
 
@@ -107,7 +87,7 @@ class KubectlProvider(Provider):
         if request.key not in secret:
             raise LookupError(
                 f'Key "{request.key}" not found in secret "{request.name}"'
-            )
+            ) from None
 
         return secret[request.key].decode()
 
@@ -129,7 +109,7 @@ def read_kv_pairs(
     kind: Kind,
     namespace: str,
     name: str,
-) -> _T_Data | Literal[Marker.NotFound]:
+) -> _T_Data:
     if kind == Kind.Secret:
         return read_secret(
             kubectl=kubectl,
@@ -158,7 +138,7 @@ def read_secret(
     context: str | None,
     namespace: str,
     name: str,
-) -> _T_Data | Literal[Marker.NotFound]:
+) -> _T_Data:
     """Request a secret from Kubernetes using kubectl."""
     # build command
     cmd = [str(kubectl), "get"]
@@ -177,7 +157,7 @@ def read_secret(
             level_error=logging.DEBUG,
         )
     except subprocess.CalledProcessError:
-        return Marker.NotFound
+        raise LookupError(f'Failed to read secret "{name}" from kubectl') from None
 
     secret = SecretV1.model_validate_json(output)
 
@@ -196,7 +176,7 @@ def read_configmap(
     context: str | None,
     namespace: str,
     name: str,
-) -> _T_Data | Literal[Marker.NotFound]:
+) -> _T_Data:
     """Request a value from Kubernetes using kubectl."""
     # build command
     cmd = [str(kubectl), "get"]
@@ -214,7 +194,7 @@ def read_configmap(
             level_error=logging.DEBUG,
         )
     except subprocess.CalledProcessError:
-        return Marker.NotFound
+        raise LookupError(f'Failed to read configmap "{name}" from kubectl') from None
 
     configmap = ConfigMapV1.model_validate_json(output)
 

@@ -13,6 +13,7 @@ import pytest
 from pydantic_core import Url
 
 import secrets_env.utils as t
+from secrets_env.utils import cache_query_result
 
 
 def test_get_httpx_error_reason():
@@ -137,6 +138,33 @@ def test_lru_dict():
     # delete
     del d["b"]
     assert d == {"d": 4, "c": 3}
+
+
+def test_cache_query_result():
+
+    call_count = 0
+
+    class Demo:
+
+        @cache_query_result()
+        def foo(self, x: int) -> int:
+            nonlocal call_count
+            call_count += 1
+
+            if x < 0:
+                raise LookupError
+            return x**2
+
+    obj = Demo()
+    assert obj.foo(2) == 4
+    assert obj.foo(2) == 4
+    assert call_count == 1
+
+    with pytest.raises(LookupError):
+        assert obj.foo(-1)
+    with pytest.raises(LookupError):
+        assert obj.foo(-1)
+    assert call_count == 2
 
 
 class TestSetupCaptureWarnings:

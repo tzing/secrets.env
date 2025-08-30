@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import enum
 import logging
 import os
 import ssl
@@ -9,21 +8,14 @@ from functools import cached_property
 from pathlib import Path
 
 import httpx
-from pydantic import (
-    BaseModel,
-    Field,
-    HttpUrl,
-    PrivateAttr,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.provider import Provider
 from secrets_env.providers.vault.api import is_authenticated, read_secret
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.utils import LruDict, get_httpx_error_reason
+from secrets_env.utils import cache_query_result, get_httpx_error_reason
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
@@ -32,13 +24,6 @@ if typing.TYPE_CHECKING:
     from secrets_env.providers.vault.auth import Auth
 
 logger = logging.getLogger(__name__)
-
-
-class Marker(enum.Enum):
-    """Internal marker for cache handling."""
-
-    NoCache = enum.auto()
-    NotFound = enum.auto()
 
 
 class VaultPath(BaseModel):
@@ -133,8 +118,6 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
     type = "vault"
 
-    _cache: dict[str, dict | Marker] = PrivateAttr(default_factory=LruDict)
-
     @cached_property
     def client(self) -> httpx.Client:
         """Returns HTTP client.
@@ -174,9 +157,10 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
         return client
 
+    @cache_query_result()
     def _get_value_(self, spec: Request) -> str:
         path = VaultPath.model_validate(spec.model_dump(exclude_none=True))
-        secret = self._read_secret(path)
+        secret = self._read_secret_(path.path)
 
         for f in path.field:
             try:
@@ -193,7 +177,8 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
         return secret
 
-    def _read_secret(self, path: VaultPath) -> dict:
+    @cache_query_result()
+    def _read_secret_(self, path: str) -> dict:
         """
         Get a secret from the Vault. A Vault "secret" is a object that contains
         key-value pairs.
@@ -205,17 +190,9 @@ class VaultKvProvider(Provider, VaultUserConfig):
         LookupError
             If the secret is not found.
         """
-        result = self._cache.get(path.path, Marker.NoCache)
-
-        if result == Marker.NoCache:
-            result = read_secret(self.client, path.path)
-            if result is None:
-                result = Marker.NotFound
-            self._cache[path.path] = result
-
-        if result == Marker.NotFound:
+        result = read_secret(self.client, path)
+        if result is None:
             raise LookupError(f"Failed to load secret `{path}`")
-
         return result
 
 

@@ -165,7 +165,7 @@ class TestVaultKvProvider:
         self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
     ):
         monkeypatch.setattr(
-            VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
+            VaultKvProvider, "_read_secret_", Mock(return_value={"bar": "test"})
         )
         assert (
             unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
@@ -178,7 +178,7 @@ class TestVaultKvProvider:
         unittest_provider: VaultKvProvider,
     ):
         monkeypatch.setattr(
-            VaultKvProvider, "_read_secret", Mock(return_value={"bar": "test"})
+            VaultKvProvider, "_read_secret_", Mock(return_value={"bar": "test"})
         )
         with pytest.raises(NoValue):
             unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
@@ -191,7 +191,9 @@ class TestVaultKvProvider:
         unittest_provider: VaultKvProvider,
     ):
         monkeypatch.setattr(
-            VaultKvProvider, "_read_secret", Mock(return_value={"bar": {"baz": "test"}})
+            VaultKvProvider,
+            "_read_secret_",
+            Mock(return_value={"bar": {"baz": "test"}}),
         )
         with pytest.raises(NoValue):
             unittest_provider({"name": "test", "path": "foo", "field": "bar"})
@@ -203,9 +205,8 @@ class TestVaultKvProvider:
         func = Mock(return_value={"foo": "bar"})
         monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
-        path = VaultPath(path="foo", field="bar")
-        assert unittest_provider._read_secret(path) == {"foo": "bar"}
-        assert unittest_provider._read_secret(path) == {"foo": "bar"}
+        assert unittest_provider._read_secret_("foo") == {"foo": "bar"}
+        assert unittest_provider._read_secret_("foo") == {"foo": "bar"}
 
         assert func.call_count == 1
 
@@ -219,11 +220,10 @@ class TestVaultKvProvider:
         func = Mock(return_value=None)
         monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
-        path = VaultPath(path="foo", field="bar")
         with pytest.raises(LookupError):
-            unittest_provider._read_secret(path)
+            unittest_provider._read_secret_("foo")
         with pytest.raises(LookupError):
-            unittest_provider._read_secret(path)
+            unittest_provider._read_secret_("foo")
 
         assert func.call_count == 1
 

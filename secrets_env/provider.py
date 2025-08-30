@@ -9,7 +9,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from pydantic import BaseModel, Field, ValidationError, model_validator, validate_call
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    model_validator,
+    validate_call,
+)
 
 from secrets_env.exceptions import AuthenticationError, NoValue, UnsupportedError
 
@@ -29,6 +36,8 @@ class Request(BaseModel):
     potential fields must be defined in this class.
     """
 
+    model_config = ConfigDict(frozen=True)
+
     name: str = Field(pattern=r"^[a-zA-Z_]\w*$")
     """
     The environment variable to store the secret value.
@@ -40,7 +49,7 @@ class Request(BaseModel):
     the default provider might be applied.
     """
 
-    field: str | list[str] | None = None
+    field: str | tuple[str, ...] | None = None
     format: str | None = None
     key: str | None = None
     kind: str | None = None
@@ -121,7 +130,7 @@ class Provider(BaseModel, ABC):
             for err in e.errors():
                 loc = ".".join(map(str, err["loc"])) or "(root)"
                 msg = err["msg"]
-                logger.warning(f"  \u279C <mark>{loc}</mark>: {msg}")
+                logger.warning(f"  \u279c <mark>{loc}</mark>: {msg}")
             logger.warning("Skipping <data>%s</data>", spec.name)
             raise NoValue from e
         except Exception as e:
