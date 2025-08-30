@@ -6,7 +6,6 @@ import os
 import subprocess
 import sys
 import typing
-from collections.abc import Sequence
 from pathlib import Path
 
 import click
