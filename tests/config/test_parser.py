@@ -194,7 +194,7 @@ class TestCaptureLineErrors:
 
         errors = []
         with capture_line_errors(errors, ("test",)):
-            Demo(name=1234, file="/not/a/file")
+            Demo.model_validate({"name": 1234, "file": "/not/a/file"})
 
         assert errors[0]["input"] == 1234
         assert errors[0]["loc"] == ("test", "name")
