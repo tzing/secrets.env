@@ -63,7 +63,7 @@ def read_values(*, config: Path | None, strict: bool) -> dict[str, str]:
 
     for request in cfg.requests:
         applied_source = request.source or default_source
-        provider = cfg.providers[applied_source]
+        provider = cfg.providers[applied_source]  # type: ignore[reportArgumentType]
         try:
             output_values[request.name] = provider(request)
             logger.debug(f"Loaded <data>{request.name}</data>")
