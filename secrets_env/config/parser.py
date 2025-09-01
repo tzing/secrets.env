@@ -81,6 +81,17 @@ class LocalConfig(BaseModel):
 
         return self
 
+    # TODO remove below; they are setup for backward compatibility
+
+    @property
+    def requests(self) -> list[Request]:
+        return self.secrets
+
+    @property
+    def providers(self) -> dict[str, Provider]:
+        # FIXME known defect
+        return {provider.name: provider for provider in self.sources}  # type: ignore
+
 
 class ProviderBuilder(BaseModel):
     """Internal helper to build provider instances from source(s) configs."""
