@@ -88,9 +88,9 @@ class LocalConfig(BaseModel):
         return self.secrets
 
     @property
-    def providers(self) -> dict[str, Provider]:
+    def providers(self):
         # FIXME known defect
-        return {provider.name: provider for provider in self.sources}  # type: ignore
+        return {provider.name: provider for provider in self.sources}
 
 
 class ProviderBuilder(BaseModel):
