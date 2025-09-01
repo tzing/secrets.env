@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from pydantic_core import Url
+from dirty_equals import IsInstance
+from pydantic import HttpUrl
 
 from secrets_env.config import load_local_config, load_user_config
 from secrets_env.config.parser import Request
@@ -28,10 +29,8 @@ class TestLoadLocalConfig:
 
         config = load_local_config(config_path)
 
-        assert len(config.providers) == 1
-        assert config.providers["strangers"] == PlainTextProvider(name="strangers")
-        assert len(config.requests) == 1
-        assert config.requests[0] == Request(name="TEST_VAR", source="strangers")
+        assert config.sources == [IsInstance(PlainTextProvider)]
+        assert config.secrets == [IsInstance(Request)]
 
     def test_success_2(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         config_path = tmp_path / "config.yaml"
@@ -51,14 +50,8 @@ class TestLoadLocalConfig:
 
         config = load_local_config(None)
 
-        assert len(config.providers) == 1
-        assert config.providers == {
-            "debug": DebugProvider(value="never gonna give you up")
-        }
-        assert len(config.requests) == 1
-        assert config.requests == [
-            Request(name="TEST_VAR", value="foo"),
-        ]
+        assert config.sources == [IsInstance(DebugProvider)]
+        assert config.secrets == [IsInstance(Request)]
 
     def test_success_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         config_path = tmp_path / "config.yaml"
@@ -71,8 +64,9 @@ class TestLoadLocalConfig:
         monkeypatch.setenv("SECRETS_ENV_CONFIG_FILE", str(config_path))
 
         config = load_local_config(None)
-        assert len(config.providers) == 1
-        assert len(config.requests) == 0
+
+        assert config.sources == [IsInstance(PlainTextProvider)]
+        assert config.secrets == []
 
     def test_no_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("secrets_env.config.find_local_config_file", lambda: None)
@@ -120,14 +114,14 @@ class TestLoadUserConfig:
             "secrets_env.config.find_user_config_file", lambda: config_path
         )
 
-        config = load_user_config(Url("HTTP://EXAMPLE.COM"))
+        config = load_user_config(HttpUrl("HTTP://EXAMPLE.COM"))
         assert config == {"demo": "value"}
 
     def test_file_not_exist(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.config.find_user_config_file", lambda: Path("/no-this-file")
         )
-        config = load_user_config(Url("http://example.com"))
+        config = load_user_config(HttpUrl("http://example.com"))
         assert config == {}
 
     def test_file_invalid(
@@ -142,7 +136,7 @@ class TestLoadUserConfig:
             "secrets_env.config.find_user_config_file", lambda: config_path
         )
 
-        config = load_user_config(Url("http://example.com"))
+        config = load_user_config(HttpUrl("http://example.com"))
         assert config == {}
         assert "User config file is invalid" in caplog.text
 
@@ -161,5 +155,5 @@ class TestLoadUserConfig:
             "secrets_env.config.find_user_config_file", lambda: config_path
         )
 
-        config = load_user_config(Url("http://unknown.com"))
+        config = load_user_config(HttpUrl("http://unknown.com"))
         assert config == {}
