@@ -37,7 +37,7 @@ def shell(config: Path, partial: bool):
         raise click.Abort from None
 
     try:
-        values = secrets_env.read_values(config=config, strict=not partial)
+        values = secrets_env.load_values_sync(config=config, strict=not partial)
     except (ConfigError, NoValue) as e:
         logger.error(str(e))
         raise click.Abort from None

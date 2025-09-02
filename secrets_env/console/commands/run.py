@@ -72,7 +72,7 @@ def run(args: Sequence[str], config: Path, partial: bool):
 
     # prepare environment variable set
     try:
-        values = secrets_env.read_values(config=config, strict=not partial)
+        values = secrets_env.load_values_sync(config=config, strict=not partial)
     except (ConfigError, NoValue) as e:
         logger.error("%s", e)
         raise click.Abort from None

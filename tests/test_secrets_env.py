@@ -2,12 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from secrets_env import read_values
+from secrets_env import load_values, load_values_sync
 from secrets_env.exceptions import ConfigError, NoValue
 
 
-class TestReadValues:
-    def test_plain_text(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+class TestLoadValues:
+
+    @pytest.mark.asyncio
+    async def test_plain_text(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
             """
@@ -20,55 +22,63 @@ class TestReadValues:
         )
 
         with caplog.at_level("INFO"):
-            values = read_values(config=config_file, strict=True)
+            values = await load_values(config=config_file, strict=True)
 
         assert values == {"DEMO": "Hello, World!"}
         assert "<mark>1</mark> secrets loaded" in caplog.text
 
-    def test_multiple_sources(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    @pytest.mark.asyncio
+    async def test_multiple_sources(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ):
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
             """
             sources:
               - name: demo-1
-                type: plain
+                type: debug:sync
+                value: FooBar
               - name: demo-2
-                type: debug
-                value: Foobar
+                type: debug:async
+                value: BazQax
 
             secrets:
               - name: DEMO_1
                 source: demo-1
-                value: Hello, World!
               - name: DEMO_2
                 source: demo-2
             """
         )
 
         with caplog.at_level("DEBUG"):
-            values = read_values(config=config_file, strict=True)
+            values = await load_values(config=config_file, strict=True)
 
-        assert values == {"DEMO_1": "Hello, World!", "DEMO_2": "Foobar"}
-        assert "Loaded <data>DEMO_1</data>"
-        assert "Loaded <data>DEMO_2</data>"
+        assert values == {"DEMO_1": "FooBar", "DEMO_2": "BazQax"}
+        assert "Loaded <data>DEMO_1</data>" in caplog.text
+        assert "Loaded <data>DEMO_2</data>" in caplog.text
         assert "<mark>2</mark> secrets loaded" in caplog.text
 
-    def test_empty(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    @pytest.mark.asyncio
+    async def test_empty(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         config_file = tmp_path / "config.toml"
         config_file.write_text(
             """
             [[sources]]
-            type = "plain"
+            type = "debug"
+            value = "foobar"
             """
         )
 
         with caplog.at_level("DEBUG"):
-            values = read_values(config=config_file, strict=True)
+            values = await load_values(config=config_file, strict=True)
 
         assert values == {}
         assert "Requests are absent." in caplog.text
 
-    def test_no_value__strict(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    @pytest.mark.asyncio
+    async def test_no_value__strict(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ):
         config_file = tmp_path / "config.toml"
         config_file.write_text(
             """
@@ -81,12 +91,13 @@ class TestReadValues:
         )
 
         with pytest.raises(NoValue):
-            read_values(config=config_file, strict=True)
+            await load_values(config=config_file, strict=True)
 
         assert "Value for <data>DEMO</data> not found" in caplog.text
         assert "<error>0</error> / 1 secrets loaded" in caplog.text
 
-    def test_no_value__tolerated(
+    @pytest.mark.asyncio
+    async def test_no_value__tolerated(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ):
         config_file = tmp_path / "config.toml"
@@ -104,13 +115,14 @@ class TestReadValues:
             """
         )
 
-        values = read_values(config=config_file, strict=False)
+        values = await load_values(config=config_file, strict=False)
         assert values == {"FOO": "Bar"}
 
         assert "Value for <data>DEMO</data> not found" in caplog.text
         assert "<error>1</error> / 2 secrets loaded" in caplog.text
 
-    def test_config_error(self, tmp_path: Path):
+    @pytest.mark.asyncio
+    async def test_config_error(self, tmp_path: Path):
         config_file = tmp_path / "config.toml"
         config_file.write_text(
             """
@@ -120,28 +132,45 @@ class TestReadValues:
         )
 
         with pytest.raises(ConfigError):
-            read_values(config=config_file, strict=True)
+            await load_values(config=config_file, strict=True)
 
-    def test_disable(
+    @pytest.mark.asyncio
+    async def test_disable(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
         caplog: pytest.LogCaptureFixture,
     ):
-        config_file = tmp_path / "config.toml"
-        config_file.write_text(
-            """
-            [[sources]]
-            type = "plain"
-
-            [[secrets]]
-            name = "DEMO"
-            """
-        )
-
         monkeypatch.setenv("SECRETS_ENV_DISABLE", "1")
 
-        values = read_values(config=config_file, strict=True)
+        values = await load_values(config=tmp_path / "config.toml", strict=True)
         assert values == {}
 
         assert "The value loading process will be bypassed" in caplog.text
+
+
+class TestLoadValuesSync:
+
+    @pytest.mark.asyncio
+    async def test(self, tmp_path: Path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+            sources:
+              - name: demo-1
+                type: debug:sync
+                value: FooBar
+              - name: demo-2
+                type: debug:async
+                value: BazQax
+
+            secrets:
+              - name: DEMO_1
+                source: demo-1
+              - name: DEMO_2
+                source: demo-2
+            """
+        )
+
+        values = load_values_sync(config=config_file, strict=True)
+        assert values == {"DEMO_1": "FooBar", "DEMO_2": "BazQax"}

@@ -4,10 +4,8 @@ import os
 import time
 from unittest.mock import Mock, patch
 
-import cleo.commands.command
 import cleo.events.console_command_event
 import cleo.events.event_dispatcher
-import cleo.io.outputs.section_output
 import cleo.io.outputs.stream_output
 import poetry.console.commands.run
 import pytest
@@ -36,7 +34,7 @@ class TestSecretsEnvPlugin:
         monkeypatch.setattr(t, "setup_output", lambda _: None)
         monkeypatch.setattr(t, "is_secrets_env_active", lambda: False)
         monkeypatch.setattr(
-            "secrets_env.read_values", lambda config, strict: {"VAR1": "bar"}
+            "secrets_env.load_values_sync", lambda config, strict: {"VAR1": "bar"}
         )
         monkeypatch.setenv("VAR1", "foo")
 
@@ -49,14 +47,14 @@ class TestSecretsEnvPlugin:
     def test_skip_not_related_command(
         self, monkeypatch: pytest.MonkeyPatch, event, dispatcher
     ):
-        read_values_func = Mock()
-        monkeypatch.setattr("secrets_env.read_values", read_values_func)
+        load_values_func = Mock()
+        monkeypatch.setattr("secrets_env.load_values_sync", load_values_func)
         event.command.name = "not-related-command"
 
         plugin = SecretsEnvPlugin()
         plugin.load_values(event, "console.command", dispatcher)
 
-        assert read_values_func.call_count == 0
+        assert load_values_func.call_count == 0
 
     @pytest.mark.usefixtures("_reset_logging")
     def test_recursive_activation(
@@ -66,27 +64,27 @@ class TestSecretsEnvPlugin:
         event,
         dispatcher,
     ):
-        read_values_func = Mock()
-        monkeypatch.setattr("secrets_env.read_values", read_values_func)
+        load_values_func = Mock()
+        monkeypatch.setattr("secrets_env.load_values_sync", load_values_func)
         monkeypatch.setattr(t, "setup_output", lambda _: None)
         monkeypatch.setenv("SECRETS_ENV_ACTIVE", "1")
 
         plugin = SecretsEnvPlugin()
         plugin.load_values(event, "console.command", dispatcher)
 
-        assert read_values_func.call_count == 0
+        assert load_values_func.call_count == 0
         assert "Secrets.env is already active" in caplog.text
 
     def test_config_error(self, monkeypatch: pytest.MonkeyPatch, event, dispatcher):
-        read_values_func = Mock(side_effect=ConfigError)
-        monkeypatch.setattr("secrets_env.read_values", read_values_func)
+        load_values_func = Mock(side_effect=ConfigError)
+        monkeypatch.setattr("secrets_env.load_values_sync", load_values_func)
         monkeypatch.setattr(t, "setup_output", lambda _: None)
         monkeypatch.setattr(t, "is_secrets_env_active", lambda: False)
 
         plugin = SecretsEnvPlugin()
         plugin.load_values(event, "console.command", dispatcher)  # should not raise
 
-        assert read_values_func.call_count == 1
+        assert load_values_func.call_count == 1
 
 
 class TestCleoHandler:
