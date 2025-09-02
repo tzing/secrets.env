@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 import typing
 
@@ -206,3 +207,14 @@ async def load_values(*, config: Path | None, strict: bool) -> dict[str, str]:
         )
 
     return output_values
+
+
+def load_values_sync(*, config: Path | None, strict: bool) -> dict[str, str]:
+    """The synchronous version of :py:func:`load_values`."""
+
+    def _worker():
+        return asyncio.run(load_values(config=config, strict=strict))
+
+    # trick: use one-off thread pool to create dedicated event loop
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(_worker).result()

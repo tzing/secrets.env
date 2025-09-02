@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from secrets_env import load_values, read_values
+from secrets_env import load_values, load_values_sync, read_values
 from secrets_env.exceptions import ConfigError, NoValue
 
 
@@ -288,3 +288,30 @@ class TestLoadValues:
         assert values == {}
 
         assert "The value loading process will be bypassed" in caplog.text
+
+
+class TestLoadValuesSync:
+
+    @pytest.mark.asyncio
+    async def test(self, tmp_path: Path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+            sources:
+              - name: demo-1
+                type: debug:sync
+                value: FooBar
+              - name: demo-2
+                type: debug:async
+                value: BazQax
+
+            secrets:
+              - name: DEMO_1
+                source: demo-1
+              - name: DEMO_2
+                source: demo-2
+            """
+        )
+
+        values = load_values_sync(config=config_file, strict=True)
+        assert values == {"DEMO_1": "FooBar", "DEMO_2": "BazQax"}
