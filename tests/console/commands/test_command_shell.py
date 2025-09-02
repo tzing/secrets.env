@@ -8,28 +8,19 @@ from secrets_env.console.shells.base import Shell
 from secrets_env.exceptions import ConfigError
 
 
-@pytest.fixture
-def _mock_read_values(monkeypatch: pytest.MonkeyPatch):
-    def func(config, strict):
+@pytest.mark.usefixtures("_reset_logging")
+def test_success(monkeypatch: pytest.MonkeyPatch):
+    def mock_read_values(config, strict):
         return {"foo": "bar"}
 
-    monkeypatch.setattr("secrets_env.read_values", func)
-
-
-@pytest.fixture
-def _mock_get_shell(monkeypatch: pytest.MonkeyPatch):
-    def func():
+    def mock_get_shell():
         mock_shell = Mock(Shell)
         mock_shell.activate.side_effect = SystemExit()
         return mock_shell
 
-    monkeypatch.setattr("secrets_env.console.shells.get_shell", func)
+    monkeypatch.setattr("secrets_env.load_values_sync", mock_read_values)
+    monkeypatch.setattr("secrets_env.console.shells.get_shell", mock_get_shell)
 
-
-@pytest.mark.usefixtures("_reset_logging")
-@pytest.mark.usefixtures("_mock_read_values")
-@pytest.mark.usefixtures("_mock_get_shell")
-def test_success():
     runner = click.testing.CliRunner()
     result = runner.invoke(shell)
     assert result.exit_code == 0
@@ -50,7 +41,7 @@ def test_read_values_error(monkeypatch: pytest.MonkeyPatch):
     def mock_read_values(config, strict):
         raise ConfigError("test error")
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", mock_read_values)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(shell)
@@ -64,7 +55,7 @@ def test_no_value(monkeypatch: pytest.MonkeyPatch):
     def mock_read_values(config, strict):
         return {}
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", mock_read_values)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(shell)

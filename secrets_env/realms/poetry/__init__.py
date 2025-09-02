@@ -48,7 +48,7 @@ class SecretsEnvPlugin(ApplicationPlugin):
             return
 
         try:
-            values = secrets_env.read_values(config=None, strict=False)
+            values = secrets_env.load_values_sync(config=None, strict=False)
         except ConfigError:
             return
 

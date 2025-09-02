@@ -7,10 +7,10 @@ from secrets_env.exceptions import ConfigError
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_success(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    def _load_values_sync(config, strict):
         return {"foo": "bar"}
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", _load_values_sync)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "echo"])
@@ -26,10 +26,10 @@ def test_usage():
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_program_fail(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    def _load_values_sync(config, strict):
         return {"foo": "bar"}
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", _load_values_sync)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "sh", "-c", "exit 33"])
@@ -39,10 +39,10 @@ def test_program_fail(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_config_empty(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    def _load_values_sync(config, strict):
         return {}
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", _load_values_sync)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "echo"])
@@ -52,10 +52,10 @@ def test_config_empty(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.usefixtures("_reset_logging")
 def test_config_error(monkeypatch: pytest.MonkeyPatch):
-    def mock_read_values(config, strict):
+    def _load_values_sync(config, strict):
         raise ConfigError
 
-    monkeypatch.setattr("secrets_env.read_values", mock_read_values)
+    monkeypatch.setattr("secrets_env.load_values_sync", _load_values_sync)
 
     runner = click.testing.CliRunner()
     result = runner.invoke(run, ["--", "echo"])
