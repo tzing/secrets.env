@@ -7,7 +7,7 @@ from pydantic import HttpUrl
 from secrets_env.config import load_local_config, load_user_config
 from secrets_env.config.parser import Request
 from secrets_env.exceptions import ConfigError
-from secrets_env.providers.debug import DebugProvider
+from secrets_env.providers.debug import AsyncDebugProvider
 from secrets_env.providers.plain import PlainTextProvider
 
 
@@ -50,7 +50,7 @@ class TestLoadLocalConfig:
 
         config = load_local_config(None)
 
-        assert config.sources == [IsInstance(DebugProvider)]
+        assert config.sources == [IsInstance(AsyncDebugProvider)]
         assert config.secrets == [IsInstance(Request)]
 
     def test_success_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

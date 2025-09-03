@@ -74,11 +74,13 @@ class TestDebugProvider:
 
 
 class TestPlainTextProvider:
-    def test(self):
+
+    @pytest.mark.asyncio
+    async def test(self):
         provider = PlainTextProvider()
         assert provider.name == "plain"
-        assert provider(Request(name="test", value="foo")) == "foo"
-        assert provider(Request(name="test", value="")) == ""
+        assert await provider(Request(name="test", value="foo")) == "foo"
+        assert await provider(Request(name="test", value="")) == ""
 
         with pytest.raises(NoValue):
-            provider(Request(name="test"))
+            await provider(Request(name="test"))
