@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import logging
 import typing
@@ -24,11 +25,16 @@ logger = logging.getLogger(__name__)
 
 class VisibleOption(click.Option):
     """
-    A :py:class:`click.Option` subclass that shows the option in the help text.
+    A :py:class:`click.Option` that shows the option in the usage.
     """
 
     def get_usage_pieces(self, ctx: click.Context) -> list[str]:
-        return [self.opts[-1], self.make_metavar()]
+        click_version_str = importlib.metadata.version("click")
+        click_version = tuple(map(int, click_version_str.split(".")))
+        if click_version >= (8, 2):
+            return [self.opts[-1], self.make_metavar(ctx)]  # type: ignore[reportCallIssue]
+        else:
+            return [self.opts[-1], self.make_metavar()]  # type: ignore[reportCallIssue]
 
 
 class StdinInputOption(VisibleOption):
