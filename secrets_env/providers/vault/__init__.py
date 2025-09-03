@@ -20,6 +20,8 @@ from secrets_env.utils import cache_query_result, get_httpx_error_reason
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
 
+    from httpx import AsyncClient
+
     from secrets_env.provider import Request
     from secrets_env.providers.vault.auth import Auth
 
@@ -196,7 +198,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
         return result
 
 
-def create_http_client(config: VaultUserConfig) -> httpx.Client:
+def create_http_client(config: VaultUserConfig) -> AsyncClient:
     client_params = {
         "base_url": str(config.url),
         "headers": {
@@ -236,10 +238,10 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
 
         client_params["verify"] = ssl_ctx
 
-    return httpx.Client(**client_params)
+    return httpx.AsyncClient(**client_params)
 
 
-def get_token(client: httpx.Client, auth: Auth) -> str:
+async def get_token(client: AsyncClient, auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
 
@@ -250,20 +252,22 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     """
     # login
     try:
-        token = auth.login(client)
+        token = await auth.login(client)
     except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        raise AuthenticationError(f"Encounter {reason} while retrieving token") from e
+        if reason := get_httpx_error_reason(e):
+            raise AuthenticationError(
+                f"Encounter {reason} while retrieving token"
+            ) from e
+        raise
 
     # verify
-    if not is_authenticated(client, token):
+    if not await is_authenticated(client, token):
         raise AuthenticationError("Invalid token")
 
     return token
 
 
-def get_token_from_helper(client: httpx.Client) -> str | None:
+async def get_token_from_helper(client: AsyncClient) -> str | None:
     """
     Get token from token helper.
 
@@ -279,7 +283,7 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
         return None
 
     token = token_helper.read_text()
-    if is_authenticated(client, token):
+    if await is_authenticated(client, token):
         logger.debug("Token helper is valid")
         return token
 

@@ -1,10 +1,11 @@
 import os
 import uuid
 from pathlib import Path
-from unittest.mock import Mock, PropertyMock
+from unittest.mock import AsyncMock, Mock, PropertyMock
 
 import httpx
 import pytest
+from httpx import AsyncClient
 from pydantic import HttpUrl, ValidationError
 
 from secrets_env.exceptions import AuthenticationError, NoValue
@@ -90,14 +91,14 @@ class TestVaultKvProvider:
         )
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client",
-            lambda _: Mock(httpx.Client, headers={}),
+            lambda _: Mock(AsyncClient, headers={}),
         )
         monkeypatch.setattr(
             "secrets_env.providers.vault.get_token", lambda c, a: random_token
         )
 
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
-        assert isinstance(provider.client, httpx.Client)
+        assert isinstance(provider.client, AsyncClient)
         assert provider.client.headers["X-Vault-Token"] == random_token
         assert helper.read_text() == random_token
 
@@ -106,14 +107,14 @@ class TestVaultKvProvider:
     ):
         monkeypatch.setattr(
             "secrets_env.providers.vault.create_http_client",
-            lambda _: Mock(httpx.Client, headers={}),
+            lambda _: Mock(AsyncClient, headers={}),
         )
         monkeypatch.setattr(
             "secrets_env.providers.vault.get_token_from_helper", lambda _: random_token
         )
 
         provider = VaultKvProvider(url="https://vault.example.com", auth="null")
-        assert isinstance(provider.client, httpx.Client)
+        assert isinstance(provider.client, AsyncClient)
         assert provider.client.headers["X-Vault-Token"] == random_token
 
     def test_client__with_teleport(
@@ -126,7 +127,7 @@ class TestVaultKvProvider:
             assert config.tls.client_cert == Path("/mock/client.pem")
             assert config.tls.client_key == Path("/mock/client.key")
 
-            client = Mock(httpx.Client)
+            client = Mock(AsyncClient)
             client.headers = {}
             return client
 
@@ -151,13 +152,13 @@ class TestVaultKvProvider:
 
         provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
         client = provider.client
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, AsyncClient)
         assert provider.client.headers["X-Vault-Token"] == random_token
 
     @pytest.fixture
     def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            VaultKvProvider, "client", PropertyMock(return_value=Mock(httpx.Client))
+            VaultKvProvider, "client", PropertyMock(return_value=Mock(AsyncClient))
         )
         return VaultKvProvider(url="https://vault.example.com", auth="null")
 
@@ -211,7 +212,7 @@ class TestVaultKvProvider:
         assert func.call_count == 1
 
         client, path = func.call_args[0]
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, AsyncClient)
         assert path == "foo"
 
     def test_read_secret__not_found(
@@ -242,25 +243,26 @@ class TestCreateHttpClient:
 
     @pytest.mark.skipif("VAULT_ADDR" in os.environ, reason="VAULT_ADDR is set")
     def test_basic(self):
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
+        config = VaultUserConfig.model_validate(
+            {"url": "https://vault.example.com", "auth": "null"}
         )
 
         client = create_http_client(config)
 
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx.AsyncClient)
         assert client.base_url == httpx.URL("https://vault.example.com/")
 
     def test_proxy(self):
-        config = VaultUserConfig(
-            url="https://vault.example.com",
-            auth="null",
-            proxy="http://proxy.example.com",
+        config = VaultUserConfig.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+                "proxy": "http://proxy.example.com",
+            }
         )
 
         client = create_http_client(config)
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx.AsyncClient)
 
     def test_ca(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         ca_path = tmp_path / "ca.crt"
@@ -279,7 +281,7 @@ class TestCreateHttpClient:
         with caplog.at_level("DEBUG"):
             client = create_http_client(config)
 
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx.AsyncClient)
         assert "CA cert is set: " in caplog.text
 
     def test_client_cert(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
@@ -299,7 +301,7 @@ class TestCreateHttpClient:
         with caplog.at_level("DEBUG"):
             client = create_http_client(config)
 
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx.AsyncClient)
         assert "Client cert is set: " in caplog.text
 
     def test_client_cert_pair(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
@@ -323,46 +325,94 @@ class TestCreateHttpClient:
         with caplog.at_level("DEBUG"):
             client = create_http_client(config)
 
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx.AsyncClient)
         assert "Client cert pair is set: " in caplog.text
 
 
 class TestGetToken:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch):
-        client = Mock(httpx.Client)
-        auth = NoAuth(token="t0ken")
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.is_authenticated", lambda c, t: True
-        )
-        assert get_token(client, auth) == "t0ken"
 
-    def test_authenticate_fail(self, monkeypatch: pytest.MonkeyPatch):
-        client = Mock(httpx.Client)
+    @pytest.mark.asyncio
+    async def test_success(self, monkeypatch: pytest.MonkeyPatch):
+        client = Mock(AsyncClient)
         auth = NoAuth(token="t0ken")
         monkeypatch.setattr(
-            "secrets_env.providers.vault.is_authenticated", lambda c, t: False
+            "secrets_env.providers.vault.is_authenticated",
+            AsyncMock(return_value=True),
+        )
+        assert await get_token(client, auth) == "t0ken"
+
+    @pytest.mark.asyncio
+    async def test_authenticate_fail(self, monkeypatch: pytest.MonkeyPatch):
+        client = Mock(AsyncClient)
+        auth = NoAuth(token="t0ken")
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            AsyncMock(return_value=False),
         )
         with pytest.raises(AuthenticationError, match="Invalid token"):
-            get_token(client, auth)
+            await get_token(client, auth)
 
-    def test_login_connection_error(self):
-        client = Mock(httpx.Client)
+    @pytest.mark.asyncio
+    async def test_login_connection_error(self):
+        client = Mock(AsyncClient)
         auth = Mock(Auth)
         auth.login.side_effect = httpx.ProxyError("test")
         with pytest.raises(
             AuthenticationError, match="Encounter proxy error while retrieving token"
         ):
-            get_token(client, auth)
+            await get_token(client, auth)
 
-    def test_login_exception(self):
-        client = Mock(httpx.Client)
+    @pytest.mark.asyncio
+    async def test_login_exception(self):
+        client = Mock(AsyncClient)
         auth = Mock(Auth)
         auth.login.side_effect = httpx.HTTPError("test")
         with pytest.raises(httpx.HTTPError):
-            get_token(client, auth)
+            await get_token(client, auth)
+
+
+class TestGetTokenFromHelper:
+
+    @pytest.mark.asyncio
+    async def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            AsyncMock(return_value=True),
+        )
+
+        assert await get_token_from_helper(Mock(AsyncClient)) == "t0ken"
+
+    @pytest.mark.asyncio
+    async def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
+        assert await get_token_from_helper(Mock(AsyncClient)) is None
+
+    @pytest.mark.asyncio
+    async def test_expired(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        helper = tmp_path / "helper"
+        helper.write_text("t0ken")
+
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.get_token_helper_path",
+            lambda: helper,
+        )
+        monkeypatch.setattr(
+            "secrets_env.providers.vault.is_authenticated",
+            AsyncMock(return_value=False),
+        )
+
+        assert await get_token_from_helper(Mock(AsyncClient)) is None
 
 
 class TestSaveTokenToHelper:
+
     def test(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         helper = tmp_path / ".vault-token"
         monkeypatch.setattr(
@@ -385,42 +435,6 @@ class TestSaveTokenToHelper:
     def test_exception(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("io.open", Mock(side_effect=OSError))
         save_token_to_helper("t0ken")  # no exception
-
-
-class TestGetTokenFromHelper:
-    def test_success(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        helper = tmp_path / "helper"
-        helper.write_text("t0ken")
-
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_helper_path",
-            lambda: helper,
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.is_authenticated",
-            lambda c, t: True,
-        )
-
-        assert get_token_from_helper(Mock(httpx.Client)) == "t0ken"
-
-    def test_not_found(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("pathlib.Path.is_file", lambda _: False)
-        assert get_token_from_helper(Mock(httpx.Client)) is None
-
-    def test_expired(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        helper = tmp_path / "helper"
-        helper.write_text("t0ken")
-
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_helper_path",
-            lambda: helper,
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.is_authenticated",
-            lambda c, t: False,
-        )
-
-        assert get_token_from_helper(Mock(httpx.Client)) is None
 
 
 EXAMPLE_CA = """
