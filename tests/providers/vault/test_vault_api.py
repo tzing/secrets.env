@@ -1,8 +1,10 @@
 import os
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 import respx
+from httpx import AsyncClient, Response
 from pydantic_core import ValidationError
 
 from secrets_env.providers.vault import VaultKvProvider
@@ -15,54 +17,71 @@ from secrets_env.providers.vault.api import (
 
 
 @pytest.fixture
-def intl_client(intl_provider: VaultKvProvider) -> httpx.Client:
-    return intl_provider.client
+def ut_client() -> AsyncClient:
+    return AsyncClient(base_url="https://example.com")
+
+
+@pytest.fixture
+def intl_client(intl_provider: VaultKvProvider) -> AsyncClient:
+    if "VAULT_ADDR" not in os.environ:
+        pytest.skip("VAULT_ADDR is not set")
+    if "VAULT_TOKEN" not in os.environ:
+        pytest.skip("VAULT_TOKEN is not set")
+    return AsyncClient(
+        base_url=os.environ["VAULT_ADDR"],
+        headers={
+            "Accept": "application/json",
+            "X-Vault-Token": os.environ["VAULT_TOKEN"],
+        },
+    )
 
 
 class TestIsAuthenticated:
-    def test_success(self, respx_mock: respx.MockRouter):
+
+    @pytest.mark.asyncio
+    async def test_success(self, respx_mock: respx.MockRouter):
         respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self")
 
-        client = httpx.Client(base_url="https://vault.example.com")
-        assert is_authenticated(client, "test-token") is True
+        client = AsyncClient(base_url="https://vault.example.com")
+        assert await is_authenticated(client, "test-token") is True
 
-    def test_fail(self, respx_mock: respx.MockRouter):
+    @pytest.mark.asyncio
+    async def test_fail(self, respx_mock: respx.MockRouter):
         respx_mock.get("https://vault.example.com/v1/auth/token/lookup-self").respond(
             status_code=403,
             json={"errors": ["mock permission denied"]},
         )
 
-        client = httpx.Client(base_url="https://vault.example.com")
-        assert is_authenticated(client, "test-token") is False
+        client = AsyncClient(base_url="https://vault.example.com")
+        assert await is_authenticated(client, "test-token") is False
 
-    def test_integration(self):
+    @pytest.mark.asyncio
+    async def test_integration(self):
         if "VAULT_ADDR" not in os.environ:
             raise pytest.skip("VAULT_ADDR is not set")
         if "VAULT_TOKEN" not in os.environ:
             raise pytest.skip("VAULT_TOKEN is not set")
 
-        client = httpx.Client(base_url=os.getenv("VAULT_ADDR"))
+        client = AsyncClient(base_url=os.environ["VAULT_ADDR"])
 
-        assert is_authenticated(client, os.getenv("VAULT_TOKEN")) is True
-        assert is_authenticated(client, "invalid-token") is False
+        assert await is_authenticated(client, os.environ["VAULT_TOKEN"]) is True
+        assert await is_authenticated(client, "invalid-token") is False
 
 
 class TestReadSecret:
+
     @pytest.fixture
     def _set_mount_kv2(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.api.get_mount",
-            lambda c, p: MountMetadata(path="secrets/", version=2),
-        )
+        async def _get_mount(client: AsyncClient, path: str):
+            return MountMetadata(path="secrets/", version=2)
 
+        monkeypatch.setattr("secrets_env.providers.vault.api.get_mount", _get_mount)
+
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_kv2(
-        self,
-        respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
-    ):
+    async def test_kv2(self, respx_mock: respx.MockRouter, ut_client: AsyncClient):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
-            httpx.Response(
+            Response(
                 200,
                 json={
                     "request_id": "9ababbb6-3749-cf2c-5a5b-85660e917e8e",
@@ -86,23 +105,25 @@ class TestReadSecret:
             )
         )
 
-        assert read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+        assert await read_secret(ut_client, "secrets/test") == {"test": "mock"}
 
-    def test_kv2_integration(self, intl_client: httpx.Client):
-        assert read_secret(intl_client, "kv2/test") == {
+    @pytest.mark.asyncio
+    async def test_kv2_integration(self, intl_client: AsyncClient):
+        assert await read_secret(intl_client, "kv2/test") == {
             "foo": "hello, world",
             "test": {"name.with-dot": "sample-value"},
         }
 
-    def test_kv1(
+    @pytest.mark.asyncio
+    async def test_kv1(
         self,
         monkeypatch: pytest.MonkeyPatch,
         respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
     ):
         monkeypatch.setattr(
             "secrets_env.providers.vault.api.get_mount",
-            lambda c, p: MountMetadata(path="secrets/", version=1),
+            AsyncMock(return_value=MountMetadata(path="secrets/", version=1)),
         )
         respx_mock.get("https://example.com/v1/secrets/test").mock(
             httpx.Response(
@@ -120,82 +141,90 @@ class TestReadSecret:
             )
         )
 
-        assert read_secret(unittest_client, "secrets/test") == {"test": "mock"}
+        assert await read_secret(ut_client, "secrets/test") == {"test": "mock"}
 
-    def test_kv1_integration(self, intl_client: httpx.Client):
-        assert read_secret(intl_client, "kv1/test") == {"foo": "hello"}
+    @pytest.mark.asyncio
+    async def test_kv1_integration(self, intl_client: AsyncClient):
+        assert await read_secret(intl_client, "kv1/test") == {"foo": "hello"}
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_forbidden(
+    async def test_forbidden(
         self,
         respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             httpx.Response(403)
         )
-        assert read_secret(unittest_client, "secrets/test") is None
+        assert await read_secret(ut_client, "secrets/test") is None
         assert "Permission denied for secret <data>secrets/test</data>" in caplog.text
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_not_found(
+    async def test_not_found(
         self,
         respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             httpx.Response(404)
         )
-        assert read_secret(unittest_client, "secrets/test") is None
+        assert await read_secret(ut_client, "secrets/test") is None
         assert "Secret <data>secrets/test</data> not found" in caplog.text
 
-    def test_get_mount_error(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_client: httpx.Client
+    @pytest.mark.asyncio
+    async def test_get_mount_error(
+        self, monkeypatch: pytest.MonkeyPatch, ut_client: AsyncClient
     ):
         monkeypatch.setattr(
-            "secrets_env.providers.vault.api.get_mount", lambda c, p: None
+            "secrets_env.providers.vault.api.get_mount",
+            AsyncMock(return_value=None),
         )
-        assert read_secret(unittest_client, "secrets/test") is None
+        assert await read_secret(ut_client, "secrets/test") is None
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_connection_error(
+    async def test_connection_error(
         self,
         respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             side_effect=httpx.ProxyError
         )
-        assert read_secret(unittest_client, "secrets/test") is None
+        assert await read_secret(ut_client, "secrets/test") is None
         assert (
             "Error occurred during query secret secrets/test: proxy error"
             in caplog.text
         )
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_http_exception(
-        self, respx_mock: respx.MockRouter, unittest_client: httpx.Client
+    async def test_http_exception(
+        self, respx_mock: respx.MockRouter, ut_client: AsyncClient
     ):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             side_effect=httpx.DecodingError
         )
         with pytest.raises(httpx.DecodingError):
-            read_secret(unittest_client, "secrets/test")
+            await read_secret(ut_client, "secrets/test")
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_set_mount_kv2")
-    def test_bad_request(
+    async def test_bad_request(
         self,
         respx_mock: respx.MockRouter,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
         respx_mock.get("https://example.com/v1/secrets/data/test").mock(
             httpx.Response(499)
         )
-        assert read_secret(unittest_client, "secrets/test") is None
+        assert await read_secret(ut_client, "secrets/test") is None
         assert (
             "Error occurred during query secret <data>secrets/test</data>"
             in caplog.text
@@ -203,70 +232,82 @@ class TestReadSecret:
 
 
 class TestGetMount:
+
     @pytest.fixture
     def route(self, respx_mock: respx.MockRouter):
         return respx_mock.get(
             "https://example.com/v1/sys/internal/ui/mounts/secrets/test"
         )
 
-    def test_success_kv2(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(
-            httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "options": {"version": "2"},
-                        "path": "secrets/",
-                        "type": "kv",
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("response", "expected"),
+        [
+            # kv2
+            (
+                Response(
+                    200,
+                    json={
+                        "data": {
+                            "options": {"version": "2"},
+                            "path": "secrets/",
+                            "type": "kv",
+                        }
                     },
-                },
-            )
-        )
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="secrets/", version=2
-        )
-
-    def test_success_kv2_integration(self, intl_client: httpx.Client):
-        assert get_mount(intl_client, "kv2/test") == MountMetadata(
-            path="kv2/", version=2
-        )
-
-    def test_success_kv1(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(
-            httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "options": {"version": "1"},
-                        "path": "secrets/",
-                        "type": "kv",
+                ),
+                MountMetadata(path="secrets/", version=2),
+            ),
+            # kv1
+            (
+                Response(
+                    200,
+                    json={
+                        "data": {
+                            "options": {"version": "1"},
+                            "path": "secrets/",
+                            "type": "kv",
+                        },
+                        "wrap_info": None,
+                        "warnings": None,
+                        "auth": None,
                     },
-                    "wrap_info": None,
-                    "warnings": None,
-                    "auth": None,
-                },
-            )
-        )
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="secrets/", version=1
-        )
-
-    def test_success_kv1_integration(self, intl_client: httpx.Client):
-        assert get_mount(intl_client, "kv1/test") == MountMetadata(
-            path="kv1/", version=1
-        )
-
-    def test_success_legacy(self, route: respx.Route, unittest_client: httpx.Client):
-        route.mock(httpx.Response(404))
-        assert get_mount(unittest_client, "secrets/test") == MountMetadata(
-            path="", version=1
-        )
-
-    def test_not_ported_version(
-        self, route: respx.Route, unittest_client: httpx.Client
+                ),
+                MountMetadata(path="secrets/", version=1),
+            ),
+            # legacy
+            (
+                Response(404),
+                MountMetadata(path="", version=1),
+            ),
+        ],
+    )
+    async def test_success(
+        self,
+        route: respx.Route,
+        response: Response,
+        ut_client: AsyncClient,
+        expected: MountMetadata,
     ):
+        route.mock(response)
+        assert await get_mount(ut_client, "secrets/test") == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("path", "expect"),
+        [
+            ("kv2/test", MountMetadata(path="kv2/", version=2)),
+            ("kv1/test", MountMetadata(path="kv1/", version=1)),
+        ],
+    )
+    async def test_success_integration(
+        self, intl_client: AsyncClient, path: str, expect: MountMetadata
+    ):
+        assert await get_mount(intl_client, path) == expect
+
+    @pytest.mark.asyncio
+    async def test_not_ported_version(self, route: respx.Route, ut_client: AsyncClient):
         route.mock(
-            httpx.Response(
+            Response(
                 200,
                 json={
                     "data": {
@@ -279,32 +320,35 @@ class TestGetMount:
         )
 
         with pytest.raises(ValidationError):
-            get_mount(unittest_client, "secrets/test")
+            await get_mount(ut_client, "secrets/test")
 
-    def test_bad_request(
+    @pytest.mark.asyncio
+    async def test_bad_request(
         self,
         route: respx.Route,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
-        route.mock(httpx.Response(400))
-        assert get_mount(unittest_client, "secrets/test") is None
+        route.mock(Response(400))
+        assert await get_mount(ut_client, "secrets/test") is None
         assert "Error occurred during checking metadata for secrets/test" in caplog.text
 
-    def test_connection_error(
+    @pytest.mark.asyncio
+    async def test_connection_error(
         self,
         route: respx.Route,
-        unittest_client: httpx.Client,
+        ut_client: AsyncClient,
         caplog: pytest.LogCaptureFixture,
     ):
         route.mock(side_effect=httpx.ConnectError)
-        assert get_mount(unittest_client, "secrets/test") is None
+        assert await get_mount(ut_client, "secrets/test") is None
         assert (
             "Error occurred during checking metadata for secrets/test: connection error"
             in caplog.text
         )
 
-    def test_http_exception(self, route: respx.Route, unittest_client: httpx.Client):
+    @pytest.mark.asyncio
+    async def test_http_exception(self, route: respx.Route, ut_client: AsyncClient):
         route.mock(side_effect=httpx.DecodingError)
         with pytest.raises(httpx.DecodingError):
-            get_mount(unittest_client, "secrets/test")
+            await get_mount(ut_client, "secrets/test")
