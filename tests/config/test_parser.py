@@ -25,7 +25,7 @@ class TestLocalConfig:
             }
         )
 
-        assert model.sources == [IsInstance(DebugProvider)]
+        assert model.sources == [IsInstance(AsyncDebugProvider)]
         assert model.secrets == [IsInstance(Request), IsInstance(Request)]
 
     def test_nested_error_1(self):
