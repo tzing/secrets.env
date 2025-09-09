@@ -13,7 +13,7 @@ from typing import cast
 from pydantic import BaseModel, FilePath, SecretBytes, field_validator, model_validator
 
 from secrets_env.exceptions import AuthenticationError, UnsupportedError
-from secrets_env.realms.subprocess import check_output, write_output
+from secrets_env.realms.subprocess import check_output, stderr_logger, stdout_logger
 
 TELEPORT_APP_NAME = "tsh"
 
@@ -325,13 +325,13 @@ def call_app_login(config: TeleportUserConfig) -> None:
 
         proc.close()
 
-        logger.debug("< return code: %s", proc.exitstatus)
-        write_output("stdout", capture_stdout.getvalue())
-        write_output("stderr", capture_stderr.getvalue())
+        logger.debug("> return code: %s", proc.exitstatus)
+        stdout_logger.debug(capture_stdout.getvalue())
+        stderr_logger.debug(capture_stderr.getvalue())
 
         if proc.exitstatus != 0:
-            write_output("stdout", capture_stdout.getvalue(), logging.ERROR)
-            write_output("stderr", capture_stderr.getvalue(), logging.ERROR)
+            stdout_logger.error(capture_stdout.getvalue())
+            stderr_logger.error(capture_stderr.getvalue())
             raise AuthenticationError("Teleport error")
 
     logger.info(f"Successfully logged into teleport app: {config.app}")
