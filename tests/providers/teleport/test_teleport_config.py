@@ -443,8 +443,8 @@ class TestCallAppLogin:
 
         assert "Waiting for response from Teleport..." in caplog.text
         assert "Successfully logged into teleport app: test" in caplog.text
-        assert "<[stdout] If browser..." in caplog.text
-        assert "<[stderr] mock stderr" in caplog.text
+        assert "[stdout]> If browser..." in caplog.text
+        assert "[stderr]> mock stderr" in caplog.text
 
     def test_app_not_found(self, monkeypatch: pytest.MonkeyPatch):
         def mock_spawn(command, args, **kwargs):
@@ -477,5 +477,5 @@ class TestCallAppLogin:
         with pytest.raises(AuthenticationError, match="Teleport error"):
             call_app_login(TeleportUserConfig(app="test"))
 
-        assert "<[stdout] mock stderr" in caplog.text
-        assert "<[stderr] mock stderr" in caplog.text
+        assert "[stdout]> mock stderr" in caplog.text
+        assert "[stderr]> mock stderr" in caplog.text

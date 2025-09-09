@@ -14,6 +14,32 @@ logger = logging.getLogger(__name__)
 regex_ansi = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
+class SubprocessLoggerAdapter:
+    """Logger adapter for subprocess output."""
+
+    def __init__(self, logger: logging.Logger, channel: Literal["stdout", "stderr"]):
+        self.logger = logger
+        self.channel = channel
+
+    def log(self, level: int, msg) -> None:
+        if not self.logger.isEnabledFor(level):
+            return
+
+        msg = strip_ansi(str(msg).rstrip())
+        for line in msg.splitlines():
+            self.logger.log(level, f"[{self.channel}]> {line}")
+
+    def debug(self, msg) -> None:
+        self.log(logging.DEBUG, msg)
+
+    def error(self, msg) -> None:
+        self.log(logging.ERROR, msg)
+
+
+stdout_logger = SubprocessLoggerAdapter(logger, "stdout")
+stderr_logger = SubprocessLoggerAdapter(logger, "stderr")
+
+
 def check_output(
     commands: Sequence[str],
     *,
@@ -58,41 +84,15 @@ def check_output(
             encoding="utf-8",
         )
     except subprocess.CalledProcessError as e:
-        logger.debug("< return code: %d", e.returncode)
-        write_output("stdout", e.stdout, level_error)
-        write_output("stderr", e.stderr, level_error)
+        logger.debug("> return code: %d", e.returncode)
+        stdout_logger.log(level_error or 0, e.stdout or "")
+        stderr_logger.log(level_error or 0, e.stderr or "")
         raise
 
-    logger.debug("< return code: %d", proc.returncode)
-    write_output("stdout", proc.stdout, level_output)
-    write_output("stderr", proc.stderr, level_output)
+    logger.debug("> return code: %d", proc.returncode)
+    stdout_logger.log(level_output or 0, proc.stdout)
+    stderr_logger.log(level_output or 0, proc.stderr)
     return proc.stdout
-
-
-def write_output(
-    channel: Literal["stdout", "stderr"],
-    message: str,
-    level: int | None = logging.DEBUG,
-):
-    """
-    Write the output to the log.
-
-    Parameters
-    ----------
-    channel : str
-        The channel name for the output. Used as the prefix in the log message.
-    message : str
-        The output message.
-    level : int, optional
-        The logging level to use for the output, by default :py:data:`logging.DEBUG`.
-        Set to :py:obj:`None` to disable logging the output.
-    """
-    if level is None:
-        return
-    message = message or ""
-    message = strip_ansi(message.rstrip())
-    for line in message.splitlines():
-        logger.log(level, f"<[{channel}] {line}")
 
 
 def strip_ansi(value: str) -> str:
