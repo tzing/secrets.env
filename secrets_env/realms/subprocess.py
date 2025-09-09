@@ -14,6 +14,26 @@ logger = logging.getLogger(__name__)
 regex_ansi = re.compile(r"\033\[[;?0-9]*[a-zA-Z]")
 
 
+class SubprocessLoggerAdapter:
+    """Logger adapter for subprocess output."""
+
+    def __init__(self, logger: logging.Logger, channel: Literal["stdout", "stderr"]):
+        self.logger = logger
+        self.channel = channel
+
+    def log(self, level: int, msg) -> None:
+        if not self.logger.isEnabledFor(level):
+            return
+
+        msg = regex_ansi.sub("", str(msg).rstrip())
+        for line in msg.splitlines():
+            self.logger.log(level, f"[{self.channel}]> {line}")
+
+
+stdout_logger = SubprocessLoggerAdapter(logger, "stdout")
+stderr_logger = SubprocessLoggerAdapter(logger, "stderr")
+
+
 def check_output(
     commands: Sequence[str],
     *,
