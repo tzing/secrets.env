@@ -6,6 +6,7 @@ import collections
 import contextlib
 import copy
 import functools
+import inspect
 import json
 import logging
 import os
@@ -20,6 +21,7 @@ from typing import TypeVar, overload
 from secrets_env.exceptions import AuthenticationError
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Awaitable
     from typing import Callable, Concatenate, ParamSpec
 
     import click
@@ -201,7 +203,7 @@ class LruDict(collections.OrderedDict[TK, TV]):
             return default
 
 
-def cache_query_result(
+def cache_query_result(  # noqa: C901
     max_size: int = 128,
     reraise: tuple[type[Exception], ...] = (AuthenticationError, LookupError),
 ):
@@ -212,35 +214,71 @@ def cache_query_result(
     any specified exceptions that occur during the method call.
     """
 
+    @overload
     def _decorator(
         method: Callable[Concatenate[T, P], TV],
-    ) -> Callable[Concatenate[T, P], TV]:
+    ) -> Callable[Concatenate[T, P], TV]: ...
 
-        CACHE_STORAGE_NAME = f"_cache_{method.__name__}"
+    @overload
+    def _decorator(
+        method: Callable[Concatenate[T, P], Awaitable[TV]],
+    ) -> Callable[Concatenate[T, P], Awaitable[TV]]: ...
 
-        @functools.wraps(method)
-        def _wrapper(self_: T, *args: P.args, **kwargs: P.kwargs) -> TV:
-            cache_storage = getattr(self_, CACHE_STORAGE_NAME, None)
-            if cache_storage is None:
-                cache_storage = LruDict(max_size)
-                setattr(self_, CACHE_STORAGE_NAME, cache_storage)
+    def _decorator(
+        method,
+    ) -> Callable[Concatenate[T, P], TV] | Callable[Concatenate[T, P], Awaitable[TV]]:
 
-            assert not kwargs, "cache with kwargs is not supported yet"
-            cache_key = args
+        def _get_storage(inst: T) -> dict[tuple, TV | Exception]:
+            CACHE_STORAGE_NAME = f"_cache_{method.__name__}"
+            storage = getattr(inst, CACHE_STORAGE_NAME, None)
+            if storage is None:
+                storage = LruDict(max_size)
+                setattr(inst, CACHE_STORAGE_NAME, storage)
+            return storage
 
-            if cache_key not in cache_storage:
-                try:
-                    cache_storage[cache_key] = method(self_, *args, **kwargs)
-                except reraise as e:
-                    cache_storage[cache_key] = e
+        if inspect.iscoroutinefunction(method):
 
-            value = cache_storage[cache_key]
-            if isinstance(value, Exception):
-                raise value
+            @functools.wraps(method)
+            async def _async_wrapper(inst: T, *args: P.args, **kwargs: P.kwargs) -> TV:
+                cache_storage = _get_storage(inst)
+                cache_key = args
+                assert not kwargs, "cache with kwargs is not supported yet"
 
-            return value
+                if cache_key not in cache_storage:
+                    try:
+                        cache_storage[cache_key] = await method(inst, *args, **kwargs)
+                    except reraise as e:
+                        cache_storage[cache_key] = e
 
-        return _wrapper
+                value = cache_storage[cache_key]
+                if isinstance(value, Exception):
+                    raise value
+
+                return value
+
+            return _async_wrapper
+
+        else:
+
+            @functools.wraps(method)
+            def _sync_wrapper(inst: T, *args: P.args, **kwargs: P.kwargs) -> TV:
+                cache_storage = _get_storage(inst)
+                cache_key = args
+                assert not kwargs, "cache with kwargs is not supported yet"
+
+                if cache_key not in cache_storage:
+                    try:
+                        cache_storage[cache_key] = method(inst, *args, **kwargs)
+                    except reraise as e:
+                        cache_storage[cache_key] = e
+
+                value = cache_storage[cache_key]
+                if isinstance(value, Exception):
+                    raise value
+
+                return value
+
+            return _sync_wrapper
 
     return _decorator
 
