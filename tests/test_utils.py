@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 import string
@@ -140,31 +141,66 @@ def test_lru_dict():
     assert d == {"d": 4, "c": 3}
 
 
-def test_cache_query_result():
+class TestCacheQueryResult:
 
-    call_count = 0
+    def test_sync(self):
+        func = Mock(wraps=lambda x: 1 / x)
 
-    class Demo:
+        class Demo:
+            @cache_query_result(reraise=(ZeroDivisionError,))
+            def foo(self, x: int) -> int:
+                nonlocal func
+                return func(x)
 
-        @cache_query_result()
-        def foo(self, x: int) -> int:
-            nonlocal call_count
-            call_count += 1
+        obj = Demo()
+        assert obj.foo(2) == 0.5
+        assert obj.foo(2) == 0.5
+        assert func.call_count == 1
 
-            if x < 0:
-                raise LookupError
-            return x**2
+        with pytest.raises(ZeroDivisionError):
+            assert obj.foo(0)
+        with pytest.raises(ZeroDivisionError):
+            assert obj.foo(0)
+        assert func.call_count == 2
 
-    obj = Demo()
-    assert obj.foo(2) == 4
-    assert obj.foo(2) == 4
-    assert call_count == 1
+    @pytest.mark.asyncio
+    async def test_async(self):
+        func = Mock(wraps=lambda x: 1 / x)
 
-    with pytest.raises(LookupError):
-        assert obj.foo(-1)
-    with pytest.raises(LookupError):
-        assert obj.foo(-1)
-    assert call_count == 2
+        class Demo:
+            @cache_query_result(reraise=(ZeroDivisionError,))
+            async def foo(self, x: int) -> int:
+                nonlocal func
+                return func(x)
+
+        obj = Demo()
+        assert await obj.foo(2) == 0.5
+        assert await obj.foo(2) == 0.5
+        assert func.call_count == 1
+
+        with pytest.raises(ZeroDivisionError):
+            assert await obj.foo(0)
+        with pytest.raises(ZeroDivisionError):
+            assert await obj.foo(0)
+        assert func.call_count == 2
+
+    def test_gc(self):
+        trigger = Mock()
+
+        class Demo:
+            @cache_query_result()
+            def foo(self, x: int) -> int:
+                return x**2
+
+            def __del__(self):
+                trigger()
+
+        obj = Demo()
+        assert obj.foo(2) == 4
+
+        obj = None
+        gc.collect()
+        assert trigger.call_count == 1
 
 
 class TestSetupCaptureWarnings:
