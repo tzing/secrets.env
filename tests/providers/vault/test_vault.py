@@ -1,7 +1,7 @@
 import os
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, PropertyMock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
@@ -77,100 +77,142 @@ class TestSplitFieldStr:
 
 
 class TestVaultKvProvider:
+
     @pytest.fixture
     def random_token(self) -> str:
         return uuid.uuid4().hex
 
-    def test_client(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, random_token: str
-    ):
-        helper = tmp_path / ".vault-token"
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_helper_path",
-            lambda: helper,
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.create_http_client",
-            lambda _: Mock(AsyncClient, headers={}),
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token", lambda c, a: random_token
-        )
-
-        provider = VaultKvProvider(url="https://vault.example.com", auth="null")
-        assert isinstance(provider.client, AsyncClient)
-        assert provider.client.headers["X-Vault-Token"] == random_token
-        assert helper.read_text() == random_token
-
-    def test_client__use_helper(
-        self, monkeypatch: pytest.MonkeyPatch, random_token: str
-    ):
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.create_http_client",
-            lambda _: Mock(AsyncClient, headers={}),
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_from_helper", lambda _: random_token
-        )
-
-        provider = VaultKvProvider(url="https://vault.example.com", auth="null")
-        assert isinstance(provider.client, AsyncClient)
-        assert provider.client.headers["X-Vault-Token"] == random_token
-
-    def test_client__with_teleport(
-        self, monkeypatch: pytest.MonkeyPatch, random_token: str
-    ):
-        def mock_create_http_client(config: VaultUserConfig):
-            assert config.url == HttpUrl("https://vault.teleport.example.com/")
-            assert config.teleport is None
-            assert config.tls.ca_cert is None
-            assert config.tls.client_cert == Path("/mock/client.pem")
-            assert config.tls.client_key == Path("/mock/client.key")
-
-            client = Mock(AsyncClient)
-            client.headers = {}
-            return client
-
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.create_http_client", mock_create_http_client
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token_from_helper", lambda _: None
-        )
-        monkeypatch.setattr(
-            "secrets_env.providers.vault.get_token", lambda c, a: random_token
-        )
-
-        teleport_user_config = Mock(TeleportUserConfig)
-        teleport_user_config.connection_param = Mock(
-            TeleportConnectionParameter,
-            uri="https://vault.teleport.example.com",
-            path_ca=None,
-            path_cert=Path("/mock/client.pem"),
-            path_key=Path("/mock/client.key"),
-        )
-
-        provider = VaultKvProvider(auth="null", teleport=teleport_user_config)
-        client = provider.client
-        assert isinstance(client, AsyncClient)
-        assert provider.client.headers["X-Vault-Token"] == random_token
-
     @pytest.fixture
-    def unittest_provider(self, monkeypatch: pytest.MonkeyPatch):
+    def provider(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            VaultKvProvider, "client", PropertyMock(return_value=Mock(AsyncClient))
+            VaultKvProvider, "get_client", AsyncMock(return_value=Mock(AsyncClient))
         )
-        return VaultKvProvider(url="https://vault.example.com", auth="null")
+        return VaultKvProvider.model_validate(
+            {
+                "url": "https://vault.example.com",
+                "auth": "null",
+            }
+        )
 
-    def test_get_value__success(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
-    ):
-        monkeypatch.setattr(
-            VaultKvProvider, "_read_secret_", Mock(return_value={"bar": "test"})
-        )
-        assert (
-            unittest_provider({"name": "test", "path": "foo", "field": "bar"}) == "test"
-        )
+    class TestGetClient:
+
+        @pytest.mark.asyncio
+        async def test(
+            self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, random_token: str
+        ):
+            helper = tmp_path / ".vault-token"
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.get_token_helper_path",
+                lambda: helper,
+            )
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.create_http_client",
+                Mock(return_value=Mock(AsyncClient, headers={})),
+            )
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.get_token",
+                AsyncMock(return_value=random_token),
+            )
+
+            provider = VaultKvProvider.model_validate(
+                {
+                    "url": "https://vault.example.com",
+                    "auth": "null",
+                }
+            )
+
+            client = await provider.get_client()
+            assert isinstance(client, AsyncClient)
+            assert client.headers["X-Vault-Token"] == random_token
+            assert helper.read_text() == random_token
+
+        @pytest.mark.asyncio
+        async def test_use_helper(
+            self, monkeypatch: pytest.MonkeyPatch, random_token: str
+        ):
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.create_http_client",
+                Mock(return_value=Mock(AsyncClient, headers={})),
+            )
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.get_token_from_helper",
+                AsyncMock(return_value=random_token),
+            )
+
+            provider = VaultKvProvider.model_validate(
+                {
+                    "url": "https://vault.example.com",
+                    "auth": "null",
+                }
+            )
+
+            client = await provider.get_client()
+            assert isinstance(client, AsyncClient)
+            assert client.headers["X-Vault-Token"] == random_token
+
+        @pytest.mark.asyncio
+        async def test_with_teleport(
+            self, monkeypatch: pytest.MonkeyPatch, random_token: str
+        ):
+            def mock_create_http_client(config: VaultUserConfig):
+                assert config.url == HttpUrl("https://vault.teleport.example.com/")
+                assert config.teleport is None
+                assert config.tls.ca_cert is None
+                assert config.tls.client_cert == Path("/mock/client.pem")
+                assert config.tls.client_key == Path("/mock/client.key")
+
+                client = Mock(AsyncClient)
+                client.headers = {}
+                return client
+
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.create_http_client",
+                mock_create_http_client,
+            )
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.get_token_from_helper",
+                AsyncMock(return_value=None),
+            )
+            monkeypatch.setattr(
+                "secrets_env.providers.vault.get_token",
+                AsyncMock(return_value=random_token),
+            )
+
+            teleport_user_config = Mock(TeleportUserConfig)
+            teleport_user_config.connection_param = Mock(
+                TeleportConnectionParameter,
+                uri="https://vault.teleport.example.com",
+                path_ca=None,
+                path_cert=Path("/mock/client.pem"),
+                path_key=Path("/mock/client.key"),
+            )
+
+            provider = VaultKvProvider.model_validate(
+                {
+                    "auth": "null",
+                    "teleport": teleport_user_config,
+                }
+            )
+
+            client = await provider.get_client()
+            assert isinstance(client, AsyncClient)
+            assert client.headers["X-Vault-Token"] == random_token
+
+    class TestGetValue:
+
+        @pytest.mark.asyncio
+        async def test_success(
+            self, monkeypatch: pytest.MonkeyPatch, provider: VaultKvProvider
+        ):
+            monkeypatch.setattr(
+                VaultKvProvider,
+                "_read_secret_",
+                AsyncMock(return_value={"bar": "test"}),
+            )
+            assert (
+                await provider({"name": "test", "path": "foo", "field": "bar"})
+                == "test"
+            )
 
     def test_get_value__too_depth(
         self,
@@ -200,33 +242,37 @@ class TestVaultKvProvider:
             unittest_provider({"name": "test", "path": "foo", "field": "bar"})
         assert 'Field "bar" in "foo" is not point to a string value' in caplog.text
 
-    def test_read_secret__success(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
-    ):
-        func = Mock(return_value={"foo": "bar"})
-        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
+    class TestReadSecret:
 
-        assert unittest_provider._read_secret_("foo") == {"foo": "bar"}
-        assert unittest_provider._read_secret_("foo") == {"foo": "bar"}
+        @pytest.mark.asyncio
+        async def test_success(
+            self, monkeypatch: pytest.MonkeyPatch, provider: VaultKvProvider
+        ):
+            func = AsyncMock(return_value={"foo": "bar"})
+            monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
-        assert func.call_count == 1
+            assert await provider._read_secret_("foo") == {"foo": "bar"}
+            assert await provider._read_secret_("foo") == {"foo": "bar"}
 
-        client, path = func.call_args[0]
-        assert isinstance(client, AsyncClient)
-        assert path == "foo"
+            assert func.call_count == 1
 
-    def test_read_secret__not_found(
-        self, monkeypatch: pytest.MonkeyPatch, unittest_provider: VaultKvProvider
-    ):
-        func = Mock(return_value=None)
-        monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
+            client, path = func.call_args[0]
+            assert isinstance(client, AsyncClient)
+            assert path == "foo"
 
-        with pytest.raises(LookupError):
-            unittest_provider._read_secret_("foo")
-        with pytest.raises(LookupError):
-            unittest_provider._read_secret_("foo")
+        @pytest.mark.asyncio
+        async def test_not_found(
+            self, monkeypatch: pytest.MonkeyPatch, provider: VaultKvProvider
+        ):
+            func = AsyncMock(return_value=None)
+            monkeypatch.setattr("secrets_env.providers.vault.read_secret", func)
 
-        assert func.call_count == 1
+            with pytest.raises(LookupError):
+                await provider._read_secret_("foo")
+            with pytest.raises(LookupError):
+                await provider._read_secret_("foo")
+
+            assert func.call_count == 1
 
     def test_integration(self, intl_provider: VaultKvProvider):
         assert (
