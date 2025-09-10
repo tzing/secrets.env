@@ -7,7 +7,6 @@ import respx
 from httpx import AsyncClient, Response
 from pydantic_core import ValidationError
 
-from secrets_env.providers.vault import VaultKvProvider
 from secrets_env.providers.vault.api import (
     MountMetadata,
     get_mount,
@@ -22,7 +21,7 @@ def ut_client() -> AsyncClient:
 
 
 @pytest.fixture
-def intl_client(intl_provider: VaultKvProvider) -> AsyncClient:
+def intl_client() -> AsyncClient:
     if "VAULT_ADDR" not in os.environ:
         pytest.skip("VAULT_ADDR is not set")
     if "VAULT_TOKEN" not in os.environ:

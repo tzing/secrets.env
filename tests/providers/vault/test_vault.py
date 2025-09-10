@@ -214,33 +214,37 @@ class TestVaultKvProvider:
                 == "test"
             )
 
-    def test_get_value__too_depth(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        caplog: pytest.LogCaptureFixture,
-        unittest_provider: VaultKvProvider,
-    ):
-        monkeypatch.setattr(
-            VaultKvProvider, "_read_secret_", Mock(return_value={"bar": "test"})
-        )
-        with pytest.raises(NoValue):
-            unittest_provider({"name": "test", "path": "foo", "field": "bar.baz"})
-        assert 'Field "bar.baz" not found in "foo"' in caplog.text
+        @pytest.mark.asyncio
+        async def test_too_depth(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            caplog: pytest.LogCaptureFixture,
+            provider: VaultKvProvider,
+        ):
+            monkeypatch.setattr(
+                VaultKvProvider,
+                "_read_secret_",
+                AsyncMock(return_value={"bar": "test"}),
+            )
+            with pytest.raises(NoValue):
+                await provider({"name": "test", "path": "foo", "field": "bar.baz"})
+            assert 'Field "bar.baz" not found in "foo"' in caplog.text
 
-    def test_get_value__too_shallow(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        caplog: pytest.LogCaptureFixture,
-        unittest_provider: VaultKvProvider,
-    ):
-        monkeypatch.setattr(
-            VaultKvProvider,
-            "_read_secret_",
-            Mock(return_value={"bar": {"baz": "test"}}),
-        )
-        with pytest.raises(NoValue):
-            unittest_provider({"name": "test", "path": "foo", "field": "bar"})
-        assert 'Field "bar" in "foo" is not point to a string value' in caplog.text
+        @pytest.mark.asyncio
+        async def test_too_shallow(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            caplog: pytest.LogCaptureFixture,
+            provider: VaultKvProvider,
+        ):
+            monkeypatch.setattr(
+                VaultKvProvider,
+                "_read_secret_",
+                AsyncMock(return_value={"bar": {"baz": "test"}}),
+            )
+            with pytest.raises(NoValue):
+                await provider({"name": "test", "path": "foo", "field": "bar"})
+            assert 'Field "bar" in "foo" is not point to a string value' in caplog.text
 
     class TestReadSecret:
 
@@ -274,13 +278,21 @@ class TestVaultKvProvider:
 
             assert func.call_count == 1
 
-    def test_integration(self, intl_provider: VaultKvProvider):
+    @pytest.mark.asyncio
+    async def test_integration(self):
+        if "VAULT_ADDR" not in os.environ:
+            pytest.skip("VAULT_ADDR is not set")
+        if "VAULT_TOKEN" not in os.environ:
+            pytest.skip("VAULT_TOKEN is not set")
+
+        provider = VaultKvProvider.model_validate({"auth": "token"})
+
         assert (
-            intl_provider({"name": "test", "path": "kv2/test", "field": "foo"})
+            await provider({"name": "test", "path": "kv2/test", "field": "foo"})
             == "hello, world"
         )
         assert (
-            intl_provider({"name": "test", "value": 'kv2/test#test."name.with-dot"'})
+            await provider({"name": "test", "value": 'kv2/test#test."name.with-dot"'})
             == "sample-value"
         )
 
