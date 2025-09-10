@@ -1,24 +1,34 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import ssl
 import typing
-from functools import cached_property
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    HttpUrl,
+    PrivateAttr,
+    field_validator,
+    model_validator,
+)
 
 import secrets_env.version
 from secrets_env.exceptions import AuthenticationError
-from secrets_env.provider import Provider
+from secrets_env.provider import AsyncProvider
 from secrets_env.providers.vault.api import is_authenticated, read_secret
 from secrets_env.providers.vault.config import TlsConfig, VaultUserConfig
-from secrets_env.utils import cache_query_result, get_httpx_error_reason
+from secrets_env.utils import LruDict, get_httpx_error_reason
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
+    from typing import Any
+
+    from httpx import AsyncClient
 
     from secrets_env.provider import Request
     from secrets_env.providers.vault.auth import Auth
@@ -113,13 +123,15 @@ def _split_field_str(f: str) -> Iterator[str]:
             pos = end + 1
 
 
-class VaultKvProvider(Provider, VaultUserConfig):
+class VaultKvProvider(AsyncProvider, VaultUserConfig):
     """Read secrets from Hashicorp Vault KV engine."""
 
     type = "vault"
 
-    @cached_property
-    def client(self) -> httpx.Client:
+    _locks_: LruDict[str, asyncio.Lock] = PrivateAttr(default_factory=LruDict)
+    _cache_: LruDict[str, Any] = PrivateAttr(default_factory=LruDict)
+
+    async def get_client(self) -> AsyncClient:
         """Returns HTTP client.
 
         Raises
@@ -129,6 +141,16 @@ class VaultKvProvider(Provider, VaultUserConfig):
         UnsupportedError
             If the operation is unsupported.
         """
+        CACHE_KEY = ":client"
+
+        # prevent duplicate initialization
+        async with self._locks_.setdefault(CACHE_KEY, asyncio.Lock()):
+            if CACHE_KEY not in self._cache_:
+                self._cache_[CACHE_KEY] = await self._get_client()
+
+        return self._cache_[CACHE_KEY]
+
+    async def _get_client(self) -> AsyncClient:
         logger.debug("Vault client initialization requested. URL= %s", self.url)
 
         # load url & tls from teleport
@@ -149,18 +171,17 @@ class VaultKvProvider(Provider, VaultUserConfig):
         client = create_http_client(self)
 
         # get token
-        if token := get_token_from_helper(client):
+        if token := await get_token_from_helper(client):
             client.headers["X-Vault-Token"] = token
-        elif token := get_token(client, self.auth_object):
+        elif token := await get_token(client, self.auth_object):
             save_token_to_helper(token)
             client.headers["X-Vault-Token"] = token
 
         return client
 
-    @cache_query_result()
-    def _get_value_(self, spec: Request) -> str:
+    async def _get_value_(self, spec: Request) -> str:
         path = VaultPath.model_validate(spec.model_dump(exclude_none=True))
-        secret = self._read_secret_(path.path)
+        secret = await self._read_secret_(path.path)
 
         for f in path.field:
             try:
@@ -177,8 +198,7 @@ class VaultKvProvider(Provider, VaultUserConfig):
 
         return secret
 
-    @cache_query_result()
-    def _read_secret_(self, path: str) -> dict:
+    async def _read_secret_(self, path: str) -> dict:
         """
         Get a secret from the Vault. A Vault "secret" is a object that contains
         key-value pairs.
@@ -190,13 +210,18 @@ class VaultKvProvider(Provider, VaultUserConfig):
         LookupError
             If the secret is not found.
         """
-        result = read_secret(self.client, path)
+        async with self._locks_.setdefault(path, asyncio.Lock()):
+            if path not in self._cache_:
+                client = await self.get_client()
+                self._cache_[path] = await read_secret(client, path)
+
+        result = self._cache_[path]
         if result is None:
             raise LookupError(f"Failed to load secret `{path}`")
         return result
 
 
-def create_http_client(config: VaultUserConfig) -> httpx.Client:
+def create_http_client(config: VaultUserConfig) -> AsyncClient:
     client_params = {
         "base_url": str(config.url),
         "headers": {
@@ -236,10 +261,10 @@ def create_http_client(config: VaultUserConfig) -> httpx.Client:
 
         client_params["verify"] = ssl_ctx
 
-    return httpx.Client(**client_params)
+    return httpx.AsyncClient(**client_params)
 
 
-def get_token(client: httpx.Client, auth: Auth) -> str:
+async def get_token(client: AsyncClient, auth: Auth) -> str:
     """
     Request a token from the Vault server and verify it.
 
@@ -250,20 +275,22 @@ def get_token(client: httpx.Client, auth: Auth) -> str:
     """
     # login
     try:
-        token = auth.login(client)
+        token = await auth.login(client)
     except httpx.HTTPError as e:
-        if not (reason := get_httpx_error_reason(e)):
-            raise
-        raise AuthenticationError(f"Encounter {reason} while retrieving token") from e
+        if reason := get_httpx_error_reason(e):
+            raise AuthenticationError(
+                f"Encounter {reason} while retrieving token"
+            ) from e
+        raise
 
     # verify
-    if not is_authenticated(client, token):
+    if not await is_authenticated(client, token):
         raise AuthenticationError("Invalid token")
 
     return token
 
 
-def get_token_from_helper(client: httpx.Client) -> str | None:
+async def get_token_from_helper(client: AsyncClient) -> str | None:
     """
     Get token from token helper.
 
@@ -279,7 +306,7 @@ def get_token_from_helper(client: httpx.Client) -> str | None:
         return None
 
     token = token_helper.read_text()
-    if is_authenticated(client, token):
+    if await is_authenticated(client, token):
         logger.debug("Token helper is valid")
         return token
 

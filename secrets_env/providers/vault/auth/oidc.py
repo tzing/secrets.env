@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import typing
 import urllib.parse
@@ -14,7 +15,7 @@ from secrets_env.realms.server import HttpRequestHandler, start_server
 if typing.TYPE_CHECKING:
     from typing import Any, Self
 
-    import httpx
+    from httpx import AsyncClient
 
     from secrets_env.realms.server import (
         EndpointHandler,
@@ -39,7 +40,7 @@ class OpenIDConnectAuth(Auth):
     def create(cls, url: Any, config: dict) -> Self:
         return cls.model_validate(config)
 
-    def login(self, client: httpx.Client) -> str:
+    async def login(self, client: AsyncClient) -> str:
         logger.debug("Applying ODIC auth")
 
         # prepare server
@@ -47,7 +48,7 @@ class OpenIDConnectAuth(Auth):
 
         # get auth url
         client_nonce = uuid.uuid1().hex
-        auth_url = get_authorization_url(
+        auth_url = await get_authorization_url(
             client,
             f"{server.server_url}{PATH_OIDC_CALLBACK}",
             self.role,
@@ -91,6 +92,7 @@ class OpenIDConnectAuth(Auth):
 
 
 class OidcRequestHandler(HttpRequestHandler):
+
     server: ThreadedHttpServer  # type: ignore[reportIncompatibleVariableOverride]
 
     def route(self, path: str) -> EndpointHandler | None:
@@ -101,19 +103,27 @@ class OidcRequestHandler(HttpRequestHandler):
 
     def do_oidc_callback(self, params: UrlQueryParams):
         # get authorization code
-        codes = params.get("code")
-        if not codes:
+        auth_codes = params.get("code")
+        if not auth_codes:
             return self.response_error(HTTPStatus.BAD_REQUEST)
 
-        code = codes[0]
+        auth_code, *_ = auth_codes
 
         # request token
-        token = request_token(
-            self.server.context["client"],
-            self.server.context["auth_url"],
-            code,
-            self.server.context["client_nonce"],
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+
+        token = loop.run_until_complete(
+            request_token(
+                self.server.context["client"],
+                self.server.context["auth_url"],
+                auth_code,
+                self.server.context["client_nonce"],
+            )
         )
+
         if not token:
             return self.response_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
@@ -125,8 +135,8 @@ class OidcRequestHandler(HttpRequestHandler):
         return self.response_forward(self.server.context["auth_url"])
 
 
-def get_authorization_url(
-    client: httpx.Client, redirect_uri: str, role: str | None, client_nonce: str
+async def get_authorization_url(
+    client: AsyncClient, redirect_uri: str, role: str | None, client_nonce: str
 ) -> str | None:
     """Get OIDC authorization URL.
 
@@ -151,7 +161,7 @@ def get_authorization_url(
     if role:
         payload["role"] = role
 
-    resp = client.post("/v1/auth/oidc/oidc/auth_url", json=payload)
+    resp = await client.post("/v1/auth/oidc/oidc/auth_url", json=payload)
 
     if resp.status_code == HTTPStatus.OK:
         # when `redirect_uri` is not accepted, it still response 200 but
@@ -164,8 +174,8 @@ def get_authorization_url(
     return None
 
 
-def request_token(
-    client: httpx.Client, auth_url: str, auth_code: str, client_nonce: str
+async def request_token(
+    client: AsyncClient, auth_url: str, auth_code: str, client_nonce: str
 ) -> str | None:
     """Exchange authorization code for client token.
 
@@ -180,7 +190,7 @@ def request_token(
     server_nonce = params["nonce"][0]
 
     # call oidc callback
-    resp = client.get(
+    resp = await client.get(
         "/v1/auth/oidc/oidc/callback",
         params={
             "state": server_state,

@@ -1,10 +1,11 @@
 import re
 import threading
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
 import respx
+from httpx import AsyncClient, Response
 from pydantic_core import Url
 
 from secrets_env.exceptions import AuthenticationError
@@ -18,6 +19,7 @@ from secrets_env.realms.server import ThreadedHttpServer, start_server
 
 
 class TestOpenIDConnectAuth:
+
     def test_create_default(self):
         auth = OpenIDConnectAuth.create(Url("https://example.com/"), {})
         assert isinstance(auth, OpenIDConnectAuth)
@@ -30,7 +32,7 @@ class TestOpenIDConnectAuth:
 
     @pytest.fixture
     def _patch_get_authorization_url(self, monkeypatch: pytest.MonkeyPatch):
-        def mock_get_authorization_url(client, redirect_uri, role, client_nonce):
+        async def mock_get_authorization_url(client, redirect_uri, role, client_nonce):
             assert isinstance(client, httpx.Client)
             assert re.fullmatch(r"http://127\.0\.0\.1:\d+/oidc/callback", redirect_uri)
             assert isinstance(role, str) or role is None
@@ -48,9 +50,9 @@ class TestOpenIDConnectAuth:
         sever = Mock(
             spec=ThreadedHttpServer,
             server_url="http://127.0.0.1:0000",
-            ready=Mock(spec=threading.Event),
+            ready=Mock(threading.Event),
             context={},
-            server_thread=Mock(spec=threading.Thread),
+            server_thread=Mock(threading.Thread),
         )
 
         def patch_start_server(handler, auto_ready):
@@ -62,8 +64,11 @@ class TestOpenIDConnectAuth:
 
         return sever
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_patch_get_authorization_url")
-    def test_login_success(self, monkeypatch: pytest.MonkeyPatch, patch_start_server):
+    async def test_login_success(
+        self, monkeypatch: pytest.MonkeyPatch, patch_start_server
+    ):
         # patch webbrowser.open for simulates callback result
         def patch_webbrowser_open(entrypoint):
             assert entrypoint.startswith("http://127.0.0.1:")
@@ -73,29 +78,32 @@ class TestOpenIDConnectAuth:
 
         # run
         auth = OpenIDConnectAuth()
-        assert auth.login(Mock(spec=httpx.Client)) == "t0ken"
+        assert await auth.login(Mock(spec=httpx.Client)) == "t0ken"
 
-    def test_login_fail_1(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.asyncio
+    async def test_login_fail_1(self, monkeypatch: pytest.MonkeyPatch):
         # case: failed to get auth url
         monkeypatch.setattr(
             "secrets_env.providers.vault.auth.oidc.get_authorization_url",
-            Mock(return_value=None),
+            AsyncMock(return_value=None),
         )
 
         auth = OpenIDConnectAuth()
         with pytest.raises(AuthenticationError):
-            auth.login(Mock(httpx.Client))
+            await auth.login(Mock(httpx.Client))
 
+    @pytest.mark.asyncio
     @pytest.mark.usefixtures("_patch_get_authorization_url", "patch_start_server")
-    def test_login_fail_2(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_login_fail_2(self, monkeypatch: pytest.MonkeyPatch):
         # case: not receiving token
         monkeypatch.setattr("webbrowser.open", lambda _: None)
         auth = OpenIDConnectAuth()
         with pytest.raises(AuthenticationError):
-            auth.login(Mock(httpx.Client))
+            await auth.login(Mock(httpx.Client))
 
 
 class TestOidcRequestHandler:
+
     @pytest.fixture
     def server(self):
         server = start_server(OidcRequestHandler)
@@ -114,55 +122,63 @@ class TestOidcRequestHandler:
 
     @pytest.fixture
     def client(self, server: ThreadedHttpServer):
-        return httpx.Client(base_url=server.server_url)
+        return AsyncClient(base_url=server.server_url)
 
-    def test_do_forward_auth_url(self, client: httpx.Client):
-        resp = client.get("/ffff-ffff")
+    @pytest.mark.asyncio
+    async def test_do_forward_auth_url(self, client: AsyncClient):
+        resp = await client.get("/ffff-ffff")
         assert resp.is_redirect
+        assert resp.next_request
         assert resp.next_request.url == "https://example.com/auth"
 
-    def test_do_oidc_callback_success(
+    @pytest.mark.asyncio
+    async def test_do_oidc_callback_success(
         self,
         monkeypatch: pytest.MonkeyPatch,
         server: ThreadedHttpServer,
-        client: httpx.Client,
+        client: AsyncClient,
     ):
-        def mock_request_token(client, auth_url, auth_code, client_nonce):
+        async def mock_request_token(client, auth_url, auth_code, client_nonce):
             return "t0ken"
 
         monkeypatch.setattr(
             "secrets_env.providers.vault.auth.oidc.request_token", mock_request_token
         )
 
-        resp = client.get("/oidc/callback?code=blah")
+        resp = await client.get("/oidc/callback?code=blah")
         assert resp.status_code == 200
         assert server.context["token"] == "t0ken"
 
         server.server_thread.join(1.0)
         assert not server.server_thread.is_alive()
 
-    def test_do_oidc_callback_fail(
-        self, monkeypatch: pytest.MonkeyPatch, client: httpx.Client
+    @pytest.mark.asyncio
+    async def test_do_oidc_callback_fail(
+        self, monkeypatch: pytest.MonkeyPatch, client: AsyncClient
     ):
         # missing auth code
-        resp = client.get("/oidc/callback")
+        resp = await client.get("/oidc/callback")
         assert resp.status_code == 400
 
         # request token fail
         monkeypatch.setattr(
             "secrets_env.providers.vault.auth.oidc.request_token",
-            Mock(return_value=None),
+            AsyncMock(return_value=None),
         )
-        resp = client.get("/oidc/callback?code=blah")
+        resp = await client.get("/oidc/callback?code=blah")
         assert resp.status_code == 500
 
 
 class TestGetAuthorizationUrl:
-    def test_success(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/oidc/oidc/auth_url").mock(
-            httpx.Response(
+
+    @pytest.fixture
+    def route(self, respx_mock: respx.MockRouter) -> respx.Route:
+        return respx_mock.post("https://example.com/v1/auth/oidc/oidc/auth_url")
+
+    @pytest.mark.asyncio
+    async def test_success(self, route: respx.Route):
+        route.mock(
+            Response(
                 200,
                 json={
                     "request_id": "d3a4b3df-efbe-e18e-65b1-b8fe372af0a9",
@@ -176,9 +192,11 @@ class TestGetAuthorizationUrl:
                 },
             )
         )
+
+        client = AsyncClient(base_url="https://example.com")
         assert (
-            get_authorization_url(
-                unittest_client,
+            await get_authorization_url(
+                client,
                 "http://127.0.0.1/callback",
                 None,
                 "test-nonce",
@@ -186,14 +204,14 @@ class TestGetAuthorizationUrl:
             == "https://auth.example.com/"
         )
 
-    def test_fail(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/oidc/oidc/auth_url") % 403
+    @pytest.mark.asyncio
+    async def test_fail(self, route: respx.Route):
+        route.mock(Response(403))
 
+        client = AsyncClient(base_url="https://example.com")
         assert (
-            get_authorization_url(
-                unittest_client,
+            await get_authorization_url(
+                client,
                 "http://localhost/callback",
                 "test_role",
                 "test-nonce",
@@ -203,11 +221,11 @@ class TestGetAuthorizationUrl:
 
 
 class TestRequestToken:
-    def test_success(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.get(
-            "/v1/auth/oidc/oidc/callback",
+
+    @pytest.mark.asyncio
+    async def test_success(self, respx_mock: respx.MockRouter):
+        respx_mock.get(
+            "https://example.com/v1/auth/oidc/oidc/callback",
             params={
                 "state": "sample-state",
                 "nonce": "sample-nonce",
@@ -215,7 +233,7 @@ class TestRequestToken:
                 "client_nonce": "test-nonce",
             },
         ).mock(
-            httpx.Response(
+            Response(
                 200,
                 json={
                     "request_id": "18ce3b76-50c8-a10d-6660-b6d1554a17c7",
@@ -243,9 +261,11 @@ class TestRequestToken:
                 },
             )
         )
+
+        client = AsyncClient(base_url="https://example.com")
         assert (
-            request_token(
-                unittest_client,
+            await request_token(
+                client,
                 "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
                 "test-code",
                 "test-nonce",
@@ -253,13 +273,16 @@ class TestRequestToken:
             == "sample-token"
         )
 
-    def test_error(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.get("/v1/auth/oidc/oidc/callback") % 403
+    @pytest.mark.asyncio
+    async def test_error(self, respx_mock: respx.MockRouter):
+        respx_mock.get("https://example.com/v1/auth/oidc/oidc/callback").mock(
+            Response(403)
+        )
+
+        client = AsyncClient(base_url="https://example.com")
         assert (
-            request_token(
-                unittest_client,
+            await request_token(
+                client,
                 "http://auth.example.com/?state=sample-state&nonce=sample-nonce",
                 "test-code",
                 "test-nonce",

@@ -1,17 +1,23 @@
 import httpx
 import pytest
 import respx
+from httpx import AsyncClient, Response
 
 from secrets_env.exceptions import AuthenticationError
 from secrets_env.providers.vault.auth.jwt import JwtAuth
 
 
+@pytest.fixture
+def route(respx_mock: respx.MockRouter) -> respx.Route:
+    return respx_mock.post("https://example.com/v1/auth/jwt/login")
+
+
 class TestJwtAuth:
-    def test_login__success(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/jwt/login").mock(
-            httpx.Response(
+
+    @pytest.mark.asyncio
+    async def test_login__success(self, route: respx.Route):
+        route.mock(
+            Response(
                 200,
                 json={
                     "auth": {
@@ -26,17 +32,19 @@ class TestJwtAuth:
             )
         )
 
-        auth = JwtAuth(token="token", role="test-role")
+        auth = JwtAuth.model_validate({"token": "token", "role": "test-role"})
+        client = AsyncClient(base_url="https://example.com")
 
-        assert auth.login(unittest_client) == "38fe9691-e623-7238-f618-c94d4e7bc674"
+        assert await auth.login(client) == "38fe9691-e623-7238-f618-c94d4e7bc674"
 
-    def test_login__fail(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/jwt/login").mock(httpx.Response(403))
+    @pytest.mark.asyncio
+    async def test_login__fail(self, route: respx.Route):
+        route.mock(httpx.Response(403))
 
-        auth = JwtAuth(token="token", role=None)
+        auth = JwtAuth.model_validate({"token": "token", "role": None})
+        client = AsyncClient(base_url="https://example.com")
+
         with pytest.raises(
             AuthenticationError, match="Failed to authenticate using JWT method"
         ):
-            auth.login(unittest_client)
+            await auth.login(client)

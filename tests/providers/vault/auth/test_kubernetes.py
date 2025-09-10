@@ -8,6 +8,7 @@ from secrets_env.providers.vault.auth.kubernetes import KubernetesAuth
 
 
 class TestKubernetesAuth:
+
     @pytest.fixture
     def _patch_open(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("builtins.open", mock_open(read_data="t0ken"))
@@ -15,12 +16,14 @@ class TestKubernetesAuth:
     @pytest.mark.usefixtures("_patch_open")
     def test_create__default(self):
         auth = KubernetesAuth.create(Url("http://vault:8200"), {})
-        assert auth == KubernetesAuth(token="t0ken", role=None)
+        assert auth == KubernetesAuth.model_validate({"token": "t0ken", "role": None})
 
     @pytest.mark.usefixtures("_patch_open")
     def test_create__role_from_config(self):
         auth = KubernetesAuth.create(Url("http://vault:8200"), {"role": "cfg-role"})
-        assert auth == KubernetesAuth(token="t0ken", role="cfg-role")
+        assert auth == KubernetesAuth.model_validate(
+            {"token": "t0ken", "role": "cfg-role"}
+        )
 
     def test_create__missing_token(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("builtins.open", Mock(side_effect=FileNotFoundError))

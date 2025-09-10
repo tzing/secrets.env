@@ -19,7 +19,7 @@ from secrets_env.utils import (
 if TYPE_CHECKING:
     from typing import Self
 
-    import httpx
+    from httpx import AsyncClient
     from pydantic import AnyUrl
 
 logger = logging.getLogger(__name__)
@@ -55,9 +55,9 @@ class UserPasswordAuth(Auth):
             password=cast("SecretStr", password),
         )
 
-    def login(self, client: httpx.Client) -> str:
+    async def login(self, client: AsyncClient) -> str:
         username = urllib.parse.quote(self.username)
-        resp = client.post(
+        resp = await client.post(
             f"/v1/auth/{self.vault_name}/login/{username}",
             json={
                 "username": self.username,

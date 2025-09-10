@@ -1,9 +1,9 @@
 import re
 from unittest.mock import Mock
 
-import httpx
 import pytest
 import respx
+from httpx import AsyncClient, Response
 from pydantic import HttpUrl
 
 from secrets_env.exceptions import AuthenticationError
@@ -19,8 +19,8 @@ from secrets_env.providers.vault.auth.userpass import (
 
 
 @pytest.fixture
-def login_success_response() -> httpx.Response:
-    return httpx.Response(
+def login_success_response() -> Response:
+    return Response(
         200,
         json={
             "lease_id": "",
@@ -42,6 +42,12 @@ def login_success_response() -> httpx.Response:
 
 class TestUserPasswordAuth:
 
+    @pytest.fixture
+    def route(self, respx_mock: respx.MockRouter) -> respx.Route:
+        return respx_mock.post(
+            "https://example.com/v1/auth/mock/login/user%40example.com"
+        )
+
     def test_create_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "secrets_env.providers.vault.auth.userpass.get_username",
@@ -53,7 +59,9 @@ class TestUserPasswordAuth:
         )
 
         obj = UserPasswordAuth.create(HttpUrl("https://example.com/"), {})
-        assert obj == UserPasswordAuth(username="user", password="P@ssw0rd")
+        assert obj == UserPasswordAuth.model_validate(
+            {"username": "user", "password": "P@ssw0rd"}
+        )
 
     @pytest.mark.parametrize(
         ("username", "password", "err_message"),
@@ -86,38 +94,37 @@ class TestUserPasswordAuth:
         with pytest.raises(ValueError, match=re.escape(err_message)):
             assert MockAuth.create(HttpUrl("https://example.com/"), {}) is None
 
-    def test_login_success(
-        self,
-        unittest_respx: respx.MockRouter,
-        unittest_client: httpx.Client,
-        login_success_response: httpx.Response,
+    @pytest.mark.asyncio
+    async def test_login_success(
+        self, route: respx.Route, login_success_response: Response
     ):
-        unittest_respx.post("/v1/auth/mock/login/user%40example.com").mock(
-            return_value=login_success_response
-        )
+        route.mock(return_value=login_success_response)
 
         class MockAuth(UserPasswordAuth):
             method = "MOCK"
             vault_name = "mock"
 
-        auth_obj = MockAuth(username="user@example.com", password="password")
-        assert auth_obj.login(unittest_client) == "client-token"
-
-    def test_login_fail(
-        self, unittest_respx: respx.MockRouter, unittest_client: httpx.Client
-    ):
-        unittest_respx.post("/v1/auth/mock/login/user%40example.com").mock(
-            return_value=httpx.Response(400)
+        auth = MockAuth.model_validate(
+            {"username": "user@example.com", "password": "password"}
         )
+        client = AsyncClient(base_url="https://example.com")
+        assert await auth.login(client) == "client-token"
+
+    @pytest.mark.asyncio
+    async def test_login_fail(self, route: respx.Route):
+        route.mock(return_value=Response(400))
 
         class MockAuth(UserPasswordAuth):
             method = "MOCK"
             vault_name = "mock"
 
-        auth_obj = MockAuth(username="user@example.com", password="password")
+        auth = MockAuth.model_validate(
+            {"username": "user@example.com", "password": "password"}
+        )
+        client = AsyncClient(base_url="https://example.com")
 
         with pytest.raises(AuthenticationError):
-            assert auth_obj.login(unittest_client) is None
+            await auth.login(client)
 
 
 class TestGetUsername:
@@ -189,6 +196,7 @@ class TestGetPassword:
         mock_prompt.assert_called_once_with("Password for foo", hide_input=True)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method_class", "login_path"),
     [
@@ -198,13 +206,11 @@ class TestGetPassword:
         (UserPassAuth, "/v1/auth/userpass/login/user"),
     ],
 )
-def test_auth_methods(
+async def test_auth_methods(
     monkeypatch: pytest.MonkeyPatch,
     method_class: type[UserPasswordAuth],
-    unittest_respx: respx.MockRouter,
     login_path: str,
-    login_success_response: httpx.Response,
-    unittest_client: httpx.Client,
+    login_success_response: Response,
 ):
     # no exception is enough
     assert isinstance(method_class.method, str)
@@ -217,6 +223,8 @@ def test_auth_methods(
     assert auth
 
     # test login
-    unittest_respx.post(login_path).mock(return_value=login_success_response)
+    client = AsyncClient(base_url="https://example.com")
 
-    assert auth.login(unittest_client) == "client-token"
+    with respx.mock(base_url="https://example.com") as r:
+        r.post(login_path).mock(return_value=login_success_response)
+        assert await auth.login(client) == "client-token"

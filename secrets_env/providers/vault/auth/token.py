@@ -35,5 +35,5 @@ class TokenAuth(Auth):
         token = cast("SecretStr", token)
         return cls(token=token)
 
-    def login(self, client: Any) -> str:
+    async def login(self, client: Any) -> str:
         return self.token.get_secret_value()

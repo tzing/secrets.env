@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import typing
 from http import HTTPStatus
 from typing import Literal
 
@@ -9,10 +10,13 @@ from pydantic import BaseModel
 
 from secrets_env.utils import get_httpx_error_reason, log_httpx_response
 
+if typing.TYPE_CHECKING:
+    from httpx import AsyncClient
+
 logger = logging.getLogger(__name__)
 
 
-def is_authenticated(client: httpx.Client, token: str) -> bool:
+async def is_authenticated(client: AsyncClient, token: str) -> bool:
     """Check if a token is authenticated.
 
     See also
@@ -21,7 +25,10 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     """
     logger.debug("Validate token for %s", client.base_url)
 
-    resp = client.get("/v1/auth/token/lookup-self", headers={"X-Vault-Token": token})
+    resp = await client.get(
+        "/v1/auth/token/lookup-self",
+        headers={"X-Vault-Token": token},
+    )
     if resp.is_success:
         return True
 
@@ -34,14 +41,14 @@ def is_authenticated(client: httpx.Client, token: str) -> bool:
     return False
 
 
-def read_secret(client: httpx.Client, path: str) -> dict | None:
+async def read_secret(client: AsyncClient, path: str) -> dict | None:
     """Read secret from Vault.
 
     See also
     --------
     https://developer.hashicorp.com/vault/api-docs/secret/kv
     """
-    mount = get_mount(client, path)
+    mount = await get_mount(client, path)
     if not mount:
         return
 
@@ -54,7 +61,7 @@ def read_secret(client: httpx.Client, path: str) -> dict | None:
         request_path = f"/v1/{path}"
 
     try:
-        resp = client.get(request_path)
+        resp = await client.get(request_path)
     except httpx.HTTPError as e:
         if not (reason := get_httpx_error_reason(e)):
             raise
@@ -111,7 +118,7 @@ class MountMetadata(BaseModel):
     version: Literal[1, 2]
 
 
-def get_mount(client: httpx.Client, path: str) -> MountMetadata | None:
+async def get_mount(client: AsyncClient, path: str) -> MountMetadata | None:
     """Get mount point and KV engine version to a secret.
 
     See also
@@ -122,7 +129,7 @@ def get_mount(client: httpx.Client, path: str) -> MountMetadata | None:
         https://github.com/hashicorp/consul-template/blob/v0.29.1/dependency/vault_common.go#L294-L357
     """
     try:
-        resp = client.get(f"/v1/sys/internal/ui/mounts/{path}")
+        resp = await client.get(f"/v1/sys/internal/ui/mounts/{path}")
     except httpx.HTTPError as e:
         if not (reason := get_httpx_error_reason(e)):
             raise
