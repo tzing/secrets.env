@@ -3,21 +3,19 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
-import pydantic
+from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
     from typing import Any, Self
 
-    import httpx
+    from httpx import AsyncClient
     from pydantic import AnyUrl
 
 
-class Auth(pydantic.BaseModel, ABC):
+class Auth(ABC, BaseModel):
     """Base class for authentication schemes."""
 
-    model_config = {
-        "frozen": True,
-    }
+    model_config = ConfigDict(frozen=True)
 
     method: ClassVar[str]
     """Authentication method name."""
@@ -31,7 +29,7 @@ class Auth(pydantic.BaseModel, ABC):
         """
 
     @abstractmethod
-    def login(self, client: httpx.Client) -> str:
+    async def login(self, client: AsyncClient) -> str:
         """
         Login and get Vault token.
 
@@ -56,5 +54,5 @@ class NoAuth(Auth):
     def create(cls, url: Any, config: dict[str, Any]) -> NoAuth:
         return cls()
 
-    def login(self, client: Any) -> str:
+    async def login(self, client: Any) -> str:
         return self.token
