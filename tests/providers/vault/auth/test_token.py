@@ -24,7 +24,7 @@ class TestTokenAuth:
     def test_create_failed(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("VAULT_TOKEN", False)
         with pytest.raises(
-            ValidationError, match=re.escape("Input should be a valid string.")
+            ValidationError, match=re.escape("Input should be a valid string")
         ):
             assert TokenAuth.create(Url("https://example.com/"), {}) is None
 
