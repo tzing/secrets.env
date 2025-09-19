@@ -126,7 +126,7 @@ class TestOnePasswordCliProvider:
         )
 
         # fail
-        with pytest.raises(LookupError, match='Field "notes" has no value'):
+        with pytest.raises(LookupError, match=re.escape('Field "notes" has no value')):
             provider._get_value_(
                 Request(name="test", ref="7h6ve2bxkrs6fu3w25ksebyvpe", field="notes")
             )
@@ -192,5 +192,5 @@ class TestGetItem:
                 )
             ),
         )
-        with pytest.raises(LookupError, match="^Test error$"):
+        with pytest.raises(LookupError, match=r"^Test error$"):
             get_item(op_path=Path("/usr/bin/op"), ref="sample-item")

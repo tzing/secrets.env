@@ -1,3 +1,4 @@
+import re
 from unittest.mock import Mock
 
 import httpx
@@ -22,7 +23,9 @@ class TestTokenAuth:
 
     def test_create_failed(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("VAULT_TOKEN", False)
-        with pytest.raises(ValidationError, match="Input should be a valid string."):
+        with pytest.raises(
+            ValidationError, match=re.escape("Input should be a valid string.")
+        ):
             assert TokenAuth.create(Url("https://example.com/"), {}) is None
 
     @pytest.mark.asyncio

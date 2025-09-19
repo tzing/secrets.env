@@ -1,3 +1,5 @@
+import re
+
 import httpx
 import pytest
 import respx
@@ -45,6 +47,7 @@ class TestJwtAuth:
         client = AsyncClient(base_url="https://example.com")
 
         with pytest.raises(
-            AuthenticationError, match="Failed to authenticate using JWT method"
+            AuthenticationError,
+            match=re.escape("Failed to authenticate using JWT method"),
         ):
             await auth.login(client)

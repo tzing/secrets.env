@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from dirty_equals import IsInstance
 from pydantic import BaseModel, FilePath, ValidationError
@@ -115,7 +117,7 @@ class TestProviderBuilder:
         assert model.sources == []
 
     def test_value_error(self):
-        with pytest.raises(ValidationError, match="sources") as exc_info:
+        with pytest.raises(ValidationError, match=re.escape("sources")) as exc_info:
             ProviderBuilder.model_validate(
                 {
                     "source": [
@@ -134,7 +136,7 @@ class TestProviderBuilder:
         exc_info.match("Unknown provider type 'invalid'")
 
     def test_type_error(self):
-        with pytest.raises(ValidationError, match="sources"):
+        with pytest.raises(ValidationError, match=re.escape("sources")):
             ProviderBuilder.model_validate({"sources": 1234})
 
     def test_dupe_name(self):
@@ -181,7 +183,7 @@ class TestRequestBuilder:
         ]
 
     def test_error_from_list(self):
-        with pytest.raises(ValidationError, match="secret.0.name"):
+        with pytest.raises(ValidationError, match=re.escape("secret.0.name")):
             RequestBuilder.model_validate(
                 {
                     "secret": [{"name": "1nvalid"}],
@@ -189,7 +191,7 @@ class TestRequestBuilder:
             )
 
     def test_error_from_dict(self):
-        with pytest.raises(ValidationError, match="secret.1nvalid.name"):
+        with pytest.raises(ValidationError, match=re.escape("secret.1nvalid.name")):
             RequestBuilder.model_validate(
                 {
                     "secret": {
@@ -199,7 +201,7 @@ class TestRequestBuilder:
             )
 
     def test_type_error(self):
-        with pytest.raises(ValidationError, match="expect list or dict"):
+        with pytest.raises(ValidationError, match=re.escape("expect list or dict")):
             RequestBuilder.model_validate({"secret": 1234})
 
     def test_dupe_name(self):

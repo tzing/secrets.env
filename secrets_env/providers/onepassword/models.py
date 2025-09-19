@@ -61,7 +61,7 @@ def parse_secret_reference(u: SecretReference) -> dict[str, str]:
     if len(parts) == 3:
         _, item, field = parts
     elif len(parts) == 4:
-        _, item, section, field = parts
+        _, item, _, field = parts
     else:
         raise ValueError("URL path should be in the format of '/item/section/field'")
 
